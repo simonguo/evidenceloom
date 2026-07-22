@@ -1,0 +1,15 @@
+Evidence Loom
+Copyright 2026 Evidence Loom contributors
+
+This product includes modified software from the TradingAgents project:
+https://github.com/TauricResearch/TradingAgents
+
+TradingAgents is distributed under the Apache License, Version 2.0. Evidence Loom
+is an independent community project and is not affiliated with or endorsed by
+TauricResearch. See UPSTREAM.md for the exact source revision and modification
+policy, and THIRD_PARTY_NOTICES.md for dependency licensing.
+
+The categories of changes made to the upstream work are documented in
+MODIFICATIONS.md. Source files retained under the `tradingagents` and `cli`
+names are modified and redistributed as part of Evidence Loom unless that file
+states otherwise.

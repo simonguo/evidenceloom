@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tradingagents"
+version = "0.2.5"
+description = "Embedded TradingAgents-compatible research core used by Evidence Loom"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Evidence Loom contributors" }]
+dependencies = [
+    "langchain-core>=0.3.81",
+    "langchain-anthropic>=0.3.15",
+    "langchain-experimental>=0.3.4",
+    "langchain-google-genai>=4.0.0",
+    "langchain-openai>=0.3.23",
+    "langgraph>=0.4.8",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    "pandas>=2.3.0",
+    "parsel>=1.10.0",
+    "pytz>=2025.2",
+    "questionary>=2.1.0",
+    "redis>=6.2.0",
+    "requests>=2.32.4",
+    "rich>=14.0.0",
+    "typer>=0.21.0",
+    "setuptools>=80.9.0",
+    "stockstats>=0.6.5",
+    "tqdm>=4.67.1",
+    "typing-extensions>=4.14.0",
+    "yfinance>=1.4.1",
+    "akshare>=1.17.0",
+]
+
+[project.scripts]
+tradingagents = "cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/simonguo/evidenceloom"
+Repository = "https://github.com/simonguo/evidenceloom"
+Issues = "https://github.com/simonguo/evidenceloom/issues"
+
+[tool.setuptools.packages.find]
+include = ["tradingagents*", "cli*"]
+
+[tool.setuptools.package-data]
+cli = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "unit: fast isolated unit tests",
+    "integration: tests requiring external services",
+    "smoke: quick sanity-check tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.19,<7",
+    "pytest>=9,<10",
+    "ruff>=0.15,<0.16",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+exclude = ["build", "dist", "frontend/.next", "frontend/out", "src-tauri/target"]
