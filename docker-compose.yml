@@ -1,0 +1,35 @@
+services:
+  evidenceloom:
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - evidenceloom_data:/home/appuser/.tradingagents
+    tty: true
+    stdin_open: true
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama_data:/root/.ollama
+    profiles:
+      - ollama
+
+  evidenceloom-ollama:
+    build: .
+    env_file:
+      - .env
+    environment:
+      - LLM_PROVIDER=ollama
+    volumes:
+      - evidenceloom_data:/home/appuser/.tradingagents
+    depends_on:
+      - ollama
+    tty: true
+    stdin_open: true
+    profiles:
+      - ollama
+
+volumes:
+  evidenceloom_data:
+  ollama_data:

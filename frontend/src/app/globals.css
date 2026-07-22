@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background: #000;
+  color: #ededed;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-xl border border-zinc-800 bg-zinc-950/85 shadow-none;
+  }
+
+  .field-label {
+    @apply text-sm font-medium text-zinc-300;
+  }
+
+  .field-input {
+    @apply mt-2 h-12 w-full rounded-md border border-zinc-800 bg-black px-3 text-sm leading-none text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-700/40;
+  }
+
+  .pill {
+    @apply rounded-full border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs text-zinc-400;
+  }
+
+  .vercel-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-zinc-700 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .vercel-button-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .vercel-button-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-red-900/70 bg-transparent px-3 py-2 text-sm font-medium text-red-300 transition hover:border-red-700 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .action-primary {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-zinc-700 bg-zinc-100 px-2.5 py-1.5 text-xs font-medium text-zinc-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .action-danger {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-red-900/70 px-2.5 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-950/40;
+  }
+
+  .action-muted {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-zinc-800 px-2.5 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-600 hover:bg-zinc-900;
+  }
+
+  .dashboard-table-header {
+    @apply border-b border-zinc-800 bg-zinc-950/80 px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-500;
+  }
+
+  .dashboard-table-cell {
+    @apply border-b border-zinc-900 px-4 py-3 text-sm text-zinc-300;
+  }
+
+  .toggle-switch {
+    @apply relative h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full border border-zinc-700 bg-zinc-800 transition-colors duration-200;
+  }
+  .toggle-switch:checked {
+    @apply border-zinc-500 bg-zinc-100;
+  }
+  .toggle-switch::before {
+    content: "";
+    @apply absolute left-0.5 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-zinc-400 transition-transform duration-200;
+  }
+  .toggle-switch:checked::before {
+    @apply translate-x-5 bg-zinc-900;
+  }
+  .toggle-switch:focus-visible {
+    @apply ring-2 ring-zinc-600 ring-offset-2 ring-offset-black;
+  }
+
+  .agent-card-working {
+    isolation: isolate;
+  }
+
+  .agent-card-working::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--agent-card-working-angle),
+      transparent 0deg,
+      transparent 245deg,
+      rgba(56, 189, 248, 0.08) 285deg,
+      rgba(56, 189, 248, 0.9) 320deg,
+      rgba(125, 211, 252, 0.95) 340deg,
+      transparent 360deg
+    );
+    animation: agent-card-working-spin 2.2s linear infinite;
+  }
+
+  .agent-card-working::after {
+    content: "";
+    position: absolute;
+    inset: 1px;
+    z-index: -1;
+    border-radius: calc(0.75rem - 1px);
+    background: rgba(0, 0, 0, 0.88);
+  }
+}
+
+@property --agent-card-working-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes agent-card-working-spin {
+  to {
+    --agent-card-working-angle: 360deg;
+  }
+}
+
+@layer components {
+  .report-markdown {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .report-markdown :where(h1, h2, h3, h4, p, li, strong, code, pre) {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .report-markdown :where(pre) {
+    white-space: pre-wrap;
+  }
+
+  .report-markdown :where(table) {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  .report-markdown :where(th, td) {
+    border: 1px solid rgb(39 39 42);
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+  }
+
+  .report-markdown :where(th) {
+    background: rgb(24 24 27);
+    color: rgb(244 244 245);
+    font-weight: 600;
+  }
+
+  .report-markdown :where(td) {
+    background: rgba(24, 24, 27, 0.45);
+  }
+}

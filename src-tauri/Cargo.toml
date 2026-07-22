@@ -1,0 +1,20 @@
+[package]
+name = "evidenceloom-desktop"
+version = "0.1.0-beta.1"
+description = "Local-first multi-agent market research desktop application"
+authors = ["Evidence Loom contributors"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/simonguo/evidenceloom"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+tauri = { version = "2", features = [] }
+aes-gcm = "0.10"
+base64 = "0.22"
+keyring = "4.1.5"

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Evidence Loom mark</title>
+  <desc id="desc">Six restrained ivory threads cross in an alternating over-under weave on a warm black field.</desc>
+  <rect width="1024" height="1024" rx="224" fill="#12110f"/>
+  <g fill="none" stroke="#f1eee6" stroke-linecap="square" stroke-width="72">
+    <path d="M356 220v584M668 220v584"/>
+    <path d="M220 300h584M220 512h584M220 724h584"/>
+  </g>
+  <g fill="none" stroke-linecap="square">
+    <g stroke="#12110f" stroke-width="112">
+      <path d="M356 244v112M668 456v112M356 668v112"/>
+      <path d="M612 300h112M300 512h112M612 724h112"/>
+    </g>
+    <g stroke="#f1eee6" stroke-width="72">
+      <path d="M356 244v112M668 456v112M356 668v112"/>
+      <path d="M612 300h112M300 512h112M612 724h112"/>
+    </g>
+  </g>
+</svg>
