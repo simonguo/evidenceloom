@@ -64,7 +64,7 @@ filterwarnings = [
 dev = [
     "pyinstaller>=6.19,<7",
     "pytest>=9,<10",
-    "ruff>=0.15,<0.16",
+    "ruff>=0.15.22,<0.16",
 ]
 
 [tool.ruff]
