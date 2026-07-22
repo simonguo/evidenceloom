@@ -62,7 +62,7 @@ filterwarnings = [
 
 [dependency-groups]
 dev = [
-    "pyinstaller>=6.19,<7",
+    "pyinstaller>=6.21.0,<7",
     "pytest>=9,<10",
     "ruff>=0.15,<0.16",
 ]
