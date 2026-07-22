@@ -13,7 +13,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 tauri = { version = "2", features = [] }
 aes-gcm = "0.10"
 base64 = "0.22"
