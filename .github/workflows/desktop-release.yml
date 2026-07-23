@@ -9,11 +9,43 @@ permissions:
   contents: read
 
 jobs:
+  prepare-release:
+    if: github.event_name == 'push'
+    name: Prepare draft release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Create draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; reusing it."
+            exit 0
+          fi
+
+          args=(
+            --verify-tag
+            --draft
+            --generate-notes
+            --title "Evidence Loom $GITHUB_REF_NAME"
+          )
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" "${args[@]}"
+
   build-macos:
     if: github.event_name == 'push'
     name: Build ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     environment: macos-signing
+    needs: prepare-release
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -21,13 +53,9 @@ jobs:
           - name: macOS-arm64
             os: macos-15
             target: aarch64-apple-darwin
-            artifact: evidenceloom-macos-arm64
-            bundle_glob: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           - name: macOS-x86_64
             os: macos-15-intel
             target: x86_64-apple-darwin
-            artifact: evidenceloom-macos-x86_64
-            bundle_glob: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
 
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -100,13 +128,18 @@ jobs:
             --wait
           xcrun stapler staple "$dmg"
           xcrun stapler validate "$dmg"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: ${{ matrix.artifact }}-${{ github.ref_name }}
-          path: ${{ matrix.bundle_glob }}
-          if-no-files-found: error
+      - name: Stage notarized DMG in draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          dmg="$(find 'src-tauri/target/${{ matrix.target }}/release/bundle' -name '*.dmg' -print -quit)"
+          test -n "$dmg"
+          test -f "$dmg"
+          gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber
 
   build-windows-test:
+    if: github.event_name == 'workflow_dispatch'
     name: Build Windows-x86_64 (unsigned test)
     runs-on: windows-2025
     permissions:
@@ -191,29 +224,28 @@ jobs:
 
           gh release upload $testTag $installer.FullName --clobber
           if ($LASTEXITCODE -ne 0) { throw "Failed to upload Windows test installer" }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: github.event_name == 'push'
-        with:
-          name: evidenceloom-windows-x86_64-unsigned-${{ github.ref_name }}
-          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-          if-no-files-found: error
-
   release:
     if: github.event_name == 'push'
     name: Attest and publish
     runs-on: ubuntu-24.04
-    needs: [build-macos, build-windows-test]
+    needs: [prepare-release, build-macos]
     permissions:
       contents: write
       id-token: write
       attestations: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
-        with:
-          path: release-artifacts
-          pattern: evidenceloom-macos-*-${{ github.ref_name }}
-          merge-multiple: true
+      - name: Download staged macOS DMGs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p release-artifacts
+          gh release download "$GITHUB_REF_NAME" \
+            --dir release-artifacts \
+            --pattern '*.dmg'
+          count="$(find release-artifacts -maxdepth 1 -name '*.dmg' -type f | wc -l | tr -d ' ')"
+          test "$count" -eq 2
       - name: Add legal files
         run: |
           cp LICENSE NOTICE THIRD_PARTY_NOTICES.md release-artifacts/
@@ -229,10 +261,14 @@ jobs:
       - uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3
         with:
           subject-path: release-artifacts/**
-      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          generate_release_notes: true
-          files: release-artifacts/**
+      - name: Publish release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" release-artifacts/* --clobber
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=true
+          else
+            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false
+          fi

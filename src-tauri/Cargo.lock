@@ -1028,7 +1028,7 @@ dependencies = [
 
 [[package]]
 name = "evidenceloom-desktop"
-version = "0.1.0-beta.3"
+version = "0.1.0-beta.4"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",

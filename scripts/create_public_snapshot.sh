@@ -54,7 +54,7 @@ git -C "$DESTINATION" init --initial-branch=main
 git -C "$DESTINATION" config user.name "Simon Guo"
 git -C "$DESTINATION" config user.email "simonguo@users.noreply.github.com"
 git -C "$DESTINATION" add --all
-git -C "$DESTINATION" commit --signoff --message "chore: publish Evidence Loom v0.1.0-beta.3"
+git -C "$DESTINATION" commit --signoff --message "chore: publish Evidence Loom v0.1.0-beta.4"
 
 test "$(git -C "$DESTINATION" rev-list --count HEAD)" = "1"
 test -z "$(git -C "$DESTINATION" status --porcelain)"
