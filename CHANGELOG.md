@@ -10,7 +10,13 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Moved desktop API keys to the operating-system credential store.
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
 
-## [0.1.0-beta.1] - Unreleased
+## [0.1.0-beta.2] - 2026-07-23
+
+- Added an unsigned Windows x64 test installer artifact to the desktop release workflow.
+- Kept unsigned Windows installers out of the published GitHub Release.
+- Fixed Tauri development startup by preparing the architecture-specific sidecar placeholder.
+
+## [0.1.0-beta.1] - 2026-07-22
 
 First public beta planned for macOS Apple Silicon, macOS Intel, and Windows x64.
 

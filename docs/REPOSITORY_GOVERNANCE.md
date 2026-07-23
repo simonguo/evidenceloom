@@ -30,7 +30,7 @@ Use squash or rebase merges and automatically delete merged head branches. Exter
 
 - Create protected environments for macOS and Windows signing secrets.
 - Limit release workflow write access to `contents`, `id-token`, and `attestations` as declared in the workflow.
-- Require the `v0.1.0-beta.1` tag to point to the protected `main` branch.
-- Do not publish a platform artifact when its signing certificate, timestamp, notarization, or verification step is unavailable.
+- Require the release tag to point to the protected `main` branch.
+- Do not publish a platform artifact when its signing certificate, timestamp, notarization, or verification step is unavailable. Unsigned test installers may be retained as clearly labeled GitHub Actions artifacts, but must not be attached to a GitHub Release.
 
 Record the final ruleset export and repository security-settings screenshots in the private release record, not in the public repository.
