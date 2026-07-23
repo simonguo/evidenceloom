@@ -9,6 +9,7 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Rebranded the desktop application as Evidence Loom.
 - Moved desktop API keys to the operating-system credential store.
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
+- Added a Windows-only manual packaging path that publishes the unsigned test installer to a draft release.
 
 ## [0.1.0-beta.3] - 2026-07-23
 

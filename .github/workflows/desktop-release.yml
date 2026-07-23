@@ -3,12 +3,14 @@ name: Desktop Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
   build-macos:
+    if: github.event_name == 'push'
     name: Build ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     environment: macos-signing
@@ -107,6 +109,8 @@ jobs:
   build-windows-test:
     name: Build Windows-x86_64 (unsigned test)
     runs-on: windows-2025
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -114,10 +118,14 @@ jobs:
       - name: Verify tag and version
         shell: bash
         run: |
-          git fetch origin main
-          tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
-          git merge-base --is-ancestor "$tag_commit" origin/main
-          python scripts/check_versions.py --tag="$GITHUB_REF_NAME"
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            git fetch origin main
+            tag_commit="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+            git merge-base --is-ancestor "$tag_commit" origin/main
+            python scripts/check_versions.py --tag="$GITHUB_REF_NAME"
+          else
+            python scripts/check_versions.py
+          fi
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"
@@ -150,13 +158,48 @@ jobs:
               throw "Expected unsigned test package at $($_.FullName), got signature status $($signature.Status)"
             }
           }
+      - name: Publish Windows test installer to a draft release
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $installer = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Recurse -Include *.exe |
+            Select-Object -First 1
+          if (-not $installer) { throw "No Windows NSIS installer was produced" }
+
+          $version = (Get-Content 'src-tauri/tauri.conf.json' | ConvertFrom-Json).version
+          $testTag = "windows-test-v$version"
+          $title = "Evidence Loom v$version unsigned Windows test"
+          $notes = @"
+          Unsigned Windows x64 test installer.
+
+          This draft is for internal testing only. Windows SmartScreen may warn because the installer is not Authenticode-signed.
+          Source commit: $env:GITHUB_SHA
+          "@
+
+          gh release view $testTag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $testTag `
+              --target $env:GITHUB_SHA `
+              --draft `
+              --prerelease `
+              --title $title `
+              --notes $notes
+            if ($LASTEXITCODE -ne 0) { throw "Failed to create draft test release" }
+          }
+
+          gh release upload $testTag $installer.FullName --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to upload Windows test installer" }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: github.event_name == 'push'
         with:
           name: evidenceloom-windows-x86_64-unsigned-${{ github.ref_name }}
           path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           if-no-files-found: error
 
   release:
+    if: github.event_name == 'push'
     name: Attest and publish
     runs-on: ubuntu-24.04
     needs: [build-macos, build-windows-test]
