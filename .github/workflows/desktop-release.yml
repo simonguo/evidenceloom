@@ -81,12 +81,22 @@ jobs:
             --mode sidecar
       - name: Verify macOS signature and notarization
         shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           app="$(find 'src-tauri/target/${{ matrix.target }}/release/bundle' -name '*.app' -print -quit)"
           dmg="$(find 'src-tauri/target/${{ matrix.target }}/release/bundle' -name '*.dmg' -print -quit)"
           codesign --verify --deep --strict --verbose=2 "$app"
           spctl --assess --type execute --verbose=2 "$app"
           xcrun stapler validate "$app"
+          xcrun notarytool submit "$dmg" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          xcrun stapler staple "$dmg"
           xcrun stapler validate "$dmg"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -127,11 +137,12 @@ jobs:
         run: |
           scripts/build_desktop_sidecar.sh \
             --target x86_64-pc-windows-msvc \
-            --mode sidecar
+            --mode sidecar \
+            --tauri-config '{"bundle":{"targets":["nsis"]}}'
       - name: Verify Windows test packages are unsigned
         shell: pwsh
         run: |
-          $files = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle' -Recurse -Include *.exe,*.msi
+          $files = Get-ChildItem 'src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis' -Recurse -Include *.exe
           if (-not $files) { throw "No Windows installer packages were produced" }
           $files | ForEach-Object {
             $signature = Get-AuthenticodeSignature $_.FullName
@@ -142,9 +153,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: evidenceloom-windows-x86_64-unsigned-${{ github.ref_name }}
-          path: |
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
-            src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
           if-no-files-found: error
 
   release:

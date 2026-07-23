@@ -1,6 +1,6 @@
 [package]
 name = "evidenceloom-desktop"
-version = "0.1.0-beta.2"
+version = "0.1.0-beta.3"
 description = "Local-first multi-agent market research desktop application"
 authors = ["Evidence Loom contributors"]
 edition = "2021"

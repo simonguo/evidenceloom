@@ -10,6 +10,11 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Moved desktop API keys to the operating-system credential store.
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
 
+## [0.1.0-beta.3] - 2026-07-23
+
+- Limited the unsigned Windows test artifact to the NSIS installer so prerelease versions can be packaged.
+- Added explicit notarization and stapling for the generated macOS disk images.
+
 ## [0.1.0-beta.2] - 2026-07-23
 
 - Added an unsigned Windows x64 test installer artifact to the desktop release workflow.
