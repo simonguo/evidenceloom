@@ -121,12 +121,71 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           spctl --assess --type execute --verbose=2 "$app"
           xcrun stapler validate "$app"
-          xcrun notarytool submit "$dmg" \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait
-          xcrun stapler staple "$dmg"
+
+          notary_auth=(
+            --apple-id "$APPLE_ID"
+            --password "$APPLE_PASSWORD"
+            --team-id "$APPLE_TEAM_ID"
+          )
+
+          submit_json=""
+          for attempt in 1 2 3; do
+            if submit_json="$(xcrun notarytool submit "$dmg" \
+              "${notary_auth[@]}" \
+              --output-format json \
+              --no-progress)"; then
+              break
+            fi
+            echo "Notary submission attempt $attempt failed; retrying." >&2
+            sleep $((attempt * 10))
+          done
+          test -n "$submit_json"
+          printf '%s\n' "$submit_json"
+
+          submission_id="$(
+            printf '%s' "$submit_json" |
+              python -c 'import json, sys; print(json.load(sys.stdin)["id"])'
+          )"
+          test -n "$submission_id"
+
+          accepted=false
+          for attempt in $(seq 1 60); do
+            if info_json="$(xcrun notarytool info "$submission_id" \
+              "${notary_auth[@]}" \
+              --output-format json \
+              --no-progress 2>&1)"; then
+              printf '%s\n' "$info_json"
+              status="$(
+                printf '%s' "$info_json" |
+                  python -c 'import json, sys; print(json.load(sys.stdin)["status"])'
+              )"
+              case "$status" in
+                Accepted)
+                  accepted=true
+                  break
+                  ;;
+                "In Progress")
+                  ;;
+                *)
+                  echo "Apple notarization finished with status: $status" >&2
+                  xcrun notarytool log "$submission_id" "${notary_auth[@]}" || true
+                  exit 1
+                  ;;
+              esac
+            else
+              echo "Notary status attempt $attempt failed; retrying: $info_json" >&2
+            fi
+            sleep 20
+          done
+          test "$accepted" = true
+
+          for attempt in 1 2 3; do
+            if xcrun stapler staple "$dmg"; then
+              break
+            fi
+            test "$attempt" -lt 3
+            sleep $((attempt * 10))
+          done
           xcrun stapler validate "$dmg"
       - name: Stage notarized DMG in draft release
         shell: bash

@@ -10,6 +10,10 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Moved desktop API keys to the operating-system credential store.
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
 
+## [0.1.0-beta.5] - 2026-07-23
+
+- Made DMG notarization resilient to transient Apple service timeouts by submitting once and polling the submission status with bounded retries.
+
 ## [0.1.0-beta.4] - 2026-07-23
 
 - Staged signed and notarized macOS DMGs directly through a draft GitHub Release, removing the Actions Artifact storage dependency.
