@@ -96,11 +96,39 @@ jobs:
           for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
             test -n "${!name:-}" || { echo "Missing $name" >&2; exit 1; }
           done
-      - name: Build signed desktop application
+      - name: Import Apple signing certificate
+        if: runner.os == 'macOS'
         shell: bash
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          certificate_path="$RUNNER_TEMP/evidenceloom-signing.p12"
+          keychain_path="$RUNNER_TEMP/evidenceloom-signing.keychain-db"
+          keychain_password="$(openssl rand -base64 32)"
+
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$keychain_password" "$keychain_path"
+          security default-keychain -s "$keychain_path"
+          security unlock-keychain -p "$keychain_password" "$keychain_path"
+          security set-keychain-settings -t 3600 -u "$keychain_path"
+          security list-keychains -d user -s "$keychain_path"
+          security import "$certificate_path" \
+            -k "$keychain_path" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$keychain_password" \
+            "$keychain_path"
+          security find-identity -v -p codesigning "$keychain_path"
+          security find-identity -v -p codesigning "$keychain_path" |
+            grep -F "\"$APPLE_SIGNING_IDENTITY\""
+      - name: Build signed desktop application
+        shell: bash
+        env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -121,6 +149,26 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           spctl --assess --type execute --verbose=2 "$app"
           xcrun stapler validate "$app"
+
+          sidecar="$app/Contents/MacOS/evidenceloom-runner"
+          test -x "$sidecar"
+          codesign --verify --strict --verbose=2 "$sidecar"
+          sidecar_team_id="$(
+            codesign --display --verbose=4 "$sidecar" 2>&1 |
+              awk -F= '/^TeamIdentifier=/{print $2; exit}'
+          )"
+          test "$sidecar_team_id" = "$APPLE_TEAM_ID"
+
+          set +e
+          sidecar_output="$(printf '%s\n' '{"__command":"smoke_test"}' | "$sidecar" 2>&1)"
+          sidecar_status=$?
+          set -e
+          printf '%s\n' "$sidecar_output"
+          printf '%s\n' "$sidecar_output" | grep -q '"type": "ready"'
+          if [[ "$sidecar_status" -ne 0 ]]; then
+            echo "Bundled sidecar failed to start (exit $sidecar_status)." >&2
+            exit 1
+          fi
 
           notary_auth=(
             --apple-id "$APPLE_ID"

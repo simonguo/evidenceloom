@@ -1028,12 +1028,13 @@ dependencies = [
 
 [[package]]
 name = "evidenceloom-desktop"
-version = "0.1.0-beta.5"
+version = "0.1.0-beta.6"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",
  "keyring",
  "rusqlite",
+ "security-framework",
  "serde",
  "serde_json",
  "tauri",

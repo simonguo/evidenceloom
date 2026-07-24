@@ -103,18 +103,39 @@ if grep -q "EVIDENCELOOM_SIDECAR_PLACEHOLDER" "$SIDECAR_BIN" 2>/dev/null; then
 fi
 echo "Sidecar binary verified: $SIDECAR_BIN"
 
+# A real identity makes PyInstaller sign both the launcher and every collected
+# Mach-O binary with hardened runtime enabled. This is required before the
+# one-file archive is created; Tauri cannot repair embedded signatures later.
+if [[ "$TARGET_TRIPLE" == *"apple-darwin" && -n "${APPLE_SIGNING_IDENTITY:-}" ]]; then
+  codesign --verify --strict --verbose=2 "$SIDECAR_BIN"
+  if [[ -n "${APPLE_TEAM_ID:-}" ]]; then
+    SIDECAR_TEAM_ID="$(
+      codesign --display --verbose=4 "$SIDECAR_BIN" 2>&1 |
+        awk -F= '/^TeamIdentifier=/{print $2; exit}'
+    )"
+    if [[ "$SIDECAR_TEAM_ID" != "$APPLE_TEAM_ID" ]]; then
+      echo "ERROR: Sidecar Team ID '$SIDECAR_TEAM_ID' does not match APPLE_TEAM_ID." >&2
+      exit 1
+    fi
+  fi
+fi
+
 # ---------------------------------------------------------------------------
 # Step 2 – Quick smoke-test the sidecar
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SIDECAR" -eq 0 ]]; then
   echo ""
   echo "==> Step 2: Smoke-testing sidecar..."
-  RESULT=$(echo '{}' | "$SIDECAR_BIN" 2>&1 | head -1 || true)
-  if echo "$RESULT" | grep -q '"type"'; then
+  set +e
+  RESULT="$(printf '%s\n' '{"__command":"smoke_test"}' | "$SIDECAR_BIN" 2>&1)"
+  SIDECAR_STATUS=$?
+  set -e
+  if echo "$RESULT" | grep -q '"type": "ready"' && [[ "$SIDECAR_STATUS" -eq 0 ]]; then
     echo "Sidecar smoke-test passed."
   else
-    echo "WARNING: Sidecar returned unexpected output (may still be OK):"
-    echo "  $RESULT"
+    echo "ERROR: Sidecar returned unexpected output:"
+    printf '%s\n' "$RESULT" | sed 's/^/  /'
+    exit 1
   fi
 else
   echo "==> Step 2: Skipped (--skip-sidecar)."

@@ -241,20 +241,26 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   async function saveSettingsAction(nextSettings: GlobalSettings) {
     if (isTauriRuntime()) {
       const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-      await adapter.saveDesktopSettings(nextSettings);
+      const providerChanged =
+        nextSettings.llmProvider.trim().toLowerCase() !== settings.llmProvider.trim().toLowerCase();
+      let providerConfigured = providerChanged ? false : nextSettings.providerConfigured;
+      let alphaVantageConfigured = nextSettings.alphaVantageConfigured;
       if (nextSettings.apiKey.trim()) {
         await adapter.setProviderSecret(nextSettings.llmProvider, nextSettings.apiKey.trim());
+        providerConfigured = true;
       }
       if (nextSettings.alphaVantageApiKey.trim()) {
         await adapter.setAlphaVantageSecret(nextSettings.llmProvider, nextSettings.alphaVantageApiKey.trim());
+        alphaVantageConfigured = true;
       }
-      const status = await adapter.getProviderSecretStatus(nextSettings.llmProvider);
       const safeSettings = {
         ...nextSettings,
-        ...status,
+        providerConfigured,
+        alphaVantageConfigured,
         apiKey: "",
         alphaVantageApiKey: "",
       };
+      await adapter.saveDesktopSettings(safeSettings);
       setSettings(safeSettings);
       return safeSettings;
     }
@@ -271,8 +277,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   async function deleteProviderSecretAction() {
     if (isTauriRuntime()) {
       const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-      const status = await adapter.deleteProviderSecret(settings.llmProvider);
-      setSettings((current) => ({ ...current, ...status, apiKey: "" }));
+      await adapter.deleteProviderSecret(settings.llmProvider);
+      const safeSettings = { ...settings, providerConfigured: false, apiKey: "" };
+      await adapter.saveDesktopSettings(safeSettings);
+      setSettings(safeSettings);
       return;
     }
     setSettings((current) => ({ ...current, providerConfigured: false, apiKey: "" }));
@@ -281,8 +289,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   async function deleteAlphaVantageSecretAction() {
     if (isTauriRuntime()) {
       const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-      const status = await adapter.deleteAlphaVantageSecret(settings.llmProvider);
-      setSettings((current) => ({ ...current, ...status, alphaVantageApiKey: "" }));
+      await adapter.deleteAlphaVantageSecret(settings.llmProvider);
+      const safeSettings = { ...settings, alphaVantageConfigured: false, alphaVantageApiKey: "" };
+      await adapter.saveDesktopSettings(safeSettings);
+      setSettings(safeSettings);
       return;
     }
     setSettings((current) => ({ ...current, alphaVantageConfigured: false, alphaVantageApiKey: "" }));

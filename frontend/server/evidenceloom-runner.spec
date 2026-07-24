@@ -2,10 +2,15 @@
 # Build from the repository root, for example:
 #   pyinstaller frontend/server/evidenceloom-runner.spec --distpath /tmp/evidenceloom-runner-dist
 
+import os
+import sys
 from pathlib import Path
 
 repo_root = Path.cwd()
 runner = repo_root / "frontend" / "server" / "run_analysis.py"
+codesign_identity = None
+if sys.platform == "darwin":
+    codesign_identity = os.environ.get("APPLE_SIGNING_IDENTITY") or None
 
 block_cipher = None
 
@@ -43,6 +48,10 @@ exe = EXE(
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
-    codesign_identity=None,
+    # PyInstaller must sign the embedded Python framework before it is placed
+    # inside the one-file archive. Signing only the outer Tauri sidecar later
+    # leaves the extracted framework with a different Team ID and macOS
+    # hardened-runtime library validation rejects it.
+    codesign_identity=codesign_identity,
     entitlements_file=None,
 )

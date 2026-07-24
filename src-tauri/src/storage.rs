@@ -55,6 +55,10 @@ pub struct StoredSettings {
     pub python_path: String,
     pub project_root: String,
     pub system_language: String,
+    #[serde(default)]
+    pub provider_configured: bool,
+    #[serde(default)]
+    pub alpha_vantage_configured: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -62,8 +66,6 @@ pub struct StoredSettings {
 pub struct PublicSettings {
     #[serde(flatten)]
     pub settings: StoredSettings,
-    pub provider_configured: bool,
-    pub alpha_vantage_configured: bool,
 }
 
 fn default_core_stock_apis() -> String {
@@ -142,7 +144,7 @@ pub fn load_snapshot(app: &AppHandle) -> Result<DesktopSnapshot, String> {
     let (settings, secret_migration_error) = load_settings_from_conn(app, &conn)?;
     let tasks = load_tasks_from_conn(&conn)?;
     Ok(DesktopSnapshot {
-        settings: settings.map(public_settings).transpose()?,
+        settings: settings.map(public_settings),
         tasks,
         secret_migration_error,
     })
@@ -197,10 +199,13 @@ pub fn import_legacy(
     let mut secret_migration_error = current_migration_error;
     if current_settings.is_none() {
         if let Some(settings) = legacy.settings {
-            let parsed = serde_json::from_value::<StoredSettings>(settings.clone())
+            let mut parsed = serde_json::from_value::<StoredSettings>(settings.clone())
                 .map_err(|error| error.to_string())?;
             match migrate_legacy_secrets(app, &settings, &parsed.llm_provider) {
-                Ok(()) => save_settings_to_conn(&conn, &parsed)?,
+                Ok(()) => {
+                    mark_legacy_secret_status(&mut parsed, &settings);
+                    save_settings_to_conn(&conn, &parsed)?;
+                }
                 Err(error) => secret_migration_error = Some(error),
             }
         }
@@ -222,7 +227,7 @@ pub fn import_legacy(
         secret_migration_error = database_migration_error;
     }
     Ok(DesktopSnapshot {
-        settings: settings.map(public_settings).transpose()?,
+        settings: settings.map(public_settings),
         tasks: load_tasks_from_conn(&conn)?,
         secret_migration_error,
     })
@@ -395,14 +400,19 @@ fn load_settings_from_conn(
         return Ok((None, None));
     };
     let value = serde_json::from_str::<Value>(&raw).map_err(|error| error.to_string())?;
-    let settings = serde_json::from_value::<StoredSettings>(value.clone())
+    let mut settings = serde_json::from_value::<StoredSettings>(value.clone())
         .map_err(|error| error.to_string())?;
+    let status_added = hydrate_secret_status_metadata(&mut settings, &value);
     if !contains_legacy_secrets(&value) {
+        if status_added {
+            save_settings_to_conn(conn, &settings)?;
+        }
         return Ok((Some(settings), None));
     }
 
     match migrate_legacy_secrets(app, &value, &settings.llm_provider) {
         Ok(()) => {
+            mark_legacy_secret_status(&mut settings, &value);
             save_settings_to_conn(conn, &settings)?;
             Ok((Some(settings), None))
         }
@@ -421,13 +431,8 @@ fn save_settings_to_conn(conn: &Connection, settings: &StoredSettings) -> Result
     Ok(())
 }
 
-fn public_settings(settings: StoredSettings) -> Result<PublicSettings, String> {
-    let status = secrets::status(&settings.llm_provider)?;
-    Ok(PublicSettings {
-        settings,
-        provider_configured: status.provider_configured,
-        alpha_vantage_configured: status.alpha_vantage_configured,
-    })
+fn public_settings(settings: StoredSettings) -> PublicSettings {
+    PublicSettings { settings }
 }
 
 fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, String> {
@@ -610,6 +615,38 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
 
 fn contains_legacy_secrets(value: &Value) -> bool {
     value.get("apiKey").is_some() || value.get("alphaVantageApiKey").is_some()
+}
+
+fn mark_legacy_secret_status(settings: &mut StoredSettings, value: &Value) {
+    if value
+        .get("apiKey")
+        .and_then(Value::as_str)
+        .is_some_and(|secret| !secret.trim().is_empty())
+    {
+        settings.provider_configured = true;
+    }
+    if value
+        .get("alphaVantageApiKey")
+        .and_then(Value::as_str)
+        .is_some_and(|secret| !secret.trim().is_empty())
+    {
+        settings.alpha_vantage_configured = true;
+    }
+}
+
+fn hydrate_secret_status_metadata(settings: &mut StoredSettings, value: &Value) -> bool {
+    let mut changed = false;
+    if value.get("providerConfigured").is_none() {
+        settings.provider_configured = secrets::provider_secret_id(&settings.llm_provider)
+            .is_ok_and(|secret_id| secrets::detect_secret_without_prompt(&secret_id));
+        changed = true;
+    }
+    if value.get("alphaVantageConfigured").is_none() {
+        settings.alpha_vantage_configured =
+            secrets::detect_secret_without_prompt(secrets::ALPHA_VANTAGE_SECRET_ID);
+        changed = true;
+    }
+    changed
 }
 
 fn migrate_legacy_secrets(app: &AppHandle, value: &Value, provider: &str) -> Result<(), String> {

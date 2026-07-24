@@ -1,5 +1,6 @@
 use keyring::{Entry, Error as KeyringError};
-use serde::Serialize;
+#[cfg(target_os = "macos")]
+use security_framework::item::{ItemClass, ItemSearchOptions};
 
 const SERVICE_NAME: &str = "io.github.simonguo.evidenceloom";
 const LEGACY_SERVICE_NAMES: &[&str] = &["io.github.simonguo.marketquorum"];
@@ -19,13 +20,6 @@ const SUPPORTED_PROVIDERS: &[&str] = &[
     "minimax-cn",
     "openrouter",
 ];
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SecretStatus {
-    pub provider_configured: bool,
-    pub alpha_vantage_configured: bool,
-}
 
 pub trait CredentialStore {
     fn get(&self, secret_id: &str) -> Result<Option<String>, String>;
@@ -98,11 +92,33 @@ pub fn delete_all_secrets(current_provider: Option<&str>) -> Result<(), String> 
     delete_all_secrets_from(&SystemCredentialStore, current_provider)
 }
 
-pub fn status(provider: &str) -> Result<SecretStatus, String> {
-    Ok(SecretStatus {
-        provider_configured: get_provider_secret(provider)?.is_some(),
-        alpha_vantage_configured: get_alpha_vantage_secret()?.is_some(),
-    })
+/// Checks only non-secret Keychain attributes and explicitly disables
+/// authentication UI. This lets an upgraded app preserve its "configured"
+/// indicator without reading a password during startup.
+pub fn detect_secret_without_prompt(secret_id: &str) -> bool {
+    let Ok(secret_id) = normalize_secret_id(secret_id) else {
+        return false;
+    };
+    std::iter::once(SERVICE_NAME)
+        .chain(LEGACY_SERVICE_NAMES.iter().copied())
+        .any(|service| keychain_item_exists_without_prompt(service, &secret_id))
+}
+
+#[cfg(target_os = "macos")]
+fn keychain_item_exists_without_prompt(service: &str, secret_id: &str) -> bool {
+    ItemSearchOptions::new()
+        .class(ItemClass::generic_password())
+        .service(service)
+        .account(secret_id)
+        .load_attributes(true)
+        .skip_authenticated_items(true)
+        .search()
+        .is_ok_and(|items| !items.is_empty())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn keychain_item_exists_without_prompt(_service: &str, _secret_id: &str) -> bool {
+    false
 }
 
 fn entry(secret_id: &str) -> Result<Entry, String> {

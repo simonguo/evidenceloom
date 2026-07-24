@@ -84,35 +84,25 @@ fn save_desktop_settings(app: AppHandle, settings: storage::StoredSettings) -> R
 }
 
 #[tauri::command]
-fn set_provider_secret(provider: String, value: String) -> Result<secrets::SecretStatus, String> {
-    secrets::set_provider_secret(&provider, &value)?;
-    secrets::status(&provider)
+fn set_provider_secret(provider: String, value: String) -> Result<(), String> {
+    secrets::set_provider_secret(&provider, &value)
 }
 
 #[tauri::command]
-fn delete_provider_secret(provider: String) -> Result<secrets::SecretStatus, String> {
-    secrets::delete_provider_secret(&provider)?;
-    secrets::status(&provider)
+fn delete_provider_secret(provider: String) -> Result<(), String> {
+    secrets::delete_provider_secret(&provider)
 }
 
 #[tauri::command]
-fn set_alpha_vantage_secret(
-    provider: String,
-    value: String,
-) -> Result<secrets::SecretStatus, String> {
-    secrets::set_alpha_vantage_secret(&value)?;
-    secrets::status(&provider)
+fn set_alpha_vantage_secret(provider: String, value: String) -> Result<(), String> {
+    let _ = provider;
+    secrets::set_alpha_vantage_secret(&value)
 }
 
 #[tauri::command]
-fn delete_alpha_vantage_secret(provider: String) -> Result<secrets::SecretStatus, String> {
-    secrets::delete_alpha_vantage_secret()?;
-    secrets::status(&provider)
-}
-
-#[tauri::command]
-fn get_provider_secret_status(provider: String) -> Result<secrets::SecretStatus, String> {
-    secrets::status(&provider)
+fn delete_alpha_vantage_secret(provider: String) -> Result<(), String> {
+    let _ = provider;
+    secrets::delete_alpha_vantage_secret()
 }
 
 #[tauri::command]
@@ -1392,7 +1382,6 @@ fn main() {
             delete_provider_secret,
             set_alpha_vantage_secret,
             delete_alpha_vantage_secret,
-            get_provider_secret_status,
             save_desktop_task,
             delete_desktop_task,
             clear_desktop_data,

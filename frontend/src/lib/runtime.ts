@@ -50,11 +50,6 @@ export type DesktopSnapshot = {
   secretMigrationError?: string;
 };
 
-export type SecretStatus = {
-  providerConfigured: boolean;
-  alphaVantageConfigured: boolean;
-};
-
 export type LegacyDesktopData = {
   settings?: GlobalSettings;
   tasks?: AnalysisTask[];
@@ -63,11 +58,10 @@ export type LegacyDesktopData = {
 export type RuntimeAdapter = {
   loadDesktopData: (legacy?: LegacyDesktopData) => Promise<DesktopSnapshot>;
   saveDesktopSettings: (settings: GlobalSettings) => Promise<void>;
-  setProviderSecret: (provider: string, value: string) => Promise<SecretStatus>;
-  deleteProviderSecret: (provider: string) => Promise<SecretStatus>;
-  setAlphaVantageSecret: (provider: string, value: string) => Promise<SecretStatus>;
-  deleteAlphaVantageSecret: (provider: string) => Promise<SecretStatus>;
-  getProviderSecretStatus: (provider: string) => Promise<SecretStatus>;
+  setProviderSecret: (provider: string, value: string) => Promise<void>;
+  deleteProviderSecret: (provider: string) => Promise<void>;
+  setAlphaVantageSecret: (provider: string, value: string) => Promise<void>;
+  deleteAlphaVantageSecret: (provider: string) => Promise<void>;
   saveDesktopTask: (task: AnalysisTask) => Promise<void>;
   deleteDesktopTask: (taskId: string) => Promise<void>;
   clearDesktopData: () => Promise<void>;
@@ -92,19 +86,12 @@ export const webRuntimeAdapter: RuntimeAdapter = {
   async saveDesktopSettings() {
   },
   async setProviderSecret() {
-    return { providerConfigured: true, alphaVantageConfigured: false };
   },
   async deleteProviderSecret() {
-    return { providerConfigured: false, alphaVantageConfigured: false };
   },
   async setAlphaVantageSecret() {
-    return { providerConfigured: false, alphaVantageConfigured: true };
   },
   async deleteAlphaVantageSecret() {
-    return { providerConfigured: false, alphaVantageConfigured: false };
-  },
-  async getProviderSecretStatus() {
-    return { providerConfigured: false, alphaVantageConfigured: false };
   },
   async saveDesktopTask() {
   },
@@ -175,23 +162,19 @@ export const tauriRuntimeAdapter: RuntimeAdapter = {
   },
   async setProviderSecret(provider, value) {
     const { invoke } = await getTauriApi();
-    return await invoke<SecretStatus>("set_provider_secret", { provider, value });
+    await invoke("set_provider_secret", { provider, value });
   },
   async deleteProviderSecret(provider) {
     const { invoke } = await getTauriApi();
-    return await invoke<SecretStatus>("delete_provider_secret", { provider });
+    await invoke("delete_provider_secret", { provider });
   },
   async setAlphaVantageSecret(provider, value) {
     const { invoke } = await getTauriApi();
-    return await invoke<SecretStatus>("set_alpha_vantage_secret", { provider, value });
+    await invoke("set_alpha_vantage_secret", { provider, value });
   },
   async deleteAlphaVantageSecret(provider) {
     const { invoke } = await getTauriApi();
-    return await invoke<SecretStatus>("delete_alpha_vantage_secret", { provider });
-  },
-  async getProviderSecretStatus(provider) {
-    const { invoke } = await getTauriApi();
-    return await invoke<SecretStatus>("get_provider_secret_status", { provider });
+    await invoke("delete_alpha_vantage_secret", { provider });
   },
   async saveDesktopTask(task) {
     const { invoke } = await getTauriApi();

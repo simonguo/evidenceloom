@@ -489,6 +489,9 @@ def run(payload: Dict[str, Any]) -> None:
 def main() -> int:
     try:
         payload = json.loads(sys.stdin.read() or "{}")
+        if payload.get("__command") == "smoke_test":
+            emit({"type": "ready"})
+            return 0
         if payload.get("__command") == "resolve_instrument":
             from resolve_instrument import resolve
 
