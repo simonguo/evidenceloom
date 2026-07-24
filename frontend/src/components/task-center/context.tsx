@@ -21,6 +21,7 @@ import {
   saveTasks,
   sessionSafeSettings,
 } from "@/features/persistence/local-storage";
+import { normalizeSettingsForSave } from "@/features/settings/lib/normalize-settings";
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, TaskStatus } from "@/lib/types";
 import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
 import { createTranslator } from "@/lib/i18n";
@@ -239,22 +240,23 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   });
 
   async function saveSettingsAction(nextSettings: GlobalSettings) {
+    const normalizedSettings = normalizeSettingsForSave(nextSettings);
     if (isTauriRuntime()) {
       const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
       const providerChanged =
-        nextSettings.llmProvider.trim().toLowerCase() !== settings.llmProvider.trim().toLowerCase();
-      let providerConfigured = providerChanged ? false : nextSettings.providerConfigured;
-      let alphaVantageConfigured = nextSettings.alphaVantageConfigured;
-      if (nextSettings.apiKey.trim()) {
-        await adapter.setProviderSecret(nextSettings.llmProvider, nextSettings.apiKey.trim());
+        normalizedSettings.llmProvider !== settings.llmProvider.trim().toLowerCase();
+      let providerConfigured = providerChanged ? false : normalizedSettings.providerConfigured;
+      let alphaVantageConfigured = normalizedSettings.alphaVantageConfigured;
+      if (normalizedSettings.apiKey) {
+        await adapter.setProviderSecret(normalizedSettings.llmProvider, normalizedSettings.apiKey);
         providerConfigured = true;
       }
-      if (nextSettings.alphaVantageApiKey.trim()) {
-        await adapter.setAlphaVantageSecret(nextSettings.llmProvider, nextSettings.alphaVantageApiKey.trim());
+      if (normalizedSettings.alphaVantageApiKey) {
+        await adapter.setAlphaVantageSecret(normalizedSettings.llmProvider, normalizedSettings.alphaVantageApiKey);
         alphaVantageConfigured = true;
       }
       const safeSettings = {
-        ...nextSettings,
+        ...normalizedSettings,
         providerConfigured,
         alphaVantageConfigured,
         apiKey: "",
@@ -262,16 +264,29 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       };
       await adapter.saveDesktopSettings(safeSettings);
       setSettings(safeSettings);
+      setSettingsSavedNotice(safeSettings.systemLanguage);
       return safeSettings;
     }
     const sessionSettings = {
-      ...nextSettings,
-      providerConfigured: Boolean(nextSettings.apiKey.trim()),
-      alphaVantageConfigured: Boolean(nextSettings.alphaVantageApiKey.trim()),
+      ...normalizedSettings,
+      providerConfigured: Boolean(normalizedSettings.apiKey),
+      alphaVantageConfigured: Boolean(normalizedSettings.alphaVantageApiKey),
     };
     saveGlobalSettings(sessionSettings);
     setSettings(sessionSettings);
+    setSettingsSavedNotice(sessionSettings.systemLanguage);
     return sessionSettings;
+  }
+
+  function setSettingsSavedNotice(language: GlobalSettings["systemLanguage"]) {
+    const translate = createTranslator(language);
+    if (runningTask) {
+      setNotice(translate("settingsSavedRunningTask", { ticker: runningTask.ticker }));
+    } else if (queuedTasks.length > 0) {
+      setNotice(translate("settingsSavedQueuedTasks"));
+    } else {
+      setNotice(translate("settingsSaved"));
+    }
   }
 
   async function deleteProviderSecretAction() {

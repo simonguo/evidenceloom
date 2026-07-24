@@ -182,8 +182,10 @@ uv run python scripts/generate_third_party_notices.py
 | `@dicebear/toon-head` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
 | `@emnapi/core` | `1.10.0` | MIT | — |
 | `@emnapi/core` | `1.11.1` | MIT | — |
+| `@emnapi/core` | `1.11.2` | MIT | — |
 | `@emnapi/runtime` | `1.10.0` | MIT | — |
 | `@emnapi/runtime` | `1.11.1` | MIT | — |
+| `@emnapi/runtime` | `1.11.2` | MIT | — |
 | `@emnapi/wasi-threads` | `1.2.1` | MIT | — |
 | `@emnapi/wasi-threads` | `1.2.2` | MIT | — |
 | `@epic-web/invariant` | `1.0.0` | MIT | — |
