@@ -1225,11 +1225,15 @@ fn build_pythonpath(repo_root: &Path) -> String {
 #[derive(Default)]
 struct ChildEnvironment {
     vars: Vec<(String, String)>,
+    removed_vars: Vec<String>,
     secrets: Vec<String>,
 }
 
 impl ChildEnvironment {
     fn apply(&self, command: &mut Command) {
+        for name in &self.removed_vars {
+            command.env_remove(name);
+        }
         for (name, value) in &self.vars {
             command.env(name, value);
         }
@@ -1246,6 +1250,12 @@ impl ChildEnvironment {
                 .sort_by_key(|secret| std::cmp::Reverse(secret.len()));
         }
         self.vars.push((name.to_string(), value));
+    }
+
+    fn remove(&mut self, name: &str) {
+        if !self.removed_vars.iter().any(|item| item == name) {
+            self.removed_vars.push(name.to_string());
+        }
     }
 }
 
@@ -1267,20 +1277,12 @@ fn child_env(
         .unwrap_or("openai")
         .trim()
         .to_lowercase();
-    let has_custom_backend = payload
-        .get("backendUrl")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .is_some();
 
+    isolate_provider_credentials(&mut environment, &provider);
+    environment.push_public("EVIDENCELOOM_LLM_PROVIDER", provider.clone());
+    environment.push_public("TRADINGAGENTS_LLM_PROVIDER", provider.clone());
     let provider_secret = secrets::get_provider_secret(&provider)?;
-    inject_provider_secret(
-        &mut environment,
-        &provider,
-        provider_secret,
-        has_custom_backend,
-    );
+    inject_provider_secret(&mut environment, &provider, provider_secret);
 
     if let Some(alpha_key) = secrets::get_alpha_vantage_secret()? {
         environment.push_secret("ALPHA_VANTAGE_API_KEY", alpha_key);
@@ -1293,14 +1295,33 @@ fn inject_provider_secret(
     environment: &mut ChildEnvironment,
     provider: &str,
     api_key: Option<String>,
-    has_custom_backend: bool,
 ) {
     if let Some(api_key) = api_key {
         if let Some(env_name) = provider_api_key_env(provider) {
-            environment.push_secret(env_name, api_key.clone());
+            environment.push_secret(env_name, api_key);
         }
-        if provider == "openai" || (has_custom_backend && provider_uses_openai_sdk(provider)) {
-            environment.push_secret("OPENAI_API_KEY", api_key);
+    }
+}
+
+fn isolate_provider_credentials(environment: &mut ChildEnvironment, provider: &str) {
+    let selected_env = provider_api_key_env(provider);
+    for env_name in [
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GOOGLE_API_KEY",
+        "AZURE_OPENAI_API_KEY",
+        "XAI_API_KEY",
+        "DEEPSEEK_API_KEY",
+        "DASHSCOPE_API_KEY",
+        "DASHSCOPE_CN_API_KEY",
+        "ZHIPU_API_KEY",
+        "ZHIPU_CN_API_KEY",
+        "MINIMAX_API_KEY",
+        "MINIMAX_CN_API_KEY",
+        "OPENROUTER_API_KEY",
+    ] {
+        if Some(env_name) != selected_env {
+            environment.remove(env_name);
         }
     }
 }
@@ -1339,22 +1360,6 @@ fn provider_api_key_env(provider: &str) -> Option<&'static str> {
         "openrouter" => Some("OPENROUTER_API_KEY"),
         _ => None,
     }
-}
-
-fn provider_uses_openai_sdk(provider: &str) -> bool {
-    matches!(
-        provider,
-        "openai"
-            | "xai"
-            | "deepseek"
-            | "qwen"
-            | "qwen-cn"
-            | "glm"
-            | "glm-cn"
-            | "minimax"
-            | "minimax-cn"
-            | "openrouter"
-    )
 }
 
 fn path_delimiter() -> &'static str {
@@ -1402,18 +1407,30 @@ mod tests {
             &mut environment,
             "deepseek",
             Some("test-deepseek-secret".to_string()),
-            true,
         );
 
         assert!(environment.vars.contains(&(
             "DEEPSEEK_API_KEY".to_string(),
             "test-deepseek-secret".to_string()
         )));
-        assert!(environment.vars.contains(&(
-            "OPENAI_API_KEY".to_string(),
-            "test-deepseek-secret".to_string()
-        )));
+        assert!(!environment
+            .vars
+            .iter()
+            .any(|(name, _)| name == "OPENAI_API_KEY"));
         assert_eq!(environment.secrets, vec!["test-deepseek-secret"]);
+    }
+
+    #[test]
+    fn child_environment_isolates_credentials_for_the_selected_provider() {
+        let mut environment = ChildEnvironment::default();
+        isolate_provider_credentials(&mut environment, "deepseek");
+
+        assert!(environment
+            .removed_vars
+            .contains(&"OPENAI_API_KEY".to_string()));
+        assert!(!environment
+            .removed_vars
+            .contains(&"DEEPSEEK_API_KEY".to_string()));
     }
 
     #[test]

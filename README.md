@@ -12,6 +12,10 @@ Evidence Loom is a local-first desktop workspace for multi-agent market research
 
 https://github.com/user-attachments/assets/3cc1cd5a-ddfe-4f01-99f7-02a1f7069bd8
 
+## Desktop workspace
+
+![Evidence Loom desktop task center showing the multi-agent research workflow](assets/desktop/desktop-tasks.png)
+
 ## What it does
 
 - Coordinates market, sentiment, news, fundamentals, research, trading, and risk agents.

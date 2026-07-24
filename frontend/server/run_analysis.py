@@ -7,6 +7,7 @@ import time
 import traceback
 from datetime import datetime
 from typing import Any, Dict, Iterable, List
+from urllib.parse import urlsplit, urlunsplit
 
 from cli.main import (
     ANALYST_ORDER,
@@ -70,8 +71,11 @@ def build_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     )
     config["checkpoint_enabled"] = bool(payload.get("checkpointEnabled", False))
 
+    provider = payload.get("llmProvider")
+    if isinstance(provider, str) and provider.strip():
+        config["llm_provider"] = provider.strip().lower()
+
     optional_mapping = {
-        "llmProvider": "llm_provider",
         "backendUrl": "backend_url",
         "quickThinkLlm": "quick_think_llm",
         "deepThinkLlm": "deep_think_llm",
@@ -105,6 +109,35 @@ def build_config(payload: Dict[str, Any]) -> Dict[str, Any]:
     }
 
     return config
+
+
+def describe_llm_config(config: Dict[str, Any]) -> str:
+    provider = str(config.get("llm_provider") or "openai").strip().lower()
+    quick_model = str(config.get("quick_think_llm") or "").strip() or "--"
+    deep_model = str(config.get("deep_think_llm") or "").strip() or "--"
+    endpoint = safe_public_endpoint(config.get("backend_url")) or "provider default"
+    return (
+        f"LLM configuration: provider={provider}; endpoint={endpoint}; "
+        f"quick={quick_model}; deep={deep_model}"
+    )
+
+
+def safe_public_endpoint(value: Any) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        parsed = urlsplit(raw)
+        hostname = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        return "[invalid URL]"
+    if not parsed.scheme or not hostname:
+        return "[invalid URL]"
+    host = f"[{hostname}]" if ":" in hostname else hostname
+    if port:
+        host = f"{host}:{port}"
+    return urlunsplit((parsed.scheme, host, parsed.path, "", ""))
 
 
 def _positive_int(value: Any, fallback: int) -> int:
@@ -349,6 +382,14 @@ def run(payload: Dict[str, Any]) -> None:
     analysis_date = str(payload.get("analysisDate") or datetime.now().strftime("%Y-%m-%d"))
     selected_analysts = normalize_analysts(payload.get("analysts") or ANALYST_ORDER, asset_type)
     config = build_config(payload)
+
+    emit(
+        {
+            "type": "message",
+            "messageType": "runtime",
+            "message": describe_llm_config(config),
+        }
+    )
 
     stats_handler = StatsCallbackHandler()
     analyst_execution_plan = build_analyst_execution_plan(
