@@ -3,7 +3,9 @@ import { defaultGlobalSettings } from "@/lib/analysis";
 import {
   loadGlobalSettings,
   loadLegacyDesktopData,
+  loadTasks,
   saveGlobalSettings,
+  saveTasks,
   stripSecretFields,
 } from "./local-storage";
 
@@ -65,5 +67,35 @@ describe("local settings persistence", () => {
   it("strips secret fields from Tauri IPC payloads", () => {
     expect(stripSecretFields({ apiKey: "one", alphaVantageApiKey: "two", ticker: "SPY" }))
       .toEqual({ ticker: "SPY" });
+  });
+
+  it("backfills a read-only v1 for legacy completed reports", () => {
+    saveTasks([{
+      id: "legacy-task",
+      ticker: "SPY",
+      instrumentName: "SPY",
+      analysisDate: "2025-01-01",
+      assetType: "stock",
+      researchDepth: 1,
+      analysts: ["market"],
+      outputLanguage: "English",
+      status: "completed",
+      queuedAt: "",
+      queueOrder: null,
+      createdAt: "2025-01-01T00:00:00.000Z",
+      updatedAt: "2025-01-02T00:00:00.000Z",
+      decision: "Hold",
+      stats: { llmCalls: 1, toolCalls: 1, tokensIn: 1, tokensOut: 1, elapsedSeconds: 1 },
+      agentStatuses: {},
+      reportSections: { final_trade_decision: "**Rating**: Hold" },
+      logs: [],
+      error: "",
+    } as never]);
+
+    const [task] = loadTasks();
+
+    expect(task.origin).toBe("analysis");
+    expect(task.reportVersions).toHaveLength(1);
+    expect(task.reportVersions[0].legacy).toBe(true);
   });
 });

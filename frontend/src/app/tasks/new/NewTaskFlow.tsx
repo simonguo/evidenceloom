@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
-import { ArrowLeft, Loader2, Search } from "lucide-react";
+import { ArrowLeft, FileText, Loader2, Search } from "lucide-react";
 import { createTranslator } from "@/lib/i18n";
 import { errorMessage } from "@/lib/errors";
 import { defaultTaskDraft, detectAssetType, normalizeAnalystsForAssetType } from "@/lib/analysis";
@@ -19,7 +19,7 @@ type Step = "search" | "resolving" | "configure" | "error";
 
 export function NewTaskFlow() {
   const router = useRouter();
-  const { settings, runningTask, queuedTasks, createAndQueueTask } = useTaskCenter();
+  const { settings, runningTask, queuedTasks, createAndQueueTask, createDemoTask } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const [step, setStep] = useState<Step>("search");
   const [query, setQuery] = useState("");
@@ -89,6 +89,11 @@ export function NewTaskFlow() {
     }
   }
 
+  function openFictionalDemo() {
+    const task = createDemoTask();
+    router.push(taskDetailHref(task.id));
+  }
+
   if (step === "search" || step === "resolving" || step === "error") {
     return (
       <section className="flex min-h-[34rem] items-center justify-center px-2 py-10">
@@ -118,6 +123,20 @@ export function NewTaskFlow() {
           <div className="mt-5">
             <ErrorList errors={errors} />
           </div>
+          <button
+            type="button"
+            onClick={openFictionalDemo}
+            disabled={step === "resolving"}
+            className="mx-auto mt-7 flex max-w-lg items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/40 px-4 py-3 text-left transition hover:border-zinc-600 hover:bg-zinc-950 disabled:opacity-50"
+          >
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-amber-900/70 bg-amber-950/30 text-amber-300">
+              <FileText className="size-5" />
+            </span>
+            <span>
+              <span className="block text-sm font-medium text-zinc-200">{t("loadFictionalDemo")}</span>
+              <span className="mt-1 block text-xs leading-5 text-zinc-500">{t("fictionalDemoHint")}</span>
+            </span>
+          </button>
         </div>
       </section>
     );

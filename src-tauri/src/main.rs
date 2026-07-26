@@ -17,6 +17,7 @@ use std::{
     time::Duration,
 };
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_dialog::DialogExt;
 
 #[derive(Default)]
 struct AppState {
@@ -73,6 +74,14 @@ struct OhlcvBar {
     volume: f64,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TextExportResult {
+    status: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<String>,
+}
+
 #[tauri::command]
 fn load_desktop_data(app: AppHandle) -> Result<storage::DesktopSnapshot, String> {
     storage::load_snapshot(&app)
@@ -123,6 +132,90 @@ fn delete_desktop_task(
 #[tauri::command]
 fn clear_desktop_data(app: AppHandle) -> Result<(), String> {
     storage::clear_data(&app)
+}
+
+#[tauri::command]
+async fn save_text_export(
+    app: AppHandle,
+    suggested_name: String,
+    format: String,
+    content: String,
+) -> Result<TextExportResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let (extension, filter_name) = match format.as_str() {
+            "html" => ("html", "HTML"),
+            "md" => ("md", "Markdown"),
+            _ => return Err("Unsupported report export format".to_string()),
+        };
+        let file_name = safe_export_file_name(&suggested_name, extension);
+        let selected = app
+            .dialog()
+            .file()
+            .set_title("Export Evidence Loom Report")
+            .set_file_name(file_name)
+            .add_filter(filter_name, &[extension])
+            .blocking_save_file();
+        let Some(selected) = selected else {
+            return Ok(TextExportResult {
+                status: "cancelled",
+                path: None,
+            });
+        };
+        let mut path = selected.into_path().map_err(|error| error.to_string())?;
+        if path
+            .extension()
+            .and_then(|value| value.to_str())
+            .is_none_or(|value| !value.eq_ignore_ascii_case(extension))
+        {
+            path.set_extension(extension);
+        }
+        write_text_export_file(&path, &content)?;
+        Ok(TextExportResult {
+            status: "saved",
+            path: Some(path.to_string_lossy().to_string()),
+        })
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+fn safe_export_file_name(suggested_name: &str, extension: &str) -> String {
+    let fallback = format!("EvidenceLoom_report.{extension}");
+    let Some(file_name) = Path::new(suggested_name)
+        .file_name()
+        .and_then(|value| value.to_str())
+    else {
+        return fallback;
+    };
+    let cleaned: String = file_name
+        .chars()
+        .map(|character| {
+            if character.is_control()
+                || matches!(
+                    character,
+                    '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*'
+                )
+            {
+                '_'
+            } else {
+                character
+            }
+        })
+        .collect();
+    let stem = Path::new(cleaned.trim())
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("EvidenceLoom_report")
+        .trim_matches(&['.', ' '][..]);
+    if stem.is_empty() {
+        fallback
+    } else {
+        format!("{stem}.{extension}")
+    }
+}
+
+fn write_text_export_file(path: &Path, content: &str) -> Result<(), String> {
+    fs::write(path, content.as_bytes()).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -1372,6 +1465,7 @@ fn path_delimiter() -> &'static str {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             runtime_info,
@@ -1390,6 +1484,7 @@ fn main() {
             save_desktop_task,
             delete_desktop_task,
             clear_desktop_data,
+            save_text_export,
             import_legacy_desktop_data
         ])
         .run(tauri::generate_context!())
@@ -1457,5 +1552,28 @@ mod tests {
         );
         assert!(safe.get("apiKey").is_none());
         assert!(safe.get("alphaVantageApiKey").is_none());
+    }
+
+    #[test]
+    fn export_file_names_drop_paths_and_illegal_characters() {
+        assert_eq!(
+            safe_export_file_name("../unsafe:A*report.md", "html"),
+            "unsafe_A_report.html"
+        );
+        assert_eq!(safe_export_file_name("   ", "md"), "EvidenceLoom_report.md");
+    }
+
+    #[test]
+    fn text_export_writer_preserves_utf8() {
+        let directory =
+            std::env::temp_dir().join(format!("evidenceloom-export-test-{}", std::process::id()));
+        fs::create_dir_all(&directory).unwrap();
+        let path = directory.join("report.md");
+
+        write_text_export_file(&path, "虚构 report").unwrap();
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), "虚构 report");
+        fs::remove_file(path).unwrap();
+        fs::remove_dir(directory).unwrap();
     }
 }

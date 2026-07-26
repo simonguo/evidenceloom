@@ -44,6 +44,17 @@ export type LlmConnectionCheck = {
   error?: string;
 };
 
+export type TextExportRequest = {
+  suggestedName: string;
+  format: "html" | "md";
+  content: string;
+};
+
+export type TextExportResult = {
+  status: "saved" | "cancelled";
+  path?: string;
+};
+
 export type DesktopSnapshot = {
   settings?: GlobalSettings;
   tasks: AnalysisTask[];
@@ -65,6 +76,7 @@ export type RuntimeAdapter = {
   saveDesktopTask: (task: AnalysisTask) => Promise<void>;
   deleteDesktopTask: (taskId: string) => Promise<void>;
   clearDesktopData: () => Promise<void>;
+  saveTextExport: (request: TextExportRequest) => Promise<TextExportResult>;
   runAnalysis: (
     taskId: string,
     payload: AnalysisForm,
@@ -98,6 +110,19 @@ export const webRuntimeAdapter: RuntimeAdapter = {
   async deleteDesktopTask() {
   },
   async clearDesktopData() {
+  },
+  async saveTextExport(request) {
+    const mimeType = request.format === "html" ? "text/html;charset=utf-8" : "text/markdown;charset=utf-8";
+    const url = URL.createObjectURL(new Blob([request.content], { type: mimeType }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = request.suggestedName;
+    anchor.style.display = "none";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    return { status: "saved" };
   },
   runAnalysis(_taskId, payload, onEvent, signal) {
     return streamAnalysis(payload, onEvent, signal);
@@ -187,6 +212,10 @@ export const tauriRuntimeAdapter: RuntimeAdapter = {
   async clearDesktopData() {
     const { invoke } = await getTauriApi();
     await invoke("clear_desktop_data");
+  },
+  async saveTextExport(request) {
+    const { invoke } = await getTauriApi();
+    return await invoke<TextExportResult>("save_text_export", request);
   },
   async runAnalysis(taskId, payload, onEvent, signal) {
     const { invoke, listen } = await getTauriApi(payload.systemLanguage);

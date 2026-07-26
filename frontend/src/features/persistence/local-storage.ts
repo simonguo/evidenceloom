@@ -6,6 +6,7 @@ import {
   initialStats,
   normalizeGlobalSettings,
 } from "@/lib/analysis";
+import { ensureLegacyReportVersion } from "@/features/report-export/lib/versioning";
 import type { AnalysisForm, AnalysisTask, GlobalSettings } from "@/lib/types";
 
 const settingsStorageKey = "evidenceloom.globalSettings.v1";
@@ -114,7 +115,7 @@ export function stripSecretFields<T extends { apiKey?: string; alphaVantageApiKe
 function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
   return tasks.map((task) => {
     const status = task.status === "running" ? "stopped" : task.status;
-    return {
+    const normalized: AnalysisTask = {
       ...createEmptyTask({
         ticker: task.ticker,
         instrumentName: task.instrumentName ?? inferInstrumentName(task.ticker),
@@ -125,6 +126,7 @@ function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
         outputLanguage: task.outputLanguage ?? "中文",
       }, task.id, task.createdAt),
       ...task,
+      origin: task.origin ?? "analysis",
       instrumentName: task.instrumentName ?? inferInstrumentName(task.ticker),
       assetType: task.assetType ?? detectAssetType(task.ticker, "stock"),
       researchDepth: task.researchDepth ?? 1,
@@ -136,7 +138,9 @@ function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
       logs: task.logs ?? [],
       agentStatuses: task.agentStatuses ?? {},
       reportSections: task.reportSections ?? {},
+      reportVersions: task.reportVersions ?? [],
     };
+    return ensureLegacyReportVersion(normalized);
   });
 }
 

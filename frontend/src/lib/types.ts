@@ -4,6 +4,7 @@ export type AgentStatus = "pending" | "in_progress" | "completed" | "error";
 export type EventType = "started" | "progress" | "message" | "report" | "stats" | "completed" | "error";
 export type TaskStatus = "idle" | "queued" | "running" | "completed" | "error" | "stopped";
 export type SystemLanguage = "zh" | "en";
+export type TaskOrigin = "analysis" | "demo";
 
 export type PublicSettings = {
   llmProvider: string;
@@ -74,8 +75,51 @@ export type LogEntry = {
   agent?: string;
 };
 
+export type ReportTaskSnapshot = {
+  ticker: string;
+  instrumentName: string;
+  analysisDate: string;
+  assetType: AssetType;
+  researchDepth: number;
+  analysts: AnalystKey[];
+  outputLanguage: string;
+};
+
+export type ReportRunManifest = {
+  appVersion: string;
+  llmProvider: string;
+  quickThinkLlm: string;
+  deepThinkLlm: string;
+  coreStockApis: string;
+  technicalIndicators: string;
+  fundamentalData: string;
+  newsData: string;
+  maxDebateRounds: number;
+  maxRiskRounds: number;
+  benchmarkTicker: string;
+};
+
+export type ReportVersion = {
+  id: string;
+  runId: string;
+  versionNumber: number;
+  createdAt: string;
+  legacy: boolean;
+  task: ReportTaskSnapshot;
+  run: ReportRunManifest | null;
+  decision: string;
+  stats: AnalysisStats;
+  reportSections: Record<string, string | null>;
+};
+
+export type RunContext = {
+  runId: string;
+  manifest: ReportRunManifest;
+};
+
 export type AnalysisTask = {
   id: string;
+  origin: TaskOrigin;
   ticker: string;
   instrumentName: string;
   analysisDate: string;
@@ -92,6 +136,7 @@ export type AnalysisTask = {
   stats: AnalysisStats;
   agentStatuses: Record<string, AgentStatus>;
   reportSections: Record<string, string | null>;
+  reportVersions: ReportVersion[];
   logs: LogEntry[];
   error: string;
 };

@@ -257,3 +257,7 @@ SHA256SUMS
 # Temp files
 test.py
 start_*.sh
+
+
+# Output directory
+output

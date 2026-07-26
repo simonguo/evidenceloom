@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { buildRunForm, initialStats, validateTaskDraft } from "@/lib/analysis";
+import { createRunContext } from "@/features/report-export/lib/versioning";
 import { saveGlobalSettings } from "@/features/persistence/local-storage";
 import { errorMessage } from "@/lib/errors";
 import { createTranslator } from "@/lib/i18n";
 import { getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter } from "@/lib/runtime";
-import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings } from "@/lib/types";
+import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, RunContext } from "@/lib/types";
 import { prependLog } from "../utils";
 import { highestQueueOrder, queuePositionMap, sortQueuedTasks } from "./queue-utils";
 
@@ -17,7 +18,7 @@ type TaskQueueControllerOptions = {
   settings: GlobalSettings;
   runtimeAdapterRef: MutableRefObject<RuntimeAdapter | null>;
   persistTask: (task: AnalysisTask) => void;
-  onEvent: (taskId: string, event: AnalysisEvent) => void;
+  onEvent: (taskId: string, event: AnalysisEvent, runContext?: RunContext) => void;
   setNotice: (notice: string) => void;
 };
 
@@ -85,6 +86,7 @@ export function useTaskQueueController({
     let terminalEventObserved = false;
     const t = createTranslator(settings.systemLanguage);
     const runForm = buildRunForm(task, settings);
+    const runContext = createRunContext(runForm);
     const validationErrors = validateTaskDraft(
       { ticker: runForm.ticker, analysisDate: runForm.analysisDate, analysts: runForm.analysts },
       runForm.assetType,
@@ -110,7 +112,7 @@ export function useTaskQueueController({
       await adapter.runAnalysis(taskId, runForm, (event) => {
         if (stoppingTaskIdRef.current === taskId) return;
         if (event.type === "completed" || event.type === "error") terminalEventObserved = true;
-        onEvent(taskId, event);
+        onEvent(taskId, event, runContext);
       }, abortRef.current.signal);
 
       if (!terminalEventObserved) {
@@ -156,6 +158,10 @@ export function useTaskQueueController({
   const queueTask = useCallback((taskId: string, taskOverride?: AnalysisTask) => {
     const task = taskOverride ?? tasksRef.current.find((item) => item.id === taskId);
     if (!task || task.status === "running") return false;
+    if (task.origin === "demo") {
+      setNotice(createTranslator(settings.systemLanguage)("demoCannotRun"));
+      return false;
+    }
     if (task.status === "queued") return true;
 
     const runForm = buildRunForm(task, settings);

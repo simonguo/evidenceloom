@@ -22,7 +22,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isTaskDetailPage = pathname === "/tasks/detail";
   const isSettingsPage = pathname === "/settings";
   const showBackButton = isNewTaskPage || isTaskDetailPage;
-  const needsConfig = hydrated && !settings.apiKey && !settings.providerConfigured && !isSettingsPage;
+  const activeTask = sortedTasks.find((task) => task.id === activeTaskId);
+  const needsConfig = hydrated
+    && !settings.apiKey
+    && !settings.providerConfigured
+    && !isSettingsPage
+    && activeTask?.origin !== "demo";
   const recentInstruments = deriveRecentInstruments(sortedTasks).slice(0, 5);
   const runningAgent = runningTask ? findRunningAgent(runningTask.agentStatuses, settings.systemLanguage) : "";
   const workspaceItems = [
@@ -230,6 +235,7 @@ function deriveRecentInstruments(tasks: AnalysisTask[]) {
   const seen = new Set<string>();
   const result: AnalysisTask[] = [];
   for (const task of tasks) {
+    if (task.origin === "demo") continue;
     if (seen.has(task.ticker)) continue;
     seen.add(task.ticker);
     result.push(task);

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Activity, BarChart3, BrainCircuit, FileText, Loader2, MoreHorizontal, Play, Square, Trash2, X } from "lucide-react";
+import { Activity, BarChart3, BrainCircuit, FileText, FlaskConical, Loader2, MoreHorizontal, Play, Square, Trash2, X } from "lucide-react";
 import { createTranslator } from "@/lib/i18n";
 import { getRuntimeAdapter } from "@/lib/runtime";
 import { agentTeams, type OhlcvBar } from "@/lib/types";
@@ -25,6 +25,7 @@ import { SegmentedControl } from "@/components/task-center/components/SegmentedC
 import { StatusPill } from "@/components/task-center/components/StatusPill";
 import { EventStream } from "@/components/task-center/components/EventStream";
 import { DecisionSummaryCard } from "@/components/task-center/components/DecisionSummaryCard";
+import { ReportVersionsPanel } from "@/features/report-export";
 
 const CandlestickChart = dynamic(
   () => import("@/components/charts/CandlestickChart").then((module) => module.CandlestickChart),
@@ -87,7 +88,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
   }, []);
 
   useEffect(() => {
-    if (!task || activeTopTab !== "chart") return;
+    if (!task || task.origin === "demo" || activeTopTab !== "chart") return;
     let cancelled = false;
     let timeoutId: number | undefined;
     setChartLoading(false);
@@ -114,7 +115,13 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
       cancelled = true;
       if (timeoutId) window.clearTimeout(timeoutId);
     };
-  }, [activeTopTab, task?.ticker, task?.analysisDate, settings]);
+  }, [activeTopTab, task?.origin, task?.ticker, task?.analysisDate, settings]);
+
+  useEffect(() => {
+    if (task?.origin === "demo" && activeTopTab !== "overview") {
+      setActiveTopTab("overview");
+    }
+  }, [activeTopTab, task?.origin]);
 
   useEffect(() => {
     if (!reportDrawerOpen) return;
@@ -153,9 +160,11 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
   const visibleTeams = agentTeams
     .map((team) => ({ ...team, agents: team.agents.filter((agent) => agent in task.agentStatuses) }))
     .filter((team) => team.agents.length > 0);
-  const topTabs = settings.systemLanguage === "en"
-    ? [{ key: "overview", label: "Overview" }, { key: "chart", label: "Candles" }]
-    : [{ key: "overview", label: "任务概览" }, { key: "chart", label: "K 线图" }];
+  const topTabs = task.origin === "demo"
+    ? [{ key: "overview", label: settings.systemLanguage === "en" ? "Overview" : "任务概览" }]
+    : settings.systemLanguage === "en"
+      ? [{ key: "overview", label: "Overview" }, { key: "chart", label: "Candles" }]
+      : [{ key: "overview", label: "任务概览" }, { key: "chart", label: "K 线图" }];
   const openAgentDrawer = (agent: string) => {
     setDrawerAgent(agent);
     setReportDrawerOpen(true);
@@ -182,6 +191,11 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-3xl font-semibold text-white">{task.ticker}</h2>
               <StatusPill status={task.status} />
+              {task.origin === "demo" && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-800/70 bg-amber-950/30 px-2.5 py-1 text-xs font-medium text-amber-200">
+                  <FlaskConical className="size-3.5" /> {t("fictionalDemoBadge")}
+                </span>
+              )}
               {task.status === "queued" && <span className="text-xs text-amber-200">{t("queuePosition", { position: getQueuePosition(task.id) ?? 1 })}</span>}
             </div>
             {task.instrumentName && <div className="mt-2 text-lg font-medium text-zinc-300">{task.instrumentName}</div>}
@@ -190,7 +204,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {task.status === "running" ? (
+            {task.origin === "demo" ? null : task.status === "running" ? (
               <button type="button" onClick={() => stopRunningTask()} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-red-300 transition hover:border-zinc-600 hover:bg-red-950/40">
                 <Square className="size-4" /> {t("stopTask")}
               </button>
@@ -217,6 +231,11 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
             </div>
           </div>
         </div>
+        {task.origin === "demo" && (
+          <div className="mt-5 rounded-lg border border-amber-800/60 bg-amber-950/20 p-4 text-sm leading-6 text-amber-100">
+            {t("fictionalDemoNotice")}
+          </div>
+        )}
         <div className="mt-5 border-t border-zinc-900 pt-5">
           <SegmentedControl items={topTabs} value={activeTopTab} onChange={setActiveTopTab} />
           {activeTopTab === "overview" ? (
@@ -256,6 +275,8 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
           )}
         </div>
       </section>
+
+      <ReportVersionsPanel task={task} language={settings.systemLanguage} />
 
       <section className="space-y-6">
         <Panel title={t("agentProgressReports")} sticky>

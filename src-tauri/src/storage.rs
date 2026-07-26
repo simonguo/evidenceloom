@@ -11,7 +11,7 @@ use tauri::{AppHandle, Manager};
 
 use crate::secrets;
 
-const SCHEMA_VERSION: i64 = 3;
+const SCHEMA_VERSION: i64 = 4;
 const SECRET_PREFIX: &str = "enc:v1:";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -100,6 +100,8 @@ fn default_concurrency() -> i64 {
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisTaskRecord {
     pub id: String,
+    #[serde(default = "default_task_origin")]
+    pub origin: String,
     pub ticker: String,
     #[serde(default)]
     pub instrument_name: String,
@@ -119,6 +121,8 @@ pub struct AnalysisTaskRecord {
     pub stats: Value,
     pub agent_statuses: Value,
     pub report_sections: Value,
+    #[serde(default = "empty_array")]
+    pub report_versions: Value,
     pub logs: Value,
     pub error: String,
 }
@@ -163,8 +167,10 @@ pub fn save_settings(app: &AppHandle, settings: StoredSettings) -> Result<(), St
 }
 
 pub fn save_task(app: &AppHandle, task: AnalysisTaskRecord) -> Result<(), String> {
-    let conn = open_database(app)?;
-    upsert_task(&conn, &normalize_task(task))
+    let mut conn = open_database(app)?;
+    let transaction = conn.transaction().map_err(|error| error.to_string())?;
+    upsert_task(&transaction, &normalize_task(task))?;
+    transaction.commit().map_err(|error| error.to_string())
 }
 
 pub fn delete_task(app: &AppHandle, task_id: String) -> Result<(), String> {
@@ -181,7 +187,8 @@ pub fn clear_data(app: &AppHandle) -> Result<(), String> {
         .map(|settings| settings.llm_provider);
     secrets::delete_all_secrets(current_provider.as_deref())?;
     conn.execute_batch(
-        "DELETE FROM task_reports;
+        "DELETE FROM task_report_versions;
+         DELETE FROM task_reports;
          DELETE FROM task_logs;
          DELETE FROM tasks;
          DELETE FROM settings;",
@@ -310,6 +317,7 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
          );
          CREATE TABLE IF NOT EXISTS tasks (
             id TEXT PRIMARY KEY,
+            origin TEXT NOT NULL DEFAULT 'analysis',
             ticker TEXT NOT NULL,
             instrument_name TEXT NOT NULL DEFAULT '',
             analysis_date TEXT NOT NULL,
@@ -343,20 +351,146 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
             updated_at TEXT NOT NULL,
             PRIMARY KEY (task_id, report_key)
          );
+         CREATE TABLE IF NOT EXISTS task_report_versions (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+            version_number INTEGER NOT NULL,
+            run_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            snapshot TEXT NOT NULL,
+            UNIQUE(task_id, version_number),
+            UNIQUE(task_id, run_id)
+         );
          CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at DESC);
-         CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs(task_id);",
+         CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs(task_id);
+         CREATE INDEX IF NOT EXISTS idx_task_report_versions_task_id
+            ON task_report_versions(task_id, version_number DESC);",
     )
     .map_err(|error| error.to_string())?;
     ensure_column(conn, "tasks", "instrument_name", "TEXT NOT NULL DEFAULT ''")?;
+    ensure_column(conn, "tasks", "origin", "TEXT NOT NULL DEFAULT 'analysis'")?;
     ensure_column(conn, "tasks", "queued_at", "TEXT NOT NULL DEFAULT ''")?;
     ensure_column(conn, "tasks", "queue_order", "INTEGER")?;
     ensure_column(conn, "task_logs", "agent", "TEXT")?;
+    backfill_legacy_report_versions(conn)?;
     conn.execute(
         "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?1)",
         params![SCHEMA_VERSION],
     )
     .map_err(|error| error.to_string())?;
     Ok(())
+}
+
+fn backfill_legacy_report_versions(conn: &Connection) -> Result<(), String> {
+    let candidates = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, ticker, instrument_name, analysis_date, asset_type, research_depth,
+                        analysts, output_language, updated_at, created_at, decision, stats, report_sections
+                 FROM tasks
+                 WHERE status = 'completed'
+                   AND NOT EXISTS (
+                     SELECT 1 FROM task_report_versions versions WHERE versions.task_id = tasks.id
+                   )",
+            )
+            .map_err(|error| error.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
+                    row.get::<_, i64>(5)?,
+                    row.get::<_, String>(6)?,
+                    row.get::<_, String>(7)?,
+                    row.get::<_, String>(8)?,
+                    row.get::<_, String>(9)?,
+                    row.get::<_, String>(10)?,
+                    row.get::<_, String>(11)?,
+                    row.get::<_, String>(12)?,
+                ))
+            })
+            .map_err(|error| error.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())?
+    };
+
+    for (
+        task_id,
+        ticker,
+        instrument_name,
+        analysis_date,
+        asset_type,
+        research_depth,
+        analysts,
+        output_language,
+        updated_at,
+        created_at,
+        decision,
+        stats,
+        embedded_reports,
+    ) in candidates
+    {
+        let report_sections = merge_report_sections(
+            parse_json(embedded_reports, Value::Object(Default::default())),
+            load_report_sections(conn, &task_id).map_err(|error| error.to_string())?,
+        );
+        if !has_report_content(&report_sections) {
+            continue;
+        }
+
+        let created_at = if updated_at.trim().is_empty() {
+            created_at
+        } else {
+            updated_at
+        };
+        let version_id = format!("legacy-report-{task_id}");
+        let run_id = format!("legacy-run-{task_id}");
+        let snapshot = serde_json::json!({
+            "id": version_id,
+            "runId": run_id,
+            "versionNumber": 1,
+            "createdAt": created_at,
+            "legacy": true,
+            "task": {
+                "ticker": ticker,
+                "instrumentName": instrument_name,
+                "analysisDate": analysis_date,
+                "assetType": asset_type,
+                "researchDepth": research_depth,
+                "analysts": parse_json(analysts, Value::Array(Vec::new())),
+                "outputLanguage": output_language,
+            },
+            "run": Value::Null,
+            "decision": decision,
+            "stats": parse_json(stats, Value::Object(Default::default())),
+            "reportSections": report_sections,
+        });
+        conn.execute(
+            "INSERT OR IGNORE INTO task_report_versions
+                (id, task_id, version_number, run_id, created_at, snapshot)
+             VALUES (?1, ?2, 1, ?3, ?4, ?5)",
+            params![
+                version_id,
+                task_id,
+                run_id,
+                created_at,
+                json_string(&snapshot)?,
+            ],
+        )
+        .map_err(|error| error.to_string())?;
+    }
+    Ok(())
+}
+
+fn has_report_content(report_sections: &Value) -> bool {
+    report_sections.as_object().is_some_and(|reports| {
+        reports
+            .values()
+            .any(|content| content.as_str().is_some_and(|text| !text.trim().is_empty()))
+    })
 }
 
 fn ensure_column(
@@ -439,7 +573,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
     let mut stmt = conn
         .prepare(
             "SELECT id, ticker, analysis_date, asset_type, research_depth, analysts, output_language, status,
-                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error
+                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin
              FROM tasks ORDER BY updated_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -447,9 +581,11 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
         .query_map([], |row| {
             let task_id: String = row.get(0)?;
             let report_sections = load_report_sections(conn, &task_id)?;
+            let report_versions = load_report_versions(conn, &task_id)?;
             let logs = load_logs(conn, &task_id)?;
             Ok(AnalysisTaskRecord {
                 id: task_id,
+                origin: row.get(18)?,
                 ticker: row.get(1)?,
                 analysis_date: row.get(2)?,
                 asset_type: row.get(3)?,
@@ -472,6 +608,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                     parse_json(row.get::<_, String>(16)?, Value::Object(Default::default())),
                     report_sections,
                 ),
+                report_versions,
                 logs,
                 error: row.get(17)?,
             })
@@ -518,13 +655,31 @@ fn load_report_sections(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
     Ok(Value::Object(map))
 }
 
+fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Value> {
+    let mut stmt = conn.prepare(
+        "SELECT snapshot FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
+    )?;
+    let rows = stmt.query_map(params![task_id], |row| {
+        let raw = row.get::<_, String>(0)?;
+        Ok(serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null))
+    })?;
+    let versions = rows
+        .filter_map(|row| match row {
+            Ok(Value::Null) => None,
+            other => Some(other),
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Value::Array(versions))
+}
+
 fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
     conn.execute(
         "INSERT INTO tasks (
-            id, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
+            id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
             queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)
          ON CONFLICT(id) DO UPDATE SET
+            origin = excluded.origin,
             ticker = excluded.ticker,
             instrument_name = excluded.instrument_name,
             analysis_date = excluded.analysis_date,
@@ -543,6 +698,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             error = excluded.error",
         params![
             task.id,
+            task.origin,
             task.ticker,
             task.instrument_name,
             task.analysis_date,
@@ -604,6 +760,44 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     key,
                     content.as_str(),
                     task.updated_at,
+                ],
+            )
+            .map_err(|error| error.to_string())?;
+        }
+    }
+
+    if let Value::Array(versions) = &task.report_versions {
+        for version in versions {
+            let id = version
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let run_id = version
+                .get("runId")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let version_number = version
+                .get("versionNumber")
+                .and_then(Value::as_i64)
+                .unwrap_or_default();
+            let created_at = version
+                .get("createdAt")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            if id.is_empty() || run_id.is_empty() || version_number < 1 || created_at.is_empty() {
+                continue;
+            }
+            conn.execute(
+                "INSERT OR IGNORE INTO task_report_versions
+                    (id, task_id, version_number, run_id, created_at, snapshot)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![
+                    id,
+                    task.id,
+                    version_number,
+                    run_id,
+                    created_at,
+                    json_string(version)?,
                 ],
             )
             .map_err(|error| error.to_string())?;
@@ -761,6 +955,14 @@ fn json_string(value: &Value) -> Result<String, String> {
     serde_json::to_string(value).map_err(|error| error.to_string())
 }
 
+fn default_task_origin() -> String {
+    "analysis".to_string()
+}
+
+fn empty_array() -> Value {
+    Value::Array(Vec::new())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -836,5 +1038,136 @@ mod tests {
         assert!(error.contains("Legacy encrypted data was retained"));
         assert_eq!(store.get("llm-provider-openai").unwrap(), None);
         assert_eq!(store.get(secrets::ALPHA_VANTAGE_SECRET_ID).unwrap(), None);
+    }
+
+    #[test]
+    fn report_versions_are_unique_and_cascade_with_their_task() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO tasks (
+                id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth,
+                analysts, output_language, status, queued_at, queue_order, created_at, updated_at,
+                decision, stats, agent_statuses, report_sections, error
+             ) VALUES (
+                'task-1', 'analysis', 'SPY', 'SPY', '2025-01-01', 'stock', 1,
+                '[]', 'English', 'completed', '', NULL, '2025-01-01', '2025-01-02',
+                'Hold', '{}', '{}', '{}', ''
+             )",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO task_report_versions
+                (id, task_id, version_number, run_id, created_at, snapshot)
+             VALUES ('version-1', 'task-1', 1, 'run-1', '2025-01-02', '{}')",
+            [],
+        )
+        .unwrap();
+
+        let duplicate_run = conn.execute(
+            "INSERT INTO task_report_versions
+                (id, task_id, version_number, run_id, created_at, snapshot)
+             VALUES ('version-2', 'task-1', 2, 'run-1', '2025-01-03', '{}')",
+            [],
+        );
+        assert!(duplicate_run.is_err());
+        let duplicate_version = conn.execute(
+            "INSERT INTO task_report_versions
+                (id, task_id, version_number, run_id, created_at, snapshot)
+             VALUES ('version-3', 'task-1', 1, 'run-3', '2025-01-03', '{}')",
+            [],
+        );
+        assert!(duplicate_version.is_err());
+
+        conn.execute("DELETE FROM tasks WHERE id = 'task-1'", [])
+            .unwrap();
+        let remaining: i64 = conn
+            .query_row("SELECT COUNT(*) FROM task_report_versions", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn schema_upgrade_backfills_a_legacy_completed_report() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "PRAGMA foreign_keys = ON;
+             CREATE TABLE tasks (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                instrument_name TEXT NOT NULL DEFAULT '',
+                analysis_date TEXT NOT NULL,
+                asset_type TEXT NOT NULL,
+                research_depth INTEGER NOT NULL,
+                analysts TEXT NOT NULL,
+                output_language TEXT NOT NULL,
+                status TEXT NOT NULL,
+                queued_at TEXT NOT NULL DEFAULT '',
+                queue_order INTEGER,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                decision TEXT NOT NULL DEFAULT '',
+                stats TEXT NOT NULL,
+                agent_statuses TEXT NOT NULL,
+                report_sections TEXT NOT NULL,
+                error TEXT NOT NULL DEFAULT ''
+             );
+             CREATE TABLE task_reports (
+                task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+                report_key TEXT NOT NULL,
+                content TEXT,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (task_id, report_key)
+             );
+             INSERT INTO tasks (
+                id, ticker, instrument_name, analysis_date, asset_type, research_depth,
+                analysts, output_language, status, queued_at, queue_order, created_at, updated_at,
+                decision, stats, agent_statuses, report_sections, error
+             ) VALUES (
+                'legacy-task', 'OLD.TEST', 'Old Report', '2024-01-01', 'stock', 3,
+                '[\"market\"]', 'English', 'completed', '', NULL,
+                '2024-01-01T00:00:00Z', '2024-01-02T00:00:00Z',
+                'Hold', '{\"llmCalls\":1}', '{}', '{}', ''
+             );
+             INSERT INTO task_reports (task_id, report_key, content, updated_at)
+             VALUES (
+                'legacy-task', 'market_report', 'Historical evidence',
+                '2024-01-02T00:00:00Z'
+             );",
+        )
+        .unwrap();
+
+        initialize_schema(&conn).unwrap();
+
+        let snapshot: String = conn
+            .query_row(
+                "SELECT snapshot FROM task_report_versions WHERE task_id = 'legacy-task'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let version: Value = serde_json::from_str(&snapshot).unwrap();
+        assert_eq!(version["legacy"], true);
+        assert_eq!(version["versionNumber"], 1);
+        assert_eq!(version["run"], Value::Null);
+        assert_eq!(
+            version["reportSections"]["market_report"],
+            "Historical evidence"
+        );
+        assert_eq!(version["task"]["researchDepth"], 3);
+        assert_eq!(version["stats"]["llmCalls"], 1);
+
+        initialize_schema(&conn).unwrap();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM task_report_versions WHERE task_id = 'legacy-task'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
     }
 }

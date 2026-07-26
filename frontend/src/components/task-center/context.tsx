@@ -21,8 +21,14 @@ import {
   saveTasks,
   sessionSafeSettings,
 } from "@/features/persistence/local-storage";
+import {
+  appendCompletedReportVersion,
+  ensureLegacyReportVersion,
+  FICTIONAL_DEMO_TASK_ID,
+  getOrCreateFictionalDemoTask,
+} from "@/features/report-export";
 import { normalizeSettingsForSave } from "@/features/settings/lib/normalize-settings";
-import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, TaskStatus } from "@/lib/types";
+import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, RunContext, TaskStatus } from "@/lib/types";
 import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
 import { createTranslator } from "@/lib/i18n";
 import { extractDecisionFromReport, prependLog } from "./utils";
@@ -45,6 +51,7 @@ type TaskCenterContextValue = {
   clearAllLocalData: () => Promise<boolean>;
   createTask: (draft: NewTaskDraft) => { task?: AnalysisTask; errors: string[] };
   createAndQueueTask: (draft: NewTaskDraft) => Promise<{ task?: AnalysisTask; errors: string[] }>;
+  createDemoTask: () => AnalysisTask;
   deleteTask: (taskId: string) => void;
   queueTask: (taskId: string) => boolean;
   cancelQueuedTask: (taskId: string) => void;
@@ -88,7 +95,12 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         const normalizedTasks = snapshot.tasks.map(normalizeTaskRuntimeState);
         setTasks(normalizedTasks);
         normalizedTasks.forEach((task, index) => {
-          if (task.decision !== snapshot.tasks[index]?.decision) {
+          const stored = snapshot.tasks[index];
+          if (
+            task.decision !== stored?.decision
+            || task.origin !== stored?.origin
+            || task.reportVersions.length !== (stored?.reportVersions?.length ?? 0)
+          ) {
             void adapter.saveDesktopTask(task).catch(() => undefined);
           }
         });
@@ -115,7 +127,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     if (isTauriRuntime()) return;
     const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
     tasks
-      .filter((task) => !task.instrumentName?.trim() && !resolvingInstrumentNamesRef.current.has(task.id))
+      .filter((task) => task.origin !== "demo" && !task.instrumentName?.trim() && !resolvingInstrumentNamesRef.current.has(task.id))
       .slice(0, 5)
       .forEach((task) => {
         resolvingInstrumentNamesRef.current.add(task.id);
@@ -156,41 +168,34 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     ) as Record<string, AgentStatus>;
   }
 
-  function areAgentStatusesCompleted(agentStatuses: Record<string, AgentStatus>) {
-    const statuses = Object.values(agentStatuses);
-    return statuses.length > 0 && statuses.every((status) => status === "completed");
-  }
-
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
     const reportDecision = extractDecisionFromReport(task.reportSections?.final_trade_decision);
-    const normalizedTask = {
+    const normalizedTask: AnalysisTask = {
       ...task,
+      origin: task.origin ?? "analysis",
+      reportVersions: task.reportVersions ?? [],
       queuedAt: task.queuedAt ?? "",
       queueOrder: Number.isFinite(task.queueOrder) ? task.queueOrder : null,
       ...(reportDecision ? { decision: reportDecision } : {}),
     };
     if (normalizedTask.status === "running") {
-      if (reportDecision && areAgentStatusesCompleted(normalizedTask.agentStatuses)) {
-        return {
-          ...normalizedTask,
-          status: "completed",
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return {
+      return ensureLegacyReportVersion({
         ...normalizedTask,
         status: "stopped",
         updatedAt: new Date().toISOString(),
         agentStatuses: finalizeAgentStatuses(normalizedTask.agentStatuses),
-      };
+      });
     }
     if (normalizedTask.status === "error") {
-      return { ...normalizedTask, agentStatuses: finalizeAgentStatuses(normalizedTask.agentStatuses) };
+      return ensureLegacyReportVersion({
+        ...normalizedTask,
+        agentStatuses: finalizeAgentStatuses(normalizedTask.agentStatuses),
+      });
     }
-    return normalizedTask;
+    return ensureLegacyReportVersion(normalizedTask);
   }
 
-  const handleTaskEvent = useCallback((taskId: string, event: AnalysisEvent) => {
+  const handleTaskEvent = useCallback((taskId: string, event: AnalysisEvent, runContext?: RunContext) => {
     updateTask(taskId, (task) => {
       const logs = event.message || event.error
         ? prependLog(task.logs, event.messageType ?? event.type, event.error ?? event.message ?? "", event.timestamp, event.agent)
@@ -202,10 +207,8 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         ? "completed"
         : event.type === "error"
           ? "error"
-          : task.status === "completed" || (reportDecision && areAgentStatusesCompleted(nextAgentStatuses))
-            ? "completed"
-            : task.status;
-      return {
+          : task.status;
+      const nextTask: AnalysisTask = {
         ...task,
         status,
         updatedAt: new Date().toISOString(),
@@ -216,6 +219,9 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         logs,
         error: event.error ?? (status === "running" ? "" : task.error),
       };
+      return runContext
+        ? appendCompletedReportVersion(nextTask, event, runContext)
+        : nextTask;
     });
   }, [updateTask]);
 
@@ -360,6 +366,19 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     return createTaskAction(draft);
   }
 
+  function createDemoTaskAction() {
+    const demo = getOrCreateFictionalDemoTask(tasks, settings.systemLanguage);
+    if (tasks.some((task) => task.id === FICTIONAL_DEMO_TASK_ID)) return demo;
+    setTasks((current) => (
+      current.some((task) => task.id === FICTIONAL_DEMO_TASK_ID)
+        ? current
+        : [demo, ...current]
+    ));
+    persistTask(demo);
+    setNotice(t("demoTaskCreated"));
+    return demo;
+  }
+
   function deleteTask(taskId: string) {
     const task = tasks.find((item) => item.id === taskId);
     if (task?.status === "running") {
@@ -393,6 +412,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     clearAllLocalData,
     createTask: createTaskAction,
     createAndQueueTask: createAndQueueTaskAction,
+    createDemoTask: createDemoTaskAction,
     deleteTask,
     queueTask,
     cancelQueuedTask,

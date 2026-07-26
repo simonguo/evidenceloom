@@ -101,6 +101,7 @@ export function createEmptyTask(draft: NewTaskDraft, id = crypto.randomUUID(), c
   const now = new Date().toISOString();
   return {
     id,
+    origin: "analysis",
     ticker: normalizeTicker(draft.ticker),
     instrumentName: draft.instrumentName.trim(),
     analysisDate: draft.analysisDate,
@@ -117,6 +118,7 @@ export function createEmptyTask(draft: NewTaskDraft, id = crypto.randomUUID(), c
     stats: initialStats,
     agentStatuses: {},
     reportSections: {},
+    reportVersions: [],
     logs: [],
     error: "",
   };
