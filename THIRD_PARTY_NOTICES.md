@@ -182,12 +182,12 @@ uv run python scripts/generate_third_party_notices.py
 | `@dicebear/toon-head` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
 | `@emnapi/core` | `1.10.0` | MIT | — |
 | `@emnapi/core` | `1.11.1` | MIT | — |
-| `@emnapi/core` | `1.11.2` | MIT | — |
+| `@emnapi/core` | `1.11.3` | MIT | — |
 | `@emnapi/runtime` | `1.10.0` | MIT | — |
 | `@emnapi/runtime` | `1.11.1` | MIT | — |
-| `@emnapi/runtime` | `1.11.2` | MIT | — |
 | `@emnapi/wasi-threads` | `1.2.1` | MIT | — |
 | `@emnapi/wasi-threads` | `1.2.2` | MIT | — |
+| `@emnapi/wasi-threads` | `1.2.3` | MIT | — |
 | `@epic-web/invariant` | `1.0.0` | MIT | — |
 | `@eslint-community/eslint-utils` | `4.9.1` | MIT | — |
 | `@eslint-community/regexpp` | `4.12.2` | MIT | — |
@@ -372,7 +372,7 @@ uv run python scripts/generate_third_party_notices.py
 | `bidi-js` | `1.0.3` | MIT | — |
 | `binary-extensions` | `2.3.0` | MIT | — |
 | `brace-expansion` | `1.1.16` | MIT | — |
-| `brace-expansion` | `5.0.7` | MIT | — |
+| `brace-expansion` | `5.0.8` | MIT | — |
 | `braces` | `3.0.3` | MIT | — |
 | `browserslist` | `4.28.2` | MIT | — |
 | `call-bind` | `1.0.9` | MIT | — |
@@ -1089,6 +1089,7 @@ uv run python scripts/generate_third_party_notices.py
 | `regex-automata` | `0.4.16` | MIT OR Apache-2.0 | [link](https://github.com/rust-lang/regex/tree/master/regex-automata) |
 | `regex-syntax` | `0.8.11` | MIT OR Apache-2.0 | [link](https://github.com/rust-lang/regex/tree/master/regex-syntax) |
 | `reqwest` | `0.13.4` | MIT OR Apache-2.0 | [link](https://github.com/seanmonstar/reqwest) |
+| `rfd` | `0.16.0` | MIT | [link](https://github.com/PolyMeilex/rfd) |
 | `rusqlite` | `0.32.1` | MIT | [link](https://github.com/rusqlite/rusqlite) |
 | `rustc-hash` | `2.1.3` | Apache-2.0 OR MIT | [link](https://github.com/rust-lang/rustc-hash) |
 | `rustc_version` | `0.4.1` | MIT OR Apache-2.0 | [link](https://github.com/djc/rustc-version-rs) |
@@ -1149,6 +1150,9 @@ uv run python scripts/generate_third_party_notices.py
 | `tauri-build` | `2.6.3` | Apache-2.0 OR MIT | [link](https://tauri.app/) |
 | `tauri-codegen` | `2.6.3` | Apache-2.0 OR MIT | [link](https://tauri.app/) |
 | `tauri-macros` | `2.6.3` | Apache-2.0 OR MIT | [link](https://tauri.app/) |
+| `tauri-plugin` | `2.6.3` | Apache-2.0 OR MIT | [link](https://tauri.app/) |
+| `tauri-plugin-dialog` | `2.7.2` | Apache-2.0 OR MIT | [link](https://github.com/tauri-apps/plugins-workspace) |
+| `tauri-plugin-fs` | `2.5.1` | Apache-2.0 OR MIT | [link](https://github.com/tauri-apps/plugins-workspace) |
 | `tauri-runtime` | `2.11.3` | Apache-2.0 OR MIT | [link](https://tauri.app/) |
 | `tauri-runtime-wry` | `2.11.4` | Apache-2.0 OR MIT | [link](https://tauri.app/) |
 | `tauri-utils` | `2.9.3` | Apache-2.0 OR MIT | [link](https://tauri.app/) |
@@ -1246,26 +1250,36 @@ uv run python scripts/generate_third_party_notices.py
 | `windows-strings` | `0.5.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows-sys` | `0.45.0` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows-sys` | `0.59.0` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows-sys` | `0.60.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows-sys` | `0.61.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows-targets` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows-targets` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows-targets` | `0.53.5` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows-threading` | `0.1.0` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows-version` | `0.1.7` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_aarch64_gnullvm` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_aarch64_gnullvm` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_aarch64_gnullvm` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_aarch64_msvc` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_aarch64_msvc` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_aarch64_msvc` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_i686_gnu` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_i686_gnu` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_i686_gnu` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_i686_gnullvm` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_i686_gnullvm` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_i686_msvc` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_i686_msvc` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_i686_msvc` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_x86_64_gnu` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_x86_64_gnu` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_x86_64_gnu` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_x86_64_gnullvm` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_x86_64_gnullvm` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_x86_64_gnullvm` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_x86_64_msvc` | `0.42.2` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `windows_x86_64_msvc` | `0.52.6` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
+| `windows_x86_64_msvc` | `0.53.1` | MIT OR Apache-2.0 | [link](https://github.com/microsoft/windows-rs) |
 | `winnow` | `0.5.40` | MIT | [link](https://github.com/winnow-rs/winnow) |
 | `winnow` | `0.7.15` | MIT | [link](https://github.com/winnow-rs/winnow) |
 | `winnow` | `1.0.4` | MIT | [link](https://github.com/winnow-rs/winnow) |
