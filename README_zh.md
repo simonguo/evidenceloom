@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src-tauri/icons/128x128.png" alt="Evidence Loom 标志" width="128" height="128">
+</p>
+
 # Evidence Loom
 
 [![CI](https://github.com/simonguo/evidenceloom/actions/workflows/ci.yml/badge.svg)](https://github.com/simonguo/evidenceloom/actions/workflows/ci.yml)
