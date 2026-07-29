@@ -11,7 +11,7 @@ requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{ name = "Evidence Loom contributors" }]
 dependencies = [
-    "langchain-core>=0.3.81",
+    "langchain-core>=1.5.2",
     "langchain-anthropic>=0.3.15",
     "langchain-experimental>=0.3.4",
     "langchain-google-genai>=4.0.0",
