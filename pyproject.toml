@@ -12,7 +12,7 @@ license = "Apache-2.0"
 authors = [{ name = "Evidence Loom contributors" }]
 dependencies = [
     "langchain-core>=0.3.81",
-    "langchain-anthropic>=0.3.15",
+    "langchain-anthropic>=1.5.3",
     "langchain-experimental>=0.3.4",
     "langchain-google-genai>=4.0.0",
     "langchain-openai>=0.3.23",
