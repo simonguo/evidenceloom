@@ -17,7 +17,7 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 aes-gcm = "0.10"
-base64 = "0.22"
+base64 = "0.23"
 keyring = "4.1.5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
