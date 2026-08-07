@@ -665,7 +665,7 @@ uv run python scripts/generate_third_party_notices.py
 | `pify` | `2.3.0` | MIT | — |
 | `pirates` | `4.0.7` | MIT | — |
 | `possible-typed-array-names` | `1.1.0` | MIT | — |
-| `postcss` | `8.5.21` | MIT | — |
+| `postcss` | `8.5.23` | MIT | — |
 | `postcss-import` | `15.1.0` | MIT | — |
 | `postcss-js` | `4.1.0` | MIT | — |
 | `postcss-load-config` | `6.0.1` | MIT | — |

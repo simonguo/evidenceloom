@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
 
 from .api_key_env import get_api_key_env
-from .base_client import BaseLLMClient, normalize_content
+from .base_client import BaseLLMClient, normalize_content, normalize_utf8_payload
 from .capabilities import get_capabilities
 from .validators import validate_model
 
@@ -41,6 +41,10 @@ class NormalizedChatOpenAI(ChatOpenAI):
                 if attempt >= max_attempts - 1:
                     raise
                 time.sleep(base_delay * (2**attempt))
+
+    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        return normalize_utf8_payload(payload)
 
     def with_structured_output(self, schema, *, method=None, **kwargs):
         caps = get_capabilities(self.model_name)
@@ -99,7 +103,7 @@ class DeepSeekChatOpenAI(NormalizedChatOpenAI):
             reasoning = message.additional_kwargs.get("reasoning_content")
             if reasoning is not None:
                 message_dict["reasoning_content"] = reasoning
-        return payload
+        return normalize_utf8_payload(payload)
 
     def _create_chat_result(self, response, generation_info=None):
         chat_result = super()._create_chat_result(response, generation_info)

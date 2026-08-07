@@ -13,6 +13,7 @@ import yfinance as yf
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from tradingagents.dataflows.symbol_utils import normalize_symbol
+from tradingagents.llm_clients.base_client import normalize_utf8_text
 from tradingagents.llm_clients.factory import create_llm_client
 
 CRYPTO_BASES = {"BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "LTC", "BCH", "DOT", "AVAX", "LINK"}
@@ -44,7 +45,8 @@ COMMON_NAME_ALIASES = {
 
 
 def emit(value: Dict[str, Any]) -> None:
-    print(json.dumps(value, ensure_ascii=False, default=str), flush=True)
+    serialized = json.dumps(value, ensure_ascii=False, default=str)
+    print(normalize_utf8_text(serialized), flush=True)
 
 
 def normalize_query_ticker(query: str) -> str:

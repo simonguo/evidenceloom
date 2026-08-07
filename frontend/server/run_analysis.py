@@ -25,6 +25,7 @@ from tradingagents.graph.analyst_execution import (
 )
 from tradingagents.graph.checkpointer import clear_checkpoint, thread_id
 from tradingagents.graph.trading_graph import TradingAgentsGraph
+from tradingagents.llm_clients.base_client import normalize_utf8_text
 
 REPORT_SECTION_KEYS = [
     "market_report",
@@ -39,7 +40,8 @@ REPORT_SECTION_KEYS = [
 
 def emit(event: Dict[str, Any]) -> None:
     event.setdefault("timestamp", datetime.now().strftime("%H:%M:%S"))
-    print(json.dumps(event, ensure_ascii=False, default=str), flush=True)
+    serialized = json.dumps(event, ensure_ascii=False, default=str)
+    print(normalize_utf8_text(serialized), flush=True)
 
 
 def normalize_analysts(raw: Iterable[str], asset_type: str) -> List[str]:
@@ -544,7 +546,9 @@ def main() -> int:
             symbol = str(payload.get("symbol") or "")
             curr_date = str(payload.get("currDate") or payload.get("curr_date") or "")
             print(
-                json.dumps(load_chart(symbol, curr_date), ensure_ascii=False, allow_nan=False),
+                normalize_utf8_text(
+                    json.dumps(load_chart(symbol, curr_date), ensure_ascii=False, allow_nan=False)
+                ),
                 flush=True,
             )
             return 0
@@ -552,7 +556,9 @@ def main() -> int:
             from test_llm import test_connection
 
             print(
-                json.dumps(test_connection(payload), ensure_ascii=False, allow_nan=False),
+                normalize_utf8_text(
+                    json.dumps(test_connection(payload), ensure_ascii=False, allow_nan=False)
+                ),
                 flush=True,
             )
             return 0

@@ -1,15 +1,63 @@
+import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Optional
-import warnings
+
+
+def normalize_utf8_text(value: str) -> str:
+    """Return text that can be encoded as strict UTF-8.
+
+    Python strings can contain isolated UTF-16 surrogate code points when an
+    upstream API returns malformed escaped Unicode.  UTF-8 encoders reject
+    those code points.  Preserve valid surrogate pairs by combining them into
+    their Unicode scalar value and replace only malformed surrogates with the
+    standard replacement character.
+    """
+    if not any(0xD800 <= ord(char) <= 0xDFFF for char in value):
+        return value
+
+    normalized = []
+    index = 0
+    while index < len(value):
+        codepoint = ord(value[index])
+        if 0xD800 <= codepoint <= 0xDBFF and index + 1 < len(value):
+            low = ord(value[index + 1])
+            if 0xDC00 <= low <= 0xDFFF:
+                normalized.append(chr(0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00)))
+                index += 2
+                continue
+        if 0xD800 <= codepoint <= 0xDFFF:
+            normalized.append("\ufffd")
+        else:
+            normalized.append(value[index])
+        index += 1
+
+    return "".join(normalized)
+
+
+def normalize_utf8_payload(value: Any) -> Any:
+    """Recursively make JSON-like payload strings safe for UTF-8 encoding."""
+    if isinstance(value, str):
+        return normalize_utf8_text(value)
+    if isinstance(value, dict):
+        return {
+            normalize_utf8_payload(key): normalize_utf8_payload(item) for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [normalize_utf8_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(normalize_utf8_payload(item) for item in value)
+    return value
 
 
 def normalize_content(response):
-    """Normalize LLM response content to a plain string.
+    """Normalize LLM response content to valid-Unicode plain text.
 
     Multiple providers (OpenAI Responses API, Google Gemini 3) return content
     as a list of typed blocks, e.g. [{'type': 'reasoning', ...}, {'type': 'text', 'text': '...'}].
     Downstream agents expect response.content to be a string. This extracts
-    and joins the text blocks, discarding reasoning/metadata blocks.
+    and joins the text blocks, discarding reasoning/metadata blocks. It also
+    repairs malformed surrogate code points in provider text and metadata
+    before they enter graph state or persistence.
     """
     content = response.content
     if isinstance(content, list):
@@ -22,6 +70,10 @@ def normalize_content(response):
             for item in content
         ]
         response.content = "\n".join(t for t in texts if t)
+    if isinstance(response.content, str):
+        response.content = normalize_utf8_text(response.content)
+    if isinstance(getattr(response, "additional_kwargs", None), dict):
+        response.additional_kwargs = normalize_utf8_payload(response.additional_kwargs)
     return response
 
 
