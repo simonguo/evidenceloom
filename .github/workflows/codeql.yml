@@ -30,7 +30,7 @@ jobs:
       matrix:
         language: [javascript-typescript, python]
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: github/codeql-action/init@08d09a53f0f5d694f253bd25732e4429c9e9337f # v3
         with:
           languages: ${{ matrix.language }}
