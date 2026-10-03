@@ -440,7 +440,18 @@ fn main() {
     }
     let mut child = Command::new(env::current_exe().unwrap());
     child.arg("child").args(&args[2..]).stdin(Stdio::null()).stderr(Stdio::null());
-    if mode == "detached" { child.stdout(Stdio::null()); }
+    if mode == "detached" {
+        use std::os::windows::io::AsRawHandle;
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn SetHandleInformation(handle: *mut std::ffi::c_void, mask: u32, flags: u32) -> i32;
+        }
+        // NUL stdio does not prevent inheritance of the parent's original pipe handle.
+        if unsafe { SetHandleInformation(io::stdout().as_raw_handle(), 1, 0) } == 0 {
+            process::exit(5);
+        }
+        child.stdout(Stdio::null());
+    }
     let mut child = child.spawn().unwrap();
     let deadline = Instant::now() + Duration::from_secs(10);
     while !started.exists() {
