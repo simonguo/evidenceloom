@@ -120,59 +120,71 @@ def test_child_environment_disables_dotenv_and_tracing_without_mutating_parent(m
         assert os.environ[key] == "parent-value"
 
 
-@pytest.mark.parametrize("parent_exits", [True, False])
-def test_deadline_covers_descendant_held_pipes_and_kills_the_tree(tmp_path, parent_exits):
-    marker = tmp_path / "descendant-survived"
-    started_marker = tmp_path / "descendant-started"
+def _process_tree_command(tmp_path, mode):
+    started_marker = tmp_path / "grandchild-started"
+    release_marker = tmp_path / "allow-grandchild-to-finish"
+    finished_marker = tmp_path / "grandchild-finished"
     child = (
-        "import time; from pathlib import Path; "
-        f"Path({str(started_marker)!r}).touch(); "
-        f"time.sleep(0.85); Path({str(marker)!r}).touch()"
+        "import time; from pathlib import Path\n"
+        f"release = Path({str(release_marker)!r})\n"
+        f"Path({str(started_marker)!r}).touch()\n"
+        "deadline = time.monotonic() + 10\n"
+        "while not release.exists() and time.monotonic() < deadline: time.sleep(0.01)\n"
+        "if release.exists():\n"
+        "    time.sleep(1)\n"
+        f"    Path({str(finished_marker)!r}).touch()\n"
     )
-    command = [
-        sys.executable,
-        "-c",
-        "import subprocess, sys, time\n"
-        "sys.stdin.readline()\n"
-        f"subprocess.Popen([sys.executable, '-c', {child!r}])\n"
-        'print(\'{"type":"ready"}\', flush=True)\n' + ("" if parent_exits else "time.sleep(3)\n"),
-    ]
-    started = time.monotonic()
-    with pytest.raises(ProbeError, match="deadline exceeded"):
-        run_probe(command, "bootstrap", timeout=0.4)
-    assert time.monotonic() - started < 0.75
-    assert started_marker.exists()
-    # The orphan inherited both pipes. It would write this marker after the
-    # launcher exits if cleanup only killed the immediate process.
-    time.sleep(0.85)
-    assert not marker.exists()
-
-
-def test_success_also_stops_descendants_that_closed_their_output_pipes(tmp_path):
-    marker = tmp_path / "descendant-survived"
-    started_marker = tmp_path / "descendant-started"
-    child = (
-        "import time; from pathlib import Path; "
-        f"Path({str(started_marker)!r}).touch(); "
-        f"time.sleep(0.85); Path({str(marker)!r}).touch()"
+    redirection = (
+        ", stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL"
+        if mode == "success_closed_pipes"
+        else ""
     )
     command = [
         sys.executable,
         "-c",
         "import subprocess, sys, time; from pathlib import Path\n"
         "sys.stdin.readline()\n"
-        f"subprocess.Popen([sys.executable, '-c', {child!r}], "
-        "stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)\n"
+        f"subprocess.Popen([sys.executable, '-c', {child!r}]{redirection})\n"
         f"started = Path({str(started_marker)!r})\n"
-        "deadline = time.monotonic() + 1\n"
+        "deadline = time.monotonic() + 5\n"
         "while not started.exists() and time.monotonic() < deadline: time.sleep(0.01)\n"
         "assert started.exists()\n"
-        'print(\'{"type":"ready"}\', flush=True)\n',
+        'print(\'{"type":"ready"}\', flush=True)\n'
+        + ("time.sleep(10)\n" if mode == "hanging_parent" else ""),
     ]
-    run_probe(command, "bootstrap", timeout=2)
+    return command, started_marker, release_marker, finished_marker
+
+
+@pytest.mark.parametrize("mode", ["hanging_parent", "exited_parent_held_pipes"])
+def test_deadline_covers_started_grandchild_and_kills_the_native_process_tree(tmp_path, mode):
+    command, started_marker, release_marker, finished_marker = _process_tree_command(tmp_path, mode)
+    # This executes the real suspended-process/job/resume path on Windows,
+    # with enough time for two native Python processes to start on hosted CI.
+    deadline_seconds = 2.5
+    started = time.monotonic()
+    with pytest.raises(ProbeError, match="deadline exceeded"):
+        run_probe(command, "bootstrap", timeout=deadline_seconds)
+    assert time.monotonic() - started <= deadline_seconds + 0.75
     assert started_marker.exists()
-    time.sleep(0.85)
-    assert not marker.exists()
+    # A surviving grandchild cannot finish before the probe: it waits until
+    # the test releases it, then writes after one second. No PID tools needed.
+    release_marker.touch()
+    time.sleep(1.25)
+    assert not finished_marker.exists()
+
+
+def test_success_also_stops_descendants_that_closed_their_output_pipes(tmp_path):
+    command, started_marker, release_marker, finished_marker = _process_tree_command(
+        tmp_path, "success_closed_pipes"
+    )
+    deadline_seconds = 2.5
+    started = time.monotonic()
+    run_probe(command, "bootstrap", timeout=deadline_seconds)
+    assert time.monotonic() - started <= deadline_seconds + 0.75
+    assert started_marker.exists()
+    release_marker.touch()
+    time.sleep(1.25)
+    assert not finished_marker.exists()
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX executable script fixture")

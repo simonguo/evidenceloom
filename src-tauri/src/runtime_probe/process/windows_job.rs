@@ -64,10 +64,11 @@ impl Job {
                     "probe thread discovery timed out",
                 ));
             }
-            if entry.size >= 16 && entry.owner_process_id == child.id() {
-                if thread_id.replace(entry.thread_id).is_some() {
-                    return Err(io::Error::other("suspended probe thread was not unique"));
-                }
+            if entry.size >= 16
+                && entry.owner_process_id == child.id()
+                && thread_id.replace(entry.thread_id).is_some()
+            {
+                return Err(io::Error::other("suspended probe thread was not unique"));
             }
             entry.size = size_of::<ThreadEntry>() as u32;
             found = unsafe { Thread32Next(snapshot.0, &mut entry) };
@@ -79,6 +80,12 @@ impl Job {
         let thread_id =
             thread_id.ok_or_else(|| io::Error::other("suspended probe thread was not found"))?;
         let thread = OwnedHandle::new(unsafe { OpenThread(0x00000002, 0, thread_id) })?;
+        if Instant::now() >= deadline {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "probe thread resume timed out",
+            ));
+        }
         if unsafe { ResumeThread(thread.0) } == 1 {
             Ok(())
         } else {

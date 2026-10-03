@@ -384,6 +384,139 @@ mod tests {
         assert!(!uses_sidecar("python", true));
     }
 
+    #[test]
+    #[cfg(windows)]
+    fn windows_probe_stops_waiting_and_orphaned_descendants() {
+        struct FixtureDirectory(std::path::PathBuf);
+        impl Drop for FixtureDirectory {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+
+        // Compile once for all three cases; no shell or real research runtime is used.
+        let path = std::env::temp_dir().join(format!(
+            "evidenceloom-windows-probe-fixture-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+        assert!(
+            std::fs::create_dir(&path).is_ok(),
+            "The Windows probe fixture directory could not be created."
+        );
+        let directory = FixtureDirectory(path);
+        let source = directory.0.join("fixture.rs");
+        let binary = directory.0.join("fixture.exe");
+        let source_text = r#"
+use std::{env, fs, io::{self, Read, Write}, path::Path, process::{self, Command, Stdio}, thread, time::{Duration, Instant}};
+
+fn main() {
+    let args: Vec<_> = env::args_os().collect();
+    let mode = args[1].to_str().unwrap();
+    let started = Path::new(&args[2]);
+    let released = Path::new(&args[3]);
+    let completed = Path::new(&args[4]);
+    if mode == "child" {
+        fs::write(started, process::id().to_string()).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(20);
+        while !released.exists() {
+            if Instant::now() >= deadline { process::exit(4); }
+            thread::sleep(Duration::from_millis(5));
+        }
+        thread::sleep(Duration::from_secs(1));
+        fs::write(completed, b"descendant survived cleanup").unwrap();
+        return;
+    }
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+    if input != "{\"__command\":\"smoke_test\",\"verifyRuntime\":true}\n"
+        || env::var("PYTHON_DOTENV_DISABLED").as_deref() != Ok("1")
+        || env::var("LANGSMITH_TRACING").as_deref() != Ok("false")
+        || env::var("LANGCHAIN_TRACING_V2").as_deref() != Ok("false") {
+        process::exit(2);
+    }
+    let mut child = Command::new(env::current_exe().unwrap());
+    child.arg("child").args(&args[2..]).stdin(Stdio::null()).stderr(Stdio::null());
+    if mode == "detached" { child.stdout(Stdio::null()); }
+    let mut child = child.spawn().unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !started.exists() {
+        if Instant::now() >= deadline { process::exit(3); }
+        thread::sleep(Duration::from_millis(5));
+    }
+    println!("{{\"type\":\"runtime_ready\"}}");
+    io::stdout().flush().unwrap();
+    if mode == "waiting" { let _ = child.wait(); }
+}
+"#;
+        assert!(
+            std::fs::write(&source, source_text).is_ok(),
+            "The Windows probe fixture source could not be written."
+        );
+        let compiled = Command::new("rustc")
+            .args(["--edition=2021", "--crate-name", "probe_fixture"])
+            .arg(&source)
+            .arg("-o")
+            .arg(&binary)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status()
+            .is_ok_and(|status| status.success());
+        assert!(compiled, "The Windows probe fixture could not be compiled.");
+
+        for (mode, expected) in [
+            ("waiting", Err(ProbeFailure::Timeout)),
+            ("held_stdout", Err(ProbeFailure::Timeout)),
+            ("detached", Ok(())),
+        ] {
+            let started_marker = directory.0.join(format!("{mode}-started"));
+            let released_marker = directory.0.join(format!("{mode}-released"));
+            let completed_marker = directory.0.join(format!("{mode}-completed"));
+            let mut command = Command::new(&binary);
+            command.args([
+                std::ffi::OsStr::new(mode),
+                started_marker.as_os_str(),
+                released_marker.as_os_str(),
+                completed_marker.as_os_str(),
+            ]);
+            let before = Instant::now();
+            let result = probe_command(command, Duration::from_secs(3));
+            let elapsed = before.elapsed();
+            let child_started = std::fs::read_to_string(&started_marker)
+                .ok()
+                .is_some_and(|pid| pid.parse::<u32>().is_ok_and(|pid| pid > 0));
+            // Any surviving descendant now has an opportunity to prove it is alive.
+            // Release after the probe returns so even timeout cases cannot complete early.
+            let released = std::fs::write(&released_marker, b"probe returned").is_ok();
+            thread::sleep(Duration::from_millis(1500));
+            assert!(released, "The Windows probe fixture could not be released.");
+            assert!(
+                child_started,
+                "The Windows probe fixture descendant did not start."
+            );
+            assert!(
+                !completed_marker.exists(),
+                "A Windows probe fixture descendant survived cleanup."
+            );
+            assert_eq!(
+                result, expected,
+                "The Windows probe fixture result was invalid."
+            );
+            assert!(
+                elapsed < Duration::from_secs(4),
+                "The Windows probe fixture exceeded its total deadline."
+            );
+        }
+        assert!(
+            std::fs::remove_dir_all(&directory.0).is_ok(),
+            "The Windows probe fixture directory could not be cleaned up."
+        );
+    }
+
     #[cfg(unix)]
     fn shell(script: &str) -> Command {
         let mut command = Command::new("/bin/sh");
