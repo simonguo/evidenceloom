@@ -73,6 +73,23 @@ def test_benchmark_must_have_traded_through_exit(monkeypatch):
     assert compute_returns("NVDA", "2026-01-05") == (None, None, None, None)
 
 
+@pytest.mark.parametrize("holding_days", [0, -1, "5", "invalid", True, False, None, 1.5])
+def test_invalid_holding_windows_raise_before_requesting_prices(monkeypatch, holding_days):
+    ticker = MagicMock()
+    monkeypatch.setattr("tradingagents.agents.utils.settlement.yf.Ticker", ticker)
+    with pytest.raises(ValueError, match="holding_days must be a positive integer"):
+        compute_returns("NVDA", "2026-01-05", holding_days=holding_days)
+    ticker.assert_not_called()
+
+
+def test_provider_failure_leaves_a_valid_holding_window_pending(monkeypatch):
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement.yf.Ticker",
+        MagicMock(side_effect=RuntimeError("provider unavailable")),
+    )
+    assert compute_returns("NVDA", "2026-01-05") == (None, None, None, None)
+
+
 @pytest.mark.parametrize("exit_date", ["2026-03-02", "2026-06-02"])
 def test_a_long_closure_or_suspension_does_not_leave_a_completed_window_pending(
     monkeypatch, exit_date
@@ -93,11 +110,14 @@ def test_a_long_closure_or_suspension_does_not_leave_a_completed_window_pending(
     monkeypatch.setattr(
         "tradingagents.agents.utils.settlement.get_current_date", lambda: "2026-06-03"
     )
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement._utc_current_date", lambda: "2026-06-03"
+    )
     monkeypatch.setattr("tradingagents.agents.utils.settlement.yf.Ticker", lambda _: Ticker())
     raw, alpha, days, known = compute_returns("600519.SS", "2026-02-13", benchmark="000001.SS")
     assert raw == pytest.approx(0.05) and alpha == pytest.approx(0)
     assert days == 5 and known == exit_date
-    assert all(end == "2026-06-04" for _, end in queried)
+    assert all(end == "2026-06-03" for _, end in queried)
 
 
 def test_future_rows_do_not_complete_a_holding_window(monkeypatch):
@@ -109,3 +129,75 @@ def test_future_rows_do_not_complete_a_holding_window(monkeypatch):
         "tradingagents.agents.utils.settlement.get_current_date", lambda: "2026-01-07"
     )
     assert compute_returns("NVDA", "2026-01-05") == (None, None, None, None)
+
+
+def test_todays_exit_candle_waits_until_the_next_day(monkeypatch):
+    dates = pd.bdate_range("2026-01-05", periods=6)
+    mock_prices(
+        monkeypatch, dates, [100, 101, 102, 103, 104, 105], dates, [200, 201, 202, 203, 204, 210]
+    )
+    current = ["2026-01-12"]
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement.get_current_date", lambda: current[0]
+    )
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement._utc_current_date", lambda: current[0]
+    )
+    assert compute_returns("NVDA", "2026-01-05") == (None, None, None, None)
+
+    current[0] = "2026-01-13"
+    raw, alpha, days, known = compute_returns("NVDA", "2026-01-05")
+    assert raw == pytest.approx(0.05) and alpha == pytest.approx(0)
+    assert days == 5 and known == "2026-01-12"
+
+
+def test_a_live_benchmark_candle_does_not_prove_it_has_traded_through_exit(monkeypatch):
+    stock_dates = pd.bdate_range("2026-01-05", periods=6)
+    mock_prices(
+        monkeypatch,
+        stock_dates,
+        [100, 101, 102, 103, 104, 105],
+        ["2026-01-05", "2026-01-13"],
+        [200, 210],
+    )
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement.get_current_date", lambda: "2026-01-13"
+    )
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement._utc_current_date", lambda: "2026-01-13"
+    )
+    assert compute_returns("NVDA", "2026-01-05") == (None, None, None, None)
+
+
+@pytest.mark.parametrize(
+    ("stock_timezone", "benchmark_timezone"),
+    [
+        ("America/New_York", "America/New_York"),
+        ("UTC", "America/New_York"),
+        ("Asia/Shanghai", "America/New_York"),
+    ],
+)
+def test_local_midnight_uses_a_conservative_cutoff_across_market_timezones(
+    monkeypatch, stock_timezone, benchmark_timezone
+):
+    stock_dates = pd.bdate_range("2026-01-05", periods=6, tz=stock_timezone)
+    benchmark_dates = pd.bdate_range("2026-01-05", periods=6, tz=benchmark_timezone)
+    mock_prices(
+        monkeypatch,
+        stock_dates,
+        [100, 101, 102, 103, 104, 105],
+        benchmark_dates,
+        [200, 201, 202, 203, 204, 210],
+    )
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement.get_current_date", lambda: "2026-01-13"
+    )
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement._utc_current_date", lambda: "2026-01-12"
+    )
+    assert compute_returns("NVDA", "2026-01-05") == (None, None, None, None)
+
+    monkeypatch.setattr(
+        "tradingagents.agents.utils.settlement._utc_current_date", lambda: "2026-01-13"
+    )
+    assert compute_returns("NVDA", "2026-01-05")[3] == "2026-01-12"

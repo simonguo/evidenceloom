@@ -71,6 +71,8 @@ uv run tradingagents
 
 Selected analysts run concurrently up to `TRADINGAGENTS_ANALYST_CONCURRENCY_LIMIT` (default 1); the desktop uses its concurrency setting. `TRADINGAGENTS_MAX_TOOL_ROUNDS` bounds each analyst's tool rounds (default 20), after which it is asked to finish its report. Optional `TRADINGAGENTS_MAX_TOKENS` and `TRADINGAGENTS_LLM_MAX_RETRIES` bound model output and SDK retries. Set `TRADINGAGENTS_CHECKPOINT_ENABLED=true` or pass `--checkpoint` to resume compatible CLI runs; changed run settings start a fresh checkpoint. See [.env.example](.env.example) for provider-specific thinking controls and the holding period used to settle memory entries.
 
+`TRADINGAGENTS_HOLDING_PERIOD_DAYS` must be a positive integer (default 5). Settlement uses completed daily closes and waits until the exit date has passed in both local time and UTC, so a live candle cannot permanently settle a memory entry. This can delay settlement until the following day.
+
 The Portfolio Manager's explicit rating is authoritative. A decision with no readable rating displays **REVIEW** and can be filtered separately. Historical tools enforce the run's instrument and cutoff date; financial records without a known publication date are withheld for historical runs. Missing historical data remains a limitation rather than a reconstructed filing vintage.
 
 Run the Docker CLI environment:

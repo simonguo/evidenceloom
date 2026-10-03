@@ -67,6 +67,8 @@ uv run tradingagents
 
 选中的分析员按照 `TRADINGAGENTS_ANALYST_CONCURRENCY_LIMIT` 并发执行（默认 1）；桌面模式使用界面的并发设置。`TRADINGAGENTS_MAX_TOOL_ROUNDS` 限制每位分析员的工具轮数（默认 20），达到上限后要求其完成报告。可用 `TRADINGAGENTS_MAX_TOKENS` 和 `TRADINGAGENTS_LLM_MAX_RETRIES` 限制模型输出与 SDK 重试次数。设置 `TRADINGAGENTS_CHECKPOINT_ENABLED=true` 或传入 `--checkpoint` 可恢复兼容的 CLI 任务；运行设置改变后会重新开始。各 Provider 的思考设置和记忆结算持有期见 [.env.example](.env.example)。
 
+`TRADINGAGENTS_HOLDING_PERIOD_DAYS` 必须是正整数（默认 5）。结算只使用完整日线收盘价，并等待退出日期在本地时间和 UTC 中都已过去，避免盘中价格永久结算记忆条目，因此可能延至次日结算。
+
 最终结果以组合经理的明确评级为准。无法读取评级的决策显示 **待复核（REVIEW）**，支持单独筛选。历史工具遵守任务标的和截止日期；无法确认公开日期的财务记录不会用于历史任务。系统不会将这些缺失数据当作完整的历史财报快照。
 
 使用 Docker 运行 CLI 环境：

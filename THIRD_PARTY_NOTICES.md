@@ -125,39 +125,39 @@ uv run python scripts/generate_third_party_notices.py
 | `@csstools/css-parser-algorithms` | `4.0.0` | MIT | — |
 | `@csstools/css-syntax-patches-for-csstree` | `1.1.6` | MIT-0 | — |
 | `@csstools/css-tokenizer` | `4.0.0` | MIT | — |
-| `@dicebear/adventurer` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/adventurer-neutral` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/avataaars` | `9.4.2` | See LICENSE file | — |
-| `@dicebear/avataaars-neutral` | `9.4.2` | See LICENSE file | — |
-| `@dicebear/big-ears` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/big-ears-neutral` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/big-smile` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/bottts` | `9.4.2` | See LICENSE file | — |
-| `@dicebear/bottts-neutral` | `9.4.2` | See LICENSE file | — |
-| `@dicebear/collection` | `9.4.2` | MIT | — |
-| `@dicebear/core` | `9.4.2` | MIT | — |
-| `@dicebear/croodles` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/croodles-neutral` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/dylan` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/fun-emoji` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/glass` | `9.4.2` | MIT | — |
-| `@dicebear/icons` | `9.4.2` | MIT | — |
-| `@dicebear/identicon` | `9.4.2` | MIT | — |
-| `@dicebear/initials` | `9.4.2` | MIT | — |
-| `@dicebear/lorelei` | `9.4.2` | MIT | — |
-| `@dicebear/lorelei-neutral` | `9.4.2` | MIT | — |
-| `@dicebear/micah` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/miniavs` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/notionists` | `9.4.2` | MIT | — |
-| `@dicebear/notionists-neutral` | `9.4.2` | MIT | — |
-| `@dicebear/open-peeps` | `9.4.2` | MIT | — |
-| `@dicebear/personas` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
-| `@dicebear/pixel-art` | `9.4.2` | MIT | — |
-| `@dicebear/pixel-art-neutral` | `9.4.2` | MIT | — |
-| `@dicebear/rings` | `9.4.2` | MIT | — |
-| `@dicebear/shapes` | `9.4.2` | MIT | — |
-| `@dicebear/thumbs` | `9.4.2` | MIT | — |
-| `@dicebear/toon-head` | `9.4.2` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/adventurer` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/adventurer-neutral` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/avataaars` | `9.4.3` | See LICENSE file | — |
+| `@dicebear/avataaars-neutral` | `9.4.3` | See LICENSE file | — |
+| `@dicebear/big-ears` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/big-ears-neutral` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/big-smile` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/bottts` | `9.4.3` | See LICENSE file | — |
+| `@dicebear/bottts-neutral` | `9.4.3` | See LICENSE file | — |
+| `@dicebear/collection` | `9.4.3` | MIT | — |
+| `@dicebear/core` | `9.4.3` | MIT | — |
+| `@dicebear/croodles` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/croodles-neutral` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/dylan` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/fun-emoji` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/glass` | `9.4.3` | MIT | — |
+| `@dicebear/icons` | `9.4.3` | MIT | — |
+| `@dicebear/identicon` | `9.4.3` | MIT | — |
+| `@dicebear/initials` | `9.4.3` | MIT | — |
+| `@dicebear/lorelei` | `9.4.3` | MIT | — |
+| `@dicebear/lorelei-neutral` | `9.4.3` | MIT | — |
+| `@dicebear/micah` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/miniavs` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/notionists` | `9.4.3` | MIT | — |
+| `@dicebear/notionists-neutral` | `9.4.3` | MIT | — |
+| `@dicebear/open-peeps` | `9.4.3` | MIT | — |
+| `@dicebear/personas` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
+| `@dicebear/pixel-art` | `9.4.3` | MIT | — |
+| `@dicebear/pixel-art-neutral` | `9.4.3` | MIT | — |
+| `@dicebear/rings` | `9.4.3` | MIT | — |
+| `@dicebear/shapes` | `9.4.3` | MIT | — |
+| `@dicebear/thumbs` | `9.4.3` | MIT | — |
+| `@dicebear/toon-head` | `9.4.3` | (MIT AND CC-BY-4.0) | — |
 | `@emnapi/core` | `1.10.0` | MIT | — |
 | `@emnapi/core` | `1.11.1` | MIT | — |
 | `@emnapi/core` | `1.11.3` | MIT | — |
@@ -183,47 +183,47 @@ uv run python scripts/generate_third_party_notices.py
 | `@humanwhocodes/module-importer` | `1.0.1` | Apache-2.0 | — |
 | `@humanwhocodes/retry` | `0.4.3` | Apache-2.0 | — |
 | `@img/colour` | `1.1.0` | MIT | — |
-| `@img/sharp-darwin-arm64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-darwin-x64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-freebsd-wasm32` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-libvips-darwin-arm64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-darwin-x64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linux-arm` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linux-arm64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linux-ppc64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linux-riscv64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linux-s390x` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linux-x64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linuxmusl-arm64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-libvips-linuxmusl-x64` | `1.3.2` | LGPL-3.0-or-later | — |
-| `@img/sharp-linux-arm` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-linux-arm64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-linux-ppc64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-linux-riscv64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-linux-s390x` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-linux-x64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-linuxmusl-arm64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-linuxmusl-x64` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-wasm32` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later AND MIT | — |
-| `@img/sharp-webcontainers-wasm32` | `0.35.3` | Apache-2.0 | — |
-| `@img/sharp-win32-arm64` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later | — |
-| `@img/sharp-win32-ia32` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later | — |
-| `@img/sharp-win32-x64` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later | — |
+| `@img/sharp-darwin-arm64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-darwin-x64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-freebsd-wasm32` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-libvips-darwin-arm64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-darwin-x64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linux-arm` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linux-arm64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linux-ppc64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linux-riscv64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linux-s390x` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linux-x64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linuxmusl-arm64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-libvips-linuxmusl-x64` | `1.3.4` | LGPL-3.0-or-later | — |
+| `@img/sharp-linux-arm` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-linux-arm64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-linux-ppc64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-linux-riscv64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-linux-s390x` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-linux-x64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-linuxmusl-arm64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-linuxmusl-x64` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-wasm32` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later AND MIT | — |
+| `@img/sharp-webcontainers-wasm32` | `0.35.5` | Apache-2.0 | — |
+| `@img/sharp-win32-arm64` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | — |
+| `@img/sharp-win32-ia32` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | — |
+| `@img/sharp-win32-x64` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | — |
 | `@jridgewell/gen-mapping` | `0.3.13` | MIT | — |
 | `@jridgewell/resolve-uri` | `3.1.2` | MIT | — |
 | `@jridgewell/sourcemap-codec` | `1.5.5` | MIT | — |
 | `@jridgewell/trace-mapping` | `0.3.31` | MIT | — |
 | `@napi-rs/wasm-runtime` | `1.1.6` | MIT | — |
-| `@next/env` | `15.5.21` | MIT | — |
-| `@next/eslint-plugin-next` | `15.5.21` | MIT | — |
-| `@next/swc-darwin-arm64` | `15.5.21` | MIT | — |
-| `@next/swc-darwin-x64` | `15.5.21` | MIT | — |
-| `@next/swc-linux-arm64-gnu` | `15.5.21` | MIT | — |
-| `@next/swc-linux-arm64-musl` | `15.5.21` | MIT | — |
-| `@next/swc-linux-x64-gnu` | `15.5.21` | MIT | — |
-| `@next/swc-linux-x64-musl` | `15.5.21` | MIT | — |
-| `@next/swc-win32-arm64-msvc` | `15.5.21` | MIT | — |
-| `@next/swc-win32-x64-msvc` | `15.5.21` | MIT | — |
+| `@next/env` | `15.5.27` | MIT | — |
+| `@next/eslint-plugin-next` | `15.5.27` | MIT | — |
+| `@next/swc-darwin-arm64` | `15.5.27` | MIT | — |
+| `@next/swc-darwin-x64` | `15.5.27` | MIT | — |
+| `@next/swc-linux-arm64-gnu` | `15.5.27` | MIT | — |
+| `@next/swc-linux-arm64-musl` | `15.5.27` | MIT | — |
+| `@next/swc-linux-x64-gnu` | `15.5.27` | MIT | — |
+| `@next/swc-linux-x64-musl` | `15.5.27` | MIT | — |
+| `@next/swc-win32-arm64-msvc` | `15.5.27` | MIT | — |
+| `@next/swc-win32-x64-msvc` | `15.5.27` | MIT | — |
 | `@nodelib/fs.scandir` | `2.1.5` | MIT | — |
 | `@nodelib/fs.stat` | `2.0.5` | MIT | — |
 | `@nodelib/fs.walk` | `1.2.8` | MIT | — |
@@ -416,7 +416,7 @@ uv run python scripts/generate_third_party_notices.py
 | `escape-string-regexp` | `4.0.0` | MIT | — |
 | `escape-string-regexp` | `5.0.0` | MIT | — |
 | `eslint` | `9.39.4` | MIT | — |
-| `eslint-config-next` | `15.5.21` | MIT | — |
+| `eslint-config-next` | `15.5.27` | MIT | — |
 | `eslint-import-resolver-node` | `0.3.10` | MIT | — |
 | `eslint-import-resolver-typescript` | `3.10.1` | ISC | — |
 | `eslint-module-utils` | `2.13.0` | MIT | — |
@@ -608,10 +608,10 @@ uv run python scripts/generate_third_party_notices.py
 | `minimist` | `1.2.8` | MIT | — |
 | `ms` | `2.1.3` | MIT | — |
 | `mz` | `2.7.0` | MIT | — |
-| `nanoid` | `3.3.16` | MIT | — |
+| `nanoid` | `3.3.19` | MIT | — |
 | `napi-postinstall` | `0.3.4` | MIT | — |
 | `natural-compare` | `1.4.0` | MIT | — |
-| `next` | `15.5.21` | MIT | — |
+| `next` | `15.5.27` | MIT | — |
 | `node-exports-info` | `1.6.0` | MIT | — |
 | `node-releases` | `2.0.48` | MIT | — |
 | `normalize-path` | `3.0.0` | MIT | — |
@@ -686,7 +686,7 @@ uv run python scripts/generate_third_party_notices.py
 | `set-function-length` | `1.2.2` | MIT | — |
 | `set-function-name` | `2.0.2` | MIT | — |
 | `set-proto` | `1.0.0` | MIT | — |
-| `sharp` | `0.35.3` | Apache-2.0 | — |
+| `sharp` | `0.35.5` | Apache-2.0 | — |
 | `shebang-command` | `2.0.0` | MIT | — |
 | `shebang-regex` | `3.0.0` | MIT | — |
 | `side-channel` | `1.1.1` | MIT | — |

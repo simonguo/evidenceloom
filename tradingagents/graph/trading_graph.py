@@ -15,7 +15,7 @@ import tradingagents
 from langgraph.prebuilt import ToolNode
 
 from tradingagents.llm_clients import create_llm_client
-from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.dataflows.config import run_config, run_config_context, set_config
@@ -88,6 +88,7 @@ class TradingAgentsGraph:
                     self.config[key].update(value)
                 else:
                     self.config[key] = value
+        validate_holding_period_days(self.config.get("holding_period_days", 5))
         self.selected_analysts = tuple(dict.fromkeys(selected_analysts))
         self.callbacks = callbacks or []
 

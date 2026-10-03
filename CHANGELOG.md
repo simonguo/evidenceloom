@@ -22,6 +22,8 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Register market verification tools, bound analyst tool rounds, and stream under each run's own vendor configuration.
 - Resume compatible CLI and desktop checkpoints without duplicate work, close SQLite savers after failures, and start fresh when graph settings change.
 - Serialize memory writes, prevent duplicate decisions, exclude lessons learned after the analysis date, and settle only complete holding windows with matching benchmark endpoints.
+- Reject invalid holding periods before analysis and exclude live daily candles from settlement across local/UTC midnight.
+- Update Next.js, sharp, DiceBear, and nanoid to patched versions; classify the Tailwind typography plugin as a build-time dependency for production auditing.
 - Ground Trader decisions in the market report, preserve valid decisions when optional prices are unreadable, and avoid invented debate opponents or forced verdicts under ambiguity.
 - Apply explicit retry budgets once and avoid native OpenAI endpoint assumptions for custom compatible providers.
 

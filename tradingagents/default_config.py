@@ -43,6 +43,13 @@ def _coerce(value: str, reference):
     return value
 
 
+def validate_holding_period_days(value, *, setting_name="holding_period_days") -> int:
+    """Reject invalid holding windows before any analysis or market-data request."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{setting_name} must be a positive integer")
+    return value
+
+
 def _apply_env_overrides(config: dict) -> dict:
     """Apply TRADINGAGENTS_* env vars to the config dict in-place."""
     for env_var, key in _ENV_OVERRIDES.items():
@@ -50,6 +57,8 @@ def _apply_env_overrides(config: dict) -> dict:
         if raw is None or raw == "":
             continue
         config[key] = _coerce(raw, config.get(key))
+    if "holding_period_days" in config:
+        validate_holding_period_days(config["holding_period_days"])
     return config
 
 

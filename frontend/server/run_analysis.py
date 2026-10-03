@@ -17,7 +17,7 @@ from cli.main import (
 )
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import detect_asset_type, normalize_ticker_symbol
-from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
     build_analyst_execution_plan,
@@ -76,10 +76,12 @@ def build_config(payload: Dict[str, Any]) -> Dict[str, Any]:
         ("maxTokens", "max_tokens"),
         ("llmMaxRetries", "llm_max_retries"),
         ("maxToolRounds", "max_tool_rounds"),
-        ("holdingPeriodDays", "holding_period_days"),
     ):
         if payload.get(payload_key) is not None:
             config[config_key] = payload[payload_key]
+    config["holding_period_days"] = validate_holding_period_days(
+        payload.get("holdingPeriodDays", config.get("holding_period_days", 5))
+    )
 
     provider = payload.get("llmProvider")
     if isinstance(provider, str) and provider.strip():

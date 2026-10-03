@@ -1,6 +1,6 @@
 """Measure complete holding windows against a benchmark over the same dates."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from typing import Optional, Tuple
 
@@ -9,8 +9,13 @@ import yfinance as yf
 
 from tradingagents.dataflows.symbol_utils import normalize_symbol
 from tradingagents.dataflows.utils import get_current_date
+from tradingagents.default_config import validate_holding_period_days
 
 logger = logging.getLogger(__name__)
+
+
+def _utc_current_date() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def _closes_by_day(frame: pd.DataFrame) -> pd.Series:
@@ -34,16 +39,18 @@ def compute_returns(
     The instrument's own sessions define the window. Benchmark returns use its
     last close on or before those same endpoints, and wait until it has traded
     through the exit. This also aligns a crypto weekend with an equity calendar.
+    Daily candles on the earlier local/UTC current date or later are excluded
+    because their close may still be live, including across local midnight.
+    Invalid holding windows raise ValueError; unavailable price data stays pending.
     """
+    validate_holding_period_days(holding_days, setting_name="holding_days")
     try:
-        if holding_days < 1:
-            raise ValueError("holding_days must be positive")
         start = datetime.strptime(trade_date, "%Y-%m-%d")
         # Trading sessions cannot be inferred from a fixed calendar-day buffer:
         # long exchange holidays and suspensions would leave a completed window
-        # permanently outside that buffer. Ask through today, never tomorrow's data.
-        today = pd.Timestamp(get_current_date())
-        end = (today + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+        # permanently outside that buffer. Ask for all completed days before today.
+        today = min(pd.Timestamp(get_current_date()), pd.Timestamp(_utc_current_date()))
+        end = today.strftime("%Y-%m-%d")
         stock = _closes_by_day(
             yf.Ticker(normalize_symbol(ticker)).history(start=trade_date, end=end)
         )
@@ -51,8 +58,8 @@ def compute_returns(
         bench = _closes_by_day(
             yf.Ticker(normalize_symbol(benchmark)).history(start=bench_start, end=end)
         )
-        stock = stock[(stock.index >= pd.Timestamp(start)) & (stock.index <= today)]
-        bench = bench[bench.index <= today]
+        stock = stock[(stock.index >= pd.Timestamp(start)) & (stock.index < today)]
+        bench = bench[bench.index < today]
         if len(stock) <= holding_days:
             return None, None, None, None
         entry, exit_date = stock.index[0], stock.index[holding_days]
