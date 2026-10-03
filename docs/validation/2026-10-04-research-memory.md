@@ -1,8 +1,8 @@
 # Immutable research memory validation
 
-This record covers the candidate implementation of [MemoryBundle v1](../MEMORY_BUNDLE.md). The [machine-readable record](2026-10-04-research-memory.json) contains final research-source and fictional fixture hashes, completed checks, packaged observations and actual browser/export evidence. Implementation source is frozen at commit `9502aa4`, based on `1220036aae02fc9dc52e19e6edcf114a482ed65c`; these validation documents follow in a separate commit. The JSON records the full source revision. The packaged research manifest matches the frozen source: 85 readable Python files, code SHA `ebad8790de86569f2a7c26b32a308677bae8fdcdb15aac7c7e52fbbce1c0b62c`, and prompt SHA `34a914c246430d0532bb0af699fbe765e8cd0bc8944bc7ab3177679e0cad7226`. These manifests cover `tradingagents/**/*.py` and `tradingagents/agents/**/*.py`; CLI, frontend and Rust files have separately recorded component hashes.
+This record covers the candidate implementation of [MemoryBundle v1](../MEMORY_BUNDLE.md). The [machine-readable record](2026-10-04-research-memory.json) contains final research-source and fictional fixture hashes, completed checks, packaged observations and actual browser/export evidence. Implementation source is frozen at commit `6ba2de8`, based on `1220036aae02fc9dc52e19e6edcf114a482ed65c`; these validation documents follow in a separate commit. The JSON records the full source revision. The packaged research manifest matches the frozen source: 85 readable Python files, code SHA `ebad8790de86569f2a7c26b32a308677bae8fdcdb15aac7c7e52fbbce1c0b62c`, and prompt SHA `34a914c246430d0532bb0af699fbe765e8cd0bc8944bc7ab3177679e0cad7226`. These manifests cover `tradingagents/**/*.py` and `tradingagents/agents/**/*.py`; CLI, frontend and Rust files have separately recorded component hashes.
 
-Local packaged, browser and static-build acceptance passed for this fictional implementation slice. Final native memory CI has not started. The [professional research quality objective](../PROFESSIONAL_QUALITY.md) remains open.
+Local packaged, browser and static-build acceptance passed for this fictional implementation slice. Final-source native memory CI passed on macOS arm64, macOS Intel and Windows x86_64; see [the completed run](https://github.com/simonguo/evidenceloom/actions/runs/37158827784). The [professional research quality objective](../PROFESSIONAL_QUALITY.md) remains open.
 
 ## Implemented source mechanisms
 
@@ -24,7 +24,7 @@ The read-only inventory uses the known `smoke_test` command with `memoryInventor
 
 | Check | Current result | Evidence scope |
 | --- | --- | --- |
-| Full Python suite | 933 passed; 75 subtests passed; 1 external integration case deselected; 8 known model warnings | Root-reported offline suite before the final narrow numeric guard |
+| Full Python suite | 937 passed on each of Python3.10–3.13; 1 external integration case deselected; 8 known model warnings | Final-source GitHub Actions CI37158827759 after both corrections |
 | Final Python memory core | 49 passed | After the final huge-integer finite-number parity guard |
 | Full frontend suite | 192 tests in 19 files passed | Frontend owner results relayed by root |
 | Frontend typecheck, ESLint, production and Tauri static builds | Passed | Source/build checks |
@@ -37,7 +37,7 @@ The read-only inventory uses the known `smoke_test` command with `memoryInventor
 | Final Ruff check and format check | Passed for 169 files | Root-reported final source checks |
 | Final diff check | Passed | Root-reported final working-tree check |
 
-The full Python run took 110.64 seconds and preceded the final narrow guard that rejects integer facts outside finite double representability while retaining original numeric payload strings. The final 49-case core suite passed after that correction; a complete final-head native CI run is still required. The portable full-suite command is `PYTHONPATH=. python -m pytest -q` in the repository's frozen Python environment. Root confirmed the complete console output; no full-suite log file was retained. Frontend commands were `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` and `npm run build:tauri` from `frontend`.
+The final-source Python suite passed on all four CI versions in 115.54–146.44 seconds. This includes the narrow numeric guard and configured-store fix: an explicit memory path no longer eagerly resolves a user home directory, which previously failed in restricted Windows profiles. The focused inventory suite passed21 cases and the native source subset passed100 cases locally. The portable full-suite command is `PYTHONPATH=. python -m pytest -q` in the repository's frozen Python environment. [Complete final-source CI logs](https://github.com/simonguo/evidenceloom/actions/runs/37158827759) retain the checks. Frontend commands were `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` and `npm run build:tauri` from `frontend`.
 
 The fictional [memory fixture](../../tests/fixtures/memory_bundle_v1.json) and [paired evidence fixture](../../tests/fixtures/memory_evidence_bundle_v1.json) retain a pending as-generated decision and a prior available/reflected decision with actual offline evaluator facts and calculations. They were generated from injected fictional timezone-aware daily DataFrames and local mock reflection. The prior outcome replays offline using its saved full-precision endpoints. No live market-provider request or paid model call was used for this slice; test counts do not measure factual research quality.
 
@@ -45,16 +45,16 @@ Meaningful cases cover frozen five-row/benchmark-A settings versus later twenty-
 
 ## Local packaged observations
 
-The isolated x86_64 macOS PyInstaller artifact ran through Rosetta on an arm64 Apple Silicon host. Its SHA is `4f8ef6663d2db1bf47c19369320d87b13d4e81f726ca9cff9e5ee1672c0ac0a6`, and its size is 53,827,456 bytes. It did not replace the root worktree's real sidecar. The observed source and packaged manifests matched the final research source hashes.
+The isolated x86_64 macOS PyInstaller artifact ran through Rosetta on an arm64 Apple Silicon host. Its SHA is `32addc46406abac0529c710d26ba8b20ff5a5c0bce1ba56a85bff80292132370`, and its size is 53,826,880 bytes. It did not replace the root worktree's real sidecar. The observed source and packaged manifests matched the final research source hashes.
 
 | Probe | Elapsed seconds | Result |
 | --- | ---: | --- |
-| Source manifest | 0.0716 | `evidence_ready`, 276 stdout bytes |
-| Packaged manifest | 22.0360 | Matching `evidence_ready`, 276 stdout bytes |
-| Source memory inventory | 0.3610 | `memory_inventory`, 14,225 stdout bytes |
-| Packaged memory inventory | 13.5811 | Exact full snapshots and precision, 14,225 stdout bytes |
+| Source manifest | 0.0746 | `evidence_ready`, 276 stdout bytes |
+| Packaged manifest | 21.5356 | Matching `evidence_ready`, 276 stdout bytes |
+| Source memory inventory | 0.2683 | `memory_inventory`, 14,225 stdout bytes |
+| Packaged memory inventory | 13.9551 | Exact full snapshots and precision, 14,225 stdout bytes |
 
-The inventory retained both requested saved snapshots and exact numeric payload strings. Reads changed neither authoritative storage nor frozen completion; the configured legacy Markdown file remained absent. The Rust application's explicit ignored packaged-memory test passed in a reported 13.97 seconds, and its separate full research-import test returned `runtime_ready` and passed in 58.48 seconds. Both normally ignored cases were deliberately executed against this actual artifact. These are single local process observations on one Rosetta host, with no controlled cache reset; they do not establish native platform latency, provider readiness or clean-install behavior.
+The inventory retained both requested saved snapshots and exact numeric payload strings. Reads changed neither authoritative storage nor frozen completion; the configured legacy Markdown file remained absent. The Rust application's explicit ignored packaged-memory test passed in a reported 22.01 seconds, and its separate full research-import test returned `runtime_ready` and passed in 60.96 seconds. Both normally ignored cases were deliberately executed against this actual artifact. These are single local process observations on one Rosetta host, with no controlled cache reset; they do not establish native platform latency, provider readiness or clean-install behavior.
 
 ## Actual browser and downloaded exports
 
@@ -74,6 +74,6 @@ These observations validate this fictional memory UI/export slice. They do not c
 
 ## Remaining acceptance and professional-quality limits
 
-The native CI matrix for this final candidate has not started; no actual macOS arm64, native Intel or Windows memory execution result is claimed here. Cross-compilation and a local Rosetta packaged probe do not substitute for that execution matrix. Static build success does not validate a signed Tauri installer.
+The native CI matrix passed for source revision `6ba2de8`, including source diagnostics, native sidecar builds and the deliberately executed packaged Rust probes on all three targets. These checks do not establish clean-install or signing acceptance. Static build success does not validate a signed Tauri installer.
 
 Broader work remains: independently verified provider compatibility and price metadata; market-specific intraday boundaries, filing availability and revision vintages; claim-level factual/numerical support; expert-labeled and out-of-sample research evaluation; cost/FX-aware performance assessment; target-analyst task completion and competitive comparison; accessibility; and clean-install, upgrade, migration, backup/restore and signing acceptance. Immutable records and valid calculations improve auditability but do not establish an industry-leading product or financial confidence.

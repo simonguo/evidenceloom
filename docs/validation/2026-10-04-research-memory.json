@@ -13,7 +13,7 @@
     "base_revision": "1220036aae02fc9dc52e19e6edcf114a482ed65c",
     "working_tree_candidate": false,
     "source_snapshot_status": "final_research_source_freeze_matches_packaged_manifest",
-    "source_snapshot_recorded_at": "2026-10-03T22:14:52.896228Z",
+    "source_snapshot_recorded_at": "2026-10-03T22:35:15.982305Z",
     "research_manifest": {
       "type": "evidence_ready",
       "schema_version": 1,
@@ -28,7 +28,7 @@
       "tradingagents/graph/research_memory.py": "4628e66cd9fe19d16d4d4c6a98e21719bdd4c63a19a722a3001b902696fde603",
       "tradingagents/graph/reflection.py": "fe052879002ec112b6f79dd50c1961b9dec9f98c18322efd1ef07575311b34c3",
       "tradingagents/agents/managers/portfolio_manager.py": "3ee1799d4731365914402c2e133c7fd277c0c3fb6f9af5a824fe02196f7a4c32",
-      "cli/memory_inventory.py": "13b888a9756099b492571f00a72e9071ea7a4d358a7e6307becca3d097109d29",
+      "cli/memory_inventory.py": "ced9d2cca9b986a986b65f63effd5d5e4d5e5af66aca1c334dc4889afa66a960",
       "cli/runner_diagnostics.py": "939f9f6c72b41b7540cd9ce9d7ea7d1caca809439d5b46405e3856c51fe0f197",
       "frontend/server/run_analysis.py": "d61405ee84a2792f77e27177b272109a33e0fe6066d01cfe36c7d8473a6df955",
       "frontend/src/app/api/memory/route.ts": "09c8404b102e01ed9614b71a371eeaf289a0892e57382981f03ee3d3ad5eeef4",
@@ -44,7 +44,7 @@
       "prompt_manifest": "tradingagents/agents/**/*.py",
       "separate_components": "Explicit relative paths in component_sha256; frontend, CLI and Rust are outside research manifest hashes."
     },
-    "source_revision": "9502aa431617dcc3e66c6616970ca2f379322e86",
+    "source_revision": "6ba2de87de97c9357dfef7b0354e8e9abf2ea896",
     "validation_document_commit": "separate_follow_up_commit"
   },
   "mechanisms": {
@@ -153,16 +153,21 @@
   },
   "checks": {
     "python_full_suite": {
-      "status": "passed_before_final_numeric_guard",
-      "provenance": "root_reported",
-      "passed": 933,
-      "subtests_passed": 75,
+      "status": "passed_final_source_ci",
+      "provenance": "GitHub_Actions_CI_37158827759",
+      "passed": 937,
       "deselected": 1,
       "known_model_warnings": 8,
-      "timing_note": "The full suite preceded the final narrow finite-f64 integer guard. The final core suite ran after it; native CI will run the final candidate.",
+      "timing_note": "Complete source revision 6ba2de87 passed on Python3.10,3.11,3.12,3.13 after the CLI home and numeric fixes.",
       "portable_command": "PYTHONPATH=. python -m pytest -q",
-      "reported_duration_seconds": 110.64,
-      "log_retention": "Complete console output confirmed by root; no persisted log file."
+      "reported_duration_seconds": 115.54,
+      "log_retention": "GitHub Actions run37158827759",
+      "matrix_durations_seconds": {
+        "3.10": 115.54,
+        "3.11": 139.56,
+        "3.12": 146.44,
+        "3.13": 115.87
+      }
     },
     "frontend_suite": {
       "status": "passed",
@@ -209,13 +214,13 @@
       "status": "passed",
       "provenance": "root_supplied_measurement_record",
       "schema_version": 1,
-      "observed_at": "2026-10-03T22:07:01.301166Z",
+      "observed_at": "2026-10-03T22:35:15.982305Z",
       "fixture_policy": "entirely_fictional_no_external_retrieval_or_model_calls",
       "host_cpu": "arm64",
       "python_cpu": "x86_64",
       "execution": "Rosetta_on_Apple_Silicon",
-      "artifact_sha256": "4f8ef6663d2db1bf47c19369320d87b13d4e81f726ca9cff9e5ee1672c0ac0a6",
-      "artifact_bytes": 53827456,
+      "artifact_sha256": "32addc46406abac0529c710d26ba8b20ff5a5c0bce1ba56a85bff80292132370",
+      "artifact_bytes": 53826880,
       "manifest": {
         "type": "evidence_ready",
         "schema_version": 1,
@@ -226,25 +231,25 @@
       "measurements": [
         {
           "probe": "source_manifest",
-          "elapsed_seconds": 0.07158124999841675,
+          "elapsed_seconds": 0.07459324999945238,
           "stdout_bytes": 276,
           "event_type": "evidence_ready"
         },
         {
           "probe": "packaged_manifest",
-          "elapsed_seconds": 22.03596991597442,
+          "elapsed_seconds": 21.535635582986288,
           "stdout_bytes": 276,
           "event_type": "evidence_ready"
         },
         {
           "probe": "source_memory_inventory",
-          "elapsed_seconds": 0.3609519590099808,
+          "elapsed_seconds": 0.2682519170048181,
           "stdout_bytes": 14225,
           "event_type": "memory_inventory"
         },
         {
           "probe": "packaged_memory_inventory",
-          "elapsed_seconds": 13.581076457980089,
+          "elapsed_seconds": 13.955132750008488,
           "stdout_bytes": 14225,
           "event_type": "memory_inventory"
         }
@@ -330,13 +335,15 @@
       ]
     },
     "native_memory_ci": {
-      "status": "not_started_for_final_candidate",
+      "status": "passed_final_source",
       "workflow": ".github/workflows/sidecar-diagnostics.yml",
       "targets": [
         "aarch64-apple-darwin",
         "x86_64-apple-darwin",
         "x86_64-pc-windows-msvc"
-      ]
+      ],
+      "source_revision": "6ba2de87de97c9357dfef7b0354e8e9abf2ea896",
+      "run_url": "https://github.com/simonguo/evidenceloom/actions/runs/37158827784"
     },
     "python_final_memory_core": {
       "status": "passed",
@@ -370,14 +377,14 @@
       "status": "passed",
       "passed": 1,
       "explicit_ignored_test": "research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory",
-      "reported_test_duration_seconds": 13.97,
+      "reported_test_duration_seconds": 22.01,
       "provenance": "root_reported_real_packaged_execution"
     },
     "rust_packaged_runtime_readiness": {
       "status": "passed",
       "passed": 1,
       "explicit_ignored_test": "runtime_probe::tests::packaged_artifact_verifies_actual_runtime",
-      "reported_test_duration_seconds": 58.48,
+      "reported_test_duration_seconds": 60.96,
       "event_type": "runtime_ready",
       "provenance": "root_reported_real_packaged_execution"
     },
@@ -401,6 +408,12 @@
       "status": "passed",
       "portable_command": "git diff --check",
       "provenance": "root_reported_final_check"
+    },
+    "configured_memory_without_user_home": {
+      "status": "passed",
+      "inventory_cases": 21,
+      "native_source_cases": 100,
+      "scope": "Explicit configured store avoids Path.home, including restricted Windows profiles; missing/saved stores and unavailable default home have regressions."
     }
   },
   "covered_offline_cases": [
@@ -421,7 +434,6 @@
     "Self_contained_export_roundtrip_and_invalid_attachment_rejection"
   ],
   "remaining_acceptance": [
-    "Terminal_native_memory_CI_results_on_macOS_arm64_Intel_and_Windows_x86_64",
     "Live_provider_compatibility_and_independently_verified_price_metadata",
     "Market_specific_intraday_boundaries_filing_availability_price_vintage_and_revision_history",
     "Claim_level_factual_and_numerical_support_checks_and_expert_labelled_research_evaluation",
