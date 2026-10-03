@@ -198,7 +198,11 @@ def test_a_full_run_reaches_a_logged_decision(tmp_path, monkeypatch, offline, st
         "ohlcv",
     }
     assert offline == tool_methods
-    assert [e["rating"] for e in graph.memory_log.load_entries()] == ["Overweight"]
+    memory = state["memory_bundle"]
+    assert graph._research_memory().store.load_bundle(memory["run_id"]) == memory
+    assert memory["decision_snapshot"]["decision"]["rating"] == "Overweight"
+    assert memory["evidence_bundle_sha256"] == state["evidence_bundle"]["bundle_sha256"]
+    assert graph.memory_log.load_entries() == []
 
 
 @pytest.mark.unit

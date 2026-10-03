@@ -9,6 +9,7 @@ import * as validation from "@/features/evidence/lib/validation";
 import { createFictionalDemoTask } from "../fixtures/fictional-demo";
 import { useReportExport } from "./useReportExport";
 import type { ExportFormat } from "../types";
+import { reviewFor } from "@/features/memory/fixtures/test-data";
 
 const { saveTextExport } = vi.hoisted(() => ({ saveTextExport: vi.fn() }));
 vi.mock("@/lib/runtime", () => ({ getRuntimeAdapter: () => ({ saveTextExport }) }));
@@ -68,6 +69,35 @@ describe("verified report export snapshot", () => {
     expect(container.textContent).toContain("Evidence bundle is invalid");
   });
 
+  it.each(["html", "md", "json"] as const)("blocks corrupted memory review before saving %s", async (format) => {
+    const task = createFictionalDemoTask("en", true);
+    const version = task.reportVersions[0];
+    const review = await reviewFor(version.memoryBundle!.decision_snapshot);
+    version.evaluationReviews = [review];
+    review.snapshot.artifacts[review.snapshot.reflection!.response_sha256].payload += " corrupted";
+    await act(async () => root.render(createElement(Session, { task })));
+    await act(async () => exportSelected(format));
+    expect(saveTextExport).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("hash_mismatch");
+  });
+
+  it.each(["html", "md", "json"] as const)("keeps exact frozen memory when original inputs mutate during %s verification", async (format) => {
+    const task = createFictionalDemoTask("en", true); const original = structuredClone(task.reportVersions[0].memoryBundle!);
+    const verify = validation.verifyEvidenceBundle;
+    vi.spyOn(validation, "verifyEvidenceBundle").mockImplementation(async (value, reports) => {
+      const verified = await verify(value, reports);
+      task.reportVersions[0].memoryBundle!.input_snapshot.context_artifact.payload = "CHANGED-MEMORY-INPUT";
+      task.reportVersions[0].reportSections.final_trade_decision = "CHANGED-DECISION";
+      return verified;
+    });
+    await act(async () => root.render(createElement(Session, { task })));
+    await act(async () => exportSelected(format));
+    expect(saveTextExport).toHaveBeenCalledOnce();
+    const content = saveTextExport.mock.calls[0][0].content;
+    expect(content).not.toMatch(/CHANGED-/); expect(content).toContain(original.bundle_sha256);
+    if (format === "json") expect(JSON.parse(content).memory_bundle).toEqual(original);
+  });
+
   it.each(["html", "md", "json"] as const)("exports the independently verified copy when inputs change during %s verification", async (format) => {
     const task = taskWithEvidence();
     const originalId = task.id;
@@ -91,7 +121,10 @@ describe("verified report export snapshot", () => {
     expect(request.suggestedName).toContain(fixture.instrument);
     expect(request.content).not.toMatch(/CHANGED-/);
     if (format === "json") {
-      expect(JSON.parse(request.content)).toEqual(fixture);
+      const exported = JSON.parse(request.content);
+      expect(exported).toMatchObject({ schema_version: 1, kind: "research_report", evidence_bundle: fixture, memory_bundle: null, evaluation_reviews: [] });
+      expect(exported.report.task_id).toBe(originalId);
+      expect(exported.report.reportSections.market_report).toBe("Original frozen report.");
     } else {
       expect(request.content).toContain(originalId);
       expect(request.content).toContain("Original frozen report.");

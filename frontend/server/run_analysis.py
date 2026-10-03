@@ -45,11 +45,17 @@ try:
     )
     from tradingagents.graph.trading_graph import TradingAgentsGraph
     from tradingagents.agents.utils.rating import run_rating
+    from tradingagents.memory.schema import validate_bundle as validate_memory_bundle
     from tradingagents.llm_clients.factory import build_llm_kwargs
     from tradingagents.llm_clients.base_client import normalize_utf8_text
     from cli.research_manifest import research_manifest
     from cli.runner_protocol import emit
-    from cli.runner_diagnostics import verify_runtime_requested
+    from cli.runner_diagnostics import (
+        memory_inventory_requested,
+        read_memory_inventory,
+        read_request,
+        verify_runtime_requested,
+    )
 except Exception as _runtime_import_error:  # noqa: BLE001 - import failures are protocol events
     if (
         _BOOTSTRAP_PAYLOAD is None
@@ -384,6 +390,8 @@ def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
         compact["output_quality"] = sanitize_output_quality(final_state["output_quality"])
     if final_state.get("evidence_bundle"):
         compact["evidence_bundle"] = validate_evidence_bundle(final_state["evidence_bundle"])
+    if final_state.get("memory_bundle"):
+        compact["memory_bundle"] = validate_memory_bundle(final_state["memory_bundle"])
     return compact
 
 
@@ -408,16 +416,6 @@ def run_post_completion_tasks(
         graph._log_state(analysis_date, final_state)
     except Exception as exc:  # noqa: BLE001 - result persistence must not change run outcome
         record_warning("failed to write state log", exc)
-
-    try:
-        graph.memory_log.store_decision(
-            ticker=ticker,
-            trade_date=analysis_date,
-            final_trade_decision=str(final_state.get("final_trade_decision") or ""),
-            rating=run_rating(final_state),
-        )
-    except Exception as exc:  # noqa: BLE001 - memory persistence is best-effort after completion
-        record_warning("failed to store memory decision", exc)
 
     if config.get("checkpoint_enabled"):
         try:
@@ -586,6 +584,12 @@ def run(payload: Dict[str, Any]) -> None:
                 final_state["evidence_bundle"] = audit_citations(
                     final_state["evidence_bundle"], report_snapshot(buffer)
                 )
+            # Persist the frozen decision/contract before publishing completion.
+            # Optional state-log/checkpoint cleanup remains in post-completion work.
+            graph.record_decision(ticker, analysis_date, final_state, persist_state=False)
+            buffer.update_report_section(
+                "final_trade_decision", final_state["final_trade_decision"]
+            )
 
         emit(
             {
@@ -603,6 +607,11 @@ def run(payload: Dict[str, Any]) -> None:
                     if final_state.get("evidence_bundle")
                     else {}
                 ),
+                **(
+                    {"memoryBundle": validate_memory_bundle(final_state["memory_bundle"])}
+                    if final_state.get("memory_bundle")
+                    else {}
+                ),
                 "finalState": compact_final_state(final_state),
             }
         )
@@ -615,12 +624,11 @@ def run(payload: Dict[str, Any]) -> None:
 
 def main() -> int:
     try:
-        payload = (
-            _BOOTSTRAP_PAYLOAD
-            if _BOOTSTRAP_PAYLOAD is not None
-            else json.loads(sys.stdin.read() or "{}")
-        )
+        payload = _BOOTSTRAP_PAYLOAD if _BOOTSTRAP_PAYLOAD is not None else read_request()
         if payload.get("__command") == "smoke_test":
+            if memory_inventory_requested(payload):
+                emit(read_memory_inventory(payload))
+                return 0
             # All normal research imports succeeded; no clients or sources ran.
             emit({"type": "runtime_ready" if verify_runtime_requested(payload) else "ready"})
             return 0
@@ -658,6 +666,8 @@ def main() -> int:
                 flush=True,
             )
             return 0
+        if payload.get("__command") is not None:
+            raise ValueError("Unknown runner command")
         run(payload)
         return 0
     except Exception as exc:  # noqa: BLE001 - bridge must surface any backend failure to UI

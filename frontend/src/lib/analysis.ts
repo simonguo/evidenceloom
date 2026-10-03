@@ -119,6 +119,7 @@ export function createEmptyTask(draft: NewTaskDraft, id = crypto.randomUUID(), c
     agentStatuses: {},
     reportSections: {},
     reportVersions: [],
+    evaluationReviews: [],
     logs: [],
     error: "",
   };

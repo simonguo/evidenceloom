@@ -67,6 +67,8 @@ class AgentState(MessagesState):
     final_rating: Annotated[str, "Portfolio Manager rating, or REVIEW when unavailable"]
     run_settings: Annotated[dict, "Safe configuration manifest for this run"]
     evidence_bundle: Annotated[dict, merge_evidence_bundles]
+    research_memory: Annotated[dict, "Frozen memory input, evaluation plan and research start"]
+    memory_bundle: Annotated[dict, "Immutable completion memory and outcome contract"]
     output_quality: Annotated[dict, merge_output_quality]
     past_context: Annotated[
         str,

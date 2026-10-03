@@ -30,6 +30,9 @@ import {
 import { normalizeSettingsForSave } from "@/features/settings/lib/normalize-settings";
 import { mergeEventOutputQuality, normalizeTaskOutputQuality } from "@/features/output-quality/lib/quality";
 import { evidenceFromEvent, evidenceMatchesSnapshot, normalizeTaskEvidence, verifyTaskEvidence } from "@/features/evidence/lib/validation";
+import { memoryFromEvent, normalizeTaskMemory, verifyTaskMemory, verifyMemoryBundle, verifyReviewAttachment } from "@/features/memory/lib/validation";
+import { appendEvaluationReviews } from "@/features/memory/lib/reviews";
+import type { ReviewAttachment } from "@/features/memory/types";
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, RunContext, TaskStatus } from "@/lib/types";
 import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
 import { createTranslator } from "@/lib/i18n";
@@ -64,6 +67,7 @@ type TaskCenterContextValue = {
   getTask: (taskId: string) => AnalysisTask | undefined;
   runtimeInfo: RuntimeInfo;
   checkRuntime: (settingsOverride?: GlobalSettings) => Promise<RuntimeCheck>;
+  saveEvaluationReviews: (taskId: string, versionId: string, reviews: ReviewAttachment[]) => Promise<void>;
 };
 
 const TaskCenterContext = createContext<TaskCenterContextValue | null>(null);
@@ -90,7 +94,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       try {
         setSettings(loadGlobalSettings());
         const loaded = loadTasks().map(normalizeTaskRuntimeState);
-        void Promise.all(loaded.map(verifyTaskEvidence)).then(setTasks).catch(() => setNotice("Saved research evidence could not be verified.")).finally(() => setHydrated(true));
+        void Promise.all(loaded.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))).then(setTasks).catch(() => setNotice("Saved research evidence and memory could not be verified.")).finally(() => setHydrated(true));
       } catch {
         setNotice("Local storage is unavailable. Reports have not been saved or loaded.");
         setHydrated(true);
@@ -102,7 +106,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     void adapter.loadDesktopData(legacy)
       .then(async (snapshot) => {
         setSettings(normalizeGlobalSettings(snapshot.settings ?? {}));
-        const normalizedTasks = await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(verifyTaskEvidence));
+        const normalizedTasks = await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task))));
         setTasks(normalizedTasks);
         normalizedTasks.forEach((task, index) => {
           const stored = snapshot.tasks[index];
@@ -166,7 +170,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     persistenceQueueRef.current = persistenceQueueRef.current.catch(() => undefined)
       .then(async () => {
         const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-        await adapter.saveDesktopTask(await verifyTaskEvidence(task));
+        await adapter.saveDesktopTask(await verifyTaskMemory(await verifyTaskEvidence(task)));
       })
       .catch(() => setNotice("Failed to save report and evidence. The displayed report may not be available after restart."));
   }, []);
@@ -188,14 +192,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
     const decision = resolveTaskDecision(task.decision, task.reportSections?.final_trade_decision);
-    const normalizedTask = normalizeTaskEvidence(normalizeTaskOutputQuality({
+    const normalizedTask = normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality({
       ...task,
       origin: task.origin ?? "analysis",
       reportVersions: task.reportVersions ?? [],
       queuedAt: task.queuedAt ?? "",
       queueOrder: Number.isFinite(task.queueOrder) ? task.queueOrder : null,
       decision,
-    }));
+    })));
     if (normalizedTask.status === "running") {
       return ensureLegacyReportVersion({
         ...normalizedTask,
@@ -217,6 +221,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     eventQueueRef.current = eventQueueRef.current.catch(() => undefined).then(async () => {
       const empty = { evidenceBundle: undefined, evidenceValidation: undefined, reportSections: {} } as AnalysisTask;
       const evidence = await evidenceFromEvent(empty, event);
+      const memory = await memoryFromEvent(event, evidence.evidenceBundle);
       updateTask(taskId, (task) => {
         const logs = event.message || event.error
           ? prependLog(task.logs, event.messageType ?? event.type, event.error ?? event.message ?? "", event.timestamp, event.agent)
@@ -228,7 +233,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           : event.type === "error"
             ? "error"
             : task.status;
-        const nextTask: AnalysisTask = evidenceMatchesSnapshot({
+        const nextTask: AnalysisTask = normalizeTaskMemory(evidenceMatchesSnapshot({
           ...task,
           status,
           updatedAt: new Date().toISOString(),
@@ -238,9 +243,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           reportSections,
           outputQuality: mergeEventOutputQuality(task.outputQuality, event),
           ...((event.evidenceBundle !== undefined || event.finalState?.evidence_bundle !== undefined) ? evidence : {}),
+          ...(memory ?? {}),
           logs,
           error: event.error ?? (status === "running" ? "" : task.error),
-        });
+        }));
         return runContext
           ? appendCompletedReportVersion(nextTask, event, runContext)
           : nextTask;
@@ -418,6 +424,27 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     return adapter.checkRuntime(settingsOverride ?? settings);
   }
 
+  async function saveEvaluationReviews(taskId: string, versionId: string, reviews: ReviewAttachment[]) {
+    const version = tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
+    if (!version?.memoryBundle || version.memoryValidation) throw new Error("This saved version has no verified memory attachment.");
+    const frozen = JSON.parse(JSON.stringify(version)) as typeof version;
+    const completion = await verifyMemoryBundle(frozen.memoryBundle, frozen.evidenceBundle);
+    const verified = await Promise.all(reviews.map((review) => verifyReviewAttachment(review, completion)));
+    await new Promise<void>((resolve, reject) => setTasks((current) => {
+      try {
+        const task = current.find((item) => item.id === taskId);
+        if (!task) throw new Error();
+        const next = appendEvaluationReviews(task, versionId, verified);
+        persistTask(next);
+        queueMicrotask(resolve);
+        return current.map((item) => item.id === taskId ? next : item);
+      } catch {
+        queueMicrotask(() => reject(new Error("Saved evaluation attachments conflict with this report history.")));
+        return current;
+      }
+    }));
+  }
+
   const value: TaskCenterContextValue = {
     settings,
     tasks,
@@ -445,6 +472,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     getTask: (taskId) => tasks.find((task) => task.id === taskId),
     runtimeInfo,
     checkRuntime: checkRuntimeAction,
+    saveEvaluationReviews,
   };
 
   return <TaskCenterContext.Provider value={value}>{children}</TaskCenterContext.Provider>;

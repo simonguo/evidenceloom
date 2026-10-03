@@ -1,7 +1,10 @@
 "use client";
 
 import { Download, FileCode2, FileText, Loader2 } from "lucide-react";
-import type { AnalysisTask, SystemLanguage } from "@/lib/types";
+import type { AnalysisTask, GlobalSettings, SystemLanguage } from "@/lib/types";
+import type { ReviewAttachment } from "@/features/memory/types";
+import { MemoryInspector } from "@/features/memory/components/MemoryInspector";
+import { useEvaluationReview } from "@/features/memory/hooks/useEvaluationReview";
 import { useReportExport } from "../hooks/useReportExport";
 import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
 import { ReportVersionPreview } from "./ReportVersionPreview";
@@ -10,9 +13,13 @@ import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspec
 export function ReportVersionsPanel({
   task,
   language,
+  settings,
+  onReviews,
 }: {
   task: AnalysisTask;
   language: SystemLanguage;
+  settings?: GlobalSettings;
+  onReviews?: (taskId: string, versionId: string, reviews: ReviewAttachment[]) => Promise<void>;
 }) {
   const {
     versions,
@@ -24,6 +31,7 @@ export function ReportVersionsPanel({
     exportVersion,
   } = useReportExport(task, language);
   const zh = language === "zh";
+  const review = useEvaluationReview(selectedVersion, language, settings, onReviews ? (versionId, attachments) => onReviews(task.id, versionId, attachments) : undefined);
 
   return (
     <section className="rounded-xl border border-zinc-900 bg-black p-5">
@@ -70,7 +78,8 @@ export function ReportVersionsPanel({
               disabled={Boolean(exporting)}
               onClick={() => void exportVersion("md")}
             />
-            {selectedVersion.evidenceBundle && <ExportButton label={zh ? "证据 JSON" : "Evidence JSON"} icon={<Download className="size-4" />} loading={exporting === "json"} disabled={Boolean(exporting)} onClick={() => void exportVersion("json")} />}
+            <ExportButton label={zh ? "报告 JSON" : "Report JSON"} icon={<Download className="size-4" />} loading={exporting === "json"} disabled={Boolean(exporting)} onClick={() => void exportVersion("json")} />
+            {selectedVersion.memoryBundle && onReviews && <ExportButton label={zh ? "读取保存的评估" : "Load saved evaluation"} icon={<FileText className="size-4" />} loading={review.loading} disabled={review.loading || Boolean(exporting) || Boolean(selectedVersion.memoryValidation)} onClick={() => void review.refresh()} />}
           </div>
         )}
       </div>
@@ -96,6 +105,7 @@ export function ReportVersionsPanel({
         <div className="mt-4 space-y-3">
           <OutputQualityPanel quality={selectedVersion.outputQuality} language={language} />
           <EvidenceInspector bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
+          <MemoryInspector snapshot={selectedVersion} language={language} />
           <details key={selectedVersion.id} className="rounded-lg border border-zinc-800 p-4">
             <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">
               {zh ? `审阅选中的报告 v${selectedVersion.versionNumber}` : `Review selected report v${selectedVersion.versionNumber}`}
@@ -105,6 +115,7 @@ export function ReportVersionsPanel({
         </div>
       )}
       {message && <p role="status" className="mt-3 break-words text-xs text-zinc-400">{message}</p>}
+      {review.message && <p role="status" className="mt-3 break-words text-xs text-zinc-400">{review.message}</p>}
     </section>
   );
 }

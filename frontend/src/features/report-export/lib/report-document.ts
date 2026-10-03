@@ -2,6 +2,7 @@ import type { ReportVersion, SystemLanguage } from "@/lib/types";
 import { buildOutputQualityView } from "@/features/output-quality/lib/quality";
 import type { ReportDocument, ReportDocumentSection } from "../types";
 import { exportEvidence } from "@/features/evidence/lib/export";
+import { copyExportMemory } from "@/features/memory/lib/export";
 
 const reportGroups = [
   {
@@ -44,6 +45,7 @@ export function buildReportDocument(
 ): ReportDocument {
   const text = labels[language];
   const instrument = [version.task.ticker, version.task.instrumentName].filter(Boolean).join(" · ");
+  const memory = copyExportMemory(version);
   const runValues = version.run
     ? [
       version.run.appVersion,
@@ -56,7 +58,7 @@ export function buildReportDocument(
       version.run.newsData,
       String(version.run.maxDebateRounds),
       String(version.run.maxRiskRounds),
-      version.run.benchmarkTicker || "—",
+      (memory.bundle?.decision_snapshot.contract.resolved_benchmark ?? version.run.benchmarkTicker) || "—",
     ]
     : Array.from({ length: 11 }, () => text.legacy);
 
@@ -82,6 +84,7 @@ export function buildReportDocument(
     metadata: [
       ...text.metadata.map((label, index): [string, string] => [label, metadataValues[index] ?? "—"]),
       ...(version.run?.coreVersion ? [[language === "zh" ? "研究核心版本" : "Research Core Version", version.run.coreVersion] as [string, string]] : []),
+      ...(memory.bundle ? [[language === "zh" ? "冻结的评估期限" : "Frozen evaluation horizon", `${memory.bundle.decision_snapshot.contract.holding_period_days} common complete provider daily rows`] as [string, string]] : []),
       ...(version.run?.toolVendors && Object.keys(version.run.toolVendors).length
         ? [[language === "zh" ? "配置的工具适配器" : "Configured tool adapters", Object.entries(version.run.toolVendors).map(([key, value]) => `${key}: ${value}`).join(", ")] as [string, string]] : []),
     ],

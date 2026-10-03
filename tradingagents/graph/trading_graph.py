@@ -7,7 +7,7 @@ from copy import deepcopy
 import os
 from pathlib import Path
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Tuple, List, Optional
 
 from cli.research_manifest import context_sha256 as _context_sha256
@@ -21,9 +21,15 @@ from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period
 from tradingagents.agents.utils.output_quality import sanitize_output_quality
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.dataflows.utils import safe_ticker_component
+from tradingagents.dataflows.symbol_utils import normalize_symbol
 from tradingagents.dataflows.config import run_config, run_config_context, set_config
 from tradingagents.agents.utils.rating import run_rating
 from tradingagents.agents.utils.settlement import compute_returns
+from tradingagents.memory.evaluation import make_evaluation_plan
+from tradingagents.memory.schema import (
+    validate_context_snapshot,
+    validate_bundle as validate_memory_bundle,
+)
 from tradingagents.evidence import (
     EvidenceLedger,
     analyst_evidence,
@@ -48,6 +54,7 @@ from .conditional_logic import ConditionalLogic
 from .setup import GraphSetup
 from .propagation import Propagator
 from .reflection import Reflector
+from .research_memory import ResearchMemory
 from .signal_processing import SignalProcessor
 
 logger = logging.getLogger(__name__)
@@ -230,25 +237,25 @@ class TradingAgentsGraph:
         return {key: ToolNode(list(spec.tools)) for key, spec in ANALYST_NODE_SPECS.items()}
 
     def _resolve_benchmark(self, ticker: str) -> str:
-        """Pick the benchmark ticker for alpha calculation against ``ticker``.
+        """Resolve the benchmark symbol before freezing the research contract.
 
         ``config["benchmark_ticker"]`` overrides everything when set; otherwise
         the suffix map matches the ticker's exchange suffix (e.g. ``.T`` for
         Tokyo). US-listed tickers without a dotted suffix fall through to the
         empty-suffix entry (SPY by default). Unrecognised suffixes (including
         US tickers with dots like ``BRK.B``) also fall back to the empty-suffix
-        entry, which is the right default because the alpha calculation works
-        in USD.
+        entry. Reference returns retain each instrument's currency; no FX
+        conversion or risk-adjusted alpha is implied.
         """
         explicit = self.config.get("benchmark_ticker")
         if explicit:
-            return explicit
+            return normalize_symbol(explicit)
         benchmark_map = self.config.get("benchmark_map", {})
         ticker_upper = ticker.upper()
         for suffix, benchmark in benchmark_map.items():
             if suffix and ticker_upper.endswith(suffix.upper()):
-                return benchmark
-        return benchmark_map.get("", "SPY")
+                return normalize_symbol(benchmark)
+        return normalize_symbol(benchmark_map.get("", "SPY"))
 
     def _fetch_returns(
         self,
@@ -260,69 +267,18 @@ class TradingAgentsGraph:
         """Compatibility wrapper returning outcomes only after the complete window."""
         return compute_returns(ticker, trade_date, holding_days, benchmark)[:3]
 
+    def _research_memory(self):
+        memory = getattr(self, "_research_memory_controller", None)
+        if memory is None:
+            memory = ResearchMemory(
+                self.config, self.reflector, self.run_settings, secrets=self._evidence_secrets()
+            )
+            self._research_memory_controller = memory
+        return memory
+
     def _resolve_pending_entries(self, ticker: str) -> None:
-        """Resolve pending log entries for ticker at the start of a new run.
-
-        Fetches returns for each same-ticker pending entry, generates reflections,
-        then writes all updates in a single atomic batch write to avoid redundant I/O.
-        Skips entries whose price data is not yet available (too recent or delisted)
-        and fails open when deferred reflection cannot be completed.
-
-        Trade-off: only same-ticker entries are resolved per run.  Entries for
-        other tickers accumulate until that ticker is run again.
-        """
-        pending = [e for e in self.memory_log.get_pending_entries() if e["ticker"] == ticker]
-        if not pending:
-            return
-
-        benchmark = self._resolve_benchmark(ticker)
-        updates = []
-        for entry in pending:
-            raw, alpha, days, resolution_date = compute_returns(
-                ticker,
-                entry["date"],
-                holding_days=self.config.get("holding_period_days", 5),
-                benchmark=benchmark,
-            )
-            if raw is None:
-                continue  # price not available yet — try again next run
-            try:
-                reflection = self.reflector.reflect_on_final_decision(
-                    final_decision=entry.get("decision", ""),
-                    raw_return=raw,
-                    alpha_return=alpha,
-                    benchmark_name=benchmark,
-                )
-            except Exception as e:
-                logger.warning(
-                    "Could not generate outcome reflection for %s on %s vs %s (will retry next run): %s",
-                    ticker,
-                    entry["date"],
-                    benchmark,
-                    e,
-                )
-                continue
-            updates.append(
-                {
-                    "ticker": ticker,
-                    "trade_date": entry["date"],
-                    "raw_return": raw,
-                    "alpha_return": alpha,
-                    "holding_days": days,
-                    "reflection": reflection,
-                    "resolution_date": resolution_date,
-                }
-            )
-
-        if updates:
-            try:
-                self.memory_log.batch_update_with_outcomes(updates)
-            except Exception as e:
-                logger.warning(
-                    "Could not persist resolved outcomes for %s (will retry next run): %s",
-                    ticker,
-                    e,
-                )
+        """Settle immutable JSON decisions; legacy Markdown remains unverified."""
+        self._research_memory().settle_pending(ticker)
 
     def resolve_instrument_context(
         self,
@@ -349,7 +305,7 @@ class TradingAgentsGraph:
             [
                 "analysts=" + ",".join(self.selected_analysts),
                 f"asset={asset_type}",
-                "layout=parallel-v3-evidence-v1",
+                "layout=parallel-v4-evidence-v1-memory-v1",
                 "code=" + _source_code_sha256(Path(tradingagents.__file__).parent)[:16],
                 f"settings={digest}",
             ]
@@ -489,6 +445,20 @@ class TradingAgentsGraph:
             != _context_sha256(state.get("past_context", ""))
         ):
             raise ValueError("research evidence does not match the frozen run context")
+        memory = state.get("research_memory")
+        if memory:
+            context = validate_context_snapshot(memory["input_snapshot"])
+            plan = memory["evaluation_plan"]
+            if (
+                context["instrument"] != bundle["instrument"]
+                or context["research_cutoff"] != bundle["research_as_of"]
+                or context["context_artifact"]["payload"] != state.get("past_context", "")
+                or context["context_sha256"] != bundle["manifest"].get("memory_input_sha256")
+                or plan["holding_period_days"] != bundle["manifest"].get("holding_period_days")
+                or plan["resolved_benchmark"] != bundle["manifest"].get("benchmark_ticker")
+                or plan["analysis_date"] != bundle["analysis_date"]
+            ):
+                raise ValueError("research memory does not match the frozen run context")
         identity = [
             record
             for record in bundle["records"]
@@ -535,11 +505,27 @@ class TradingAgentsGraph:
             self._ledger_for_state(state)
             return state
         with run_config(self.config):
+            local_start = datetime.now().astimezone()
+            research_started_at = (
+                local_start.astimezone(timezone.utc)
+                .isoformat(timespec="microseconds")
+                .replace("+00:00", "Z")
+            )
+            offset = local_start.strftime("%z")
+            host_utc_offset = offset[:3] + ":" + offset[3:]
+            evaluation_plan = make_evaluation_plan(
+                analysis_date=trade_date,
+                resolved_benchmark=self._resolve_benchmark(company_name),
+                holding_period_days=self.config.get("holding_period_days", 5),
+                host_local_calendar_at_start=local_start.date().isoformat(),
+                host_utc_offset=host_utc_offset,
+            )
             self.ticker = company_name
             self._resolve_pending_entries(company_name)
-            past_context = self.memory_log.get_past_context(
-                company_name, as_of=self._memory_as_of(trade_date)
+            memory_input = self._research_memory().store.context_snapshot(
+                company_name, trade_date + "T23:59:59.999999Z"
             )
+            past_context = memory_input["context_artifact"]["payload"]
             identity = resolve_instrument_identity(company_name)
             source_instrument_context = sanitize_diagnostic(
                 build_instrument_context(company_name, asset_type, identity, trade_date),
@@ -550,7 +536,7 @@ class TradingAgentsGraph:
                 **self.run_settings(),
                 "trade_date": trade_date,
                 "asset_type": asset_type,
-                "benchmark_ticker": self._resolve_benchmark(company_name),
+                "benchmark_ticker": evaluation_plan["resolved_benchmark"],
                 "code_sha256": _source_code_sha256(package),
                 "prompt_templates_sha256": _source_code_sha256(package / "agents"),
                 "memory_input_sha256": _context_sha256(past_context),
@@ -604,10 +590,19 @@ class TradingAgentsGraph:
                 instrument_context=instrument_context,
                 run_settings=bundle["manifest"],
                 evidence_bundle=bundle,
+                research_memory={
+                    "research_started_at": research_started_at,
+                    "evaluation_plan": evaluation_plan,
+                    "input_snapshot": memory_input,
+                },
             )
 
-    def record_decision(self, company_name, trade_date, final_state):
+    def record_decision(self, company_name, trade_date, final_state, *, persist_state=True):
         """Write the final state and preserve the Portfolio Manager's authoritative rating."""
+        if isinstance(final_state.get("final_trade_decision"), str):
+            final_state["final_trade_decision"] = sanitize_diagnostic(
+                final_state["final_trade_decision"], secrets=self._evidence_secrets()
+            )
         if final_state.get("evidence_bundle"):
             ledger = self._ledger_for_state(final_state)
             merge_evidence_bundles(final_state["evidence_bundle"], ledger.bundle())
@@ -619,15 +614,18 @@ class TradingAgentsGraph:
                 "trade_date": str(trade_date),
                 "asset_type": final_state.get("asset_type", "stock"),
             }
-        self._log_state(trade_date, final_state)
         decision = final_state.get("final_trade_decision")
-        if decision:
-            self.memory_log.store_decision(
-                ticker=company_name,
-                trade_date=trade_date,
-                final_trade_decision=decision,
-                rating=run_rating(final_state),
+        if decision and final_state.get("evidence_bundle"):
+            final_state["memory_bundle"] = self._research_memory().record_final(
+                final_state, final_state["evidence_bundle"], run_rating(final_state)
             )
+            memory = validate_memory_bundle(final_state["memory_bundle"])
+            if memory["input_snapshot"]["context_sha256"] != final_state["run_settings"].get(
+                "memory_input_sha256"
+            ):
+                raise ValueError("completed research memory does not match the evidence manifest")
+        if persist_state:
+            self._log_state(trade_date, final_state)
 
     def propagate(self, company_name, trade_date, asset_type: str = "stock"):
         """Run a graph, returning its final state and a 5-tier rating or REVIEW."""
@@ -750,6 +748,11 @@ class TradingAgentsGraph:
             "run_settings": final_state.get("run_settings", self.run_settings()),
             "output_quality": sanitize_output_quality(final_state.get("output_quality")),
             "evidence_bundle": final_state.get("evidence_bundle", {}),
+            **(
+                {"memory_bundle": validate_memory_bundle(final_state["memory_bundle"])}
+                if final_state.get("memory_bundle")
+                else {}
+            ),
         }
 
         # Save to file. Reject ticker values that would escape the

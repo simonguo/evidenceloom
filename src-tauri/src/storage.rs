@@ -12,8 +12,9 @@ use tauri::{AppHandle, Manager};
 use crate::evidence::{validate_bundle, validate_invalid};
 use crate::output_quality::{normalize_output_quality, normalize_report_version_quality};
 use crate::secrets;
+use crate::{research_memory as memory, research_memory_storage as memory_store};
 
-const SCHEMA_VERSION: i64 = 6;
+const SCHEMA_VERSION: i64 = 7;
 const SECRET_PREFIX: &str = "enc:v1:";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -131,6 +132,12 @@ pub struct AnalysisTaskRecord {
     pub evidence_bundle: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub evidence_validation: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_bundle: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub memory_validation: Option<Value>,
+    #[serde(default = "empty_array")]
+    pub evaluation_reviews: Value,
     pub logs: Value,
     pub error: String,
 }
@@ -196,6 +203,7 @@ pub fn clear_data(app: &AppHandle) -> Result<(), String> {
         .0
         .map(|settings| settings.llm_provider);
     secrets::delete_all_secrets(current_provider.as_deref())?;
+    memory_store::clear(&conn)?;
     conn.execute_batch(
         "DELETE FROM task_report_versions;
          DELETE FROM task_reports;
@@ -394,6 +402,7 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
          );",
     )
     .map_err(|error| error.to_string())?;
+    memory_store::initialize(conn)?;
     ensure_column(conn, "tasks", "instrument_name", "TEXT NOT NULL DEFAULT ''")?;
     ensure_column(conn, "tasks", "origin", "TEXT NOT NULL DEFAULT 'analysis'")?;
     ensure_column(conn, "tasks", "queued_at", "TEXT NOT NULL DEFAULT ''")?;
@@ -401,6 +410,9 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     ensure_column(conn, "tasks", "output_quality", "TEXT")?;
     ensure_column(conn, "tasks", "evidence_bundle_sha256", "TEXT")?;
     ensure_column(conn, "tasks", "evidence_validation", "TEXT")?;
+    ensure_column(conn, "tasks", "memory_bundle_sha256", "TEXT")?;
+    ensure_column(conn, "tasks", "memory_validation", "TEXT")?;
+    ensure_column(conn, "task_report_versions", "memory_bundle_sha256", "TEXT")?;
     ensure_column(
         conn,
         "task_report_versions",
@@ -609,7 +621,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
     let mut stmt = conn
         .prepare(
             "SELECT id, ticker, analysis_date, asset_type, research_depth, analysts, output_language, status,
-                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation
+                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation
              FROM tasks ORDER BY updated_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -633,6 +645,21 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                     Ok::<Value, rusqlite::Error>(value)
                 })
                 .transpose()?;
+            let memory_bundle = row
+                .get::<_, Option<String>>(22)?
+                .map(|hash| memory_store::load_bundle(conn, &hash).map_err(evidence_sql_error))
+                .transpose()?;
+            let memory_validation = row
+                .get::<_, Option<String>>(23)?
+                .map(|raw| {
+                    let marker = memory::parse_json(&raw).map_err(evidence_sql_error)?;
+                    memory::validate_invalid(&marker).map_err(evidence_sql_error)?;
+                    Ok::<Value, rusqlite::Error>(marker)
+                })
+                .transpose()?;
+            let evaluation_reviews =
+                memory_store::load_task_reviews(conn, &task_id, memory_bundle.as_ref())
+                    .map_err(evidence_sql_error)?;
             Ok(AnalysisTaskRecord {
                 id: task_id,
                 origin: row.get(18)?,
@@ -665,6 +692,9 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                     .and_then(|value| normalize_output_quality(&value)),
                 evidence_bundle,
                 evidence_validation,
+                memory_bundle,
+                memory_validation,
+                evaluation_reviews,
                 logs,
                 error: row.get(17)?,
             })
@@ -675,6 +705,25 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     for task in &tasks {
+        validate_memory_fields(
+            task.memory_bundle.as_ref(),
+            task.memory_validation.as_ref(),
+            Some(&task.evaluation_reviews),
+        )?;
+        if let Some(bundle) = &task.memory_bundle {
+            validate_task_memory(
+                bundle,
+                task.evidence_bundle.as_ref(),
+                MemoryIdentity {
+                    ticker: &task.ticker,
+                    analysis_date: &task.analysis_date,
+                    asset_type: &task.asset_type,
+                },
+                None,
+                &task.decision,
+                &task.report_sections,
+            )?;
+        }
         if task.evidence_bundle.is_some() && task.evidence_validation.is_some() {
             return Err("Contradictory saved evidence validation status".into());
         }
@@ -736,12 +785,12 @@ fn load_report_sections(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
 
 fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Value> {
     let mut stmt = conn.prepare(
-        "SELECT snapshot, evidence_bundle_sha256 FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
+        "SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,id,run_id,version_number,created_at FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
     )?;
     let rows = stmt.query_map(params![task_id], |row| {
         let raw = row.get::<_, String>(0)?;
         let mut version = normalize_report_version_quality(
-            serde_json::from_str::<Value>(&raw)
+            memory::parse_json(&raw)
                 .map_err(|_| evidence_sql_error("Invalid saved report version".into()))?,
         );
         if version.get("evidenceBundle").is_some() {
@@ -773,6 +822,60 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
             }
             validate_invalid(invalid).map_err(evidence_sql_error)?;
         }
+        if version.get("memoryBundle").is_some() {
+            return Err(evidence_sql_error(memory::ERROR.into()));
+        }
+        if let Some(marker) = version.get("memoryValidation") {
+            memory::validate_invalid(marker).map_err(evidence_sql_error)?;
+            if row.get::<_, Option<String>>(2)?.is_some() {
+                return Err(evidence_sql_error(memory::ERROR.into()));
+            }
+        }
+        if let Some(hash) = row.get::<_, Option<String>>(2)? {
+            if version["id"] != row.get::<_, String>(3)?
+                || version["runId"] != row.get::<_, String>(4)?
+                || version["versionNumber"] != row.get::<_, i64>(5)?
+                || version["createdAt"] != row.get::<_, String>(6)?
+            {
+                return Err(evidence_sql_error(memory::ERROR.into()));
+            }
+            let bundle = memory_store::load_bundle(conn, &hash).map_err(evidence_sql_error)?;
+            validate_task_memory(
+                &bundle,
+                version.get("evidenceBundle"),
+                MemoryIdentity::from_version(&version),
+                Some(
+                    version["runId"]
+                        .as_str()
+                        .ok_or_else(|| evidence_sql_error(memory::ERROR.into()))?,
+                ),
+                version["decision"].as_str().unwrap_or_default(),
+                &version["reportSections"],
+            )
+            .map_err(evidence_sql_error)?;
+            version
+                .as_object_mut()
+                .ok_or_else(|| evidence_sql_error(memory::ERROR.into()))?
+                .insert("memoryBundle".into(), bundle);
+        }
+        if version
+            .get("evaluationReviews")
+            .is_some_and(|reviews| !reviews.as_array().is_some_and(Vec::is_empty))
+        {
+            return Err(evidence_sql_error(memory::ERROR.into()));
+        }
+        let reviews = memory_store::load_reviews(
+            conn,
+            version["id"].as_str().unwrap_or_default(),
+            version.get("memoryBundle"),
+        )
+        .map_err(evidence_sql_error)?;
+        if !reviews.as_array().is_some_and(Vec::is_empty) {
+            version
+                .as_object_mut()
+                .ok_or_else(|| evidence_sql_error(memory::ERROR.into()))?
+                .insert("evaluationReviews".into(), reviews);
+        }
         Ok(version)
     })?;
     let versions = rows
@@ -796,9 +899,64 @@ fn evidence_sql_error(message: String) -> rusqlite::Error {
 }
 
 fn prune_evidence(conn: &Connection) -> Result<(), String> {
+    memory_store::prune(conn)?;
     conn.execute_batch("DELETE FROM evidence_bundles WHERE sha256 NOT IN (SELECT evidence_bundle_sha256 FROM tasks WHERE evidence_bundle_sha256 IS NOT NULL UNION SELECT evidence_bundle_sha256 FROM task_report_versions WHERE evidence_bundle_sha256 IS NOT NULL);
         DELETE FROM evidence_artifacts WHERE sha256 NOT IN (SELECT artifact_sha256 FROM evidence_bundle_artifacts);")
         .map_err(|error| error.to_string())
+}
+
+struct MemoryIdentity<'a> {
+    ticker: &'a str,
+    analysis_date: &'a str,
+    asset_type: &'a str,
+}
+impl<'a> MemoryIdentity<'a> {
+    fn from_version(version: &'a Value) -> Self {
+        Self {
+            ticker: version["task"]["ticker"].as_str().unwrap_or_default(),
+            analysis_date: version["task"]["analysisDate"].as_str().unwrap_or_default(),
+            asset_type: version["task"]["assetType"].as_str().unwrap_or_default(),
+        }
+    }
+}
+fn validate_task_memory(
+    bundle: &Value,
+    evidence: Option<&Value>,
+    identity: MemoryIdentity<'_>,
+    run_id: Option<&str>,
+    decision: &str,
+    reports: &Value,
+) -> Result<(), String> {
+    memory::validate_bundle_evidence(bundle, evidence.ok_or(memory::ERROR)?)?;
+    memory::validate_report_binding(bundle, decision, reports)?;
+    if bundle["instrument"] != identity.ticker
+        || bundle["analysis_date"] != identity.analysis_date
+        || run_id.is_some_and(|run_id| bundle["run_id"] != run_id)
+        || bundle["decision_snapshot"]["decision"]["asset_type"] != identity.asset_type
+    {
+        return Err(memory::ERROR.into());
+    }
+    Ok(())
+}
+
+fn validate_memory_fields(
+    bundle: Option<&Value>,
+    marker: Option<&Value>,
+    reviews: Option<&Value>,
+) -> Result<(), String> {
+    if let Some(marker) = marker {
+        memory::validate_invalid(marker)?;
+        if bundle.is_some() {
+            return Err(memory::ERROR.into());
+        }
+    }
+    if let Some(reviews) = reviews {
+        let reviews = reviews.as_array().ok_or(memory::ERROR)?;
+        for review in reviews {
+            memory::validate_review_attachment(review, Some(bundle.ok_or(memory::ERROR)?))?;
+        }
+    }
+    Ok(())
 }
 
 fn store_evidence_bundle(conn: &Connection, bundle: &Value) -> Result<String, String> {
@@ -886,6 +1044,25 @@ fn load_evidence_bundle(conn: &Connection, hash: &str) -> rusqlite::Result<Value
 }
 
 fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+    validate_memory_fields(
+        task.memory_bundle.as_ref(),
+        task.memory_validation.as_ref(),
+        Some(&task.evaluation_reviews),
+    )?;
+    if let Some(bundle) = &task.memory_bundle {
+        validate_task_memory(
+            bundle,
+            task.evidence_bundle.as_ref(),
+            MemoryIdentity {
+                ticker: &task.ticker,
+                analysis_date: &task.analysis_date,
+                asset_type: &task.asset_type,
+            },
+            None,
+            &task.decision,
+            &task.report_sections,
+        )?;
+    }
     if task.evidence_bundle.is_some() && task.evidence_validation.is_some() {
         return Err("Contradictory evidence validation status".into());
     }
@@ -907,6 +1084,39 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     }
     if let Value::Array(versions) = &task.report_versions {
         for version in versions {
+            validate_memory_fields(
+                version.get("memoryBundle"),
+                version.get("memoryValidation"),
+                version.get("evaluationReviews"),
+            )?;
+            if let Some(bundle) = version.get("memoryBundle") {
+                if version["id"].as_str().is_none_or(|id| id.is_empty())
+                    || !version["versionNumber"]
+                        .as_i64()
+                        .is_some_and(|number| (1..=9_007_199_254_740_991).contains(&number))
+                    || version["createdAt"]
+                        .as_str()
+                        .is_none_or(|time| time.is_empty())
+                {
+                    return Err(memory::ERROR.into());
+                }
+                validate_task_memory(
+                    bundle,
+                    version.get("evidenceBundle"),
+                    MemoryIdentity::from_version(version),
+                    Some(version["runId"].as_str().ok_or(memory::ERROR)?),
+                    version["decision"].as_str().unwrap_or_default(),
+                    &version["reportSections"],
+                )?;
+            }
+            if let Some(reviews) = version.get("evaluationReviews") {
+                for review in reviews.as_array().ok_or(memory::ERROR)? {
+                    memory::validate_review_attachment(
+                        review,
+                        Some(version.get("memoryBundle").ok_or(memory::ERROR)?),
+                    )?;
+                }
+            }
             if version.get("evidenceBundle").is_some()
                 && version.get("evidenceValidation").is_some()
             {
@@ -931,6 +1141,22 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
         .as_ref()
         .map(|bundle| store_evidence_bundle(conn, bundle))
         .transpose()?;
+    let memory_hash = task
+        .memory_bundle
+        .as_ref()
+        .map(|bundle| memory_store::store_bundle(conn, bundle))
+        .transpose()?;
+    let previous_memory_hash: Option<Option<String>> = conn
+        .query_row(
+            "SELECT memory_bundle_sha256 FROM tasks WHERE id=?1",
+            params![task.id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|_| memory::ERROR)?;
+    if previous_memory_hash.flatten() != memory_hash {
+        memory_store::clear_task_reviews(conn, &task.id)?;
+    }
     let output_quality = task
         .output_quality
         .as_ref()
@@ -938,8 +1164,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     conn.execute(
         "INSERT INTO tasks (
             id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
-            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22)
+            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)
          ON CONFLICT(id) DO UPDATE SET
             origin = excluded.origin,
             ticker = excluded.ticker,
@@ -960,7 +1186,9 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             error = excluded.error,
             output_quality = excluded.output_quality,
             evidence_bundle_sha256 = excluded.evidence_bundle_sha256,
-            evidence_validation = excluded.evidence_validation",
+            evidence_validation = excluded.evidence_validation,
+            memory_bundle_sha256 = excluded.memory_bundle_sha256,
+            memory_validation = excluded.memory_validation",
         params![
             task.id,
             task.origin,
@@ -984,9 +1212,17 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             output_quality.as_ref().map(json_string).transpose()?,
             evidence_hash,
             task.evidence_validation.as_ref().map(json_string).transpose()?,
+            memory_hash,
+            task.memory_validation.as_ref().map(json_string).transpose()?,
         ],
     )
     .map_err(|error| error.to_string())?;
+    memory_store::append_task_reviews(
+        conn,
+        &task.id,
+        task.memory_bundle.as_ref(),
+        &task.evaluation_reviews,
+    )?;
 
     conn.execute("DELETE FROM task_logs WHERE task_id = ?1", params![task.id])
         .map_err(|error| error.to_string())?;
@@ -1037,6 +1273,19 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     if let Value::Array(versions) = &task.report_versions {
         for version in versions {
             let mut version = normalize_report_version_quality(version.clone());
+            let reviews = version
+                .as_object_mut()
+                .and_then(|map| map.remove("evaluationReviews"));
+            if reviews.is_some() {
+                version["evaluationReviews"] = Value::Array(Vec::new());
+            }
+            let completion = version
+                .as_object_mut()
+                .and_then(|map| map.remove("memoryBundle"));
+            let memory_hash = completion
+                .as_ref()
+                .map(|bundle| memory_store::store_bundle(conn, bundle))
+                .transpose()?;
             let evidence_hash = version
                 .as_object_mut()
                 .and_then(|map| map.remove("evidenceBundle"))
@@ -1061,21 +1310,33 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             if id.is_empty() || run_id.is_empty() || version_number < 1 || created_at.is_empty() {
                 continue;
             }
-            let existing: Option<(String, Option<String>)> = conn.query_row("SELECT snapshot, evidence_bundle_sha256 FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?))).optional().map_err(|error| error.to_string())?;
-            if let Some((snapshot, hash)) = existing {
-                if normalize_report_version_quality(
+            let existing: Option<(String, Option<String>, Option<String>, String)> = conn.query_row("SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,task_id FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?,row.get(3)?))).optional().map_err(|error| error.to_string())?;
+            if let Some((snapshot, hash, saved_memory_hash, saved_task)) = existing {
+                let mut saved = normalize_report_version_quality(
                     serde_json::from_str::<Value>(&snapshot)
                         .map_err(|_| "Invalid saved report version")?,
-                ) != version
+                );
+                let mut frozen = version.clone();
+                saved
+                    .as_object_mut()
+                    .ok_or(memory::ERROR)?
+                    .remove("evaluationReviews");
+                frozen
+                    .as_object_mut()
+                    .ok_or(memory::ERROR)?
+                    .remove("evaluationReviews");
+                if saved != frozen
                     || hash != evidence_hash
+                    || saved_memory_hash != memory_hash
+                    || saved_task != task.id
                 {
                     return Err("A frozen report version cannot be changed".into());
                 }
             }
             conn.execute(
                 "INSERT OR IGNORE INTO task_report_versions
-                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256, memory_bundle_sha256)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 params![
                     id,
                     task.id,
@@ -1084,9 +1345,13 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     created_at,
                     json_string(&version)?,
                     evidence_hash,
+                    memory_hash,
                 ],
             )
             .map_err(|error| error.to_string())?;
+            if let Some(reviews) = reviews {
+                memory_store::append_reviews(conn, id, completion.as_ref(), &reviews)?;
+            }
         }
     }
 
@@ -1434,6 +1699,254 @@ mod tests {
         task.report_sections = serde_json::json!({"market_report":"A fictional saved report."});
         task.evidence_bundle = Some(bundle.clone());
         (task, bundle)
+    }
+
+    fn memory_task_fixture() -> (AnalysisTaskRecord, Value) {
+        let bundle = memory::test_support::bundle();
+        let evidence = memory::test_support::evidence();
+        let snapshot = &bundle["decision_snapshot"];
+        let reports = serde_json::json!({"final_trade_decision":snapshot["artifacts"][snapshot["decision"]["decision_text_sha256"].as_str().unwrap()]["payload"]});
+        let version = serde_json::json!({"id":"memory-version","runId":bundle["run_id"],"versionNumber":1,"createdAt":"2025-02-14T12:06:00Z","legacy":false,"task":{"ticker":bundle["instrument"],"analysisDate":bundle["analysis_date"],"assetType":"stock"},"decision":snapshot["decision"]["rating"],"reportSections":reports,"evidenceBundle":evidence,"memoryBundle":bundle,"evaluationReviews":[]});
+        let mut task = quality_task_fixture(Value::Null, version);
+        task.ticker = bundle["instrument"].as_str().unwrap().into();
+        task.analysis_date = bundle["analysis_date"].as_str().unwrap().into();
+        task.decision = snapshot["decision"]["rating"].as_str().unwrap().into();
+        task.report_sections = reports;
+        task.evidence_bundle = Some(evidence);
+        task.memory_bundle = Some(bundle.clone());
+        (task, bundle)
+    }
+    fn save_test_task(conn: &mut Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+        let transaction = conn.transaction().unwrap();
+        upsert_task(&transaction, task)?;
+        prune_evidence(&transaction)?;
+        transaction.commit().map_err(|_| memory::ERROR.into())
+    }
+    #[test]
+    fn memory_v7_reload_keeps_exact_artifacts_and_freezes_versions_across_reruns() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, bundle) = memory_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].memory_bundle.as_ref(), Some(&bundle));
+        assert_eq!(loaded[0].report_versions[0], task.report_versions[0]);
+        assert_eq!(loaded[0].evaluation_reviews, serde_json::json!([]));
+        let bundles: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM research_memory_objects WHERE kind='bundle'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(bundles, 1);
+        let raw: String = conn
+            .query_row("SELECT snapshot FROM task_report_versions", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert!(!raw.contains("123.45678901234567") && !raw.contains("memoryBundle"));
+        let artifacts: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM research_memory_objects WHERE kind='artifact'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let mut unique: std::collections::BTreeSet<String> = bundle["decision_snapshot"]
+            ["artifacts"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect();
+        for snapshot in bundle["input_snapshot"]["decisions"].as_array().unwrap() {
+            unique.extend(snapshot["artifacts"].as_object().unwrap().keys().cloned());
+        }
+        unique.insert(
+            bundle["input_snapshot"]["context_artifact"]["sha256"]
+                .as_str()
+                .unwrap()
+                .into(),
+        );
+        assert_eq!(artifacts, unique.len() as i64);
+        task.memory_bundle = None;
+        task.evidence_bundle = None;
+        task.status = "running".into();
+        save_test_task(&mut conn, &task).unwrap();
+        let replay = load_tasks_from_conn(&conn).unwrap();
+        assert!(replay[0].memory_bundle.is_none());
+        assert_eq!(replay[0].report_versions[0]["memoryBundle"], bundle);
+        conn.execute("DELETE FROM tasks", []).unwrap();
+        prune_evidence(&conn).unwrap();
+        assert_eq!(
+            conn.query_row("SELECT COUNT(*) FROM research_memory_objects", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .unwrap(),
+            0
+        );
+    }
+    #[test]
+    fn memory_reviews_append_dedupe_and_never_rewrite_generated_bundle() {
+        use memory::test_support::{review, settled};
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, bundle) = memory_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        let facts = review(settled(&bundle, false), "2025-02-20T13:00:00Z");
+        let reflected = review(settled(&bundle, true), "2025-02-21T13:00:00Z");
+        let reviews = serde_json::json!([facts, reflected]);
+        task.evaluation_reviews = reviews.clone();
+        task.report_versions[0]["evaluationReviews"] = reviews.clone();
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].evaluation_reviews, reviews);
+        assert_eq!(loaded[0].report_versions[0]["evaluationReviews"], reviews);
+        assert_eq!(loaded[0].memory_bundle.as_ref(), Some(&bundle));
+        assert_eq!(loaded[0].report_versions[0]["memoryBundle"], bundle);
+        let duplicate = review(settled(&bundle, true), "2025-02-22T13:00:00Z");
+        task.evaluation_reviews = serde_json::json!([duplicate]);
+        task.report_versions[0]["evaluationReviews"] = task.evaluation_reviews.clone();
+        save_test_task(&mut conn, &task).unwrap();
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].evaluation_reviews,
+            reviews
+        );
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM research_memory_objects WHERE kind='review'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 2);
+        let mut conflicting = memory::test_support::settled(&bundle, true);
+        conflicting["outcome"]["observed_at"] = "2025-02-20T14:00:00Z".into();
+        memory::test_support::rehash(&mut conflicting["outcome"], "outcome_sha256");
+        conflicting["reflection"]["outcome_sha256"] =
+            conflicting["outcome"]["outcome_sha256"].clone();
+        memory::test_support::rehash(&mut conflicting["reflection"], "reflection_sha256");
+        memory::test_support::rehash(&mut conflicting, "snapshot_sha256");
+        for snapshot in [conflicting, bundle["decision_snapshot"].clone()] {
+            task.evaluation_reviews = serde_json::json!([review(snapshot, "2025-02-23T13:00:00Z")]);
+            task.report_versions[0]["evaluationReviews"] = task.evaluation_reviews.clone();
+            assert!(save_test_task(&mut conn, &task).is_err());
+            assert_eq!(
+                load_tasks_from_conn(&conn).unwrap()[0].report_versions[0]["evaluationReviews"],
+                reviews
+            );
+        }
+        // Re-observing an already attached facts snapshot is deduplicated even
+        // after a reflection has been added; the original dated review stays.
+        task.evaluation_reviews =
+            serde_json::json!([review(settled(&bundle, false), "2025-02-24T13:00:00Z")]);
+        task.report_versions[0]["evaluationReviews"] = task.evaluation_reviews.clone();
+        save_test_task(&mut conn, &task).unwrap();
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].evaluation_reviews,
+            reviews
+        );
+        task.evaluation_reviews = serde_json::json!([]);
+        task.report_versions[0]["evaluationReviews"] = serde_json::json!([]);
+        save_test_task(&mut conn, &task).unwrap();
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].report_versions[0]["evaluationReviews"],
+            reviews
+        );
+        task.memory_bundle = None;
+        task.evidence_bundle = None;
+        task.status = "queued".into();
+        save_test_task(&mut conn, &task).unwrap();
+        let rerun = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(rerun[0].evaluation_reviews, serde_json::json!([]));
+        assert_eq!(rerun[0].report_versions[0]["evaluationReviews"], reviews);
+    }
+    #[test]
+    fn memory_bad_report_identity_and_frozen_settings_are_rejected_atomically() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, bundle) = memory_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        task.decision = "Sell".into();
+        assert!(save_test_task(&mut conn, &task).is_err());
+        task.decision = "Hold".into();
+        task.report_sections["final_trade_decision"] = "Changed frozen text".into();
+        assert!(save_test_task(&mut conn, &task).is_err());
+        let (mut task, _) = memory_task_fixture();
+        task.report_versions[0]["runId"] = "33333333-3333-4333-8333-333333333333".into();
+        assert!(save_test_task(&mut conn, &task).is_err());
+        let (mut task, _) = memory_task_fixture();
+        task.report_versions[0]["task"]["researchDepth"] = 99.into();
+        assert!(save_test_task(&mut conn, &task).is_err());
+        let (mut task, _) = memory_task_fixture();
+        let changed = task.memory_bundle.as_mut().unwrap();
+        changed["input_snapshot"]["selected_at"] = "2025-02-14T12:00:01Z".into();
+        changed["input_snapshot"]["availability_cutoff"] = "2025-02-14T12:00:01Z".into();
+        memory::test_support::rehash(&mut changed["input_snapshot"], "input_sha256");
+        memory::test_support::rehash(changed, "bundle_sha256");
+        memory::validate_bundle_evidence(changed, task.evidence_bundle.as_ref().unwrap()).unwrap();
+        assert!(save_test_task(&mut conn, &task).is_err());
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0]
+                .memory_bundle
+                .as_ref(),
+            Some(&bundle)
+        );
+        let (mut task, _) = memory_task_fixture();
+        task.memory_validation =
+            Some(serde_json::json!({"status":"invalid","reason":"hash_mismatch"}));
+        assert!(save_test_task(&mut conn, &task).is_err());
+        task.memory_bundle = None;
+        task.evaluation_reviews = serde_json::json!([]);
+        save_test_task(&mut conn, &task).unwrap();
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].memory_validation,
+            task.memory_validation
+        );
+        task.memory_validation.as_mut().unwrap()["error"] = "private exception body".into();
+        assert!(save_test_task(&mut conn, &task).is_err());
+    }
+    #[test]
+    fn memory_corrupt_content_links_and_review_columns_fail_visible_reload() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (task, _) = memory_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        conn.execute(
+            "UPDATE research_memory_objects SET metadata='{}' WHERE kind='artifact'",
+            [],
+        )
+        .unwrap();
+        assert!(load_tasks_from_conn(&conn).is_err());
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (task, _) = memory_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        conn.execute(
+            "DELETE FROM research_memory_links WHERE field='decision_snapshot'",
+            [],
+        )
+        .unwrap();
+        assert!(load_tasks_from_conn(&conn).is_err());
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, bundle) = memory_task_fixture();
+        task.report_versions[0]["evaluationReviews"] =
+            serde_json::json!([memory::test_support::review(
+                memory::test_support::settled(&bundle, true),
+                "2025-02-22T12:00:00Z"
+            )]);
+        save_test_task(&mut conn, &task).unwrap();
+        conn.execute(
+            "UPDATE report_memory_reviews SET snapshot_sha256=?1",
+            params![bundle["decision_snapshot"]["snapshot_sha256"]
+                .as_str()
+                .unwrap()],
+        )
+        .unwrap();
+        assert!(load_tasks_from_conn(&conn).is_err());
     }
 
     #[test]

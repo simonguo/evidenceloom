@@ -147,7 +147,21 @@ def test_checkpoint_resume_freezes_sources_memory_and_identity(tmp_path, monkeyp
     first.selected_analysts = ("social",)
     first.workflow = first.graph_setup.setup_graph(first.selected_analysts)
     first.graph = first.workflow.compile()
-    monkeypatch.setattr(first.memory_log, "get_past_context", lambda *a, **k: "original lessons")
+    from pathlib import Path
+
+    memory_fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "memory_bundle_v1.json").read_text()
+    )
+    first._research_memory().store.record_decision(memory_fixture["input_snapshot"]["decisions"][0])
+    frozen_memory = {}
+    create_state = first.create_run_state
+
+    def capture_state(*args, **kwargs):
+        state = create_state(*args, **kwargs)
+        frozen_memory.update(copy.deepcopy(state["research_memory"]))
+        return state
+
+    monkeypatch.setattr(first, "create_run_state", capture_state)
     with pytest.raises(RuntimeError, match="provider unavailable"):
         first.propagate("NVDA", TRADE_DATE)
     frozen = first._evidence_ledger.bundle()
@@ -165,11 +179,14 @@ def test_checkpoint_resume_freezes_sources_memory_and_identity(tmp_path, monkeyp
         raise AssertionError("resume changed a frozen input")
 
     monkeypatch.setattr(resumed, "_resolve_pending_entries", forbidden)
-    monkeypatch.setattr(resumed.memory_log, "get_past_context", forbidden)
+    monkeypatch.setattr(resumed._research_memory().store, "context_snapshot", forbidden)
     monkeypatch.setattr(trading_graph, "resolve_instrument_identity", forbidden)
     state, _ = resumed.propagate("NVDA", TRADE_DATE)
     assert counts == before
-    assert state["past_context"] == "original lessons"
+    assert state["past_context"] == frozen_memory["input_snapshot"]["context_artifact"]["payload"]
+    assert state["past_context"]
+    assert state["research_memory"] == frozen_memory
+    assert state["memory_bundle"]["input_snapshot"] == frozen_memory["input_snapshot"]
     assert state["evidence_bundle"]["run_id"] == frozen["run_id"]
     assert state["evidence_bundle"]["records"] == frozen["records"]
     assert state["evidence_bundle"]["artifacts"] == frozen["artifacts"]

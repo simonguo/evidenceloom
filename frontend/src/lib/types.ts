@@ -1,5 +1,6 @@
 import type { OutputQuality } from "@/features/output-quality/types";
 import type { EvidenceBundle, EvidenceValidation } from "@/features/evidence/types";
+import type { MemoryBundle, MemoryValidation, ReviewAttachment } from "@/features/memory/types";
 
 export type AnalystKey = "market" | "social" | "news" | "fundamentals";
 export type AssetType = "stock" | "crypto";
@@ -99,6 +100,8 @@ export type RuntimeRunSettings = {
   deep_think_llm?: string;
   analysts?: string[];
   output_language?: string;
+  holding_period_days?: number;
+  benchmark_ticker?: string;
   max_debate_rounds?: number;
   max_risk_discuss_rounds?: number;
   max_tool_rounds?: number;
@@ -124,6 +127,7 @@ export type ReportRunManifest = {
   maxDebateRounds: number;
   maxRiskRounds: number;
   benchmarkTicker: string;
+  holdingPeriodDays?: number;
 };
 
 export type ReportVersion = {
@@ -140,6 +144,9 @@ export type ReportVersion = {
   outputQuality?: OutputQuality;
   evidenceBundle?: EvidenceBundle;
   evidenceValidation?: EvidenceValidation;
+  memoryBundle?: MemoryBundle;
+  memoryValidation?: MemoryValidation;
+  evaluationReviews: ReviewAttachment[];
 };
 
 export type RunContext = {
@@ -169,6 +176,9 @@ export type AnalysisTask = {
   outputQuality?: OutputQuality;
   evidenceBundle?: EvidenceBundle;
   evidenceValidation?: EvidenceValidation;
+  memoryBundle?: MemoryBundle;
+  memoryValidation?: MemoryValidation;
+  evaluationReviews: ReviewAttachment[];
   reportVersions: ReportVersion[];
   logs: LogEntry[];
   error: string;
@@ -213,6 +223,7 @@ export type AnalysisEvent = {
   runSettings?: RuntimeRunSettings;
   outputQuality?: OutputQuality;
   evidenceBundle?: EvidenceBundle;
+  memoryBundle?: MemoryBundle;
   error?: string;
   agent?: string;
 };

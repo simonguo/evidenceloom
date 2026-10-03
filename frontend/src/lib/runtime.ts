@@ -2,6 +2,8 @@ import { streamAnalysis } from "./analysis";
 import { errorMessage } from "./errors";
 import { createTranslator } from "./i18n";
 import { stripSecretFields } from "@/features/persistence/local-storage";
+import type { MemoryInventory } from "@/features/memory/types";
+import { verifyMemoryInventory } from "@/features/memory/lib/validation";
 import type { AnalysisEvent, AnalysisForm, AnalysisTask, GlobalSettings, OhlcvBar, ResolvedInstrument, SystemLanguage } from "./types";
 
 export type RuntimeKind = "web" | "tauri";
@@ -67,6 +69,7 @@ export type LegacyDesktopData = {
 };
 
 export type RuntimeAdapter = {
+  getResearchMemoryInventory: (request: { decisionIds: string[]; pythonPath?: string; projectRoot?: string }) => Promise<MemoryInventory>;
   loadDesktopData: (legacy?: LegacyDesktopData) => Promise<DesktopSnapshot>;
   saveDesktopSettings: (settings: GlobalSettings) => Promise<void>;
   setProviderSecret: (provider: string, value: string) => Promise<void>;
@@ -92,6 +95,11 @@ export type RuntimeAdapter = {
 };
 
 export const webRuntimeAdapter: RuntimeAdapter = {
+  async getResearchMemoryInventory({ decisionIds }) {
+    const response = await fetch("/api/memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decisionIds }) });
+    if (!response.ok) throw new Error("Saved research memory could not be loaded.");
+    return verifyMemoryInventory(await response.json(), decisionIds);
+  },
   async loadDesktopData() {
     return { tasks: [] };
   },
@@ -174,6 +182,10 @@ export const webRuntimeAdapter: RuntimeAdapter = {
 };
 
 export const tauriRuntimeAdapter: RuntimeAdapter = {
+  async getResearchMemoryInventory({ decisionIds, pythonPath, projectRoot }) {
+    const { invoke } = await getTauriApi();
+    return verifyMemoryInventory(await invoke("get_research_memory_inventory", { decisionIds, pythonPath, projectRoot }), decisionIds);
+  },
   async loadDesktopData(legacy) {
     const { invoke } = await getTauriApi();
     if (legacy?.settings || legacy?.tasks?.length) {

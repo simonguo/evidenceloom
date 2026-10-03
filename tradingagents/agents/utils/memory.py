@@ -1,4 +1,4 @@
-"""Append-only markdown decision log for TradingAgents."""
+"""Legacy, unverified Markdown log compatibility; never settlement authority."""
 
 from typing import List, Optional
 from pathlib import Path
@@ -10,9 +10,10 @@ from tradingagents.agents.utils.memory_files import locked_memory_file, write_me
 
 
 class TradingMemoryLog:
-    """Append-only markdown log of trading decisions and reflections."""
+    """Legacy log reader/writer; new research uses immutable JSON MemoryStore records."""
 
-    # HTML comment: cannot appear in LLM prose output, safe as a hard delimiter
+    # Legacy delimiter is not trustworthy: model prose can contain this exact text.
+    # Production research never creates authoritative decisions from these blocks.
     _SEPARATOR = "\n\n<!-- ENTRY_END -->\n\n"
     # Precompiled patterns — avoids re-compilation on every load_entries() call
     _DECISION_RE = re.compile(r"DECISION:\n(.*?)(?=\nREFLECTION:|\Z)", re.DOTALL)

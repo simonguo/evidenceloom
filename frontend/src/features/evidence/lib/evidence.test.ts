@@ -8,7 +8,8 @@ import { buildReportDocument } from "@/features/report-export/lib/report-documen
 import { renderReportHtml } from "@/features/report-export/lib/render-html";
 import { renderReportMarkdown } from "@/features/report-export/lib/render-markdown";
 import type { EvidenceBundle } from "../types";
-import { canonicalJson, citationReferences, copyEvidenceBundle, normalizeTaskEvidence, sha256, verifyEvidenceBundle, verifyTaskEvidence } from "./validation";
+import { canonicalJson, citationReferences, copyEvidenceBundle, isPublicSourceUrl, normalizeTaskEvidence, sha256, verifyEvidenceBundle, verifyTaskEvidence } from "./validation";
+import { createFictionalDemoTask } from "@/features/report-export/fixtures/fictional-demo";
 
 async function citedFixture() {
   const bundle = copyEvidenceBundle(fixture);
@@ -30,6 +31,28 @@ describe("saved research evidence", () => {
     expect(payload).toBe('{"close":123.45678901234567,"integral":1.0,"tiny":1e-07}');
     expect(await sha256(bundle.manifest)).toBe(fixture.manifest_sha256);
     expect(canonicalJson(bundle)).toContain("123.45678901234567");
+  });
+  it.each(["https://example.local./private", "https://example.internal./private", "https://example.localhost./private", "https://example.invalid./private", "https://example.test./private", "HTTPS://example.com/data", "https://EXAMPLE.com/data", "https://example.com:443/data", "https://example.com/data?", "https://example.com/data#", "http://0x7f.1./data", "https://%65xample.com/data", "https://例子.com/data"])("rejects noncanonical/private captured record URL %s", (url) => {
+    const bundle = structuredClone(fixture); bundle.records[0].sources[0].url = url;
+    expect(isPublicSourceUrl(url)).toBe(false);
+    expect(() => copyEvidenceBundle(bundle)).toThrow("unsafe_content");
+  });
+  it("admits an actual public numeric DNS subdomain source", () => {
+    const bundle = structuredClone(fixture); bundle.records[0].sources[0].url = "https://123.example.com/data";
+    expect(copyEvidenceBundle(bundle).records[0].sources[0].url).toBe("https://123.example.com/data");
+  });
+  it("exports a large valid captured text with many backtick runs without argument overflow", async () => {
+    const bundle = copyEvidenceBundle(fixture); const record = bundle.records[0];
+    const payload = `[E:${record.id}]\n` + "`x".repeat(150_000) + "\n````\nEND";
+    const artifact = { kind: "tool_text" as const, payload }; const sha = await sha256(artifact);
+    delete bundle.artifacts[record.output_sha256]; bundle.artifacts[sha] = artifact; record.output_sha256 = sha;
+    const { bundle_sha256: _, ...body } = bundle; bundle.bundle_sha256 = await sha256(body);
+    const task = createFictionalDemoTask("en");
+    const version = { ...task.reportVersions[0], evidenceBundle: await verifyEvidenceBundle(bundle) };
+    const markdown = renderReportMarkdown(buildReportDocument(task.id, task.origin, version, "en"));
+    const blocks = [...markdown.matchAll(/^(`{3,})json\n([\s\S]*?)\n\1$/gm)].map((match) => JSON.parse(match[2]));
+    const exported = blocks.find((value) => value.bundle_sha256 === bundle.bundle_sha256);
+    expect(exported.artifacts[sha].payload).toBe(payload);
   });
 
   it("keeps exact bundle values through frozen history, browser save/load, HTML and Markdown", async () => {

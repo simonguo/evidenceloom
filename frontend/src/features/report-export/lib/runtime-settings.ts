@@ -13,6 +13,8 @@ export function sanitizeRuntimeSettings(settings: RuntimeRunSettings): RuntimeRu
     const value = settings[key];
     if (typeof value === "number" && Number.isFinite(value)) safe[key] = value;
   }
+  if (Number.isSafeInteger(settings.holding_period_days) && (settings.holding_period_days ?? 0) > 0) safe.holding_period_days = settings.holding_period_days;
+  if (typeof settings.benchmark_ticker === "string" && /^[A-Za-z0-9^=._-]{1,128}$/.test(settings.benchmark_ticker)) safe.benchmark_ticker = settings.benchmark_ticker;
   if (settings.temperature === null) safe.temperature = null;
   if (typeof settings.temperature === "string" && /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(settings.temperature) && Number.isFinite(Number(settings.temperature))) {
     safe.temperature = settings.temperature;
@@ -44,6 +46,8 @@ export function mergeRuntimeManifest(manifest: ReportRunManifest, settings?: Run
     newsData: vendors?.news_data ?? manifest.newsData,
     maxDebateRounds: safe.max_debate_rounds ?? manifest.maxDebateRounds,
     maxRiskRounds: safe.max_risk_discuss_rounds ?? manifest.maxRiskRounds,
+    benchmarkTicker: safe.benchmark_ticker ?? manifest.benchmarkTicker,
+    ...(safe.holding_period_days !== undefined ? { holdingPeriodDays: safe.holding_period_days } : {}),
     toolVendors: { ...(safe.tool_vendors ?? {}) },
     runtimeRunSettings: safe,
   };

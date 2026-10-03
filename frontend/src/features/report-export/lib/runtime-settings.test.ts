@@ -5,6 +5,14 @@ import { createRunContext } from "./versioning";
 import { mergeRuntimeManifest } from "./runtime-settings";
 
 describe("runtime report provenance", () => {
+  it("freezes the effective benchmark and holding period ahead of requested settings", () => {
+    const form = { ...defaultAnalysisForm(), benchmarkTicker: "SPY" };
+    const requested = createRunContext(form).manifest;
+    const frozen = mergeRuntimeManifest(requested, { benchmark_ticker: "^N225", holding_period_days: 20 });
+    form.benchmarkTicker = "QQQ";
+    expect(frozen).toMatchObject({ benchmarkTicker: "^N225", holdingPeriodDays: 20, runtimeRunSettings: { benchmark_ticker: "^N225", holding_period_days: 20 } });
+    expect(mergeRuntimeManifest(requested, { holding_period_days: 1.5, benchmark_ticker: "https://private.invalid" })).toMatchObject({ benchmarkTicker: "SPY", runtimeRunSettings: {} });
+  });
   it("preserves exact manifest decimal strings and explicit unknown temperature", () => {
     expect(mergeRuntimeManifest(createRunContext(defaultAnalysisForm()).manifest, { temperature: "0.30000000000000004" }).runtimeRunSettings?.temperature).toBe("0.30000000000000004");
     expect(mergeRuntimeManifest(createRunContext(defaultAnalysisForm()).manifest, { temperature: null }).runtimeRunSettings?.temperature).toBeNull();

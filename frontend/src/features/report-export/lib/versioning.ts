@@ -2,6 +2,7 @@ import { resolveTaskDecision } from "@/components/task-center/decisions";
 import { mergeEventOutputQuality, normalizeOutputQuality } from "@/features/output-quality/lib/quality";
 import { mergeRuntimeManifest } from "./runtime-settings";
 import { normalizeTaskEvidence } from "@/features/evidence/lib/validation";
+import { normalizeTaskMemory } from "@/features/memory/lib/validation";
 import packageMetadata from "../../../../package.json";
 import type {
   AnalysisEvent,
@@ -63,9 +64,12 @@ export function appendCompletedReportVersion(
     outputQuality: mergeEventOutputQuality(task.outputQuality, event),
     evidenceBundle: evidenceTask.evidenceBundle,
     evidenceValidation: evidenceTask.evidenceValidation,
+    memoryBundle: task.memoryValidation ? undefined : event.memoryBundle ?? event.finalState?.memory_bundle as ReportVersion["memoryBundle"] ?? task.memoryBundle,
+    memoryValidation: task.memoryValidation,
+    evaluationReviews: [],
   };
 
-  return normalizeTaskEvidence({ ...task, reportVersions: [...task.reportVersions, version] });
+  return normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [...task.reportVersions, version] }));
 }
 
 export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
@@ -91,8 +95,11 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     outputQuality: normalizeOutputQuality(task.outputQuality),
     evidenceBundle: task.evidenceBundle,
     evidenceValidation: task.evidenceValidation,
+    memoryBundle: task.memoryBundle,
+    memoryValidation: task.memoryValidation,
+    evaluationReviews: task.evaluationReviews ?? [],
   };
-  return normalizeTaskEvidence({ ...task, reportVersions: [version] });
+  return normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [version] }));
 }
 
 export function hasReportContent(sections: Record<string, string | null | undefined>) {

@@ -40,9 +40,12 @@ export function isPublicSourceUrl(value: unknown): value is string {
   if (typeof value !== "string" || value.length > 2048) return false;
   try {
     const url = new URL(value);
-    return ["https:", "http:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash && !url.port
-      && url.hostname.includes(".") && !/(?:^|\.)(?:localhost|local|internal|invalid|test)$/.test(url.hostname)
-      && !/^(?:\d+[.]|\[|127[.]|0[.])/.test(url.hostname);
+    const host = url.hostname; const domain = host.replace(/\.+$/, "");
+    const authority = /^https?:\/\/([^/?#]*)/.exec(value)?.[1];
+    return ["https:", "http:"].includes(url.protocol) && value.startsWith(`${url.protocol}//`) && authority === host
+      && /^[a-z0-9._-]+$/.test(host) && host.includes(".") && !/(?:^|\.)(?:localhost|local|internal|invalid|test)$/.test(domain)
+      && !/^[0-9.]+$/.test(host) && !host.startsWith("[") && !value.includes("?") && !value.includes("#")
+      && !url.username && !url.password && !url.port;
   } catch { return false; }
 }
 function safeJson(value: unknown, depth = 0, integerOnly = true): asserts value is JsonValue {

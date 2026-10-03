@@ -9,6 +9,8 @@ import { reportExportFilename } from "../lib/filename";
 import { renderReportHtml } from "../lib/render-html";
 import { renderReportMarkdown } from "../lib/render-markdown";
 import { verifyEvidenceBundle } from "@/features/evidence/lib/validation";
+import { verifiedExportVersion } from "@/features/memory/lib/export";
+import { reportJson } from "../lib/report-json";
 
 export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
   const versions = useMemo(
@@ -32,14 +34,14 @@ export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
     setExporting(format);
     setMessage("");
     try {
-      const frozenVersion = JSON.parse(JSON.stringify(selectedVersion)) as ReportVersion;
+      let frozenVersion = JSON.parse(JSON.stringify(selectedVersion)) as ReportVersion;
       const taskId = task.id;
       const origin = task.origin;
       if (frozenVersion.evidenceValidation) throw new Error(`Evidence bundle is invalid: ${frozenVersion.evidenceValidation.reason}`);
       if (frozenVersion.evidenceBundle) frozenVersion.evidenceBundle = await verifyEvidenceBundle(frozenVersion.evidenceBundle, frozenVersion.reportSections);
-      if (format === "json" && !frozenVersion.evidenceBundle) throw new Error(language === "zh" ? "此版本未保存证据包。" : "No evidence bundle was saved for this version.");
+      frozenVersion = await verifiedExportVersion(frozenVersion);
       const document = buildReportDocument(taskId, origin, frozenVersion, language);
-      const content = format === "json" ? JSON.stringify(frozenVersion.evidenceBundle, null, 2) : format === "html"
+      const content = format === "json" ? JSON.stringify(reportJson(taskId, origin, frozenVersion), null, 2) : format === "html"
         ? renderReportHtml(document)
         : renderReportMarkdown(document);
       const result = await getRuntimeAdapter().saveTextExport({

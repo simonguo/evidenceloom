@@ -1,4 +1,5 @@
 import type { AnalysisTask, ReportVersion, SystemLanguage } from "@/lib/types";
+import { attachFictionalMemory } from "@/features/memory/fixtures/fictional-memory";
 
 export const FICTIONAL_DEMO_TASK_ID = "evidenceloom-fictional-demo";
 const createdAt = "2025-02-15T09:30:00.000Z";
@@ -143,10 +144,10 @@ export function getOrCreateFictionalDemoTask(
   language: SystemLanguage,
 ): AnalysisTask {
   return tasks.find((task) => task.id === FICTIONAL_DEMO_TASK_ID)
-    ?? createFictionalDemoTask(language);
+    ?? createFictionalDemoTask(language, true);
 }
 
-export function createFictionalDemoTask(language: SystemLanguage): AnalysisTask {
+export function createFictionalDemoTask(language: SystemLanguage, includeMemory = false): AnalysisTask {
   const localized = content[language];
   const stats = {
     llmCalls: 14,
@@ -187,9 +188,10 @@ export function createFictionalDemoTask(language: SystemLanguage): AnalysisTask 
     decision: localized.decision,
     stats,
     reportSections,
+    evaluationReviews: [],
   };
 
-  return {
+  const task: AnalysisTask = {
     id: FICTIONAL_DEMO_TASK_ID,
     origin: "demo",
     ticker: "EVDM.TEST",
@@ -222,6 +224,7 @@ export function createFictionalDemoTask(language: SystemLanguage): AnalysisTask 
     },
     reportSections,
     reportVersions: [version],
+    evaluationReviews: [],
     logs: [{
       id: `fictional-demo-log-${language}`,
       type: "System",
@@ -232,4 +235,5 @@ export function createFictionalDemoTask(language: SystemLanguage): AnalysisTask 
     }],
     error: "",
   };
+  return includeMemory ? attachFictionalMemory(task) : task;
 }

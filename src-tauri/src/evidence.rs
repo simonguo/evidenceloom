@@ -1,6 +1,6 @@
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, sync::OnceLock};
 
 const PROVIDERS: &[&str] = &[
     "yfinance",
@@ -261,17 +261,14 @@ fn safe_json(value: &Value, depth: usize, integer_only: bool) -> Check {
                         >= 16
                 }))?;
             }
-            for segment in lower.split("http").skip(1) {
-                let part = format!(
-                    "http{}",
-                    segment
-                        .split(|c: char| c.is_whitespace() || "<>\")]}".contains(c))
-                        .next()
-                        .unwrap_or("")
-                );
-                if part.starts_with("http://") || part.starts_with("https://") {
-                    ensure(public_url(&Value::String(part)))?;
-                }
+            static URL: OnceLock<regex::Regex> = OnceLock::new();
+            for found in URL
+                .get_or_init(|| {
+                    regex::Regex::new(r#"(?i)https?://[^\s<>"\)\]\}]+"#).expect("fixed URL pattern")
+                })
+                .find_iter(s)
+            {
+                ensure(public_url(&Value::String(found.as_str().to_owned())))?;
             }
             Ok(())
         }
@@ -337,7 +334,15 @@ fn public_url(value: &Value) -> bool {
         return false;
     };
     let host = url.host_str().unwrap_or("");
+    let comparison_host = host.trim_end_matches('.');
+    let authority = s
+        .split_once("://")
+        .map(|(_, rest)| rest.split('/').next().unwrap_or_default())
+        .unwrap_or_default();
     ["http", "https"].contains(&url.scheme())
+        && s.starts_with(&format!("{}://", url.scheme()))
+        && authority == host
+        && !authority.contains(':')
         && url.username().is_empty()
         && url.password().is_none()
         && url.query().is_none()
@@ -345,10 +350,21 @@ fn public_url(value: &Value) -> bool {
         && url.port().is_none()
         && s.len() <= 2048
         && host.contains('.')
+        && host.bytes().all(|byte| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || [b'.', b'_', b'-'].contains(&byte)
+        })
         && host.parse::<std::net::IpAddr>().is_err()
-        && !["localhost", "local", "internal", "invalid", "test"]
+        && !comparison_host.split('.').all(|label| {
+            !label.is_empty()
+                && (label.bytes().all(|byte| byte.is_ascii_digit())
+                    || label.strip_prefix("0x").is_some_and(|value| {
+                        !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+                    }))
+        })
+        && comparison_host != "localhost"
+        && !["local", "internal", "localhost", "invalid", "test"]
             .iter()
-            .any(|end| host == *end || host.ends_with(&format!(".{end}")))
+            .any(|end| comparison_host.ends_with(&format!(".{end}")))
 }
 pub fn canonical_hash(value: &Value) -> Result<String, String> {
     let bytes = serde_json::to_vec(value).map_err(|_| "Evidence could not be serialized")?;
@@ -706,6 +722,54 @@ mod tests {
     use super::*;
     pub fn fixture() -> Value {
         serde_json::from_str(include_str!("../../tests/fixtures/evidence_bundle_v1.json")).unwrap()
+    }
+    #[test]
+    fn evidence_url_boundary_preserves_canonical_public_hosts_and_rejects_private_aliases() {
+        for url in [
+            "https://internal.local./private",
+            "https://gateway.internal./private",
+            "https://host.localhost./private",
+            "https://host.invalid./private",
+            "https://host.test../private",
+            "https://localhost./private",
+            "https://%65xample.com/private",
+            "https://bücher.example/private",
+            "https://unsafe!.example.com/private",
+            "https://0x7f.0.0.1/private",
+            "https://127.1/private",
+            "https://example.com:443/data",
+            "https://example.com:/data",
+            "https://example.com/data?",
+            "https://example.com/data#",
+            "https://user:password@example.com/data",
+            "https://@example.com/data",
+            "HTTPS://example.com/data",
+            "https://EXAMPLE.com/data",
+        ] {
+            assert!(!public_url(&url.into()));
+            assert!(safe_json(&format!("Saved source: {url}").into(), 0, true).is_err());
+            let mut bundle = fixture();
+            bundle["records"][0]["sources"][0]["url"] = url.into();
+            let mut body = bundle.as_object().unwrap().clone();
+            body.remove("bundle_sha256");
+            bundle["bundle_sha256"] = canonical_hash(&Value::Object(body)).unwrap().into();
+            assert!(validate_bundle(&bundle, None).is_err());
+        }
+        for url in [
+            "https://123.example.com/data",
+            "https://xn--bcher-kva.example/data",
+            "https://example.com./data",
+            "https://example.com/data",
+        ] {
+            assert!(public_url(&url.into()));
+            safe_json(&format!("Saved source: {url}").into(), 0, true).unwrap();
+            let mut bundle = fixture();
+            bundle["records"][0]["sources"][0]["url"] = url.into();
+            let mut body = bundle.as_object().unwrap().clone();
+            body.remove("bundle_sha256");
+            bundle["bundle_sha256"] = canonical_hash(&Value::Object(body)).unwrap().into();
+            validate_bundle(&bundle, None).unwrap();
+        }
     }
     #[test]
     fn verifies_python_generated_hashes_and_preserves_decimal_json_text() {

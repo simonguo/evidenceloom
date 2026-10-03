@@ -51,7 +51,8 @@ jobs:
             tests/test_runner_diagnostics.py \
             tests/test_runner_source_manifest.py \
             tests/test_sidecar_architecture.py \
-            tests/test_sidecar_probe.py
+            tests/test_sidecar_probe.py \
+            tests/test_memory_inventory.py
       - name: Build and validate the native packaged sidecar
         env:
           SIDECAR_TARGET: ${{ matrix.target }}
@@ -67,7 +68,36 @@ jobs:
           fi
           "$sidecar_python" scripts/sidecar_probe.py all "$sidecar_binary"
       - name: Run native Rust protocol and process fixtures
-        run: cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked runtime_probe
+        run: |
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked runtime_probe
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked memory
+      - name: Seed an owned saved-memory fixture store
+        run: |
+          uv run --frozen python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import tempfile
+
+          os.environ["EVIDENCELOOM_BOOTSTRAP_ONLY"] = "1"
+          from tradingagents.memory.store import MemoryStore
+
+          bundle = json.loads(Path("tests/fixtures/memory_bundle_v1.json").read_text(encoding="utf-8"))
+          directory = Path(tempfile.mkdtemp(prefix="evidenceloom-memory-inventory-", dir=os.environ["RUNNER_TEMP"]))
+          memory_path = directory / "memory.md"
+          store = MemoryStore(str(memory_path))
+          prior = bundle["input_snapshot"]["decisions"][0]
+          empty_context = MemoryStore().context_snapshot(
+              prior["decision"]["instrument"], prior["decision"]["research_as_of"],
+              selected_at=prior["decision"]["recorded_at"],
+          )
+          store.record_decision(prior)
+          store.bundle(prior["run_id"], empty_context, evidence_bundle_sha256=prior["decision"]["evidence_bundle_sha256"])
+          store.record_decision(bundle["decision_snapshot"])
+          store.bundle(bundle["run_id"], bundle["input_snapshot"], evidence_bundle_sha256=bundle["evidence_bundle_sha256"])
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"EVIDENCELOOM_VALIDATION_MEMORY_STORE={memory_path.resolve()}\n")
+          PY
       - name: Exercise the Rust bridge against the real packaged sidecar
         env:
           SIDECAR_TARGET: ${{ matrix.target }}
@@ -77,3 +107,21 @@ jobs:
             cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked \
             runtime_probe::tests::packaged_artifact_verifies_actual_runtime -- \
             --exact --ignored
+          EVIDENCELOOM_VALIDATION_SIDECAR="$sidecar_binary" \
+            cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked \
+            research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory -- \
+            --exact --ignored
+      - name: Clean up the owned fixture store
+        if: always()
+        run: |
+          uv run --frozen python - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+
+          memory_path = os.environ.get("EVIDENCELOOM_VALIDATION_MEMORY_STORE")
+          if memory_path:
+              directory = Path(memory_path).parent
+              if directory.name.startswith("evidenceloom-memory-inventory-"):
+                  shutil.rmtree(directory, ignore_errors=True)
+          PY

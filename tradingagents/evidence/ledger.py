@@ -225,16 +225,26 @@ def _public_url(value):
         host = (parts.hostname or "").lower()
         if parts.scheme not in {"http", "https"} or not host or "." not in host:
             return None
+        # Keep the same canonical ASCII host across Python and WHATWG URL
+        # consumers. Encoded/Unicode hosts and dotted hexadecimal addresses
+        # must not bypass the exclusion of private or local endpoints.
+        if not re.fullmatch(r"[a-z0-9._-]+", host):
+            return None
+        comparison_host = host.rstrip(".")
         if (
-            host.endswith((".local", ".internal", ".localhost", ".invalid", ".test"))
-            or host == "localhost"
+            comparison_host.endswith((".local", ".internal", ".localhost", ".invalid", ".test"))
+            or comparison_host == "localhost"
         ):
             return None
         try:
             ipaddress.ip_address(host)
             return None
         except ValueError:
-            if re.fullmatch(r"[\d.]+", host):
+            if re.fullmatch(
+                r"(?:0x[0-9a-f]+|[0-9]+)(?:\.(?:0x[0-9a-f]+|[0-9]+))*", comparison_host
+            ):
+                return None
+            if re.fullmatch(r"[0-9.]+", host):
                 return None
         port = parts.port
         if port is not None:

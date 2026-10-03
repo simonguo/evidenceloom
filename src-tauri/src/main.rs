@@ -1,5 +1,8 @@
 mod evidence;
 mod output_quality;
+mod research_memory;
+mod research_memory_inventory;
+mod research_memory_storage;
 mod runtime_probe;
 mod secrets;
 mod storage;
@@ -652,6 +655,61 @@ async fn check_runtime(
     })
     .await
     .map_err(|_| "Runtime diagnostics could not be completed.".to_string())
+}
+
+#[tauri::command]
+async fn get_research_memory_inventory(
+    app: AppHandle,
+    decision_ids: Vec<String>,
+    python_path: Option<String>,
+    project_root: Option<String>,
+) -> Result<Value, String> {
+    research_memory::validate_requested_ids(&decision_ids)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let external = allow_external_runner_paths();
+        if !external
+            && (normalize_optional_path(project_root.as_deref()).is_some()
+                || normalize_optional_path(python_path.as_deref()).is_some())
+        {
+            return Err("Custom research runtime paths are disabled in this desktop build.".into());
+        }
+        let configured_root = if external {
+            normalize_optional_path(project_root.as_deref())
+        } else {
+            None
+        };
+        let repo_root = effective_repo_root(configured_root.as_deref());
+        let sidecar = sidecar_path(Some(&app));
+        let sidecar_real = sidecar.as_deref().is_some_and(is_real_sidecar);
+        let mut command = if runtime_probe::uses_sidecar(&runner_mode(), sidecar_real) {
+            if !sidecar_real {
+                return Err("Research memory inventory requires a built sidecar.".into());
+            }
+            let mut command = Command::new(
+                sidecar
+                    .as_deref()
+                    .ok_or("Research memory runtime is unavailable.")?,
+            );
+            command.current_dir(runtime_work_dir(Some(&app), &repo_root));
+            command
+        } else {
+            let python = resolve_python_path(
+                &repo_root,
+                if external {
+                    python_path.as_deref()
+                } else {
+                    None
+                },
+            );
+            let mut command = Command::new(python);
+            command.arg(runner_path(&repo_root)).current_dir(&repo_root);
+            command
+        };
+        command.env("PYTHONPATH", build_pythonpath(&repo_root));
+        research_memory_inventory::read(command, &decision_ids)
+    })
+    .await
+    .map_err(|_| "Research memory inventory could not be read.".to_string())?
 }
 
 fn check_runtime_process(
@@ -1508,6 +1566,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             runtime_info,
             check_runtime,
+            get_research_memory_inventory,
             load_ohlcv_chart_data,
             resolve_instrument,
             test_llm_connection,

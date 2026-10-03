@@ -1,5 +1,5 @@
 #[path = "runtime_probe/process.rs"]
-mod process;
+pub(crate) mod process;
 
 use process::ProbeProcess;
 use serde::Deserialize;

@@ -248,6 +248,9 @@ function resetTaskForQueue(task: AnalysisTask, queuedAt: string, queueOrder: num
     outputQuality: undefined,
     evidenceBundle: undefined,
     evidenceValidation: undefined,
+    memoryBundle: undefined,
+    memoryValidation: undefined,
+    evaluationReviews: [],
     logs: [],
     error: "",
   };
@@ -267,6 +270,9 @@ function resetTaskForRun(task: AnalysisTask): AnalysisTask {
     outputQuality: undefined,
     evidenceBundle: undefined,
     evidenceValidation: undefined,
+    memoryBundle: undefined,
+    memoryValidation: undefined,
+    evaluationReviews: [],
     logs: [],
     error: "",
   };

@@ -24,6 +24,45 @@ from tradingagents.evidence import (
 from tradingagents.evidence import ledger as module
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://0x7f.1/private",
+        "https://0x7f.0.0.1/private",
+        "https://0x7f.1./private",
+        "https://0177.0.0.1/private",
+        "https://127.1/private",
+        "https://internal.local./private",
+        "https://gateway.internal./private",
+        "https://bücher.example/data",
+        "https://%30x7f.1/private",
+    ],
+)
+def test_noncanonical_or_local_hosts_are_withheld_before_evidence_capture(url):
+    from tradingagents.evidence import sanitize_diagnostic
+    from tradingagents.memory.schema import MemoryValidationError, make_artifact
+
+    assert sanitize_diagnostic(url) == "[private URL withheld]"
+    with pytest.raises(MemoryValidationError):
+        make_artifact("text", url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://123.example.com/data",
+        "https://0xbeef.example.com/data",
+        "https://xn--bcher-kva.example/data",
+    ],
+)
+def test_public_ascii_hosts_preserve_the_exact_source_url(url):
+    from tradingagents.evidence import sanitize_diagnostic
+    from tradingagents.memory.schema import make_artifact
+
+    assert sanitize_diagnostic(url) == url
+    assert make_artifact("text", url)["payload"] == url
+
+
 def new_ledger(tmp_path, **kwargs):
     return EvidenceLedger(
         "EVDM.TEST", "2025-02-14", {"temperature": 0.2, "analysts": ["market"]}, tmp_path, **kwargs

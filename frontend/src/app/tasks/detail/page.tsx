@@ -26,6 +26,7 @@ import { StatusPill } from "@/components/task-center/components/StatusPill";
 import { EventStream } from "@/components/task-center/components/EventStream";
 import { DecisionSummaryCard } from "@/components/task-center/components/DecisionSummaryCard";
 import { ReportVersionsPanel } from "@/features/report-export";
+import { MemoryInspector } from "@/features/memory/components/MemoryInspector";
 import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
 import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
 
@@ -56,7 +57,7 @@ function TaskDetailRouteContent() {
 
 function TaskDetailPage({ taskId }: { taskId: string }) {
   const router = useRouter();
-  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId } = useTaskCenter();
+  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const task = getTask(taskId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -257,6 +258,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
               />
               <OutputQualityPanel quality={task.outputQuality} language={settings.systemLanguage} />
               <EvidenceInspector bundle={task.evidenceBundle} invalid={task.evidenceValidation} reports={task.reportSections} checkReportCitations={task.status === "completed"} language={settings.systemLanguage} />
+              <MemoryInspector snapshot={task} language={settings.systemLanguage} />
             </div>
           ) : (
             <div className="mt-5">
@@ -280,7 +282,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
         </div>
       </section>
 
-      <ReportVersionsPanel task={task} language={settings.systemLanguage} />
+      <ReportVersionsPanel task={task} language={settings.systemLanguage} settings={settings} onReviews={saveEvaluationReviews} />
 
       <section className="space-y-6">
         <Panel title={t("agentProgressReports")} sticky>

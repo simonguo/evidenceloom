@@ -6,6 +6,9 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ### Changed
 
+- Freeze per-run research memory inputs, decision identity, actual recording time, effective benchmark, holding-period policy, and evaluator source hash in a separate MemoryBundle v1.
+- Persist full-precision outcome facts before model reflection; retain immutable report inputs and attach later dated evaluations separately in browser storage, SQLite schema v7, and complete JSON/HTML/Markdown reports.
+- Read saved evaluations through a bounded, read-only inventory command without initializing providers or models.
 - Run bootstrap and source-inventory diagnostics without importing research dependencies; retain a separate research-import probe for desktop health and release checks.
 - Validate the active Python interpreter and generated/reused sidecar OS and CPU against the requested target before packaging.
 - Capture and atomically persist exact sanitized model inputs, full-precision normalized source data, actual provider attempts, observed dates, frozen run-context hashes, and citation IDs in a versioned evidence bundle.
@@ -28,6 +31,8 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ### Fixed
 
+- Exclude date-only legacy Markdown from authoritative settlement and historical context selection; model-written delimiters cannot create decisions or evaluation facts.
+- Prevent current settings, changed benchmark aliases, reflection failures, or completion retries from reinterpreting a saved decision; historical date-only decisions remain explicitly not evaluable.
 - Require successful exit and strict stdout JSONL from sidecar checks; reject legacy bootstrap-only responses and clean up timed-out diagnostic processes.
 - Replay uncheckpointed captured inputs after interruption without refetching, while retaining new IDs for genuinely repeated calls.
 - Preserve code and prompt hashes in packaged runners by retaining only the application's own Python source files; reject missing-source inventories rather than hashing an empty directory.

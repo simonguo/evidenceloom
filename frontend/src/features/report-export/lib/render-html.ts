@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import type { ReportDocument } from "../types";
 import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
+import { renderMemoryHtml } from "@/features/memory/lib/render-appendix";
 
 const markdownComponents: Components = {
   a: ({ href, children }) => {
@@ -75,6 +76,7 @@ export function renderReportHtml(document: ReportDocument) {
     <nav aria-label="Table of contents"><ol>${toc}</ol></nav>
     ${sections}
     ${renderEvidenceAppendix(document)}
+    ${renderMemoryHtml(document.version, document.language)}
   </main>
 </body>
 </html>`;
