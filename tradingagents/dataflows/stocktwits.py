@@ -19,11 +19,14 @@ import html
 import http.client
 import json
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timezone
 from urllib.request import Request, urlopen
 
 from tradingagents.dataflows.date_window import coverage_gap, in_window
 from tradingagents.dataflows.symbol_utils import crypto_base
+from tradingagents.dataflows.evidence_utils import source_attempt
+from tradingagents.evidence import capture_evidence, observe_source
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +81,15 @@ def fetch_stocktwits_messages(
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> str:
+    """Fetch date-filtered recent StockTwits messages and capture their evidence."""
+    return capture_evidence(
+        "fetch_stocktwits_messages",
+        {"ticker": ticker, "limit": limit, "start_date": start_date, "end_date": end_date},
+        lambda: _fetch_stocktwits_messages(ticker, limit, timeout, start_date, end_date),
+    )
+
+
+def _fetch_stocktwits_messages(ticker, limit, timeout, start_date, end_date) -> str:
     """Fetch recent StockTwits messages for ``ticker`` and return them as a
     formatted plaintext block ready for prompt injection.
 
@@ -92,17 +104,22 @@ def fetch_stocktwits_messages(
     """
     url = _API.format(ticker=_stocktwits_symbol(ticker))
     req = Request(url, headers={"User-Agent": _UA, "Accept": "application/json"})
+    started = time.monotonic()
     try:
         with urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
     except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
         # OSError covers URLError/TimeoutError/connection resets; HTTPException
         # covers chunked-transfer errors (IncompleteRead/BadStatusLine, #1024).
-        logger.warning("StockTwits fetch failed for %s: %s", ticker, exc)
+        source_attempt("stocktwits", "unavailable", (time.monotonic() - started) * 1000)
+        logger.warning("StockTwits fetch unavailable for %s", ticker)
         return f"<stocktwits unavailable: {type(exc).__name__}>"
 
     fetched = data.get("messages", []) if isinstance(data, dict) else []
     messages = _within_window(fetched, start_date, end_date)
+    source_attempt(
+        "stocktwits", "available" if messages else "empty", (time.monotonic() - started) * 1000
+    )
     if not messages:
         if start_date and end_date:
             gap = coverage_gap(
@@ -118,6 +135,7 @@ def fetch_stocktwits_messages(
         return f"<no StockTwits messages found for ${ticker.upper()}>"
 
     lines = []
+    normalized = []
     bullish = bearish = unlabeled = 0
     for m in messages[:limit]:
         created = m.get("created_at", "")
@@ -139,10 +157,45 @@ def fetch_stocktwits_messages(
             unlabeled += 1
             tag = "no-label"
         lines.append(f"[{created} · @{user} · {tag}] {body}")
+        normalized.append({"created_at": created, "user": user, "sentiment": tag, "body": body})
 
     total = bullish + bearish + unlabeled
     bull_pct = round(100 * bullish / total) if total else 0
     bear_pct = round(100 * bearish / total) if total else 0
+    dates = [_created_at(m) for m in messages[:limit]]
+    valid_dates = [d for d in dates if d is not None]
+    timestamped = (
+        valid_dates and len(valid_dates) == len(dates) and all(d.tzinfo for d in valid_dates)
+    )
+    # Even with dated messages, user sentiment labels may be edited: keep their vintage unknown.
+    observe_source(
+        "stocktwits",
+        url=url,
+        normalized_data={
+            "messages": normalized,
+            "counts": {"bullish": bullish, "bearish": bearish, "unlabeled": unlabeled},
+            "percentages": {
+                "bullish": 100 * bullish / total if total else 0,
+                "bearish": 100 * bearish / total if total else 0,
+            },
+        },
+        observed_window={
+            "start": min(valid_dates).strftime("%Y-%m-%d"),
+            "end": max(valid_dates).strftime("%Y-%m-%d"),
+        }
+        if timestamped
+        else None,
+        publication_dates=[
+            d.astimezone(timezone.utc).isoformat().replace("+00:00", "Z") for d in valid_dates
+        ]
+        if timestamped
+        else None,
+        transformations=(
+            "Messages filtered to requested publication window",
+            "Message bodies HTML decoded and truncated for display",
+            "Percentages rounded to whole numbers for display",
+        ),
+    )
     summary = (
         f"Bullish: {bullish} ({bull_pct}%) · "
         f"Bearish: {bearish} ({bear_pct}%) · "

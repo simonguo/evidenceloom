@@ -13,6 +13,8 @@ from .eastmoney import load_ohlcv as load_eastmoney_ohlcv
 from stockstats import wrap
 from typing import Annotated
 from tradingagents.dataflows.yfinance_common import raise_for_empty, yf_retry
+from .evidence_utils import observe_ohlcv, scalar
+from tradingagents.evidence import observe_source
 
 logger = logging.getLogger(__name__)
 
@@ -200,6 +202,16 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
         _assert_ohlcv_not_stale(data, curr_date, symbol, canonical)
         if data.empty:
             raise NoMarketDataError(symbol, canonical, "no A-share prices in the requested window")
+        observe_ohlcv(
+            data,
+            transformations=(
+                "Dates normalized preserving local dates",
+                "Rows after analysis date excluded",
+                "Missing price cells forward then backward filled"
+                if fill_gaps
+                else "Rows without closing prices excluded",
+            ),
+        )
         return data
     safe_symbol = safe_ticker_component(canonical)
 
@@ -225,6 +237,7 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
     # transient rate limit). Treat an empty/columnless cache as a miss and
     # re-fetch rather than serving the poisoned file forever.
     data = None
+    cached_input = False
     if os.path.exists(data_file):
         try:
             cached = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
@@ -236,6 +249,7 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
             and _cache_is_fresh(data_file, as_of_dt, now)
         ):
             data = cached
+            cached_input = True
 
     if data is None:
         # yf.download catches every error, a rate limit included, and returns
@@ -256,6 +270,10 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
             raise_for_empty(symbol, canonical, "price rows")
         replace_file(data_file, lambda temp: downloaded.to_csv(temp, index=False, encoding="utf-8"))
         data = downloaded
+
+    data.attrs.update({"source": "yfinance", "source_url": "https://finance.yahoo.com/"})
+    if not cached_input:
+        data.attrs["adjustments"] = "auto_adjust=True requested; actions=False"
 
     data = _clean_dataframe(data)
 
@@ -289,6 +307,21 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
     # Reject a stale frame (latest row far older than curr_date) rather than
     # feeding year-old prices into indicators (#1021).
     _assert_ohlcv_not_stale(data, curr_date, symbol, canonical)
+
+    transformations = [
+        "Dates normalized preserving local dates",
+        "Rows after analysis date excluded",
+    ]
+    if cached_input:
+        transformations.append(
+            "Loaded normalized local OHLCV cache; original retrieval time and adjustment vintage unknown"
+        )
+    transformations.append(
+        "Missing price cells forward then backward filled"
+        if fill_gaps
+        else "Rows without closing prices excluded"
+    )
+    observe_ohlcv(data, transformations=transformations)
 
     return data
 
@@ -325,6 +358,16 @@ class StockstatsUtils:
 
         if not matching_rows.empty:
             indicator_value = matching_rows[indicator].values[0]
+            observe_source(
+                "local_calculation",
+                normalized_data={
+                    "indicator": indicator,
+                    "date": curr_date_str,
+                    "value": scalar(indicator_value),
+                },
+                observed_window={"start": curr_date_str, "end": curr_date_str},
+                transformations=("Technical indicator calculated with stockstats",),
+            )
             return indicator_value
         else:
             return "N/A: Not a trading day (weekend or holiday)"

@@ -9,10 +9,11 @@ use serde_json::Value;
 use std::{fs, path::PathBuf};
 use tauri::{AppHandle, Manager};
 
+use crate::evidence::{validate_bundle, validate_invalid};
 use crate::output_quality::{normalize_output_quality, normalize_report_version_quality};
 use crate::secrets;
 
-const SCHEMA_VERSION: i64 = 5;
+const SCHEMA_VERSION: i64 = 6;
 const SECRET_PREFIX: &str = "enc:v1:";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -126,6 +127,10 @@ pub struct AnalysisTaskRecord {
     pub report_versions: Value,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub output_quality: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_bundle: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub evidence_validation: Option<Value>,
     pub logs: Value,
     pub error: String,
 }
@@ -173,6 +178,7 @@ pub fn save_task(app: &AppHandle, task: AnalysisTaskRecord) -> Result<(), String
     let mut conn = open_database(app)?;
     let transaction = conn.transaction().map_err(|error| error.to_string())?;
     upsert_task(&transaction, &normalize_task(task))?;
+    prune_evidence(&transaction)?;
     transaction.commit().map_err(|error| error.to_string())
 }
 
@@ -180,6 +186,7 @@ pub fn delete_task(app: &AppHandle, task_id: String) -> Result<(), String> {
     let conn = open_database(app)?;
     conn.execute("DELETE FROM tasks WHERE id = ?1", params![task_id])
         .map_err(|error| error.to_string())?;
+    prune_evidence(&conn)?;
     Ok(())
 }
 
@@ -194,6 +201,9 @@ pub fn clear_data(app: &AppHandle) -> Result<(), String> {
          DELETE FROM task_reports;
          DELETE FROM task_logs;
          DELETE FROM tasks;
+         DELETE FROM evidence_bundle_artifacts;
+         DELETE FROM evidence_bundles;
+         DELETE FROM evidence_artifacts;
          DELETE FROM settings;",
     )
     .map_err(|error| error.to_string())?;
@@ -368,7 +378,20 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
          CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at DESC);
          CREATE INDEX IF NOT EXISTS idx_task_logs_task_id ON task_logs(task_id);
          CREATE INDEX IF NOT EXISTS idx_task_report_versions_task_id
-            ON task_report_versions(task_id, version_number DESC);",
+            ON task_report_versions(task_id, version_number DESC);
+         CREATE TABLE IF NOT EXISTS evidence_artifacts (
+            sha256 TEXT PRIMARY KEY,
+            payload TEXT NOT NULL
+         );
+         CREATE TABLE IF NOT EXISTS evidence_bundles (
+            sha256 TEXT PRIMARY KEY,
+            metadata TEXT NOT NULL
+         );
+         CREATE TABLE IF NOT EXISTS evidence_bundle_artifacts (
+            bundle_sha256 TEXT NOT NULL REFERENCES evidence_bundles(sha256) ON DELETE CASCADE,
+            artifact_sha256 TEXT NOT NULL REFERENCES evidence_artifacts(sha256),
+            PRIMARY KEY(bundle_sha256, artifact_sha256)
+         );",
     )
     .map_err(|error| error.to_string())?;
     ensure_column(conn, "tasks", "instrument_name", "TEXT NOT NULL DEFAULT ''")?;
@@ -376,6 +399,14 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     ensure_column(conn, "tasks", "queued_at", "TEXT NOT NULL DEFAULT ''")?;
     ensure_column(conn, "tasks", "queue_order", "INTEGER")?;
     ensure_column(conn, "tasks", "output_quality", "TEXT")?;
+    ensure_column(conn, "tasks", "evidence_bundle_sha256", "TEXT")?;
+    ensure_column(conn, "tasks", "evidence_validation", "TEXT")?;
+    ensure_column(
+        conn,
+        "task_report_versions",
+        "evidence_bundle_sha256",
+        "TEXT",
+    )?;
     ensure_column(conn, "task_logs", "agent", "TEXT")?;
     backfill_legacy_report_versions(conn)?;
     conn.execute(
@@ -578,7 +609,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
     let mut stmt = conn
         .prepare(
             "SELECT id, ticker, analysis_date, asset_type, research_depth, analysts, output_language, status,
-                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality
+                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation
              FROM tasks ORDER BY updated_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -588,6 +619,20 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
             let report_sections = load_report_sections(conn, &task_id)?;
             let report_versions = load_report_versions(conn, &task_id)?;
             let logs = load_logs(conn, &task_id)?;
+            let evidence_bundle = row
+                .get::<_, Option<String>>(20)?
+                .map(|hash| load_evidence_bundle(conn, &hash))
+                .transpose()?;
+            let evidence_validation = row
+                .get::<_, Option<String>>(21)?
+                .map(|raw| {
+                    let value: Value = serde_json::from_str(&raw).map_err(|_| {
+                        evidence_sql_error("Invalid saved evidence validation status".into())
+                    })?;
+                    validate_invalid(&value).map_err(evidence_sql_error)?;
+                    Ok::<Value, rusqlite::Error>(value)
+                })
+                .transpose()?;
             Ok(AnalysisTaskRecord {
                 id: task_id,
                 origin: row.get(18)?,
@@ -618,14 +663,39 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                     .get::<_, Option<String>>(19)?
                     .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
                     .and_then(|value| normalize_output_quality(&value)),
+                evidence_bundle,
+                evidence_validation,
                 logs,
                 error: row.get(17)?,
             })
         })
         .map_err(|error| error.to_string())?;
 
-    rows.collect::<Result<Vec<_>, _>>()
-        .map_err(|error| error.to_string())
+    let tasks = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())?;
+    for task in &tasks {
+        if task.evidence_bundle.is_some() && task.evidence_validation.is_some() {
+            return Err("Contradictory saved evidence validation status".into());
+        }
+        if let Some(bundle) = &task.evidence_bundle {
+            validate_bundle(
+                bundle,
+                if task.status == "completed" {
+                    Some(&task.report_sections)
+                } else {
+                    None
+                },
+            )?;
+        }
+        if let Some(bundle) = &task.evidence_bundle {
+            if bundle["instrument"] != task.ticker || bundle["analysis_date"] != task.analysis_date
+            {
+                return Err("Saved evidence does not match the research task".into());
+            }
+        }
+    }
+    Ok(tasks)
 }
 
 fn load_logs(conn: &Connection, task_id: &str) -> rusqlite::Result<Value> {
@@ -666,13 +736,44 @@ fn load_report_sections(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
 
 fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Value> {
     let mut stmt = conn.prepare(
-        "SELECT snapshot FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
+        "SELECT snapshot, evidence_bundle_sha256 FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
     )?;
     let rows = stmt.query_map(params![task_id], |row| {
         let raw = row.get::<_, String>(0)?;
-        Ok(normalize_report_version_quality(
-            serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null),
-        ))
+        let mut version = normalize_report_version_quality(
+            serde_json::from_str::<Value>(&raw)
+                .map_err(|_| evidence_sql_error("Invalid saved report version".into()))?,
+        );
+        if version.get("evidenceBundle").is_some() {
+            return Err(evidence_sql_error(
+                "Unexpected inline evidence in a saved report version".into(),
+            ));
+        }
+        if let Some(hash) = row.get::<_, Option<String>>(1)? {
+            let bundle = load_evidence_bundle(conn, &hash)?;
+            validate_bundle(&bundle, version.get("reportSections")).map_err(evidence_sql_error)?;
+            if bundle["instrument"] != version["task"]["ticker"]
+                || bundle["analysis_date"] != version["task"]["analysisDate"]
+                || bundle["run_id"] != version["runId"]
+            {
+                return Err(evidence_sql_error(
+                    "Saved evidence does not match its frozen report version".into(),
+                ));
+            }
+            version
+                .as_object_mut()
+                .ok_or_else(|| evidence_sql_error("Invalid saved report version".into()))?
+                .insert("evidenceBundle".into(), bundle);
+        }
+        if let Some(invalid) = version.get("evidenceValidation") {
+            if version.get("evidenceBundle").is_some() {
+                return Err(evidence_sql_error(
+                    "Contradictory saved evidence validation status".into(),
+                ));
+            }
+            validate_invalid(invalid).map_err(evidence_sql_error)?;
+        }
+        Ok(version)
     })?;
     let versions = rows
         .filter_map(|row| match row {
@@ -683,7 +784,153 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
     Ok(Value::Array(versions))
 }
 
+fn evidence_sql_error(message: String) -> rusqlite::Error {
+    rusqlite::Error::FromSqlConversionFailure(
+        0,
+        rusqlite::types::Type::Text,
+        Box::new(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            message,
+        )),
+    )
+}
+
+fn prune_evidence(conn: &Connection) -> Result<(), String> {
+    conn.execute_batch("DELETE FROM evidence_bundles WHERE sha256 NOT IN (SELECT evidence_bundle_sha256 FROM tasks WHERE evidence_bundle_sha256 IS NOT NULL UNION SELECT evidence_bundle_sha256 FROM task_report_versions WHERE evidence_bundle_sha256 IS NOT NULL);
+        DELETE FROM evidence_artifacts WHERE sha256 NOT IN (SELECT artifact_sha256 FROM evidence_bundle_artifacts);")
+        .map_err(|error| error.to_string())
+}
+
+fn store_evidence_bundle(conn: &Connection, bundle: &Value) -> Result<String, String> {
+    validate_bundle(bundle, None)?;
+    let hash = bundle["bundle_sha256"]
+        .as_str()
+        .ok_or("Missing evidence bundle hash")?
+        .to_string();
+    let mut metadata = bundle.as_object().ok_or("Invalid evidence bundle")?.clone();
+    let artifacts = metadata
+        .remove("artifacts")
+        .ok_or("Missing evidence artifacts")?;
+    let metadata = json_string(&Value::Object(metadata))?;
+    let stored: Option<String> = conn
+        .query_row(
+            "SELECT metadata FROM evidence_bundles WHERE sha256 = ?1",
+            params![hash],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|error| error.to_string())?;
+    if stored.as_ref().is_some_and(|stored| stored != &metadata) {
+        return Err("Evidence bundle content conflicts with its saved hash".into());
+    }
+    conn.execute(
+        "INSERT OR IGNORE INTO evidence_bundles (sha256, metadata) VALUES (?1, ?2)",
+        params![hash, metadata],
+    )
+    .map_err(|error| error.to_string())?;
+    for (artifact_hash, artifact) in artifacts.as_object().ok_or("Invalid evidence artifacts")? {
+        let payload = json_string(artifact)?;
+        let stored: Option<String> = conn
+            .query_row(
+                "SELECT payload FROM evidence_artifacts WHERE sha256 = ?1",
+                params![artifact_hash],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|error| error.to_string())?;
+        if stored.as_ref().is_some_and(|stored| stored != &payload) {
+            return Err("Evidence artifact content conflicts with its saved hash".into());
+        }
+        conn.execute(
+            "INSERT OR IGNORE INTO evidence_artifacts (sha256, payload) VALUES (?1, ?2)",
+            params![artifact_hash, payload],
+        )
+        .map_err(|error| error.to_string())?;
+        conn.execute("INSERT OR IGNORE INTO evidence_bundle_artifacts (bundle_sha256, artifact_sha256) VALUES (?1, ?2)", params![hash, artifact_hash]).map_err(|error| error.to_string())?;
+    }
+    Ok(hash)
+}
+
+fn load_evidence_bundle(conn: &Connection, hash: &str) -> rusqlite::Result<Value> {
+    let raw: String = conn.query_row(
+        "SELECT metadata FROM evidence_bundles WHERE sha256 = ?1",
+        params![hash],
+        |row| row.get(0),
+    )?;
+    let mut bundle: Value = serde_json::from_str(&raw)
+        .map_err(|_| evidence_sql_error("Invalid saved evidence bundle".into()))?;
+    let mut stmt = conn.prepare("SELECT a.sha256, a.payload FROM evidence_artifacts a JOIN evidence_bundle_artifacts link ON a.sha256 = link.artifact_sha256 WHERE link.bundle_sha256 = ?1 ORDER BY a.sha256")?;
+    let rows = stmt.query_map(params![hash], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut artifacts = serde_json::Map::new();
+    for row in rows {
+        let (hash, raw) = row?;
+        artifacts.insert(
+            hash,
+            serde_json::from_str(&raw)
+                .map_err(|_| evidence_sql_error("Invalid saved evidence artifact".into()))?,
+        );
+    }
+    bundle
+        .as_object_mut()
+        .ok_or_else(|| evidence_sql_error("Invalid saved evidence bundle".into()))?
+        .insert("artifacts".into(), Value::Object(artifacts));
+    validate_bundle(&bundle, None).map_err(evidence_sql_error)?;
+    if bundle["bundle_sha256"] != hash {
+        return Err(evidence_sql_error(
+            "Saved evidence bundle hash mismatch".into(),
+        ));
+    }
+    Ok(bundle)
+}
+
 fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+    if task.evidence_bundle.is_some() && task.evidence_validation.is_some() {
+        return Err("Contradictory evidence validation status".into());
+    }
+    if let Some(bundle) = &task.evidence_bundle {
+        validate_bundle(
+            bundle,
+            if task.status == "completed" {
+                Some(&task.report_sections)
+            } else {
+                None
+            },
+        )?;
+        if bundle["instrument"] != task.ticker || bundle["analysis_date"] != task.analysis_date {
+            return Err("Evidence bundle does not match the research task".into());
+        }
+    }
+    if let Some(invalid) = &task.evidence_validation {
+        validate_invalid(invalid)?;
+    }
+    if let Value::Array(versions) = &task.report_versions {
+        for version in versions {
+            if version.get("evidenceBundle").is_some()
+                && version.get("evidenceValidation").is_some()
+            {
+                return Err("Contradictory frozen evidence validation status".into());
+            }
+            if let Some(bundle) = version.get("evidenceBundle") {
+                validate_bundle(bundle, version.get("reportSections"))?;
+                if bundle["instrument"] != version["task"]["ticker"]
+                    || bundle["analysis_date"] != version["task"]["analysisDate"]
+                    || bundle["run_id"] != version["runId"]
+                {
+                    return Err("Evidence bundle does not match its frozen report version".into());
+                }
+            }
+            if let Some(invalid) = version.get("evidenceValidation") {
+                validate_invalid(invalid)?;
+            }
+        }
+    }
+    let evidence_hash = task
+        .evidence_bundle
+        .as_ref()
+        .map(|bundle| store_evidence_bundle(conn, bundle))
+        .transpose()?;
     let output_quality = task
         .output_quality
         .as_ref()
@@ -691,8 +938,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     conn.execute(
         "INSERT INTO tasks (
             id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
-            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)
+            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22)
          ON CONFLICT(id) DO UPDATE SET
             origin = excluded.origin,
             ticker = excluded.ticker,
@@ -711,7 +958,9 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             agent_statuses = excluded.agent_statuses,
             report_sections = excluded.report_sections,
             error = excluded.error,
-            output_quality = excluded.output_quality",
+            output_quality = excluded.output_quality,
+            evidence_bundle_sha256 = excluded.evidence_bundle_sha256,
+            evidence_validation = excluded.evidence_validation",
         params![
             task.id,
             task.origin,
@@ -733,6 +982,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             json_string(&task.report_sections)?,
             task.error,
             output_quality.as_ref().map(json_string).transpose()?,
+            evidence_hash,
+            task.evidence_validation.as_ref().map(json_string).transpose()?,
         ],
     )
     .map_err(|error| error.to_string())?;
@@ -785,7 +1036,12 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
 
     if let Value::Array(versions) = &task.report_versions {
         for version in versions {
-            let version = normalize_report_version_quality(version.clone());
+            let mut version = normalize_report_version_quality(version.clone());
+            let evidence_hash = version
+                .as_object_mut()
+                .and_then(|map| map.remove("evidenceBundle"))
+                .map(|bundle| store_evidence_bundle(conn, &bundle))
+                .transpose()?;
             let id = version
                 .get("id")
                 .and_then(Value::as_str)
@@ -805,10 +1061,21 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             if id.is_empty() || run_id.is_empty() || version_number < 1 || created_at.is_empty() {
                 continue;
             }
+            let existing: Option<(String, Option<String>)> = conn.query_row("SELECT snapshot, evidence_bundle_sha256 FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?))).optional().map_err(|error| error.to_string())?;
+            if let Some((snapshot, hash)) = existing {
+                if normalize_report_version_quality(
+                    serde_json::from_str::<Value>(&snapshot)
+                        .map_err(|_| "Invalid saved report version")?,
+                ) != version
+                    || hash != evidence_hash
+                {
+                    return Err("A frozen report version cannot be changed".into());
+                }
+            }
             conn.execute(
                 "INSERT OR IGNORE INTO task_report_versions
-                    (id, task_id, version_number, run_id, created_at, snapshot)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                 params![
                     id,
                     task.id,
@@ -816,6 +1083,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     run_id,
                     created_at,
                     json_string(&version)?,
+                    evidence_hash,
                 ],
             )
             .map_err(|error| error.to_string())?;
@@ -1148,6 +1416,85 @@ mod tests {
             "outputQuality": quality, "reportVersions": [snapshot]
         }))
         .unwrap()
+    }
+
+    fn evidence_task_fixture() -> (AnalysisTaskRecord, Value) {
+        let bundle: Value =
+            serde_json::from_str(include_str!("../../tests/fixtures/evidence_bundle_v1.json"))
+                .unwrap();
+        let version = serde_json::json!({
+            "id":"evidence-version", "runId":bundle["run_id"], "versionNumber":1,
+            "createdAt":"2025-02-14T12:00:02Z", "legacy":false,
+            "task":{"ticker":bundle["instrument"], "analysisDate":bundle["analysis_date"]},
+            "reportSections":{"market_report":"A fictional saved report."}, "evidenceBundle":bundle
+        });
+        let mut task = quality_task_fixture(Value::Null, version);
+        task.ticker = bundle["instrument"].as_str().unwrap().into();
+        task.analysis_date = bundle["analysis_date"].as_str().unwrap().into();
+        task.report_sections = serde_json::json!({"market_report":"A fictional saved report."});
+        task.evidence_bundle = Some(bundle.clone());
+        (task, bundle)
+    }
+
+    #[test]
+    fn evidence_task_and_frozen_version_reload_exact_values_with_deduplicated_payloads() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, bundle) = evidence_task_fixture();
+        upsert_task(&conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].evidence_bundle.as_ref(), Some(&bundle));
+        assert_eq!(loaded[0].report_versions[0]["evidenceBundle"], bundle);
+        let bundles: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evidence_bundles", [], |r| r.get(0))
+            .unwrap();
+        let artifacts: i64 = conn
+            .query_row("SELECT COUNT(*) FROM evidence_artifacts", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!((bundles, artifacts), (1, 2));
+        let raw: String = conn
+            .query_row("SELECT snapshot FROM task_report_versions", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert!(!raw.contains("123.45678901234567"));
+        task.evidence_bundle = None;
+        task.status = "running".into();
+        upsert_task(&conn, &task).unwrap();
+        let replay = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(replay[0].evidence_bundle, None);
+        assert_eq!(replay[0].report_versions[0]["evidenceBundle"], bundle);
+    }
+
+    #[test]
+    fn malformed_or_conflicting_evidence_is_rejected_and_artifact_corruption_is_visible() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, _) = evidence_task_fixture();
+        task.evidence_validation =
+            Some(serde_json::json!({"status":"invalid","reason":"hash_mismatch"}));
+        assert!(upsert_task(&conn, &task).is_err());
+        task.evidence_validation = None;
+        {
+            let transaction = conn.transaction().unwrap();
+            upsert_task(&transaction, &task).unwrap();
+            transaction.commit().unwrap();
+        }
+        task.evidence_bundle.as_mut().unwrap()["error"] = "secret exception".into();
+        assert!(upsert_task(&conn, &task).is_err());
+        task.evidence_bundle = None;
+        task.report_versions[0]["reportSections"]["market_report"] = "Changed frozen report".into();
+        {
+            let transaction = conn.transaction().unwrap();
+            assert!(upsert_task(&transaction, &task).is_err());
+        }
+        let unchanged = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(
+            unchanged[0].report_versions[0]["reportSections"]["market_report"],
+            "A fictional saved report."
+        );
+        conn.execute("UPDATE evidence_artifacts SET payload = '{\"kind\":\"normalized_data\",\"payload\":\"{}\"}' WHERE sha256 = ?1", params!["ead52a216ad5191b06a9bd39d85fdfa04968f33699f9afd0244d5bc962581b90"]).unwrap();
+        assert!(load_tasks_from_conn(&conn).is_err());
     }
 
     #[test]

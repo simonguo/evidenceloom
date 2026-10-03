@@ -5,6 +5,10 @@ import { createRunContext } from "./versioning";
 import { mergeRuntimeManifest } from "./runtime-settings";
 
 describe("runtime report provenance", () => {
+  it("preserves exact manifest decimal strings and explicit unknown temperature", () => {
+    expect(mergeRuntimeManifest(createRunContext(defaultAnalysisForm()).manifest, { temperature: "0.30000000000000004" }).runtimeRunSettings?.temperature).toBe("0.30000000000000004");
+    expect(mergeRuntimeManifest(createRunContext(defaultAnalysisForm()).manifest, { temperature: null }).runtimeRunSettings?.temperature).toBeNull();
+  });
   it("records actual safe runner settings ahead of the submitted form", () => {
     const requested = createRunContext(defaultAnalysisForm(), "run-1").manifest;
     const result = mergeRuntimeManifest(requested, {

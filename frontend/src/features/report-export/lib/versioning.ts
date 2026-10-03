@@ -1,6 +1,7 @@
 import { resolveTaskDecision } from "@/components/task-center/decisions";
 import { mergeEventOutputQuality, normalizeOutputQuality } from "@/features/output-quality/lib/quality";
 import { mergeRuntimeManifest } from "./runtime-settings";
+import { normalizeTaskEvidence } from "@/features/evidence/lib/validation";
 import packageMetadata from "../../../../package.json";
 import type {
   AnalysisEvent,
@@ -37,7 +38,9 @@ export function appendCompletedReportVersion(
   createdAt = new Date().toISOString(),
 ): AnalysisTask {
   if (event.type !== "completed" || task.origin === "demo") return task;
-  if (task.reportVersions.some((version) => version.runId === runContext.runId)) return task;
+  const evidenceTask = normalizeTaskEvidence({ ...task, evidenceBundle: task.evidenceValidation ? undefined : event.evidenceBundle ?? task.evidenceBundle });
+  const runId = evidenceTask.evidenceBundle?.run_id ?? runContext.runId;
+  if (task.reportVersions.some((version) => version.runId === runId)) return task;
 
   const reportSections = event.reportSections ?? task.reportSections;
   if (!hasReportContent(reportSections)) return task;
@@ -48,7 +51,7 @@ export function appendCompletedReportVersion(
   ) + 1;
   const version: ReportVersion = {
     id: crypto.randomUUID(),
-    runId: runContext.runId,
+    runId,
     versionNumber: nextVersionNumber,
     createdAt,
     legacy: false,
@@ -58,9 +61,11 @@ export function appendCompletedReportVersion(
     stats: { ...(event.stats ?? task.stats) },
     reportSections: { ...reportSections },
     outputQuality: mergeEventOutputQuality(task.outputQuality, event),
+    evidenceBundle: evidenceTask.evidenceBundle,
+    evidenceValidation: evidenceTask.evidenceValidation,
   };
 
-  return { ...task, reportVersions: [...task.reportVersions, version] };
+  return normalizeTaskEvidence({ ...task, reportVersions: [...task.reportVersions, version] });
 }
 
 export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
@@ -84,8 +89,10 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     stats: { ...task.stats },
     reportSections: { ...task.reportSections },
     outputQuality: normalizeOutputQuality(task.outputQuality),
+    evidenceBundle: task.evidenceBundle,
+    evidenceValidation: task.evidenceValidation,
   };
-  return { ...task, reportVersions: [version] };
+  return normalizeTaskEvidence({ ...task, reportVersions: [version] });
 }
 
 export function hasReportContent(sections: Record<string, string | null | undefined>) {

@@ -1,5 +1,7 @@
-from .alpha_vantage_common import _make_api_request
+from .alpha_vantage_common import _make_api_request, API_BASE_URL
 from .errors import NoMarketDataError, VendorError, VendorUnavailableError
+from tradingagents.evidence import observe_source
+from .evidence_utils import source_attempt
 
 
 def get_indicator(
@@ -240,12 +242,34 @@ def get_indicator(
 
         # Sort by date and format output
         result_data.sort(key=lambda x: x[0])
+        observe_source(
+            "alpha_vantage",
+            url=API_BASE_URL,
+            normalized_data={
+                "indicator": indicator,
+                "values": [
+                    {"date": date.strftime("%Y-%m-%d"), "value": value}
+                    for date, value in result_data
+                ],
+            },
+            observed_window={
+                "start": result_data[0][0].strftime("%Y-%m-%d"),
+                "end": result_data[-1][0].strftime("%Y-%m-%d"),
+            }
+            if result_data
+            else None,
+            transformations=(
+                "Requested indicator column selected",
+                "Requested date window enforced",
+            ),
+        )
 
         ind_string = ""
         for date_dt, value in result_data:
             ind_string += f"{date_dt.strftime('%Y-%m-%d')}: {value}\n"
 
         if not ind_string:
+            source_attempt("alpha_vantage", "empty")
             ind_string = "No data available for the specified date range.\n"
 
         result_str = (

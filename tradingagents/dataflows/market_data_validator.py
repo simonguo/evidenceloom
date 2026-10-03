@@ -17,6 +17,8 @@ from stockstats import wrap
 
 from tradingagents.dataflows.stockstats_utils import load_ohlcv
 from tradingagents.dataflows.errors import NoMarketDataError
+from tradingagents.dataflows.evidence_utils import frame_data, observe_ohlcv, scalar
+from tradingagents.evidence import observe_source
 
 # A fixed, common indicator set so the snapshot is the same shape every run.
 DEFAULT_SNAPSHOT_INDICATORS: tuple[str, ...] = (
@@ -83,17 +85,36 @@ def build_verified_market_snapshot(
 
     selected = tuple(indicators or DEFAULT_SNAPSHOT_INDICATORS)
     indicator_values: dict[str, str] = {}
+    precise_indicators = {}
     for name in selected:
         try:
             stock_df[name]  # triggers stockstats calculation
-            indicator_values[name] = _fmt(stock_df.iloc[-1][name])
+            value = stock_df.iloc[-1][name]
+            precise_indicators[name] = scalar(value)
+            indicator_values[name] = _fmt(value)
         except Exception as exc:  # noqa: BLE001 — one bad indicator shouldn't sink the snapshot
             indicator_values[name] = f"N/A ({type(exc).__name__})"
+            precise_indicators[name] = None
 
     latest = df.iloc[-1]
     latest_date = _fmt(latest["Date"])
     window = max(1, min(int(look_back_days), 30))
     recent = df.tail(window)
+    # Persist all calculation inputs and exact derived values before formatting.
+    observe_ohlcv(df, transformations=("Rows after analysis date excluded", "Rows sorted by date"))
+    observe_source(
+        "local_calculation",
+        normalized_data={
+            "latest_ohlcv": frame_data(df.tail(1)),
+            "recent_closes": frame_data(recent[["Date", "Close"]]),
+            "indicator_values": precise_indicators,
+        },
+        observed_window={"start": recent["Date"].min().strftime("%Y-%m-%d"), "end": latest_date},
+        transformations=(
+            "Technical indicators calculated with stockstats",
+            "Display rounded to two decimals",
+        ),
+    )
 
     lines = [
         f"## Verified market data snapshot for {symbol.upper()}",

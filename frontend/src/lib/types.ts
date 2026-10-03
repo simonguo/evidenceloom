@@ -1,4 +1,5 @@
 import type { OutputQuality } from "@/features/output-quality/types";
+import type { EvidenceBundle, EvidenceValidation } from "@/features/evidence/types";
 
 export type AnalystKey = "market" | "social" | "news" | "fundamentals";
 export type AssetType = "stock" | "crypto";
@@ -102,7 +103,7 @@ export type RuntimeRunSettings = {
   max_risk_discuss_rounds?: number;
   max_tool_rounds?: number;
   analyst_concurrency_limit?: number;
-  temperature?: number;
+  temperature?: number | string | null;
   max_tokens?: number;
   data_vendors?: Record<string, string>;
   tool_vendors?: Record<string, string>;
@@ -137,6 +138,8 @@ export type ReportVersion = {
   stats: AnalysisStats;
   reportSections: Record<string, string | null>;
   outputQuality?: OutputQuality;
+  evidenceBundle?: EvidenceBundle;
+  evidenceValidation?: EvidenceValidation;
 };
 
 export type RunContext = {
@@ -164,6 +167,8 @@ export type AnalysisTask = {
   agentStatuses: Record<string, AgentStatus>;
   reportSections: Record<string, string | null>;
   outputQuality?: OutputQuality;
+  evidenceBundle?: EvidenceBundle;
+  evidenceValidation?: EvidenceValidation;
   reportVersions: ReportVersion[];
   logs: LogEntry[];
   error: string;
@@ -207,6 +212,7 @@ export type AnalysisEvent = {
   finalState?: Record<string, unknown>;
   runSettings?: RuntimeRunSettings;
   outputQuality?: OutputQuality;
+  evidenceBundle?: EvidenceBundle;
   error?: string;
   agent?: string;
 };

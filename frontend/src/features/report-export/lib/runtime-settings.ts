@@ -13,6 +13,10 @@ export function sanitizeRuntimeSettings(settings: RuntimeRunSettings): RuntimeRu
     const value = settings[key];
     if (typeof value === "number" && Number.isFinite(value)) safe[key] = value;
   }
+  if (settings.temperature === null) safe.temperature = null;
+  if (typeof settings.temperature === "string" && /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(settings.temperature) && Number.isFinite(Number(settings.temperature))) {
+    safe.temperature = settings.temperature;
+  }
   if (Array.isArray(settings.analysts)) safe.analysts = settings.analysts.filter((value) => typeof value === "string");
   for (const key of ["data_vendors", "tool_vendors"] as const) {
     if (settings[key] && typeof settings[key] === "object") {

@@ -46,7 +46,7 @@ export type LlmConnectionCheck = {
 
 export type TextExportRequest = {
   suggestedName: string;
-  format: "html" | "md";
+  format: "html" | "md" | "json";
   content: string;
 };
 
@@ -112,7 +112,7 @@ export const webRuntimeAdapter: RuntimeAdapter = {
   async clearDesktopData() {
   },
   async saveTextExport(request) {
-    const mimeType = request.format === "html" ? "text/html;charset=utf-8" : "text/markdown;charset=utf-8";
+    const mimeType = request.format === "html" ? "text/html;charset=utf-8" : request.format === "json" ? "application/json;charset=utf-8" : "text/markdown;charset=utf-8";
     const url = URL.createObjectURL(new Blob([request.content], { type: mimeType }));
     const anchor = document.createElement("a");
     anchor.href = url;

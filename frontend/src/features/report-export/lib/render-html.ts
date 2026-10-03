@@ -4,6 +4,7 @@ import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import type { ReportDocument } from "../types";
+import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
 
 const markdownComponents: Components = {
   a: ({ href, children }) => createElement(
@@ -29,7 +30,7 @@ export function renderReportHtml(document: ReportDocument) {
           skipHtml: true,
           urlTransform: safeUrl,
           components: markdownComponents,
-          children: section.content,
+          children: linkEvidenceCitations(section.content, document.evidence.bundle),
         }),
       );
       return `<section id="${section.id}"><h2>${index + 1}. ${escapeHtml(section.title)}</h2>${content}</section>`;
@@ -68,9 +69,18 @@ export function renderReportHtml(document: ReportDocument) {
     </section>
     <nav aria-label="Table of contents"><ol>${toc}</ol></nav>
     ${sections}
+    ${renderEvidenceAppendix(document)}
   </main>
 </body>
 </html>`;
+}
+
+function renderEvidenceAppendix(document: ReportDocument) {
+  const bundle = document.evidence.bundle;
+  const title = document.language === "zh" ? "研究证据附录" : "Research evidence appendix";
+  if (!bundle) return `<section id="evidence-appendix"><h2>${title}</h2><p>${escapeHtml(evidenceAbsent(document.language, document.evidence.invalid))}</p></section>`;
+  const records = bundle.records.map((record) => `<article id="${record.id}"><h3>[E:${record.id}] · ${escapeHtml(record.tool)} · ${record.status}</h3><p>SHA-256: ${record.output_sha256}</p><pre>${escapeHtml(JSON.stringify(record, null, 2))}</pre><h4>${document.language === "zh" ? "确切的模型输入" : "Exact model input"}</h4><pre>${escapeHtml(String(bundle.artifacts[record.output_sha256].payload))}</pre>${record.sources.filter((source) => source.data_sha256).map((source) => `<h4>${document.language === "zh" ? "完整精度的标准化数据" : "Full-precision normalized data"} · ${source.data_sha256}</h4><pre>${escapeHtml(JSON.stringify(bundle.artifacts[source.data_sha256!], null, 2))}</pre>`).join("")}</article>`).join("");
+  return `<section id="evidence-appendix"><h2>${title}</h2><p>${escapeHtml(evidenceNotice(document.language))}</p><p>Bundle SHA-256: ${bundle.bundle_sha256}</p><h3>${document.language === "zh" ? "引用解析审计" : "Citation resolution audit"}</h3><pre>${escapeHtml(JSON.stringify(bundle.citation_audit, null, 2))}</pre>${records}<details open><summary>${document.language === "zh" ? "完整证据包（含所有内容）" : "Complete evidence bundle (all payloads included)"}</summary><pre id="evidence-bundle-json">${escapeHtml(JSON.stringify(bundle, null, 2))}</pre></details></section>`;
 }
 
 function safeUrl(url: string | undefined) {

@@ -25,9 +25,9 @@ def replace_file(path, write: Callable[[str], None]) -> None:
     try:
         write(str(temp))
         os.replace(temp, path)
-    except PermissionError as exc:
+    except PermissionError:
         temp.unlink(missing_ok=True)
-        logger.warning("Kept the cached %s; it is in use (%s)", path.name, exc)
+        logger.warning("Cache file is in use; kept its prior contents")
     except BaseException:
         temp.unlink(missing_ok=True)
         raise

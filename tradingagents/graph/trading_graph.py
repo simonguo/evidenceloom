@@ -22,6 +22,17 @@ from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.dataflows.config import run_config, run_config_context, set_config
 from tradingagents.agents.utils.rating import run_rating
 from tradingagents.agents.utils.settlement import compute_returns
+from tradingagents.evidence import (
+    EvidenceLedger,
+    analyst_evidence,
+    audit_citations,
+    capture_evidence,
+    merge_evidence_bundles,
+    observe_attempt,
+    observe_source,
+    sanitize_diagnostic,
+    validate_evidence_bundle,
+)
 from .analyst_execution import ANALYST_NODE_SPECS
 
 # Import the new abstract tool methods from agent_utils
@@ -48,6 +59,61 @@ _NOT_IN_SIGNATURE = frozenset(
         "llm_max_retries",
     }
 )
+
+
+def _context_sha256(value) -> str:
+    """Hash reproducibility inputs using the evidence bundle's canonical JSON."""
+    return hashlib.sha256(
+        json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _source_code_sha256(directory: Path) -> str:
+    """Hash local source content, without exposing its absolute filesystem path."""
+    try:
+        sources = {
+            path.relative_to(directory).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(directory.rglob("*.py"))
+        }
+    except OSError:
+        raise ValueError("Research source files could not be read for code verification") from None
+    if not sources:
+        raise ValueError("Research source files are unavailable for code and prompt verification")
+    return _context_sha256(sources)
+
+
+def _reports_for_audit(state):
+    reports = {
+        key: state[key]
+        for key in (
+            "market_report",
+            "sentiment_report",
+            "news_report",
+            "fundamentals_report",
+            "investment_plan",
+            "trader_investment_plan",
+            "final_trade_decision",
+        )
+        if isinstance(state.get(key), str)
+    }
+    for key, fields in (
+        ("investment_debate_state", ("bull_history", "bear_history", "judge_decision")),
+        (
+            "risk_debate_state",
+            ("aggressive_history", "conservative_history", "neutral_history", "judge_decision"),
+        ),
+    ):
+        debate = state.get(key) or {}
+        reports.update(
+            {
+                f"{key}.{field}": debate[field]
+                for field in fields
+                if isinstance(debate.get(field), str)
+            }
+        )
+    return reports
 
 
 def _validate_trade_date(trade_date) -> str:
@@ -171,6 +237,8 @@ class TradingAgentsGraph:
         self.graph = self.workflow.compile()
         self._checkpointer_ctx = None
         self._resuming = False
+        self._checkpoint_config = None
+        self._evidence_ledger = None
 
     def _get_provider_kwargs(self) -> Dict[str, Any]:
         """Build provider kwargs while retaining the embedded caller's legacy API."""
@@ -302,7 +370,8 @@ class TradingAgentsGraph:
             [
                 "analysts=" + ",".join(self.selected_analysts),
                 f"asset={asset_type}",
-                "layout=parallel-v2-output-quality",
+                "layout=parallel-v3-evidence-v1",
+                "code=" + _source_code_sha256(Path(tradingagents.__file__).parent)[:16],
                 f"settings={digest}",
             ]
         )
@@ -331,6 +400,9 @@ class TradingAgentsGraph:
             self.end_checkpoint()
             raise
         self._resuming = step is not None
+        self._checkpoint_config = {
+            "configurable": {"thread_id": thread_id(company_name, str(trade_date), signature)}
+        }
         logger.info(
             "%s for %s on %s",
             f"Resuming from step {step}" if self._resuming else "Starting fresh",
@@ -352,6 +424,7 @@ class TradingAgentsGraph:
             finally:
                 self.graph = self.workflow.compile()
         self._resuming = False
+        self._checkpoint_config = None
 
     @contextmanager
     def checkpoint_scope(self, company_name, trade_date, asset_type: str = "stock"):
@@ -388,33 +461,178 @@ class TradingAgentsGraph:
             "max_tokens": llm_kwargs.get("max_tokens", llm_kwargs.get("max_output_tokens")),
             "data_vendors": dict(self.config.get("data_vendors") or {}),
             "tool_vendors": dict(self.config.get("tool_vendors") or {}),
+            "holding_period_days": self.config.get("holding_period_days", 5),
+            "benchmark_ticker": self.config.get("benchmark_ticker"),
         }
+
+    def _evidence_storage(self) -> Path:
+        return Path(self.config["data_cache_dir"]) / "evidence_bundles"
+
+    def _evidence_secrets(self) -> tuple[str, ...]:
+        """Pass configured secret values to the source-input sanitizer."""
+        return tuple(
+            value
+            for key, value in self.config.items()
+            if isinstance(value, str)
+            and value
+            and any(marker in key.lower() for marker in ("api_key", "token", "secret", "password"))
+        )
+
+    def _checkpoint_state(self, config=None):
+        config = config or getattr(self, "_checkpoint_config", None)
+        if config is None:
+            raise ValueError("an evidence checkpoint requires a thread configuration")
+        snapshot = self.graph.get_state(config, subgraphs=True)
+        state = deepcopy(snapshot.values)
+        if not state.get("evidence_bundle"):
+            raise ValueError("checkpoint has no frozen research evidence")
+
+        def collect(value):
+            bundle = (value.values or {}).get("evidence_bundle")
+            if bundle:
+                state["evidence_bundle"] = merge_evidence_bundles(state["evidence_bundle"], bundle)
+            for task in value.tasks:
+                child = getattr(task, "state", None)
+                if child is not None and hasattr(child, "tasks"):
+                    collect(child)
+
+        collect(snapshot)
+        self._validate_frozen_state(state)
+        return state
+
+    def _validate_frozen_state(self, state):
+        bundle = validate_evidence_bundle(state["evidence_bundle"])
+        if (
+            bundle["instrument"] != state.get("company_of_interest")
+            or bundle["analysis_date"] != state.get("trade_date")
+            or bundle["manifest"] != state.get("run_settings")
+            or bundle["manifest"].get("memory_input_sha256")
+            != _context_sha256(state.get("past_context", ""))
+        ):
+            raise ValueError("research evidence does not match the frozen run context")
+        identity = [
+            record
+            for record in bundle["records"]
+            if record["analyst"] == "identity" and record["tool"] == "resolve_instrument_context"
+        ]
+        if len(identity) != 1:
+            raise ValueError("research evidence has no unique frozen instrument context")
+        artifact = bundle["artifacts"].get(identity[0]["output_sha256"])
+        if artifact is None or artifact["payload"] != state.get("instrument_context"):
+            raise ValueError("research evidence does not match the frozen instrument context")
+        context = artifact["payload"].removeprefix(f"[E:{identity[0]['id']}]").lstrip("\n")
+        if bundle["manifest"].get("instrument_identity_context_sha256") != _context_sha256(context):
+            raise ValueError("research evidence does not match the instrument context manifest")
+        return bundle
+
+    def _ledger_for_state(self, state):
+        bundle = self._validate_frozen_state(state)
+        ledger = getattr(self, "_evidence_ledger", None)
+        if ledger is None or ledger.bundle()["run_id"] != bundle["run_id"]:
+            ledger = EvidenceLedger.restore(
+                bundle, self._evidence_storage(), secrets=self._evidence_secrets()
+            )
+            self._evidence_ledger = ledger
+        else:
+            # Validate private checkpoint fragments against the active run.
+            merge_evidence_bundles(ledger.bundle(), bundle)
+        return ledger
 
     def create_run_state(self, company_name, trade_date, asset_type: str = "stock"):
         """Build the shared initial state for script, CLI and desktop entry points."""
         trade_date = _validate_trade_date(trade_date)
+        if getattr(self, "_resuming", False):
+            # A resume uses the checkpoint's original memory and identity;
+            # resolving pending outcomes or Yahoo metadata would change inputs.
+            state = self._checkpoint_state()
+            if (
+                state["company_of_interest"] != company_name
+                or state["trade_date"] != trade_date
+                or state.get("asset_type", "stock") != asset_type
+            ):
+                raise ValueError("research checkpoint does not match the requested run")
+            self.ticker = company_name
+            self._evidence_ledger = None
+            self._ledger_for_state(state)
+            return state
         with run_config(self.config):
             self.ticker = company_name
             self._resolve_pending_entries(company_name)
+            past_context = self.memory_log.get_past_context(
+                company_name, as_of=self._memory_as_of(trade_date)
+            )
+            identity = resolve_instrument_identity(company_name)
+            source_instrument_context = sanitize_diagnostic(
+                build_instrument_context(company_name, asset_type, identity, trade_date),
+                secrets=self._evidence_secrets(),
+            )
+            package = Path(tradingagents.__file__).parent
+            settings = {
+                **self.run_settings(),
+                "trade_date": trade_date,
+                "asset_type": asset_type,
+                "benchmark_ticker": self._resolve_benchmark(company_name),
+                "code_sha256": _source_code_sha256(package),
+                "prompt_templates_sha256": _source_code_sha256(package / "agents"),
+                "memory_input_sha256": _context_sha256(past_context),
+                "instrument_identity_context_sha256": _context_sha256(source_instrument_context),
+                "model_context_sha256": _context_sha256(
+                    {
+                        key: self.run_settings()[key]
+                        for key in (
+                            "llm_provider",
+                            "quick_think_llm",
+                            "deep_think_llm",
+                            "temperature",
+                            "max_tokens",
+                        )
+                    }
+                ),
+            }
+            ledger = EvidenceLedger(
+                company_name,
+                trade_date,
+                settings,
+                self._evidence_storage(),
+                secrets=self._evidence_secrets(),
+            )
+
+            def identity_input():
+                observe_attempt("yfinance", "available" if identity else "unavailable")
+                observe_source(
+                    "yfinance",
+                    normalized_data=identity,
+                    historical_availability="unknown",
+                    transformations=(
+                        "Selected current Yahoo identity metadata, possibly from process cache; no historical identity vintage is established",
+                    ),
+                )
+                return source_instrument_context
+
+            with ledger.bind(), analyst_evidence("identity"):
+                instrument_context = capture_evidence(
+                    "resolve_instrument_context",
+                    {"ticker": company_name, "trade_date": trade_date},
+                    identity_input,
+                )
+            bundle = ledger.bundle()
+            self._evidence_ledger = ledger
             return self.propagator.create_initial_state(
                 company_name,
                 trade_date,
                 asset_type=asset_type,
-                past_context=self.memory_log.get_past_context(
-                    company_name, as_of=self._memory_as_of(trade_date)
-                ),
-                instrument_context=self.resolve_instrument_context(
-                    company_name, asset_type, str(trade_date)
-                ),
-                run_settings={
-                    **self.run_settings(),
-                    "trade_date": trade_date,
-                    "asset_type": asset_type,
-                },
+                past_context=past_context,
+                instrument_context=instrument_context,
+                run_settings=bundle["manifest"],
+                evidence_bundle=bundle,
             )
 
     def record_decision(self, company_name, trade_date, final_state):
         """Write the final state and preserve the Portfolio Manager's authoritative rating."""
+        if final_state.get("evidence_bundle"):
+            ledger = self._ledger_for_state(final_state)
+            merge_evidence_bundles(final_state["evidence_bundle"], ledger.bundle())
+            final_state["evidence_bundle"] = ledger.bundle(reports=_reports_for_audit(final_state))
         self.curr_state = final_state
         if not final_state.get("run_settings"):
             final_state["run_settings"] = {
@@ -465,7 +683,9 @@ class TradingAgentsGraph:
                         {key: value for key, value in state.items() if key != "analyst_started"}
                     )
         else:
-            final_state = self.graph.invoke(graph_input, **args)
+            ledger = self._ledger_for_state(initial)
+            with ledger.bind():
+                final_state = self.graph.invoke(graph_input, **args)
         self.record_decision(company_name, trade_date, final_state)
         self.clear_checkpoint_on_success(company_name, trade_date, asset_type)
         return final_state, run_rating(final_state)
@@ -483,8 +703,15 @@ class TradingAgentsGraph:
             "max_concurrency": self.config.get("analyst_concurrency_limit", 1) + 1,
         }
         context = run_config_context(self.config)
-        stream = context.run(self.graph.stream, graph_input, subgraphs=True, **args)
+        state = (
+            graph_input if graph_input is not None else self._checkpoint_state(args.get("config"))
+        )
+        ledger = self._ledger_for_state(state)
+        binding = ledger.bind()
+        context.run(binding.__enter__)
+        stream = None
         try:
+            stream = context.run(self.graph.stream, graph_input, subgraphs=True, **args)
             while (step := context.run(next, stream, None)) is not None:
                 namespace, mode, chunk = step
                 if mode == "custom" and isinstance(chunk, dict) and chunk.get("analyst"):
@@ -497,10 +724,22 @@ class TradingAgentsGraph:
                         if messages or report:
                             yield (messages, report, agent) if include_agent else (messages, report)
                 elif not namespace and mode == "values":
+                    full_bundle = merge_evidence_bundles(chunk["evidence_bundle"], ledger.bundle())
+                    reports = _reports_for_audit(chunk)
+                    chunk = {
+                        **chunk,
+                        "evidence_bundle": ledger.bundle(reports=reports)
+                        if chunk.get("final_trade_decision")
+                        else audit_citations(full_bundle, reports),
+                    }
                     result = (chunk.get("messages", []), chunk)
                     yield (*result, None) if include_agent else result
         finally:
-            context.run(stream.close)
+            try:
+                if stream is not None:
+                    context.run(stream.close)
+            finally:
+                context.run(binding.__exit__, None, None, None)
 
     def _log_state(self, trade_date, final_state):
         """Log the final state to a JSON file."""
@@ -531,6 +770,7 @@ class TradingAgentsGraph:
             "final_rating": run_rating(final_state),
             "run_settings": final_state.get("run_settings", self.run_settings()),
             "output_quality": sanitize_output_quality(final_state.get("output_quality")),
+            "evidence_bundle": final_state.get("evidence_bundle", {}),
         }
 
         # Save to file. Reject ticker values that would escape the

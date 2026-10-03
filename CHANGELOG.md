@@ -6,6 +6,11 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ### Changed
 
+- Capture and atomically persist exact sanitized model inputs, full-precision normalized source data, actual provider attempts, observed dates, frozen run-context hashes, and citation IDs in a versioned evidence bundle.
+- Preserve evidence through checkpoint recovery, task/history reload, SQLite schema v6, and self-contained HTML/Markdown/JSON exports; expose unknown historical provenance and unresolved references in the research workspace.
+- Serialize evidence writes across processes, reject corrupted or contradictory snapshots, and surface task persistence failures.
+- Run CI and security checks for stacked pull requests targeting quality branches.
+
 - Record output-format validation or text fallback with each decision agent, task, frozen report version, and HTML/Markdown export; show unknown quality for legacy reports.
 - Allow selected historical report versions to be reviewed with their own frozen content, configuration, and quality.
 - Make the real-provider format smoke use fictional inputs, explicit resource limits, sanitized JSON results, and schema-based pass criteria.
@@ -20,6 +25,10 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
 
 ### Fixed
+
+- Replay uncheckpointed captured inputs after interruption without refetching, while retaining new IDs for genuinely repeated calls.
+- Preserve code and prompt hashes in packaged runners by retaining only the application's own Python source files; reject missing-source inventories rather than hashing an empty directory.
+- Withhold future-dated and explicitly withheld source values, remove source response/endpoint details from diagnostics, and capture effective Yahoo searches and Alpha topics accurately.
 
 - Reuse successful prose responses instead of generating a second answer; propagate exhausted provider failures and reject refused, truncated, or empty answers.
 - Consolidate OpenAI-compatible retries into the SDK budget, removing the implicit outer retry loop. Use `TRADINGAGENTS_LLM_MAX_RETRIES` instead of the legacy `TRADINGAGENTS_LLM_RETRY_ATTEMPTS` and `TRADINGAGENTS_LLM_RETRY_BASE_DELAY` variables.

@@ -246,6 +246,8 @@ function resetTaskForQueue(task: AnalysisTask, queuedAt: string, queueOrder: num
     agentStatuses: {},
     reportSections: {},
     outputQuality: undefined,
+    evidenceBundle: undefined,
+    evidenceValidation: undefined,
     logs: [],
     error: "",
   };
@@ -263,6 +265,8 @@ function resetTaskForRun(task: AnalysisTask): AnalysisTask {
     agentStatuses: {},
     reportSections: {},
     outputQuality: undefined,
+    evidenceBundle: undefined,
+    evidenceValidation: undefined,
     logs: [],
     error: "",
   };

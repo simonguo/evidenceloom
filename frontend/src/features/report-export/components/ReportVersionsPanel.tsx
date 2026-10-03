@@ -5,6 +5,7 @@ import type { AnalysisTask, SystemLanguage } from "@/lib/types";
 import { useReportExport } from "../hooks/useReportExport";
 import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
 import { ReportVersionPreview } from "./ReportVersionPreview";
+import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
 
 export function ReportVersionsPanel({
   task,
@@ -69,6 +70,7 @@ export function ReportVersionsPanel({
               disabled={Boolean(exporting)}
               onClick={() => void exportVersion("md")}
             />
+            {selectedVersion.evidenceBundle && <ExportButton label={zh ? "证据 JSON" : "Evidence JSON"} icon={<Download className="size-4" />} loading={exporting === "json"} disabled={Boolean(exporting)} onClick={() => void exportVersion("json")} />}
           </div>
         )}
       </div>
@@ -93,6 +95,7 @@ export function ReportVersionsPanel({
       {selectedVersion && (
         <div className="mt-4 space-y-3">
           <OutputQualityPanel quality={selectedVersion.outputQuality} language={language} />
+          <EvidenceInspector bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
           <details key={selectedVersion.id} className="rounded-lg border border-zinc-800 p-4">
             <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">
               {zh ? `审阅选中的报告 v${selectedVersion.versionNumber}` : `Review selected report v${selectedVersion.versionNumber}`}

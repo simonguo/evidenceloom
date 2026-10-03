@@ -18,7 +18,7 @@ import {
   loadLegacyDesktopData,
   loadTasks,
   saveGlobalSettings,
-  saveTasks,
+  saveVerifiedTasks,
   sessionSafeSettings,
 } from "@/features/persistence/local-storage";
 import {
@@ -29,6 +29,7 @@ import {
 } from "@/features/report-export";
 import { normalizeSettingsForSave } from "@/features/settings/lib/normalize-settings";
 import { mergeEventOutputQuality, normalizeTaskOutputQuality } from "@/features/output-quality/lib/quality";
+import { evidenceFromEvent, evidenceMatchesSnapshot, normalizeTaskEvidence, verifyTaskEvidence } from "@/features/evidence/lib/validation";
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, RunContext, TaskStatus } from "@/lib/types";
 import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
 import { createTranslator } from "@/lib/i18n";
@@ -75,6 +76,8 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const resolvingInstrumentNamesRef = useRef<Set<string>>(new Set());
   const runtimeAdapterRef = useRef<RuntimeAdapter | null>(null);
+  const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const eventQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>(() => defaultRuntimeInfo());
   const t = createTranslator(settings.systemLanguage);
 
@@ -84,17 +87,22 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     void adapter.getRuntimeInfo().then(setRuntimeInfo).catch(() => setRuntimeInfo(defaultRuntimeInfo()));
 
     if (!isTauriRuntime()) {
-      setSettings(loadGlobalSettings());
-      setTasks(loadTasks().map(normalizeTaskRuntimeState));
-      setHydrated(true);
+      try {
+        setSettings(loadGlobalSettings());
+        const loaded = loadTasks().map(normalizeTaskRuntimeState);
+        void Promise.all(loaded.map(verifyTaskEvidence)).then(setTasks).catch(() => setNotice("Saved research evidence could not be verified.")).finally(() => setHydrated(true));
+      } catch {
+        setNotice("Local storage is unavailable. Reports have not been saved or loaded.");
+        setHydrated(true);
+      }
       return;
     }
 
     const legacy = loadLegacyDesktopData();
     void adapter.loadDesktopData(legacy)
-      .then((snapshot) => {
+      .then(async (snapshot) => {
         setSettings(normalizeGlobalSettings(snapshot.settings ?? {}));
-        const normalizedTasks = snapshot.tasks.map(normalizeTaskRuntimeState);
+        const normalizedTasks = await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(verifyTaskEvidence));
         setTasks(normalizedTasks);
         normalizedTasks.forEach((task, index) => {
           const stored = snapshot.tasks[index];
@@ -103,7 +111,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
             || task.origin !== stored?.origin
             || task.reportVersions.length !== (stored?.reportVersions?.length ?? 0)
           ) {
-            void adapter.saveDesktopTask(task).catch(() => undefined);
+            void adapter.saveDesktopTask(task).catch(() => setNotice("Failed to save report history. The displayed report may not be available after restart."));
           }
         });
         if (snapshot.secretMigrationError) {
@@ -115,13 +123,16 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       .catch(() => {
         setSettings(sessionSafeSettings(legacy.settings ?? defaultGlobalSettings()));
         setTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState));
+        setNotice("Desktop storage could not be loaded. The displayed reports have not been confirmed saved.");
       })
       .finally(() => setHydrated(true));
   }, []);
 
   useEffect(() => {
     if (!hydrated || isTauriRuntime()) return;
-    saveTasks(tasks);
+    persistenceQueueRef.current = persistenceQueueRef.current.catch(() => undefined)
+      .then(() => saveVerifiedTasks(tasks))
+      .catch(() => setNotice("Failed to save reports and evidence. The displayed report may not be available after restart."));
   }, [hydrated, tasks]);
 
   useEffect(() => {
@@ -152,7 +163,12 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   );
   const persistTask = useCallback((task: AnalysisTask) => {
     if (!isTauriRuntime()) return;
-    void runtimeAdapterRef.current?.saveDesktopTask(task).catch(() => undefined);
+    persistenceQueueRef.current = persistenceQueueRef.current.catch(() => undefined)
+      .then(async () => {
+        const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
+        await adapter.saveDesktopTask(await verifyTaskEvidence(task));
+      })
+      .catch(() => setNotice("Failed to save report and evidence. The displayed report may not be available after restart."));
   }, []);
 
   const updateTask = useCallback((taskId: string, updater: (task: AnalysisTask) => AnalysisTask) => {
@@ -172,14 +188,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
     const decision = resolveTaskDecision(task.decision, task.reportSections?.final_trade_decision);
-    const normalizedTask = normalizeTaskOutputQuality({
+    const normalizedTask = normalizeTaskEvidence(normalizeTaskOutputQuality({
       ...task,
       origin: task.origin ?? "analysis",
       reportVersions: task.reportVersions ?? [],
       queuedAt: task.queuedAt ?? "",
       queueOrder: Number.isFinite(task.queueOrder) ? task.queueOrder : null,
       decision,
-    });
+    }));
     if (normalizedTask.status === "running") {
       return ensureLegacyReportVersion({
         ...normalizedTask,
@@ -198,33 +214,38 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   }
 
   const handleTaskEvent = useCallback((taskId: string, event: AnalysisEvent, runContext?: RunContext) => {
-    updateTask(taskId, (task) => {
-      const logs = event.message || event.error
-        ? prependLog(task.logs, event.messageType ?? event.type, event.error ?? event.message ?? "", event.timestamp, event.agent)
-        : task.logs;
-      const nextAgentStatuses = event.agentStatuses ?? task.agentStatuses;
-      const reportSections = event.reportSections ?? task.reportSections;
-      const status: TaskStatus = event.type === "completed"
-        ? "completed"
-        : event.type === "error"
-          ? "error"
-          : task.status;
-      const nextTask: AnalysisTask = {
-        ...task,
-        status,
-        updatedAt: new Date().toISOString(),
-        decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
-        stats: event.stats ?? task.stats,
-        agentStatuses: status === "error" ? finalizeAgentStatuses(nextAgentStatuses) : nextAgentStatuses,
-        reportSections,
-        outputQuality: mergeEventOutputQuality(task.outputQuality, event),
-        logs,
-        error: event.error ?? (status === "running" ? "" : task.error),
-      };
-      return runContext
-        ? appendCompletedReportVersion(nextTask, event, runContext)
-        : nextTask;
-    });
+    eventQueueRef.current = eventQueueRef.current.catch(() => undefined).then(async () => {
+      const empty = { evidenceBundle: undefined, evidenceValidation: undefined, reportSections: {} } as AnalysisTask;
+      const evidence = await evidenceFromEvent(empty, event);
+      updateTask(taskId, (task) => {
+        const logs = event.message || event.error
+          ? prependLog(task.logs, event.messageType ?? event.type, event.error ?? event.message ?? "", event.timestamp, event.agent)
+          : task.logs;
+        const nextAgentStatuses = event.agentStatuses ?? task.agentStatuses;
+        const reportSections = event.reportSections ?? task.reportSections;
+        const status: TaskStatus = event.type === "completed"
+          ? "completed"
+          : event.type === "error"
+            ? "error"
+            : task.status;
+        const nextTask: AnalysisTask = evidenceMatchesSnapshot({
+          ...task,
+          status,
+          updatedAt: new Date().toISOString(),
+          decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
+          stats: event.stats ?? task.stats,
+          agentStatuses: status === "error" ? finalizeAgentStatuses(nextAgentStatuses) : nextAgentStatuses,
+          reportSections,
+          outputQuality: mergeEventOutputQuality(task.outputQuality, event),
+          ...((event.evidenceBundle !== undefined || event.finalState?.evidence_bundle !== undefined) ? evidence : {}),
+          logs,
+          error: event.error ?? (status === "running" ? "" : task.error),
+        });
+        return runContext
+          ? appendCompletedReportVersion(nextTask, event, runContext)
+          : nextTask;
+      });
+    }).catch(() => setNotice("A research update could not be processed. Report and evidence state may be incomplete."));
   }, [updateTask]);
 
   const {

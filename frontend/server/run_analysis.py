@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 import sys
 import time
-import traceback
 from datetime import datetime
 from typing import Any, Dict, Iterable, List
 from urllib.parse import urlsplit, urlunsplit
@@ -19,6 +18,12 @@ from cli.stats_handler import StatsCallbackHandler
 from cli.utils import detect_asset_type, normalize_ticker_symbol
 from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
 from tradingagents.agents.utils.output_quality import merge_output_quality, sanitize_output_quality
+from tradingagents.evidence import (
+    audit_citations,
+    merge_evidence_bundles,
+    sanitize_diagnostic,
+    validate_evidence_bundle,
+)
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
     build_analyst_execution_plan,
@@ -246,6 +251,7 @@ def emit_progress(
     started_at: float,
     message: str | None = None,
     output_quality: Dict[str, Any] | None = None,
+    evidence_bundle: Dict[str, Any] | None = None,
 ) -> None:
     event = {
         "type": "progress",
@@ -261,6 +267,8 @@ def emit_progress(
             event["agent"] = agent
     if output_quality is not None:
         event["outputQuality"] = sanitize_output_quality(output_quality)
+    if evidence_bundle:
+        event["evidenceBundle"] = validate_evidence_bundle(evidence_bundle)
     emit(event)
 
 
@@ -278,7 +286,7 @@ def resolve_pending_entries_safely(
             {
                 "type": "message",
                 "messageType": "System",
-                "message": f"Skipped historical outcome refresh: {exc}",
+                "message": f"Skipped historical outcome refresh ({type(exc).__name__})",
                 "agentStatuses": status_snapshot(buffer),
                 "reportSections": report_snapshot(buffer),
                 "stats": current_stats(stats_handler, started_at),
@@ -351,6 +359,8 @@ def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
     compact = {key: final_state.get(key) for key in keys if key in final_state}
     if "output_quality" in final_state:
         compact["output_quality"] = sanitize_output_quality(final_state["output_quality"])
+    if final_state.get("evidence_bundle"):
+        compact["evidence_bundle"] = validate_evidence_bundle(final_state["evidence_bundle"])
     return compact
 
 
@@ -367,8 +377,9 @@ def run_post_completion_tasks(
     warnings: List[str] = []
 
     def record_warning(label: str, exc: Exception) -> None:
-        warnings.append(f"{label}: {exc}")
-        print(f"TradingAgents post-run warning: {label}: {exc}", file=sys.stderr, flush=True)
+        warning = f"{label} ({type(exc).__name__})"
+        warnings.append(warning)
+        print(f"TradingAgents post-run warning: {warning}", file=sys.stderr, flush=True)
 
     try:
         graph._log_state(analysis_date, final_state)
@@ -464,7 +475,11 @@ def run(payload: Dict[str, Any]) -> None:
                 "Resuming saved analysis" if graph._resuming else "Starting fresh analysis",
             )
 
-        final_state: Dict[str, Any] = {}
+        final_state: Dict[str, Any] = {
+            key: init_agent_state[key]
+            for key in ("run_settings", "evidence_bundle")
+            if key in init_agent_state
+        }
         previous_state: Dict[str, Any] = {}
         processed_message_ids = set()
 
@@ -518,11 +533,20 @@ def run(payload: Dict[str, Any]) -> None:
             quality = merge_output_quality(
                 final_state.get("output_quality"), chunk.get("output_quality")
             )
-            emit_progress(buffer, stats_handler, started_at, output_quality=quality)
+            evidence = merge_evidence_bundles(
+                final_state.get("evidence_bundle"), chunk.get("evidence_bundle")
+            )
+            if evidence:
+                evidence = audit_citations(evidence, report_snapshot(buffer))
+            emit_progress(
+                buffer, stats_handler, started_at, output_quality=quality, evidence_bundle=evidence
+            )
             final_state.update(
                 {key: value for key, value in chunk.items() if key != "analyst_started"}
             )
             final_state["output_quality"] = quality
+            if evidence:
+                final_state["evidence_bundle"] = evidence
 
         graph.curr_state = final_state
         decision = run_rating(final_state)
@@ -531,6 +555,14 @@ def run(payload: Dict[str, Any]) -> None:
         for section in list(buffer.report_sections.keys()):
             if section in final_state:
                 buffer.update_report_section(section, final_state[section])
+        if final_state.get("evidence_bundle"):
+            ledger = getattr(graph, "_evidence_ledger", None)
+            if ledger is not None:
+                final_state["evidence_bundle"] = ledger.bundle(reports=report_snapshot(buffer))
+            else:
+                final_state["evidence_bundle"] = audit_citations(
+                    final_state["evidence_bundle"], report_snapshot(buffer)
+                )
 
         emit(
             {
@@ -543,6 +575,11 @@ def run(payload: Dict[str, Any]) -> None:
                 "decision": decision,
                 "runSettings": final_state.get("run_settings", graph.run_settings()),
                 "outputQuality": sanitize_output_quality(final_state.get("output_quality")),
+                **(
+                    {"evidenceBundle": validate_evidence_bundle(final_state["evidence_bundle"])}
+                    if final_state.get("evidence_bundle")
+                    else {}
+                ),
                 "finalState": compact_final_state(final_state),
             }
         )
@@ -558,6 +595,22 @@ def main() -> int:
         payload = json.loads(sys.stdin.read() or "{}")
         if payload.get("__command") == "smoke_test":
             emit({"type": "ready"})
+            return 0
+        if payload.get("__command") == "evidence_manifest":
+            from pathlib import Path
+            import tradingagents
+            from tradingagents.graph.trading_graph import _source_code_sha256
+
+            package = Path(tradingagents.__file__).parent
+            emit(
+                {
+                    "type": "evidence_ready",
+                    "schema_version": 1,
+                    "code_sha256": _source_code_sha256(package),
+                    "prompt_templates_sha256": _source_code_sha256(package / "agents"),
+                    "source_file_count": len(list(package.rglob("*.py"))),
+                }
+            )
             return 0
         if payload.get("__command") == "resolve_instrument":
             from resolve_instrument import resolve
@@ -589,12 +642,17 @@ def main() -> int:
         run(payload)
         return 0
     except Exception as exc:  # noqa: BLE001 - bridge must surface any backend failure to UI
-        print(f"Evidence Loom runner error: {exc}", file=sys.stderr, flush=True)
+        error = sanitize_diagnostic(str(exc))
+        print(
+            f"Evidence Loom runner error ({type(exc).__name__}): {error}",
+            file=sys.stderr,
+            flush=True,
+        )
         emit(
             {
                 "type": "error",
-                "error": str(exc),
-                "message": traceback.format_exc(limit=8),
+                "error": error,
+                "message": error,
                 "messageType": "Error",
             }
         )

@@ -27,6 +27,7 @@ import { EventStream } from "@/components/task-center/components/EventStream";
 import { DecisionSummaryCard } from "@/components/task-center/components/DecisionSummaryCard";
 import { ReportVersionsPanel } from "@/features/report-export";
 import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
+import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
 
 const CandlestickChart = dynamic(
   () => import("@/components/charts/CandlestickChart").then((module) => module.CandlestickChart),
@@ -255,6 +256,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                 onOpen={() => openAgentDrawer("Portfolio Manager")}
               />
               <OutputQualityPanel quality={task.outputQuality} language={settings.systemLanguage} />
+              <EvidenceInspector bundle={task.evidenceBundle} invalid={task.evidenceValidation} reports={task.reportSections} checkReportCitations={task.status === "completed"} language={settings.systemLanguage} />
             </div>
           ) : (
             <div className="mt-5">

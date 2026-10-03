@@ -4,6 +4,7 @@ from datetime import datetime
 from io import StringIO
 import json
 import subprocess
+import time
 from typing import Annotated
 from urllib.parse import urlencode
 
@@ -11,6 +12,8 @@ import pandas as pd
 import requests
 
 from .symbol_utils import NoMarketDataError
+from .evidence_utils import frame_data, observed_window, observe_ohlcv, source_attempt
+from tradingagents.evidence import observe_source
 
 
 EASTMONEY_KLINE_URL = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
@@ -112,11 +115,30 @@ def _fetch_kline(symbol: str, start_date: str, end_date: str) -> tuple[str, pd.D
     from that configuration or the module name.
     """
     code, secid = _normalize_a_share_symbol(symbol)
+    started = time.monotonic()
     try:
         data = _fetch_tencent_kline(code, secid, start_date, end_date)
+        source_attempt("tencent", "available", (time.monotonic() - started) * 1000)
         return code, _with_source(data, "Tencent", TENCENT_KLINE_URL)
+    except NoMarketDataError:
+        source_attempt("tencent", "empty", (time.monotonic() - started) * 1000)
     except Exception:
-        pass
+        source_attempt("tencent", "unavailable", (time.monotonic() - started) * 1000)
+
+    started = time.monotonic()
+    try:
+        data = _fetch_eastmoney_kline(symbol, code, secid, start_date, end_date)
+        source_attempt("eastmoney", "available", (time.monotonic() - started) * 1000)
+        return code, data
+    except NoMarketDataError:
+        source_attempt("eastmoney", "empty", (time.monotonic() - started) * 1000)
+        raise
+    except Exception:
+        source_attempt("eastmoney", "unavailable", (time.monotonic() - started) * 1000)
+        raise
+
+
+def _fetch_eastmoney_kline(symbol, code, secid, start_date, end_date):
 
     params = {
         "secid": secid,
@@ -157,9 +179,26 @@ def _fetch_kline(symbol: str, start_date: str, end_date: str) -> tuple[str, pd.D
             symbol, code, f"no valid OHLCV rows between {start_date} and {end_date}"
         )
 
-    return code, _with_source(
-        df[["Date", "Open", "High", "Low", "Close", "Volume"]], "Eastmoney", EASTMONEY_KLINE_URL
+    data = df[["Date", "Open", "High", "Low", "Close", "Volume"]]
+    used = data[
+        (data["Date"] >= pd.Timestamp(start_date)) & (data["Date"] <= pd.Timestamp(end_date))
+    ]
+    if used.empty:
+        raise NoMarketDataError(
+            symbol, code, f"no Eastmoney rows between {start_date} and {end_date}"
+        )
+    observe_source(
+        "eastmoney",
+        url=EASTMONEY_KLINE_URL,
+        normalized_data=frame_data(used),
+        observed_window=observed_window(used),
+        adjustments="Forward adjusted (fqt=1)",
+        transformations=(
+            "Daily OHLCV fields parsed to numeric values",
+            "Requested date window enforced",
+        ),
     )
+    return _with_source(data, "Eastmoney", EASTMONEY_KLINE_URL)
 
 
 def _with_source(data: pd.DataFrame, source: str, source_url: str) -> pd.DataFrame:
@@ -177,6 +216,7 @@ def _fetch_tencent_kline(code: str, secid: str, start_date: str, end_date: str) 
     }
     payload = _fetch_json_with_curl(TENCENT_KLINE_URL, params)
     stock_payload = (payload.get("data") or {}).get(symbol) or {}
+    adjusted = bool(stock_payload.get("qfqday"))
     rows = stock_payload.get("qfqday") or stock_payload.get("day") or []
     if not rows:
         raise NoMarketDataError(
@@ -193,7 +233,26 @@ def _fetch_tencent_kline(code: str, secid: str, start_date: str, end_date: str) 
         raise NoMarketDataError(
             code, symbol, f"no valid Tencent OHLCV rows between {start_date} and {end_date}"
         )
-    return df[["Date", "Open", "High", "Low", "Close", "Volume"]]
+    data = df[["Date", "Open", "High", "Low", "Close", "Volume"]]
+    used = data[
+        (data["Date"] >= pd.Timestamp(start_date)) & (data["Date"] <= pd.Timestamp(end_date))
+    ]
+    if used.empty:
+        raise NoMarketDataError(
+            code, symbol, f"no Tencent rows between {start_date} and {end_date}"
+        )
+    observe_source(
+        "tencent",
+        url=TENCENT_KLINE_URL,
+        normalized_data=frame_data(used),
+        observed_window=observed_window(used),
+        adjustments="Forward adjusted (qfqday)" if adjusted else "Unadjusted (day)",
+        transformations=(
+            "Daily OHLCV fields parsed to numeric values",
+            "Requested date window enforced",
+        ),
+    )
+    return data
 
 
 def get_stock_data(
@@ -210,6 +269,7 @@ def get_stock_data(
     ]
     if data.empty:
         raise NoMarketDataError(symbol, code, f"no prices between {start_date} and {end_date}")
+    observe_ohlcv(data, transformations=("Display prices rounded to two decimals",))
     rounded = data.copy()
     for column in ["Open", "High", "Low", "Close"]:
         rounded[column] = rounded[column].round(2)

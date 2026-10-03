@@ -25,6 +25,7 @@ from tradingagents.agents import (
 from tradingagents.agents.analysts.turn import WRAP_UP
 from tradingagents.agents.utils.agent_states import AgentState
 from tradingagents.agents.utils.output_quality import sanitize_output_quality
+from tradingagents.evidence import analyst_evidence, current_ledger
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
@@ -63,11 +64,15 @@ def _analyst_graph(spec, agent, max_tool_rounds: int):
     cannot run the graph into its recursion limit (#1420).
     """
     output = TypedDict(
-        f"{spec.key.capitalize()}Report", {spec.report_key: str, "output_quality": dict}
+        f"{spec.key.capitalize()}Report",
+        {spec.report_key: str, "output_quality": dict, "evidence_bundle": dict},
     )
     graph = StateGraph(AgentState, output_schema=output)
 
     def emit_turn(result):
+        ledger = current_ledger()
+        if ledger is not None:
+            result = {**result, "evidence_bundle": ledger.bundle(analyst=spec.key)}
         get_stream_writer()({"analyst": spec.agent_node, "messages": result.get("messages", [])})
         return result
 
@@ -179,7 +184,7 @@ class GraphSetup:
             def run_analyst(state, config):
                 # Stream execution reserves a worker for LangGraph's queue
                 # waiter, so bound the actual analyst lifetime independently.
-                with slots:
+                with slots, analyst_evidence(spec.key):
                     writer = get_stream_writer()
                     writer({"analyst": spec.agent_node, "analyst_started": True})
                     result = private_graph.invoke(state, config)
@@ -192,6 +197,9 @@ class GraphSetup:
                         **result,
                         "output_quality": {key: quality[key]} if key in quality else {},
                     }
+                    ledger = current_ledger()
+                    if ledger is not None:
+                        result["evidence_bundle"] = ledger.bundle(analyst=spec.key)
                     writer({"analyst": spec.agent_node, "report": result})
                     return result
 

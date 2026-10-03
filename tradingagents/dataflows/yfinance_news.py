@@ -1,6 +1,7 @@
 """yfinance-based news data fetching functions."""
 
 import contextlib
+import json
 from datetime import datetime, timezone
 
 import yfinance as yf
@@ -10,8 +11,52 @@ from tradingagents.dataflows.config import get_config
 from tradingagents.dataflows.date_window import coverage_gap, in_window
 from tradingagents.dataflows.symbol_utils import normalize_symbol
 from tradingagents.dataflows.yfinance_common import yf_retry
+from tradingagents.evidence import observe_source
+from tradingagents.dataflows.evidence_utils import source_attempt
 
 UTC = timezone.utc
+
+
+def _observe_news(articles, *, search_queries=None):
+    dates = [a["pub_date"] for a in articles if a.get("pub_date") is not None]
+    days = [d.date() for d in dates]
+    dated = dates and all(d.tzinfo is not None for d in dates) and len(dates) == len(articles)
+    normalized = {
+        "articles": [
+            {
+                **{k: a[k] for k in ("title", "summary", "publisher", "link")},
+                "publication_time": a["pub_date"].isoformat()
+                if a.get("pub_date") is not None
+                else None,
+            }
+            for a in articles
+        ]
+    }
+    transformations = [
+        "Articles with unknown dates or outside the requested window excluded",
+        "Publication time observed; article content revision vintage unverified",
+    ]
+    if search_queries is not None:
+        normalized["search_queries"] = list(search_queries)
+        transformations.append(
+            "Yahoo Finance search queries used: " + json.dumps(search_queries, ensure_ascii=False)
+        )
+    observe_source(
+        "yfinance",
+        url="https://finance.yahoo.com/",
+        normalized_data=normalized,
+        observed_window={
+            "start": min(days).isoformat(),
+            "end": max(days).isoformat(),
+        }
+        if dates
+        else None,
+        publication_dates=[d.astimezone(UTC).isoformat().replace("+00:00", "Z") for d in dates]
+        if dated
+        else None,
+        historical_availability="unknown",
+        transformations=transformations,
+    )
 
 
 def _extract_article_data(article: dict) -> dict:
@@ -88,6 +133,7 @@ def get_news_yfinance(
 
     news_str = ""
     filtered_count = 0
+    selected = []
 
     for article in news:
         data = _extract_article_data(article)
@@ -95,6 +141,7 @@ def get_news_yfinance(
         # Keep only articles within the requested window (look-ahead safe).
         if not in_window(data["pub_date"], start_dt, end_dt):
             continue
+        selected.append(data)
 
         news_str += f"### {data['title']} (source: {data['publisher']})\n"
         if data["summary"]:
@@ -103,7 +150,10 @@ def get_news_yfinance(
             news_str += f"Link: {data['link']}\n"
         news_str += "\n"
         filtered_count += 1
+        if filtered_count >= article_limit:
+            break
 
+    _observe_news(selected)
     if filtered_count == 0:
         gap = coverage_gap(
             (_extract_article_data(a)["pub_date"] for a in news),
@@ -112,6 +162,7 @@ def get_news_yfinance(
             "Yahoo Finance news",
             f"news for {ticker}{resolved}",
         )
+        source_attempt("yfinance", "unavailable" if gap else "empty")
         return gap or f"No news found for {ticker}{resolved} between {start_date} and {end_date}"
 
     return f"## {ticker}{resolved} News, from {start_date} to {end_date}:\n\n{news_str}"
@@ -148,8 +199,10 @@ def get_global_news_yfinance(
 
     in_window_news = []
     seen_titles = set()
+    attempted_queries = []
 
     for query in search_queries:
+        attempted_queries.append(query)
         found = yf_retry(
             lambda q=query: (
                 yf.Search(
@@ -176,6 +229,7 @@ def get_global_news_yfinance(
             break
 
     news_str = ""
+    _observe_news(in_window_news[:limit], search_queries=attempted_queries)
     for data in in_window_news[:limit]:
         news_str += f"### {data['title']} (source: {data['publisher']})\n"
         if data["summary"]:
@@ -190,6 +244,7 @@ def get_global_news_yfinance(
         # Results merge several fuzzy searches, so their timestamps prove no
         # continuous coverage; judge the window against the present only.
         gap = coverage_gap((), start_date, curr_date, "Yahoo Finance global news", "market news")
+        source_attempt("yfinance", "unavailable" if gap else "empty")
         return gap or f"No global news found between {start_date} and {curr_date}"
 
     return f"## Global Market News, from {start_date} to {curr_date}:\n\n{news_str}"

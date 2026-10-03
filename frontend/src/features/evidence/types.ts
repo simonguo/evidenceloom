@@ -1,0 +1,43 @@
+export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export type EvidenceSource = {
+  provider: string;
+  url: string | null;
+  observed_window: { start: string; end: string } | null;
+  publication_dates: string[] | null;
+  historical_availability: "unknown" | "within_as_of" | "withheld";
+  units: string | null;
+  adjustments: string | null;
+  transformations: string[];
+  data_sha256: string | null;
+};
+export type EvidenceRecord = {
+  id: string;
+  analyst: "market" | "social" | "news" | "fundamentals" | "identity";
+  tool: string;
+  instrument: string;
+  parameters: Record<string, JsonValue>;
+  status: "available" | "partial" | "empty" | "unavailable" | "withheld";
+  fetched_at: string;
+  output_sha256: string;
+  sources: EvidenceSource[];
+  attempts: { provider: string; status: "available" | "empty" | "unavailable" | "withheld" | "not_configured"; elapsed_ms: number }[];
+};
+export type EvidenceBundle = {
+  schema_version: 1;
+  run_id: string;
+  instrument: string;
+  analysis_date: string;
+  research_as_of: string;
+  as_of_policy: "analysis_date_end_utc";
+  market_timezone: string | null;
+  created_at: string;
+  manifest: Record<string, JsonValue>;
+  manifest_sha256: string;
+  records: EvidenceRecord[];
+  artifacts: Record<string, { kind: "tool_text" | "normalized_data"; payload: string }>;
+  citation_audit: Record<string, { referenced_ids: string[]; unresolved_ids: string[]; status: "resolved" | "unresolved" | "none" }>;
+  bundle_sha256: string;
+};
+export type EvidenceInvalidReason = "malformed" | "hash_mismatch" | "citation_mismatch" | "unsafe_content" | "verification_unavailable";
+export type EvidenceValidation = { status: "invalid"; reason: EvidenceInvalidReason };
+export type EvidenceCheck = { status: "unknown" | "checking" | "verified" } | EvidenceValidation;

@@ -1,3 +1,4 @@
+mod evidence;
 mod output_quality;
 mod secrets;
 mod storage;
@@ -146,6 +147,7 @@ async fn save_text_export(
         let (extension, filter_name) = match format.as_str() {
             "html" => ("html", "HTML"),
             "md" => ("md", "Markdown"),
+            "json" => ("json", "Evidence JSON"),
             _ => return Err("Unsupported report export format".to_string()),
         };
         let file_name = safe_export_file_name(&suggested_name, extension);

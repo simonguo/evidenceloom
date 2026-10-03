@@ -2,6 +2,7 @@ from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
 from tradingagents.agents.utils.output_quality import merge_output_quality
+from tradingagents.evidence import merge_evidence_bundles
 
 
 # Researcher team state
@@ -65,6 +66,7 @@ class AgentState(MessagesState):
     final_trade_decision: Annotated[str, "Final decision made by the Risk Analysts"]
     final_rating: Annotated[str, "Portfolio Manager rating, or REVIEW when unavailable"]
     run_settings: Annotated[dict, "Safe configuration manifest for this run"]
+    evidence_bundle: Annotated[dict, merge_evidence_bundles]
     output_quality: Annotated[dict, merge_output_quality]
     past_context: Annotated[
         str,

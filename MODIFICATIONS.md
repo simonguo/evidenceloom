@@ -16,6 +16,8 @@ The modifications include, but are not limited to:
   provider-specific reasoning controls;
 - observable output-format validation, bounded provider retries, frozen report
   review, and actual-source attribution through A-share fallback;
+- content-addressed research evidence, actual source-attempt traces, frozen
+  inputs through interruption, citation resolution, and self-contained exports;
 - market-data validation, symbol normalization, fallback behavior, and
   additional data sources;
 - checkpointing, memory logging, concurrency, error handling, and test

@@ -1,6 +1,7 @@
 import type { ReportVersion, SystemLanguage } from "@/lib/types";
 import { buildOutputQualityView } from "@/features/output-quality/lib/quality";
 import type { ReportDocument, ReportDocumentSection } from "../types";
+import { exportEvidence } from "@/features/evidence/lib/export";
 
 const reportGroups = [
   {
@@ -19,7 +20,7 @@ const labels = {
     fictional: "完全虚构的演示报告：不对应任何真实证券、公司、价格、新闻或数据来源。",
     groups: ["分析师报告", "多空研究讨论", "交易计划", "风险讨论与最终决策"],
     reports: ["市场分析", "情绪分析", "新闻分析", "基本面分析", "研究团队决策", "交易团队计划", "组合决策"],
-    metadata: ["任务 ID", "报告版本", "版本 ID", "证券", "分析日期", "生成时间", "资产类型", "研究深度", "分析师", "输出语言", "决策", "应用版本", "模型 Provider", "Quick Think 模型", "Deep Think 模型", "行情数据源", "技术指标数据源", "基本面数据源", "新闻数据源", "研究辩论轮数", "风险辩论轮数", "基准证券"],
+    metadata: ["任务 ID", "报告版本", "版本 ID", "证券", "分析日期", "生成时间", "资产类型", "研究深度", "分析师", "输出语言", "决策", "应用版本", "模型 Provider", "Quick Think 模型", "Deep Think 模型", "配置的行情适配器", "配置的技术指标适配器", "配置的基本面适配器", "配置的新闻适配器", "研究辩论轮数", "风险辩论轮数", "基准证券"],
     legacy: "历史版本未记录",
     rounds: "轮",
   },
@@ -29,7 +30,7 @@ const labels = {
     fictional: "Entirely fictional demo report: it does not represent any real security, company, price, news item, or data source.",
     groups: ["Analyst Reports", "Bull/Bear Research Debate", "Trading Plan", "Risk Debate & Portfolio Decision"],
     reports: ["Market Analysis", "Sentiment Analysis", "News Analysis", "Fundamentals Analysis", "Research Team Decision", "Trading Team Plan", "Portfolio Decision"],
-    metadata: ["Task ID", "Report Version", "Version ID", "Instrument", "Analysis Date", "Generated At", "Asset Type", "Research Depth", "Analysts", "Output Language", "Decision", "App Version", "LLM Provider", "Quick Think Model", "Deep Think Model", "Market Data", "Technical Indicators", "Fundamentals Data", "News Data", "Research Debate Rounds", "Risk Debate Rounds", "Benchmark"],
+    metadata: ["Task ID", "Report Version", "Version ID", "Instrument", "Analysis Date", "Generated At", "Asset Type", "Research Depth", "Analysts", "Output Language", "Decision", "App Version", "LLM Provider", "Quick Think Model", "Deep Think Model", "Configured market adapters", "Configured indicator adapters", "Configured fundamentals adapters", "Configured news adapters", "Research Debate Rounds", "Risk Debate Rounds", "Benchmark"],
     legacy: "Not recorded for this historical version",
     rounds: "rounds",
   },
@@ -82,12 +83,13 @@ export function buildReportDocument(
       ...text.metadata.map((label, index): [string, string] => [label, metadataValues[index] ?? "—"]),
       ...(version.run?.coreVersion ? [[language === "zh" ? "研究核心版本" : "Research Core Version", version.run.coreVersion] as [string, string]] : []),
       ...(version.run?.toolVendors && Object.keys(version.run.toolVendors).length
-        ? [[language === "zh" ? "工具数据源" : "Tool Data Vendors", Object.entries(version.run.toolVendors).map(([key, value]) => `${key}: ${value}`).join(", ")] as [string, string]] : []),
+        ? [[language === "zh" ? "配置的工具适配器" : "Configured tool adapters", Object.entries(version.run.toolVendors).map(([key, value]) => `${key}: ${value}`).join(", ")] as [string, string]] : []),
     ],
     sections: buildSections(version, language),
     outputQuality: buildOutputQualityView(version.outputQuality, language),
     language,
     version,
+    evidence: exportEvidence(version.evidenceBundle, version.evidenceValidation),
   };
 }
 

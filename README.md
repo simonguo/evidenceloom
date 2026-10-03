@@ -26,10 +26,13 @@ https://github.com/user-attachments/assets/3cc1cd5a-ddfe-4f01-99f7-02a1f7069bd8
 - Runs locally through a packaged sidecar on desktop; no Evidence Loom cloud account is required.
 - Keeps task history and reports on the device, with frozen report versions for review and export.
 - Shows output-format validation and text fallback in reports; legacy reports retain an explicit unknown status.
+- Saves the exact sanitized research inputs, actual provider attempts, full-precision normalized data, and citation IDs with each run; report versions and HTML/Markdown/JSON exports retain the evidence bundle and content hashes.
 - Stores desktop API keys in macOS Keychain or Windows Credential Manager.
 - Supports OpenAI-compatible APIs, Anthropic, Google, Azure OpenAI, DeepSeek, Qwen, GLM, MiniMax, OpenRouter, and local/custom endpoints.
 
 Research quality, evidence provenance, reproducibility, and analyst acceptance remain active development work. See the [professional quality criteria and evidence](docs/PROFESSIONAL_QUALITY.md).
+
+Saved citation IDs identify captured sources; they do not prove factual support. Unknown publication dates and historical content vintages remain explicit. See the [evidence bundle contract](docs/EVIDENCE_BUNDLE.md) for retention and cutoff limits.
 
 ## Supported platforms
 
