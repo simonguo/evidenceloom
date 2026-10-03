@@ -18,7 +18,7 @@ from tradingagents.agents.utils.agent_utils import (
 )
 from tradingagents.agents.utils.structured import (
     bind_structured,
-    invoke_structured,
+    invoke_agent_output,
     portfolio_context,
     NO_EXTERNAL_TOOLS,
 )
@@ -70,12 +70,14 @@ Ground every conclusion in specific evidence from the analysts. Weigh conflictin
 
 Write the final decision starting with **Rating**: exactly one of Buy / Overweight / Hold / Underweight / Sell on its own line, followed by Executive Summary and Investment Thesis. {NO_EXTERNAL_TOOLS}{get_language_instruction()}"""
 
-        decision = invoke_structured(structured_llm, prompt, "Portfolio Manager")
+        output = invoke_agent_output(
+            structured_llm, llm, prompt, PortfolioDecision, render_pm_decision, "Portfolio Manager"
+        )
+        decision = output.parsed
+        final_trade_decision = output.text
         if decision is not None:
-            final_trade_decision = render_pm_decision(decision)
             final_rating = decision.rating.value
         else:
-            final_trade_decision = llm.invoke(prompt).content
             final_rating = parse_rating(final_trade_decision)
 
         new_risk_debate_state = {
@@ -95,6 +97,7 @@ Write the final decision starting with **Rating**: exactly one of Buy / Overweig
             "risk_debate_state": new_risk_debate_state,
             "final_trade_decision": final_trade_decision,
             "final_rating": final_rating,
+            "output_quality": {"portfolio_manager": output.quality},
         }
 
     return portfolio_manager_node

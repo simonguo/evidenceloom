@@ -1,0 +1,59 @@
+{
+  "case": "synthetic-balanced-v1",
+  "synthetic": true,
+  "evaluates_research_accuracy": false,
+  "provider": "openai",
+  "models": {
+    "deep": "gpt-5.4-mini",
+    "quick": "gpt-5.4-mini"
+  },
+  "limits": {
+    "max_tokens": 1800,
+    "sdk_retries": 0,
+    "timeout_seconds": 45
+  },
+  "allow_text_fallback": false,
+  "passed": true,
+  "records": [
+    {
+      "agent": "research_manager",
+      "ok": true,
+      "seconds": 4.901,
+      "quality": {
+        "status": "validated_schema",
+        "schema": "ResearchPlan",
+        "source": "structured"
+      }
+    },
+    {
+      "agent": "trader",
+      "ok": true,
+      "seconds": 2.155,
+      "quality": {
+        "status": "validated_schema",
+        "schema": "TraderProposal",
+        "source": "structured"
+      }
+    },
+    {
+      "agent": "portfolio_manager",
+      "ok": true,
+      "seconds": 2.89,
+      "quality": {
+        "status": "validated_schema",
+        "schema": "PortfolioDecision",
+        "source": "structured"
+      },
+      "rating_readable": true
+    }
+  ],
+  "evaluated_at": "2026-10-03T17:03:39.203502+00:00",
+  "source_base_revision": "bcdf4f4a050f2ae66e255166573e0b6f32cb5429",
+  "source_sha256": {
+    "scripts/smoke_structured_output.py": "dc010a90d9bb48d9cc8be0b5a75e60b324c1159142d1193ee04784f69cd2f0c9",
+    "tradingagents/agents/utils/structured.py": "b35fde4b1a25053541070e64896646872f8ebbfb0ca0201cb0ae1793e5e9b431",
+    "tradingagents/llm_clients/openai_client.py": "926e855d9565f005c7b89614ea5b35a42f806070a3f44cdf784bcefc590711e4"
+  },
+  "http_requests": 3,
+  "chat_completions_requests": 3
+}

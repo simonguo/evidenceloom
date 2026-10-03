@@ -1,12 +1,10 @@
 import os
 import re
-import time
 from typing import Any, Optional
 from urllib.parse import urlsplit
 
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
-from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
 
 from .api_key_env import get_api_key_env
 from .base_client import BaseLLMClient, normalize_content, normalize_utf8_payload
@@ -34,24 +32,9 @@ class NormalizedChatOpenAI(ChatOpenAI):
     """
 
     def invoke(self, input, config=None, **kwargs):
-        # An explicit SDK retry budget is the complete budget, without an
-        # additional outer loop multiplying attempts. Keep the legacy fallback
-        # for clients whose SDK retries have not been configured.
-        max_attempts = (
-            1
-            if "max_retries" in self.model_fields_set
-            else int(os.environ.get("TRADINGAGENTS_LLM_RETRY_ATTEMPTS", "3"))
-        )
-        base_delay = float(os.environ.get("TRADINGAGENTS_LLM_RETRY_BASE_DELAY", "2"))
-        if max_attempts < 1 or base_delay < 0:
-            raise ValueError("LLM retry attempts must be positive and retry delay non-negative")
-        for attempt in range(max_attempts):
-            try:
-                return normalize_content(super().invoke(input, config, **kwargs))
-            except (APIConnectionError, APITimeoutError, InternalServerError, RateLimitError):
-                if attempt >= max_attempts - 1:
-                    raise
-                time.sleep(base_delay * (2**attempt))
+        # The SDK owns the complete per-request retry budget, including its
+        # default. An outer loop would restart that budget after exhaustion.
+        return normalize_content(super().invoke(input, config, **kwargs))
 
     def _get_request_payload(self, input_, *, stop=None, **kwargs):
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)

@@ -6,6 +6,10 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ### Changed
 
+- Record output-format validation or text fallback with each decision agent, task, frozen report version, and HTML/Markdown export; show unknown quality for legacy reports.
+- Allow selected historical report versions to be reviewed with their own frozen content, configuration, and quality.
+- Make the real-provider format smoke use fictional inputs, explicit resource limits, sanitized JSON results, and schema-based pass criteria.
+
 - Selectively synchronized TradingAgents v0.5.2 reliability fixes while retaining the v0.2.5 package version, Python 3.10 compatibility, and A-share integrations.
 - Run selected analysts in private parallel subgraphs with a shared concurrency limit, per-agent progress, and a report join before research.
 - Record safe runtime settings with report versions and exports; expose token, retry, tool-round, concurrency, and holding-period controls.
@@ -16,6 +20,10 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
 
 ### Fixed
+
+- Reuse successful prose responses instead of generating a second answer; propagate exhausted provider failures and reject refused, truncated, or empty answers.
+- Consolidate OpenAI-compatible retries into the SDK budget, removing the implicit outer retry loop. Use `TRADINGAGENTS_LLM_MAX_RETRIES` instead of the legacy `TRADINGAGENTS_LLM_RETRY_ATTEMPTS` and `TRADINGAGENTS_LLM_RETRY_BASE_DELAY` variables.
+- Identify Tencent and Eastmoney as the actual successful A-share price source, including provider fallback and sliced price windows.
 
 - Carry the Portfolio Manager's typed rating into desktop results and memory. Unparseable decisions now display REVIEW instead of silently becoming Hold.
 - Bind tool symbols and dates to the current run, clip historical market/news/social inputs, and withhold historical fundamentals whose publication date cannot be established.

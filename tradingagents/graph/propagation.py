@@ -40,6 +40,7 @@ class Propagator:
             "trade_date": str(trade_date),
             "past_context": past_context,
             "run_settings": run_settings or {},
+            "output_quality": {},
             "investment_debate_state": InvestDebateState(
                 {
                     "bull_history": "",

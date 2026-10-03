@@ -1,4 +1,5 @@
 import type { ReportVersion, SystemLanguage } from "@/lib/types";
+import type { OutputQualityView } from "@/features/output-quality/types";
 
 export type ExportFormat = "html" | "md";
 
@@ -13,6 +14,7 @@ export type ReportDocument = {
   disclaimer: string;
   fictionalNotice: string;
   metadata: Array<[string, string]>;
+  outputQuality: OutputQualityView;
   sections: ReportDocumentSection[];
   language: SystemLanguage;
   version: ReportVersion;

@@ -1,3 +1,5 @@
+import type { OutputQuality } from "@/features/output-quality/types";
+
 export type AnalystKey = "market" | "social" | "news" | "fundamentals";
 export type AssetType = "stock" | "crypto";
 export type AgentStatus = "pending" | "in_progress" | "completed" | "error";
@@ -134,6 +136,7 @@ export type ReportVersion = {
   decision: string;
   stats: AnalysisStats;
   reportSections: Record<string, string | null>;
+  outputQuality?: OutputQuality;
 };
 
 export type RunContext = {
@@ -160,6 +163,7 @@ export type AnalysisTask = {
   stats: AnalysisStats;
   agentStatuses: Record<string, AgentStatus>;
   reportSections: Record<string, string | null>;
+  outputQuality?: OutputQuality;
   reportVersions: ReportVersion[];
   logs: LogEntry[];
   error: string;
@@ -202,6 +206,7 @@ export type AnalysisEvent = {
   decision?: string;
   finalState?: Record<string, unknown>;
   runSettings?: RuntimeRunSettings;
+  outputQuality?: OutputQuality;
   error?: string;
   agent?: string;
 };

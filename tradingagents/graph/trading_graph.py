@@ -16,6 +16,7 @@ from langgraph.prebuilt import ToolNode
 
 from tradingagents.llm_clients import create_llm_client
 from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
+from tradingagents.agents.utils.output_quality import sanitize_output_quality
 from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.dataflows.config import run_config, run_config_context, set_config
@@ -301,7 +302,7 @@ class TradingAgentsGraph:
             [
                 "analysts=" + ",".join(self.selected_analysts),
                 f"asset={asset_type}",
-                "layout=parallel-v1",
+                "layout=parallel-v2-output-quality",
                 f"settings={digest}",
             ]
         )
@@ -529,6 +530,7 @@ class TradingAgentsGraph:
             "final_trade_decision": final_state["final_trade_decision"],
             "final_rating": run_rating(final_state),
             "run_settings": final_state.get("run_settings", self.run_settings()),
+            "output_quality": sanitize_output_quality(final_state.get("output_quality")),
         }
 
         # Save to file. Reject ticker values that would escape the

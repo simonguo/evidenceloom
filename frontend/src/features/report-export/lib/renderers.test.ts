@@ -6,6 +6,33 @@ import { renderReportHtml } from "./render-html";
 import { renderReportMarkdown } from "./render-markdown";
 
 describe("report export renderers", () => {
+  it("exports frozen format limitations identically in HTML and Markdown", () => {
+    const task = createFictionalDemoTask("en");
+    const version = {
+      ...task.reportVersions[0],
+      outputQuality: {
+        portfolio_manager: {
+          status: "unvalidated_text", schema: "PortfolioDecision", source: "raw_response", reason: "schema_validation_failed",
+          error: "sensitive-error-body", endpoint: "https://private.invalid",
+        },
+      },
+    };
+    const document = buildReportDocument(task.id, task.origin, version as never, "en");
+    for (const rendered of [renderReportHtml(document), renderReportMarkdown(document)]) {
+      expect(rendered).toContain("Text fallback · format unvalidated");
+      expect(rendered).toContain("Original response retained");
+      expect(rendered).toContain("no structured guarantees for ratings or fields");
+      expect(rendered).not.toMatch(/sensitive-error-body|private.invalid/);
+    }
+  });
+
+  it("does not infer format validation from a legacy rating", () => {
+    const task = createFictionalDemoTask("zh");
+    const document = buildReportDocument(task.id, task.origin, task.reportVersions[0], "zh");
+    expect(renderReportMarkdown(document)).toContain("未记录输出格式质量");
+    expect(renderReportHtml(document)).toContain("无法确认是否经过结构化验证");
+  });
+
   it("renders stable ordered Markdown with sanitized run metadata", () => {
     const task = createFictionalDemoTask("zh");
     const version = task.reportVersions[0];

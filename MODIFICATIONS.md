@@ -14,6 +14,8 @@ The modifications include, but are not limited to:
 
 - provider integrations, model capability handling, structured output, and
   provider-specific reasoning controls;
+- observable output-format validation, bounded provider retries, frozen report
+  review, and actual-source attribution through A-share fallback;
 - market-data validation, symbol normalization, fallback behavior, and
   additional data sources;
 - checkpointing, memory logging, concurrency, error handling, and test

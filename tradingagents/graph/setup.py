@@ -24,6 +24,7 @@ from tradingagents.agents import (
 )
 from tradingagents.agents.analysts.turn import WRAP_UP
 from tradingagents.agents.utils.agent_states import AgentState
+from tradingagents.agents.utils.output_quality import sanitize_output_quality
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
@@ -55,13 +56,15 @@ def _tools_or_done(state) -> str:
 def _analyst_graph(spec, agent, max_tool_rounds: int):
     """One analyst as a graph of its own: the model and its tools, on a private message history.
 
-    It returns only its report, so analysts running side by side never write the
-    same key, and its tool calls never reach the other analysts' messages. After
+    It returns its report and output-format quality, so its tool calls never
+    reach the other analysts' messages. After
     ``max_tool_rounds`` rounds of tool calls it is told to write its report, and
     that turn ends it whatever it answers, so a model that keeps calling tools
     cannot run the graph into its recursion limit (#1420).
     """
-    output = TypedDict(f"{spec.key.capitalize()}Report", {spec.report_key: str})
+    output = TypedDict(
+        f"{spec.key.capitalize()}Report", {spec.report_key: str, "output_quality": dict}
+    )
     graph = StateGraph(AgentState, output_schema=output)
 
     def emit_turn(result):
@@ -180,6 +183,15 @@ class GraphSetup:
                     writer = get_stream_writer()
                     writer({"analyst": spec.agent_node, "analyst_started": True})
                     result = private_graph.invoke(state, config)
+                    # An analyst inherits parent state on resume. Project only
+                    # its own quality so an inherited, stale record cannot
+                    # overwrite a concurrent analyst's newer validation.
+                    quality = sanitize_output_quality(result.get("output_quality"))
+                    key = "sentiment" if spec.key == "social" else None
+                    result = {
+                        **result,
+                        "output_quality": {key: quality[key]} if key in quality else {},
+                    }
                     writer({"analyst": spec.agent_node, "report": result})
                     return result
 

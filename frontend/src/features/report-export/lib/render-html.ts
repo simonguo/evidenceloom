@@ -38,6 +38,10 @@ export function renderReportHtml(document: ReportDocument) {
   const fictionalNotice = document.fictionalNotice
     ? `<div class="fictional">${escapeHtml(document.fictionalNotice)}</div>`
     : "";
+  const quality = document.outputQuality;
+  const qualityEntries = quality.entries.length
+    ? `<ul>${quality.entries.map((entry) => `<li><strong>${escapeHtml(entry.agent)}: ${escapeHtml(entry.status)}</strong><p>${escapeHtml(entry.schema)} · ${escapeHtml(entry.source)}</p>${entry.reason ? `<p>${escapeHtml(entry.reason)}</p>` : ""}</li>`).join("")}</ul>`
+    : `<p>${escapeHtml(quality.emptyMessage)}</p>`;
 
   return `<!doctype html>
 <html lang="${document.language === "zh" ? "zh-CN" : "en"}">
@@ -57,6 +61,11 @@ export function renderReportHtml(document: ReportDocument) {
       <p class="disclaimer">${escapeHtml(document.disclaimer)}</p>
     </header>
     <table class="metadata"><tbody>${metadataRows}</tbody></table>
+    <section class="quality${quality.hasUnvalidatedText ? " fallback" : ""}" aria-label="${escapeHtml(quality.title)}">
+      <h2>${escapeHtml(quality.title)}</h2>
+      <p>${escapeHtml(quality.disclaimer)}</p>
+      ${qualityEntries}
+    </section>
     <nav aria-label="Table of contents"><ol>${toc}</ol></nav>
     ${sections}
   </main>
@@ -97,6 +106,10 @@ a { color: #1d4ed8; text-underline-offset: 3px; }
 .metadata { width: 100%; margin: 28px 0; border-collapse: collapse; font-size: 13px; }
 .metadata th, .metadata td { padding: 9px 12px; border: 1px solid #e4e4e7; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
 .metadata th { width: 30%; background: #fafafa; color: #52525b; }
+.quality { padding: 18px 22px; border: 1px solid #d4d4d8; border-radius: 12px; background: #fafafa; }
+.quality h2 { margin-top: 0; font-size: 20px; }
+.quality p { font-size: 13px; }
+.quality.fallback { border-color: #f59e0b; background: #fffbeb; }
 nav { margin: 28px 0; padding: 18px 22px; border-radius: 12px; background: #fafafa; }
 nav ol { margin: 0; padding-left: 22px; }
 table:not(.metadata) { width: 100%; display: block; overflow-x: auto; border-collapse: collapse; font-size: 13px; }

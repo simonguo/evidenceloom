@@ -1,36 +1,52 @@
-"""Shared helpers for invoking an agent with structured output and a graceful fallback.
-
-The Portfolio Manager, Trader, and Research Manager all follow the same
-canonical pattern:
-
-1. At agent creation, wrap the LLM with ``with_structured_output(Schema)``
-   so the model returns a typed Pydantic instance. If the provider does
-   not support structured output (rare; mostly older Ollama models), the
-   wrap is skipped and the agent uses free-text generation instead.
-2. At invocation, run the structured call and render the result back to
-   markdown. If the structured call itself fails for any reason
-   (malformed JSON from a weak model, transient provider issue), fall
-   back to a plain ``llm.invoke`` so the pipeline never blocks.
-
-Centralising the pattern here keeps the agent factories small and ensures
-all three agents log the same warnings when fallback fires.
-"""
+"""Preserve structured answers and make output-format degradation observable."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from json import JSONDecodeError
 import logging
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Generic, Mapping, Optional, TypeVar
 
-from pydantic import BaseModel
+from langchain_core.exceptions import OutputParserException
+from langchain_core.messages import BaseMessage, SystemMessage
+from pydantic import BaseModel, ValidationError
+
+from tradingagents.llm_clients.base_client import normalize_content, normalize_utf8_text
 
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+_PARSE_ERRORS = (OutputParserException, ValidationError, JSONDecodeError)
+_FORMAT_PARAMETERS = {"tools", "tool_choice", "response_format", "json_schema"}
+_FORMAT_ERROR_CODES = {
+    "unsupported_parameter",
+    "unsupported_value",
+    "unsupported_format",
+    "unknown_parameter",
+    "invalid_parameter",
+    "missing_required_parameter",
+}
 
 NO_EXTERNAL_TOOLS = (
     "Use only the evidence provided in this prompt. Do not call external tools "
     "or search the web; if something is missing, say so explicitly."
 )
+
+
+@dataclass(frozen=True)
+class StructuredBinding(Generic[T]):
+    runnable: Any
+    schema: type[T]
+
+    def invoke(self, prompt: Any):
+        return self.runnable.invoke(prompt)
+
+
+@dataclass(frozen=True)
+class AgentOutput(Generic[T]):
+    text: str
+    parsed: Optional[T]
+    quality: dict[str, str]
 
 
 def portfolio_context(state: dict) -> str:
@@ -44,40 +60,191 @@ def portfolio_context(state: dict) -> str:
     )
 
 
+def _format_compatibility_error(exc: Exception) -> bool:
+    """Only recognized format-parameter 400s warrant another generation."""
+    if getattr(exc, "status_code", None) != 400:
+        return False
+    body = getattr(exc, "body", None)
+    if not isinstance(body, Mapping):
+        return False
+    error = body.get("error", body)
+    if not isinstance(error, Mapping):
+        return False
+    parameter = str(error.get("param") or "").split(".", 1)[0]
+    return parameter in _FORMAT_PARAMETERS and error.get("code") in _FORMAT_ERROR_CODES
+
+
+def _structured_prompt(prompt: Any, schema: type[BaseModel]) -> Any:
+    instruction = (
+        f"Return your final answer using the {schema.__name__} output schema. "
+        "If a schema tool is supplied, call it once to format the final answer. "
+        "This schema tool only formats your answer; it does not retrieve external data. "
+        "Do not call any other tools or search the web."
+    )
+    if isinstance(prompt, str):
+        return prompt + "\n\n" + instruction
+    if hasattr(prompt, "to_messages"):
+        prompt = prompt.to_messages()
+    if not isinstance(prompt, (list, tuple)):
+        raise TypeError("structured prompt must be text or a message sequence")
+    messages = list(prompt)
+    if messages and isinstance(messages[0], dict):
+        first = messages[0]
+        if first.get("role") in ("system", "developer") and isinstance(first.get("content"), str):
+            messages[0] = {**first, "content": first["content"] + "\n\n" + instruction}
+        else:
+            messages.insert(0, {"role": "system", "content": instruction})
+    elif (
+        messages and isinstance(messages[0], SystemMessage) and isinstance(messages[0].content, str)
+    ):
+        messages[0] = messages[0].model_copy(
+            update={"content": messages[0].content + "\n\n" + instruction}
+        )
+    else:
+        messages.insert(0, SystemMessage(content=instruction))
+    return messages
+
+
+def _response_text(response: Any) -> str:
+    if response is None:
+        return ""
+    content = getattr(response, "content", None)
+    if isinstance(response, BaseMessage):
+        content = normalize_content(response).content
+    return normalize_utf8_text(content) if isinstance(content, str) else ""
+
+
+def _require_complete_response(response: Any, agent_name: str) -> None:
+    additional = getattr(response, "additional_kwargs", None)
+    if isinstance(additional, dict) and additional.get("refusal"):
+        raise ValueError(f"{agent_name}: provider refused to produce an answer")
+    metadata = getattr(response, "response_metadata", None)
+    if not isinstance(metadata, dict):
+        return
+    reason = str(metadata.get("finish_reason") or metadata.get("stop_reason") or "")
+    reason = reason.lower().rsplit(".", 1)[-1]
+    if reason == "refusal":
+        raise ValueError(f"{agent_name}: provider refused to produce an answer")
+    if reason in (
+        "length",
+        "max_tokens",
+        "content_filter",
+        "safety",
+        "recitation",
+        "pause_turn",
+        "model_context_window_exceeded",
+    ):
+        raise ValueError(f"{agent_name}: provider returned an incomplete or filtered answer")
+
+
+def _quality(schema: type[BaseModel], source: str, reason: str | None = None) -> dict[str, str]:
+    record = {
+        "status": "validated_schema" if source == "structured" else "unvalidated_text",
+        "schema": schema.__name__,
+        "source": source,
+    }
+    if reason:
+        record["reason"] = reason
+    return record
+
+
+def _plain_output(plain_llm, prompt, schema, agent_name, reason) -> AgentOutput:
+    response = plain_llm.invoke(prompt)
+    _require_complete_response(response, agent_name)
+    text = _response_text(response)
+    if not text.strip():
+        raise ValueError(f"{agent_name}: provider returned an empty answer")
+    logger.warning("%s: output format degraded (%s)", agent_name, reason)
+    return AgentOutput(text, None, _quality(schema, "plain_generation", reason))
+
+
+def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[StructuredBinding[T]]:
+    """Keep the raw HTTP-success response alongside parsing and validation."""
+    try:
+        return StructuredBinding(llm.with_structured_output(schema, include_raw=True), schema)
+    except (NotImplementedError, AttributeError):
+        logger.warning("%s: output schema unavailable; using plain generation", agent_name)
+        return None
+
+
+def invoke_agent_output(
+    structured_llm: Optional[Any],
+    plain_llm: Any,
+    prompt: Any,
+    schema: type[T],
+    render: Callable[[T], str],
+    agent_name: str,
+) -> AgentOutput[T]:
+    """Validate once, reuse usable prose, and never retry an exhausted API failure.
+
+    A format-specific 400 or a malformed schema with no reusable text permits
+    one plain generation. Authentication, quota, transport, other protocol errors
+    and programming errors propagate; SDK retries remain the provider's budget.
+    """
+    if structured_llm is None:
+        return _plain_output(plain_llm, prompt, schema, agent_name, "structured_unavailable")
+    try:
+        result = structured_llm.invoke(_structured_prompt(prompt, schema))
+    except _PARSE_ERRORS:
+        return _plain_output(plain_llm, prompt, schema, agent_name, "schema_validation_failed")
+    except Exception as exc:
+        if _format_compatibility_error(exc):
+            return _plain_output(plain_llm, prompt, schema, agent_name, "unsupported_format")
+        raise
+
+    raw, parsed, parsing_error = None, result, None
+    if isinstance(result, Mapping) and "raw" in result:
+        raw, parsed, parsing_error = (
+            result.get("raw"),
+            result.get("parsed"),
+            result.get("parsing_error"),
+        )
+    _require_complete_response(raw, agent_name)
+    if parsed is not None:
+        try:
+            parsed = schema.model_validate(
+                parsed.model_dump() if isinstance(parsed, BaseModel) else parsed
+            )
+        except ValidationError as exc:
+            parsed, parsing_error = None, exc
+        else:
+            # A renderer bug is a programming failure, not a reason to pay for
+            # another answer or silently discard the validated decision.
+            text = normalize_utf8_text(render(parsed))
+            if not text.strip():
+                raise ValueError(f"{agent_name}: schema renderer returned an empty answer")
+            return AgentOutput(text, parsed, _quality(schema, "structured"))
+
+    invalid_calls = getattr(raw, "invalid_tool_calls", None)
+    schema_failed = parsing_error is not None or bool(
+        isinstance(invalid_calls, list) and invalid_calls
+    )
+    reason = "schema_validation_failed" if schema_failed else "no_tool_call"
+    text = _response_text(raw)
+    if text.strip():
+        logger.warning("%s: output format degraded (%s)", agent_name, reason)
+        return AgentOutput(text, None, _quality(schema, "raw_response", reason))
+    if schema_failed:
+        return _plain_output(plain_llm, prompt, schema, agent_name, reason)
+    raise ValueError(f"{agent_name}: provider returned an empty answer")
+
+
 def invoke_structured(structured_llm: Optional[Any], prompt: Any, agent_name: str) -> Optional[T]:
-    """Return the parsed decision, so its typed rating survives rendering."""
+    """Compatibility helper for callers that only need the parsed object."""
     if structured_llm is None:
         return None
     try:
         result = structured_llm.invoke(prompt)
-        if result is None:
-            raise ValueError("structured output returned no parsed result")
-        return result
+    except _PARSE_ERRORS:
+        return None
     except Exception as exc:
-        logger.warning(
-            "%s: structured-output invocation failed (%s); retrying once as free text",
-            agent_name,
-            exc,
-        )
-        return None
-
-
-def bind_structured(llm: Any, schema: type[T], agent_name: str) -> Optional[Any]:
-    """Return ``llm.with_structured_output(schema)`` or ``None`` if unsupported.
-
-    Logs a warning when the binding fails so the user understands the agent
-    will use free-text generation for every call instead of one-shot fallback.
-    """
-    try:
-        return llm.with_structured_output(schema)
-    except (NotImplementedError, AttributeError) as exc:
-        logger.warning(
-            "%s: provider does not support with_structured_output (%s); "
-            "falling back to free-text generation",
-            agent_name,
-            exc,
-        )
-        return None
+        if _format_compatibility_error(exc):
+            return None
+        raise
+    if isinstance(result, Mapping) and "raw" in result:
+        _require_complete_response(result.get("raw"), agent_name)
+        result = result.get("parsed")
+    return result if isinstance(result, BaseModel) else None
 
 
 def invoke_structured_or_freetext(
@@ -87,20 +254,14 @@ def invoke_structured_or_freetext(
     render: Callable[[T], str],
     agent_name: str,
 ) -> str:
-    """Run the structured call and render to markdown; fall back to free-text on any failure.
-
-    ``prompt`` is whatever the underlying LLM accepts (a string for chat
-    invocations, a list of message dicts for chat models that take that
-    shape). The same value is forwarded to the free-text path so the
-    fallback sees the same input the structured call did.
-    """
+    """Retain the legacy string API for callers using ``bind_structured``."""
+    if isinstance(structured_llm, StructuredBinding):
+        return invoke_agent_output(
+            structured_llm, plain_llm, prompt, structured_llm.schema, render, agent_name
+        ).text
     result = invoke_structured(structured_llm, prompt, agent_name)
     if result is not None:
-        try:
-            return render(result)
-        except Exception as exc:
-            logger.warning(
-                "%s: structured rendering failed (%s); retrying once as free text", agent_name, exc
-            )
+        return normalize_utf8_text(render(result))
     response = plain_llm.invoke(prompt)
-    return response.content
+    _require_complete_response(response, agent_name)
+    return _response_text(response)

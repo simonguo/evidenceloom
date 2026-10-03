@@ -9,9 +9,10 @@ use serde_json::Value;
 use std::{fs, path::PathBuf};
 use tauri::{AppHandle, Manager};
 
+use crate::output_quality::{normalize_output_quality, normalize_report_version_quality};
 use crate::secrets;
 
-const SCHEMA_VERSION: i64 = 4;
+const SCHEMA_VERSION: i64 = 5;
 const SECRET_PREFIX: &str = "enc:v1:";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -123,6 +124,8 @@ pub struct AnalysisTaskRecord {
     pub report_sections: Value,
     #[serde(default = "empty_array")]
     pub report_versions: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_quality: Option<Value>,
     pub logs: Value,
     pub error: String,
 }
@@ -334,7 +337,8 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
             stats TEXT NOT NULL,
             agent_statuses TEXT NOT NULL,
             report_sections TEXT NOT NULL,
-            error TEXT NOT NULL DEFAULT ''
+            error TEXT NOT NULL DEFAULT '',
+            output_quality TEXT
          );
          CREATE TABLE IF NOT EXISTS task_logs (
             id TEXT PRIMARY KEY,
@@ -371,6 +375,7 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     ensure_column(conn, "tasks", "origin", "TEXT NOT NULL DEFAULT 'analysis'")?;
     ensure_column(conn, "tasks", "queued_at", "TEXT NOT NULL DEFAULT ''")?;
     ensure_column(conn, "tasks", "queue_order", "INTEGER")?;
+    ensure_column(conn, "tasks", "output_quality", "TEXT")?;
     ensure_column(conn, "task_logs", "agent", "TEXT")?;
     backfill_legacy_report_versions(conn)?;
     conn.execute(
@@ -573,7 +578,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
     let mut stmt = conn
         .prepare(
             "SELECT id, ticker, analysis_date, asset_type, research_depth, analysts, output_language, status,
-                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin
+                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality
              FROM tasks ORDER BY updated_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -609,6 +614,10 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                     report_sections,
                 ),
                 report_versions,
+                output_quality: row
+                    .get::<_, Option<String>>(19)?
+                    .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+                    .and_then(|value| normalize_output_quality(&value)),
                 logs,
                 error: row.get(17)?,
             })
@@ -661,7 +670,9 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
     )?;
     let rows = stmt.query_map(params![task_id], |row| {
         let raw = row.get::<_, String>(0)?;
-        Ok(serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null))
+        Ok(normalize_report_version_quality(
+            serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null),
+        ))
     })?;
     let versions = rows
         .filter_map(|row| match row {
@@ -673,11 +684,15 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
 }
 
 fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+    let output_quality = task
+        .output_quality
+        .as_ref()
+        .and_then(normalize_output_quality);
     conn.execute(
         "INSERT INTO tasks (
             id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
-            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)
+            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)
          ON CONFLICT(id) DO UPDATE SET
             origin = excluded.origin,
             ticker = excluded.ticker,
@@ -695,7 +710,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             stats = excluded.stats,
             agent_statuses = excluded.agent_statuses,
             report_sections = excluded.report_sections,
-            error = excluded.error",
+            error = excluded.error,
+            output_quality = excluded.output_quality",
         params![
             task.id,
             task.origin,
@@ -716,6 +732,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             json_string(&task.agent_statuses)?,
             json_string(&task.report_sections)?,
             task.error,
+            output_quality.as_ref().map(json_string).transpose()?,
         ],
     )
     .map_err(|error| error.to_string())?;
@@ -768,6 +785,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
 
     if let Value::Array(versions) = &task.report_versions {
         for version in versions {
+            let version = normalize_report_version_quality(version.clone());
             let id = version
                 .get("id")
                 .and_then(Value::as_str)
@@ -797,7 +815,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     version_number,
                     run_id,
                     created_at,
-                    json_string(version)?,
+                    json_string(&version)?,
                 ],
             )
             .map_err(|error| error.to_string())?;
@@ -1091,6 +1109,137 @@ mod tests {
     }
 
     #[test]
+    fn output_quality_survives_storage_without_rewriting_frozen_versions() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let quality = serde_json::json!({
+            "portfolio_manager": {
+                "status": "unvalidated_text",
+                "schema": "PortfolioDecision",
+                "source": "raw_response",
+                "reason": "schema_validation_failed"
+            }
+        });
+        let snapshot = serde_json::json!({
+            "id": "quality-version", "runId": "quality-run", "versionNumber": 1,
+            "createdAt": "2026-10-04", "outputQuality": quality
+        });
+        let mut task = quality_task_fixture(quality.clone(), snapshot);
+        upsert_task(&conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].output_quality.as_ref(), Some(&quality));
+        assert_eq!(loaded[0].report_versions[0]["outputQuality"], quality);
+
+        task.output_quality = None;
+        task.status = "queued".to_string();
+        upsert_task(&conn, &task).unwrap();
+        let rerun = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(rerun[0].output_quality, None);
+        assert_eq!(rerun[0].report_versions[0]["outputQuality"], quality);
+    }
+
+    fn quality_task_fixture(quality: Value, snapshot: Value) -> AnalysisTaskRecord {
+        serde_json::from_value(serde_json::json!({
+            "id": "quality-task", "ticker": "TEST", "analysisDate": "2026-10-04",
+            "assetType": "stock", "researchDepth": 1, "analysts": [],
+            "outputLanguage": "English", "status": "completed",
+            "createdAt": "2026-10-04", "updatedAt": "2026-10-04", "decision": "REVIEW",
+            "stats": {}, "agentStatuses": {}, "reportSections": {}, "logs": [], "error": "",
+            "outputQuality": quality, "reportVersions": [snapshot]
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn storage_filters_quality_on_write_and_on_read_without_altering_snapshot_metadata() {
+        let conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let safe = serde_json::json!({
+            "portfolio_manager": {"status": "unvalidated_text", "schema": "PortfolioDecision", "source": "raw_response", "reason": "no_tool_call"}
+        });
+        let dirty = serde_json::json!({
+            "portfolio_manager": {"status": "unvalidated_text", "schema": "PortfolioDecision", "source": "raw_response", "reason": "no_tool_call", "error": "sensitive-body", "endpoint": "https://private.invalid"},
+            "research_manager": {"status": "validated_schema", "schema": "ResearchPlan", "source": "raw_response"},
+            "unknown_agent": {"error": "sensitive-body"}
+        });
+        let invalid = serde_json::json!({
+            "trader": {"status": "unvalidated_text", "schema": "TraderProposal", "source": "structured", "reason": "no_tool_call"}
+        });
+        let snapshot = serde_json::json!({
+            "id": "quality-version", "runId": "quality-run", "versionNumber": 1,
+            "createdAt": "2026-10-04", "reportSections": {"market_report": "Original report"},
+            "customMetadata": {"retained": true}, "outputQuality": dirty
+        });
+        let mut task = quality_task_fixture(dirty.clone(), snapshot.clone());
+        let mut invalid_snapshot = snapshot.clone();
+        invalid_snapshot["id"] = Value::String("invalid-version".to_string());
+        invalid_snapshot["runId"] = Value::String("invalid-run".to_string());
+        invalid_snapshot["versionNumber"] = Value::Number(2.into());
+        invalid_snapshot["outputQuality"] = invalid.clone();
+        task.report_versions
+            .as_array_mut()
+            .unwrap()
+            .push(invalid_snapshot.clone());
+        upsert_task(&conn, &task).unwrap();
+
+        let raw_quality: String = conn
+            .query_row(
+                "SELECT output_quality FROM tasks WHERE id = 'quality-task'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&raw_quality).unwrap(), safe);
+        let mut expected_snapshot = snapshot.clone();
+        expected_snapshot["outputQuality"] = safe.clone();
+        invalid_snapshot
+            .as_object_mut()
+            .unwrap()
+            .remove("outputQuality");
+        for (id, expected) in [
+            ("quality-version", &expected_snapshot),
+            ("invalid-version", &invalid_snapshot),
+        ] {
+            let raw: String = conn
+                .query_row(
+                    "SELECT snapshot FROM task_report_versions WHERE id = ?1",
+                    params![id],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(serde_json::from_str::<Value>(&raw).unwrap(), *expected);
+            assert!(!raw.contains("sensitive-body") && !raw.contains("private.invalid"));
+        }
+
+        conn.execute(
+            "UPDATE tasks SET output_quality = ?1 WHERE id = 'quality-task'",
+            params![json_string(&dirty).unwrap()],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE task_report_versions SET snapshot = ?1 WHERE id = 'quality-version'",
+            params![json_string(&snapshot).unwrap()],
+        )
+        .unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].output_quality.as_ref(), Some(&safe));
+        assert_eq!(loaded[0].report_versions[0], expected_snapshot);
+        assert_eq!(loaded[0].report_versions[1], invalid_snapshot);
+
+        task.output_quality = Some(invalid);
+        upsert_task(&conn, &task).unwrap();
+        let stored_invalid: Option<String> = conn
+            .query_row(
+                "SELECT output_quality FROM tasks WHERE id = 'quality-task'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(stored_invalid, None);
+        assert_eq!(load_tasks_from_conn(&conn).unwrap()[0].output_quality, None);
+    }
+
+    #[test]
     fn schema_upgrade_backfills_a_legacy_completed_report() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(
@@ -1141,6 +1290,7 @@ mod tests {
         .unwrap();
 
         initialize_schema(&conn).unwrap();
+        assert_eq!(load_tasks_from_conn(&conn).unwrap()[0].output_quality, None);
 
         let snapshot: String = conn
             .query_row(

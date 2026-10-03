@@ -26,6 +26,7 @@ import { StatusPill } from "@/components/task-center/components/StatusPill";
 import { EventStream } from "@/components/task-center/components/EventStream";
 import { DecisionSummaryCard } from "@/components/task-center/components/DecisionSummaryCard";
 import { ReportVersionsPanel } from "@/features/report-export";
+import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
 
 const CandlestickChart = dynamic(
   () => import("@/components/charts/CandlestickChart").then((module) => module.CandlestickChart),
@@ -253,6 +254,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                 hasDetails={Boolean(task.reportSections.final_trade_decision?.trim())}
                 onOpen={() => openAgentDrawer("Portfolio Manager")}
               />
+              <OutputQualityPanel quality={task.outputQuality} language={settings.systemLanguage} />
             </div>
           ) : (
             <div className="mt-5">

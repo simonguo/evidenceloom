@@ -3,6 +3,8 @@
 import { Download, FileCode2, FileText, Loader2 } from "lucide-react";
 import type { AnalysisTask, SystemLanguage } from "@/lib/types";
 import { useReportExport } from "../hooks/useReportExport";
+import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
+import { ReportVersionPreview } from "./ReportVersionPreview";
 
 export function ReportVersionsPanel({
   task,
@@ -88,7 +90,18 @@ export function ReportVersionsPanel({
         </div>
       )}
 
-      {message && <p className="mt-3 break-words text-xs text-zinc-400">{message}</p>}
+      {selectedVersion && (
+        <div className="mt-4 space-y-3">
+          <OutputQualityPanel quality={selectedVersion.outputQuality} language={language} />
+          <details key={selectedVersion.id} className="rounded-lg border border-zinc-800 p-4">
+            <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">
+              {zh ? `审阅选中的报告 v${selectedVersion.versionNumber}` : `Review selected report v${selectedVersion.versionNumber}`}
+            </summary>
+            <ReportVersionPreview version={selectedVersion} taskId={task.id} origin={task.origin} language={language} />
+          </details>
+        </div>
+      )}
+      {message && <p role="status" className="mt-3 break-words text-xs text-zinc-400">{message}</p>}
     </section>
   );
 }

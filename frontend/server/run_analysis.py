@@ -18,6 +18,7 @@ from cli.main import (
 from cli.stats_handler import StatsCallbackHandler
 from cli.utils import detect_asset_type, normalize_ticker_symbol
 from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
+from tradingagents.agents.utils.output_quality import merge_output_quality, sanitize_output_quality
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
     build_analyst_execution_plan,
@@ -244,6 +245,7 @@ def emit_progress(
     stats_handler: StatsCallbackHandler,
     started_at: float,
     message: str | None = None,
+    output_quality: Dict[str, Any] | None = None,
 ) -> None:
     event = {
         "type": "progress",
@@ -257,6 +259,8 @@ def emit_progress(
         agent = current_agent(buffer)
         if agent:
             event["agent"] = agent
+    if output_quality is not None:
+        event["outputQuality"] = sanitize_output_quality(output_quality)
     emit(event)
 
 
@@ -344,7 +348,10 @@ def update_reports_from_chunk(buffer: MessageBuffer, chunk: Dict[str, Any]) -> N
 
 def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
     keys = [*REPORT_SECTION_KEYS, "final_rating", "run_settings"]
-    return {key: final_state.get(key) for key in keys if key in final_state}
+    compact = {key: final_state.get(key) for key in keys if key in final_state}
+    if "output_quality" in final_state:
+        compact["output_quality"] = sanitize_output_quality(final_state["output_quality"])
+    return compact
 
 
 def run_post_completion_tasks(
@@ -508,10 +515,14 @@ def run(payload: Dict[str, Any]) -> None:
 
             update_analyst_statuses(buffer, changes, wall_time_tracker=analyst_wall_time_tracker)
             update_reports_from_chunk(buffer, changes)
-            emit_progress(buffer, stats_handler, started_at)
+            quality = merge_output_quality(
+                final_state.get("output_quality"), chunk.get("output_quality")
+            )
+            emit_progress(buffer, stats_handler, started_at, output_quality=quality)
             final_state.update(
                 {key: value for key, value in chunk.items() if key != "analyst_started"}
             )
+            final_state["output_quality"] = quality
 
         graph.curr_state = final_state
         decision = run_rating(final_state)
@@ -531,6 +542,7 @@ def run(payload: Dict[str, Any]) -> None:
                 "stats": current_stats(stats_handler, started_at),
                 "decision": decision,
                 "runSettings": final_state.get("run_settings", graph.run_settings()),
+                "outputQuality": sanitize_output_quality(final_state.get("output_quality")),
                 "finalState": compact_final_state(final_state),
             }
         )

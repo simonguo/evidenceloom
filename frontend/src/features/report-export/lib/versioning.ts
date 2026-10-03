@@ -1,4 +1,5 @@
 import { resolveTaskDecision } from "@/components/task-center/decisions";
+import { mergeEventOutputQuality, normalizeOutputQuality } from "@/features/output-quality/lib/quality";
 import { mergeRuntimeManifest } from "./runtime-settings";
 import packageMetadata from "../../../../package.json";
 import type {
@@ -56,6 +57,7 @@ export function appendCompletedReportVersion(
     decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
     stats: { ...(event.stats ?? task.stats) },
     reportSections: { ...reportSections },
+    outputQuality: mergeEventOutputQuality(task.outputQuality, event),
   };
 
   return { ...task, reportVersions: [...task.reportVersions, version] };
@@ -81,6 +83,7 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     decision: task.decision,
     stats: { ...task.stats },
     reportSections: { ...task.reportSections },
+    outputQuality: normalizeOutputQuality(task.outputQuality),
   };
   return { ...task, reportVersions: [version] };
 }

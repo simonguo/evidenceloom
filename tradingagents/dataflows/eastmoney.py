@@ -105,9 +105,16 @@ def _normalize_a_share_symbol(symbol: str) -> tuple[str, str]:
 
 
 def _fetch_kline(symbol: str, start_date: str, end_date: str) -> tuple[str, pd.DataFrame]:
+    """Return the successful provider's rows, retaining its identity in attrs.
+
+    This module is the A-share routing adapter; it may serve Tencent even when
+    the configured adapter is named Eastmoney. Do not infer the actual source
+    from that configuration or the module name.
+    """
     code, secid = _normalize_a_share_symbol(symbol)
     try:
-        return code, _fetch_tencent_kline(code, secid, start_date, end_date)
+        data = _fetch_tencent_kline(code, secid, start_date, end_date)
+        return code, _with_source(data, "Tencent", TENCENT_KLINE_URL)
     except Exception:
         pass
 
@@ -150,7 +157,16 @@ def _fetch_kline(symbol: str, start_date: str, end_date: str) -> tuple[str, pd.D
             symbol, code, f"no valid OHLCV rows between {start_date} and {end_date}"
         )
 
-    return code, df[["Date", "Open", "High", "Low", "Close", "Volume"]]
+    return code, _with_source(
+        df[["Date", "Open", "High", "Low", "Close", "Volume"]], "Eastmoney", EASTMONEY_KLINE_URL
+    )
+
+
+def _with_source(data: pd.DataFrame, source: str, source_url: str) -> pd.DataFrame:
+    """Attach provider metadata without changing caller-owned frames or return types."""
+    result = data.copy()
+    result.attrs.update({"source": source, "source_url": source_url})
+    return result
 
 
 def _fetch_tencent_kline(code: str, secid: str, start_date: str, end_date: str) -> pd.DataFrame:
@@ -199,7 +215,8 @@ def get_stock_data(
         rounded[column] = rounded[column].round(2)
 
     csv_string = rounded.to_csv(index=False)
-    header = f"# Stock data for {code} (Eastmoney, from {symbol}) from {start_date} to {end_date}\n"
+    source = data.attrs.get("source", "Unknown provider")
+    header = f"# Stock data for {code} ({source}, from {symbol}) from {start_date} to {end_date}\n"
     header += f"# Total records: {len(rounded)}\n"
     header += "\n"
     return header + csv_string

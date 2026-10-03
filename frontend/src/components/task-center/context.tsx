@@ -28,6 +28,7 @@ import {
   getOrCreateFictionalDemoTask,
 } from "@/features/report-export";
 import { normalizeSettingsForSave } from "@/features/settings/lib/normalize-settings";
+import { mergeEventOutputQuality, normalizeTaskOutputQuality } from "@/features/output-quality/lib/quality";
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, RunContext, TaskStatus } from "@/lib/types";
 import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
 import { createTranslator } from "@/lib/i18n";
@@ -171,14 +172,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
     const decision = resolveTaskDecision(task.decision, task.reportSections?.final_trade_decision);
-    const normalizedTask: AnalysisTask = {
+    const normalizedTask = normalizeTaskOutputQuality({
       ...task,
       origin: task.origin ?? "analysis",
       reportVersions: task.reportVersions ?? [],
       queuedAt: task.queuedAt ?? "",
       queueOrder: Number.isFinite(task.queueOrder) ? task.queueOrder : null,
       decision,
-    };
+    });
     if (normalizedTask.status === "running") {
       return ensureLegacyReportVersion({
         ...normalizedTask,
@@ -216,6 +217,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         stats: event.stats ?? task.stats,
         agentStatuses: status === "error" ? finalizeAgentStatuses(nextAgentStatuses) : nextAgentStatuses,
         reportSections,
+        outputQuality: mergeEventOutputQuality(task.outputQuality, event),
         logs,
         error: event.error ?? (status === "running" ? "" : task.error),
       };

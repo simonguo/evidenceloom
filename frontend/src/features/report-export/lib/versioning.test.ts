@@ -17,6 +17,9 @@ describe("report versioning", () => {
       decision: "Hold",
       stats: { llmCalls: 2, toolCalls: 1, tokensIn: 10, tokensOut: 5, elapsedSeconds: 3 },
       reportSections: { market_report: "Frozen report" },
+      outputQuality: {
+        portfolio_manager: { status: "unvalidated_text", schema: "PortfolioDecision", source: "raw_response", reason: "schema_validation_failed" },
+      },
     };
 
     const versioned = appendCompletedReportVersion(task, completed, context, "2025-02-02T00:00:00.000Z");
@@ -32,6 +35,10 @@ describe("report versioning", () => {
     });
     expect(duplicate.reportVersions).toEqual(versioned.reportVersions);
     expect(versioned.reportVersions[0].reportSections).not.toBe(completed.reportSections);
+    expect(versioned.reportVersions[0].outputQuality).toEqual(completed.outputQuality);
+    expect(versioned.reportVersions[0].outputQuality?.portfolio_manager).not.toBe(completed.outputQuality?.portfolio_manager);
+    completed.outputQuality!.portfolio_manager = { status: "validated_schema", schema: "PortfolioDecision", source: "structured" };
+    expect(versioned.reportVersions[0].outputQuality?.portfolio_manager?.status).toBe("unvalidated_text");
     vi.unstubAllGlobals();
   });
 
@@ -86,6 +93,7 @@ describe("report versioning", () => {
       createdAt: "2025-01-02T00:00:00.000Z",
     });
     expect(secondPass.reportVersions).toEqual(migrated.reportVersions);
+    expect(migrated.reportVersions[0].outputQuality).toBeUndefined();
   });
 });
 

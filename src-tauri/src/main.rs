@@ -1,3 +1,4 @@
+mod output_quality;
 mod secrets;
 mod storage;
 

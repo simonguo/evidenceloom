@@ -245,6 +245,7 @@ function resetTaskForQueue(task: AnalysisTask, queuedAt: string, queueOrder: num
     stats: initialStats,
     agentStatuses: {},
     reportSections: {},
+    outputQuality: undefined,
     logs: [],
     error: "",
   };
@@ -261,6 +262,7 @@ function resetTaskForRun(task: AnalysisTask): AnalysisTask {
     stats: initialStats,
     agentStatuses: {},
     reportSections: {},
+    outputQuality: undefined,
     logs: [],
     error: "",
   };

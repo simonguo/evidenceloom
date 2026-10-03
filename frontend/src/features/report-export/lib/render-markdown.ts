@@ -10,6 +10,13 @@ export function renderReportMarkdown(document: ReportDocument) {
   const sections = document.sections
     .map((section, index) => `## ${index + 1}. ${section.title}\n\n${section.content}`)
     .join("\n\n");
+  const quality = document.outputQuality;
+  const qualityEntries = quality.entries.length
+    ? quality.entries.map((entry) => [
+      `- **${entry.agent}: ${entry.status}** — ${entry.schema} · ${entry.source}`,
+      ...(entry.reason ? [`  ${entry.reason}`] : []),
+    ].join("\n")).join("\n\n")
+    : quality.emptyMessage;
 
   return [
     `# ${escapeInline(document.title)}`,
@@ -20,6 +27,12 @@ export function renderReportMarkdown(document: ReportDocument) {
     "| Metadata | Value |",
     "| --- | --- |",
     metadata,
+    "",
+    `## ${quality.title}`,
+    "",
+    quality.disclaimer,
+    "",
+    qualityEntries,
     "",
     sections,
     "",

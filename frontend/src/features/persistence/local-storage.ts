@@ -7,6 +7,7 @@ import {
   normalizeGlobalSettings,
 } from "@/lib/analysis";
 import { ensureLegacyReportVersion } from "@/features/report-export/lib/versioning";
+import { normalizeTaskOutputQuality } from "@/features/output-quality/lib/quality";
 import type { AnalysisForm, AnalysisTask, GlobalSettings } from "@/lib/types";
 
 const settingsStorageKey = "evidenceloom.globalSettings.v1";
@@ -56,7 +57,7 @@ export function loadTasks(): AnalysisTask[] {
 
 export function saveTasks(tasks: AnalysisTask[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(tasksStorageKey, JSON.stringify(tasks));
+  window.localStorage.setItem(tasksStorageKey, JSON.stringify(tasks.map(normalizeTaskOutputQuality)));
 }
 
 export function loadLegacyDesktopData(): LegacyDesktopData {
@@ -140,7 +141,7 @@ function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
       reportSections: task.reportSections ?? {},
       reportVersions: task.reportVersions ?? [],
     };
-    return ensureLegacyReportVersion(normalized);
+    return normalizeTaskOutputQuality(ensureLegacyReportVersion(normalized));
   });
 }
 

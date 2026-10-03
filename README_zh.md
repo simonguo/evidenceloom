@@ -20,9 +20,12 @@ https://github.com/user-attachments/assets/3cc1cd5a-ddfe-4f01-99f7-02a1f7069bd8
 
 - 协调行情、情绪、新闻、基本面、研究、交易和风险智能体。
 - 桌面端通过随应用打包的 sidecar 本地运行，无需 Evidence Loom 云账户。
-- 任务历史和报告保存在本机。
+- 任务历史和报告保存在本机；报告版本冻结保存，支持审阅与导出。
+- 报告展示输出格式验证和文本回退状态；旧报告明确标为未记录。
 - 桌面 API Key 保存到 macOS Keychain 或 Windows Credential Manager。
 - 支持 OpenAI 兼容接口、Anthropic、Google、Azure OpenAI、DeepSeek、通义千问、智谱、MiniMax、OpenRouter 与本地/自定义端点。
+
+研究准确性、证据追溯、可复现性及分析师验收仍在持续建设，见[专业化质量标准与验证证据](docs/PROFESSIONAL_QUALITY.md)。
 
 ## 支持平台
 

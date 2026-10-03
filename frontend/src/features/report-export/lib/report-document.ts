@@ -1,4 +1,5 @@
 import type { ReportVersion, SystemLanguage } from "@/lib/types";
+import { buildOutputQualityView } from "@/features/output-quality/lib/quality";
 import type { ReportDocument, ReportDocumentSection } from "../types";
 
 const reportGroups = [
@@ -84,6 +85,7 @@ export function buildReportDocument(
         ? [[language === "zh" ? "工具数据源" : "Tool Data Vendors", Object.entries(version.run.toolVendors).map(([key, value]) => `${key}: ${value}`).join(", ")] as [string, string]] : []),
     ],
     sections: buildSections(version, language),
+    outputQuality: buildOutputQualityView(version.outputQuality, language),
     language,
     version,
   };
