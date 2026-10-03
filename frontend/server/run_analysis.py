@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402 - bootstrap commands deliberately precede research imports
 from __future__ import annotations
 
 import json
@@ -8,30 +9,58 @@ from datetime import datetime
 from typing import Any, Dict, Iterable, List
 from urllib.parse import urlsplit, urlunsplit
 
-from cli.main import (
-    ANALYST_ORDER,
-    MessageBuffer,
-    classify_message_type,
-    update_analyst_statuses,
-)
-from cli.stats_handler import StatsCallbackHandler
-from cli.utils import detect_asset_type, normalize_ticker_symbol
-from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
-from tradingagents.agents.utils.output_quality import merge_output_quality, sanitize_output_quality
-from tradingagents.evidence import (
-    audit_citations,
-    merge_evidence_bundles,
-    sanitize_diagnostic,
-    validate_evidence_bundle,
-)
-from tradingagents.graph.analyst_execution import (
-    AnalystWallTimeTracker,
-    build_analyst_execution_plan,
-)
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.agents.utils.rating import run_rating
-from tradingagents.llm_clients.factory import build_llm_kwargs
-from tradingagents.llm_clients.base_client import normalize_utf8_text
+# Command-line diagnostics must not initialize the research runtime. Keep normal
+# module imports intact for callers that use or patch the analysis helpers.
+_BOOTSTRAP_PAYLOAD = None
+if __name__ == "__main__":
+    from cli.runner_diagnostics import bootstrap
+
+    _bootstrap_status, _BOOTSTRAP_PAYLOAD = bootstrap()
+    if _bootstrap_status is not None:
+        raise SystemExit(_bootstrap_status)
+
+try:
+    from cli.main import (
+        ANALYST_ORDER,
+        MessageBuffer,
+        classify_message_type,
+        update_analyst_statuses,
+    )
+    from cli.stats_handler import StatsCallbackHandler
+    from cli.utils import detect_asset_type, normalize_ticker_symbol
+    from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
+    from tradingagents.agents.utils.output_quality import (
+        merge_output_quality,
+        sanitize_output_quality,
+    )
+    from tradingagents.evidence import (
+        audit_citations,
+        merge_evidence_bundles,
+        sanitize_diagnostic,
+        validate_evidence_bundle,
+    )
+    from tradingagents.graph.analyst_execution import (
+        AnalystWallTimeTracker,
+        build_analyst_execution_plan,
+    )
+    from tradingagents.graph.trading_graph import TradingAgentsGraph
+    from tradingagents.agents.utils.rating import run_rating
+    from tradingagents.llm_clients.factory import build_llm_kwargs
+    from tradingagents.llm_clients.base_client import normalize_utf8_text
+    from cli.research_manifest import research_manifest
+    from cli.runner_protocol import emit
+    from cli.runner_diagnostics import verify_runtime_requested
+except Exception as _runtime_import_error:  # noqa: BLE001 - import failures are protocol events
+    if (
+        _BOOTSTRAP_PAYLOAD is None
+        or _BOOTSTRAP_PAYLOAD.get("__command") != "smoke_test"
+        or _BOOTSTRAP_PAYLOAD.get("verifyRuntime") is not True
+    ):
+        raise
+    from cli.runner_diagnostics import emit_error
+
+    emit_error(_runtime_import_error, "Research runtime could not be initialized")
+    raise SystemExit(1) from None
 
 REPORT_SECTION_KEYS = [
     "market_report",
@@ -42,12 +71,6 @@ REPORT_SECTION_KEYS = [
     "trader_investment_plan",
     "final_trade_decision",
 ]
-
-
-def emit(event: Dict[str, Any]) -> None:
-    event.setdefault("timestamp", datetime.now().strftime("%H:%M:%S"))
-    serialized = json.dumps(event, ensure_ascii=False, default=str)
-    print(normalize_utf8_text(serialized), flush=True)
 
 
 def normalize_analysts(raw: Iterable[str], asset_type: str) -> List[str]:
@@ -592,25 +615,21 @@ def run(payload: Dict[str, Any]) -> None:
 
 def main() -> int:
     try:
-        payload = json.loads(sys.stdin.read() or "{}")
+        payload = (
+            _BOOTSTRAP_PAYLOAD
+            if _BOOTSTRAP_PAYLOAD is not None
+            else json.loads(sys.stdin.read() or "{}")
+        )
         if payload.get("__command") == "smoke_test":
-            emit({"type": "ready"})
+            # All normal research imports succeeded; no clients or sources ran.
+            emit({"type": "runtime_ready" if verify_runtime_requested(payload) else "ready"})
             return 0
         if payload.get("__command") == "evidence_manifest":
             from pathlib import Path
             import tradingagents
-            from tradingagents.graph.trading_graph import _source_code_sha256
 
             package = Path(tradingagents.__file__).parent
-            emit(
-                {
-                    "type": "evidence_ready",
-                    "schema_version": 1,
-                    "code_sha256": _source_code_sha256(package),
-                    "prompt_templates_sha256": _source_code_sha256(package / "agents"),
-                    "source_file_count": len(list(package.rglob("*.py"))),
-                }
-            )
+            emit(research_manifest(package))
             return 0
         if payload.get("__command") == "resolve_instrument":
             from resolve_instrument import resolve

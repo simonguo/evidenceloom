@@ -127,6 +127,7 @@ Build outputs and architecture-specific sidecars are generated locally and must 
 ## Troubleshooting
 
 - **The desktop app reports a missing sidecar:** build the runner for the same Rust target as the app by following [frontend/SIDECAR.md](frontend/SIDECAR.md); never rename a runner built for another architecture.
+- **The runtime check fails or reports an outdated sidecar:** rebuild with a Python interpreter matching the app's target. The check requires actual research imports; a bootstrap `ready` response alone is insufficient. Packaged cold-import checks have a 90-second deadline, and full analysis startup latency remains under investigation.
 - **A provider is still shown as unconfigured:** save its key again and approve the macOS Keychain or Windows Credential Manager prompt. Evidence Loom deliberately does not fall back to plaintext storage.
 - **Port 31741 is already in use:** stop the conflicting process or set a different development port consistently in the frontend and Tauri development configuration.
 - **A clean install fails:** confirm the supported Python, Node, npm, and Rust versions above, then run the commands with `--locked`/`npm ci`; do not regenerate lockfiles as a workaround.

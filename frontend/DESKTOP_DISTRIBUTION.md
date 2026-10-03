@@ -22,3 +22,5 @@ uv run python scripts/check_versions.py
 On macOS, verify the final application and DMG with `codesign --verify --deep --strict`, `spctl --assess`, and `xcrun stapler validate`. For the temporary Windows test artifact, use `Get-AuthenticodeSignature` and require `Status = NotSigned`; restore `Status = Valid` as a release gate before publishing Windows installers.
 
 The release tag must match the synchronized application version, for example `v0.1.0-beta.2`. The embedded Python core version is tracked independently in `UPSTREAM.md`.
+
+Before Tauri packaging, `scripts/build_desktop_sidecar.sh` checks interpreter/output architecture and runs bounded bootstrap and research-import probes, including with `--skip-sidecar`. A legacy `ready` response is insufficient for the full runtime check and requires a rebuilt runner. These probes make no provider requests; signing, clean installation, upgrades and actual provider compatibility require their own verification. See [SIDECAR.md](SIDECAR.md) for the protocol.

@@ -1,6 +1,8 @@
 """The packaged runner retains the source bytes used by research manifests."""
 
 from pathlib import Path
+import hashlib
+import json
 import runpy
 import shutil
 from types import SimpleNamespace
@@ -9,6 +11,28 @@ import pytest
 
 import tradingagents
 from tradingagents.graph.trading_graph import _source_code_sha256
+from cli.research_manifest import source_code_sha256
+
+
+def test_shared_source_hash_keeps_the_existing_scope_and_canonical_algorithm(tmp_path):
+    # The expected digest is independently formed from relative names and exact
+    # source bytes; bytecode and neighbouring application files are excluded.
+    sources = {"__init__.py": b"# core\n", "agents/report.py": "研究\n".encode()}
+    for name, content in sources.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    (tmp_path / "report.pyc").write_bytes(b"irrelevant bytecode")
+    (tmp_path / "application.txt").write_text("outside manifest scope")
+    canonical = json.dumps(
+        {name: hashlib.sha256(content).hexdigest() for name, content in sources.items()},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    expected = hashlib.sha256(canonical).hexdigest()
+    assert source_code_sha256(tmp_path) == _source_code_sha256(tmp_path) == expected
 
 
 def test_missing_packaged_sources_cannot_claim_an_empty_verified_digest(tmp_path):

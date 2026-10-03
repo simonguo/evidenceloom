@@ -1,5 +1,6 @@
 mod evidence;
 mod output_quality;
+mod runtime_probe;
 mod secrets;
 mod storage;
 
@@ -232,9 +233,14 @@ fn import_legacy_desktop_data(
 #[tauri::command]
 fn runtime_info(app: AppHandle) -> RuntimeInfo {
     let repo_root = repo_root();
+    let sidecar = sidecar_path(Some(&app));
+    let packaged = runtime_probe::uses_sidecar(
+        &runner_mode(),
+        sidecar.as_deref().map(is_real_sidecar).unwrap_or(false),
+    );
     RuntimeInfo {
         kind: "tauri",
-        label: if runner_mode() == "sidecar" {
+        label: if packaged {
             "Tauri Desktop / Packaged Sidecar"
         } else {
             "Tauri Desktop / Local Python"
@@ -244,8 +250,8 @@ fn runtime_info(app: AppHandle) -> RuntimeInfo {
             .to_string_lossy()
             .to_string(),
         runner_path: runner_path(&repo_root).to_string_lossy().to_string(),
-        sidecar_path: sidecar_path(Some(&app)).map(|path| path.to_string_lossy().to_string()),
-        runner_mode: runner_mode().to_string(),
+        sidecar_path: sidecar.map(|path| path.to_string_lossy().to_string()),
+        runner_mode: if packaged { "sidecar" } else { "python" }.to_string(),
         repo_root: repo_root.to_string_lossy().to_string(),
     }
 }
@@ -636,7 +642,19 @@ async fn start_analysis(
 }
 
 #[tauri::command]
-fn check_runtime(
+async fn check_runtime(
+    app: AppHandle,
+    python_path_override: Option<String>,
+    project_root: Option<String>,
+) -> Result<RuntimeCheck, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        check_runtime_process(app, python_path_override, project_root)
+    })
+    .await
+    .map_err(|_| "Runtime diagnostics could not be completed.".to_string())
+}
+
+fn check_runtime_process(
     app: AppHandle,
     python_path_override: Option<String>,
     project_root: Option<String>,
@@ -661,14 +679,26 @@ fn check_runtime(
     let mut errors = Vec::new();
 
     let (python_exists, runner_exists, python_version, can_import_trading_agents, import_error) =
-        if mode == "sidecar" {
-            if !sidecar_real {
-                errors.push(
+        if runtime_probe::uses_sidecar(&mode, sidecar_real) {
+            let result = if sidecar_real {
+                runtime_probe::probe_sidecar(
+                    sidecar.as_deref().expect("real sidecar has a path"),
+                    &runtime_work_dir(Some(&app), &repo_root),
+                )
+                .map_err(|error| error.message().to_string())
+            } else {
+                Err(
                     "Sidecar binary not found or is a placeholder. Run scripts/build_tauri_sidecar.sh first."
                         .to_string(),
-                );
+                )
+            };
+            match result {
+                Ok(()) => (true, true, None, true, None),
+                Err(error) => {
+                    errors.push(error.clone());
+                    (true, sidecar_real, None, false, Some(error))
+                }
             }
-            (true, true, None, true, None)
         } else {
             if !external_runner_allowed
                 && (normalize_optional_path(project_root.as_deref()).is_some()
@@ -745,7 +775,12 @@ fn check_runtime(
         python_path: python.to_string_lossy().to_string(),
         runner_path: runner.to_string_lossy().to_string(),
         sidecar_path: sidecar.map(|path| path.to_string_lossy().to_string()),
-        runner_mode: mode,
+        runner_mode: if runtime_probe::uses_sidecar(&mode, sidecar_real) {
+            "sidecar"
+        } else {
+            "python"
+        }
+        .to_string(),
         python_exists,
         runner_exists,
         python_version,

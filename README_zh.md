@@ -123,6 +123,7 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked
 ## 故障排查
 
 - **桌面应用提示缺少 sidecar：** 按 [frontend/SIDECAR.md](frontend/SIDECAR.md) 为与桌面应用相同的 Rust target 构建 runner；不要给其他架构的产物改名冒充。
+- **运行环境检查失败或提示 sidecar 过旧：** 使用与应用 target 一致的 Python 解释器重新构建。检查要求实际研究依赖成功导入，仅返回启动事件 `ready` 不足以通过。打包版的冷启动导入检查设有 90 秒期限，完整分析的启动延迟仍在排查。
 - **Provider 仍显示未配置：** 重新保存 Key，并允许 macOS Keychain 或 Windows Credential Manager 的系统提示。Evidence Loom 不会降级到明文存储。
 - **31741 端口被占用：** 停止冲突进程，或同时修改前端与 Tauri 开发配置中的端口。
 - **干净安装失败：** 核对上文列出的 Python、Node、npm、Rust 版本，并使用带 `--locked` 的命令或 `npm ci`；不要用重建锁文件掩盖问题。

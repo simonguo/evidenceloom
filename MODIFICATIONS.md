@@ -24,6 +24,8 @@ The modifications include, but are not limited to:
   coverage in the embedded Python research core;
 - an independently branded Next.js and Tauri desktop application, local task
   persistence, operating-system credential storage, and a packaged sidecar;
+- separate bootstrap/research-import diagnostics, bounded readiness probes,
+  and interpreter/output architecture guards for sidecar packaging;
 - privacy controls, secret redaction and migration, build/release automation,
   documentation, and project governance.
 

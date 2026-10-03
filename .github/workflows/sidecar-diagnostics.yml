@@ -1,0 +1,79 @@
+name: Sidecar Diagnostics
+
+on:
+  pull_request:
+    branches: [main, "quality/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sidecar-diagnostics-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-diagnostics:
+    name: Native diagnostics (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: windows-2025
+            target: x86_64-pc-windows-msvc
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHON_DOTENV_DISABLED: "1"
+      LANGCHAIN_TRACING_V2: "false"
+      LANGSMITH_TRACING: "false"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install frozen dependencies
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.6.6
+          uv sync --frozen --group dev
+          uv lock --check
+      - name: Run native source and process diagnostics
+        run: |
+          uv run --frozen pytest -q \
+            tests/test_runner_diagnostics.py \
+            tests/test_runner_source_manifest.py \
+            tests/test_sidecar_architecture.py \
+            tests/test_sidecar_probe.py
+      - name: Build and validate the native packaged sidecar
+        env:
+          SIDECAR_TARGET: ${{ matrix.target }}
+        run: |
+          sidecar_python="$(uv run --frozen python -c 'import sys; print(sys.executable)')"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            sidecar_python="$(cygpath -u "$sidecar_python")"
+          fi
+          PYTHON="$sidecar_python" bash scripts/build_tauri_sidecar.sh "$SIDECAR_TARGET"
+          sidecar_binary="$PWD/src-tauri/binaries/evidenceloom-runner-$SIDECAR_TARGET"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            sidecar_binary="$sidecar_binary.exe"
+          fi
+          "$sidecar_python" scripts/sidecar_probe.py all "$sidecar_binary"
+      - name: Run native Rust protocol and process fixtures
+        run: cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked runtime_probe
+      - name: Exercise the Rust bridge against the real packaged sidecar
+        env:
+          SIDECAR_TARGET: ${{ matrix.target }}
+        run: |
+          sidecar_binary="$(uv run --frozen python -c 'import os; from pathlib import Path; suffix = ".exe" if os.name == "nt" else ""; print((Path("src-tauri/binaries") / ("evidenceloom-runner-" + os.environ["SIDECAR_TARGET"] + suffix)).resolve())')"
+          EVIDENCELOOM_VALIDATION_SIDECAR="$sidecar_binary" \
+            cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked \
+            runtime_probe::tests::packaged_artifact_verifies_actual_runtime -- \
+            --exact --ignored

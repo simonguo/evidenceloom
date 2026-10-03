@@ -42,6 +42,7 @@ The following findings are verified implementation gaps in the initial audit. Th
 | 2 | Automated tests mostly exercise scripted models and mocked market data. | A versioned research evaluation harness and expert-labeled cases with explicit accuracy, citation, temporal, and abstention metrics. | Not implemented |
 | 2 | Full frontend audits still include development-tool advisories, several with compatible fixes. | Apply compatible fixes; record and separately address dependencies with no patch, without weakening release gates. | Not implemented |
 | 3 | Clean-install, migration, accessibility, analyst task completion, and competitive comparison need stronger product evidence. | Reproducible platform and analyst acceptance matrices with recorded results. | Not verified |
+| 3 | Packaged diagnostics eagerly import research dependencies, and binary presence can be reported as healthy without checking those dependencies. | Separate bootstrap/source inventory from a bounded research-import probe; verify interpreter and sidecar architecture before packaging. | Implemented in the candidate with local Rosetta measurements; full startup performance and native platform acceptance remain open |
 
 ## Evidence for the first implementation
 
@@ -78,5 +79,7 @@ The current candidate implements the [v1 bundle contract](EVIDENCE_BUNDLE.md). T
 Run manifests now freeze holding-period and effective benchmark settings, but memory decisions still need their own immutable settlement contract. Daily UTC cutoff and conservative historical withholding do not establish market-specific intraday boundaries, filing availability, or adjustment/content revision vintage. Prompt-source and context hashes support detecting changed inputs; deterministic model replay and expert research evaluation remain open.
 
 ## Completion audit
+
+The [sidecar startup validation record](validation/2026-10-04-sidecar-startup.md) separates bootstrap, source inventory and actual research imports. The current packaged research-import observations remain approximately 43–63 seconds on Apple Silicon through Rosetta. Architecture and protocol guards improve the truthfulness of health/release checks; they do not complete clean-install, signing, process-control or performance acceptance across supported platforms.
 
 Before declaring the objective achieved, inspect every requirement against current source, runtime behavior, rendered UI and exports, release artifacts, evaluation results, and external analyst assessment. Record contrary or missing evidence as incomplete. Preserve this full scope across implementation iterations. Do not replace research evaluation with test counts or describe schema validation as financial confidence.
