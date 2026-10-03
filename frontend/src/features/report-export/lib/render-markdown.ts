@@ -2,6 +2,8 @@ import type { ReportDocument } from "../types";
 import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
 
 export function renderReportMarkdown(document: ReportDocument) {
+  const invalid = document.evidence.invalid ?? document.version.evidenceValidation;
+  if (invalid) document = { ...document, evidence: { invalid } };
   const warning = document.fictionalNotice
     ? `> **${escapeInline(document.fictionalNotice)}**\n\n`
     : "";

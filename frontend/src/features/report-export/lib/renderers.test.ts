@@ -4,8 +4,30 @@ import { buildReportDocument } from "./report-document";
 import { reportExportFilename, sanitizeFilenamePart } from "./filename";
 import { renderReportHtml } from "./render-html";
 import { renderReportMarkdown } from "./render-markdown";
+import fixture from "../../../../../tests/fixtures/evidence_bundle_v1.json";
+import { copyEvidenceBundle } from "@/features/evidence/lib/validation";
+import { exportEvidence } from "@/features/evidence/lib/export";
 
 describe("report export renderers", () => {
+  it("keeps explicit invalid evidence ahead of a structurally valid bundle at every render boundary", () => {
+    const task = createFictionalDemoTask("en");
+    const bundle = copyEvidenceBundle(fixture);
+    bundle.artifacts[bundle.records[0].output_sha256].payload += " HASH-CORRUPT-RENDER-PROBE";
+    const invalid = { status: "invalid", reason: "hash_mismatch" } as const;
+    expect(exportEvidence(bundle, invalid)).toEqual({ invalid });
+    const version = { ...task.reportVersions[0], evidenceBundle: bundle, evidenceValidation: invalid };
+    const document = buildReportDocument(task.id, task.origin, version, "en");
+    expect(document.evidence).toEqual({ invalid });
+    for (const evidence of [document.evidence, { bundle, invalid }, { bundle }]) {
+      for (const rendered of [renderReportHtml({ ...document, evidence }), renderReportMarkdown({ ...document, evidence })]) {
+        expect(rendered).toContain("Invalid evidence bundle");
+        expect(rendered).toContain("hash_mismatch");
+        expect(rendered).not.toContain("HASH-CORRUPT-RENDER-PROBE");
+        expect(rendered).not.toContain(bundle.bundle_sha256);
+      }
+    }
+  });
+
   it("exports frozen format limitations identically in HTML and Markdown", () => {
     const task = createFictionalDemoTask("en");
     const version = {
@@ -66,6 +88,28 @@ describe("report export renderers", () => {
     expect(html).not.toContain("javascript:");
     expect(html).toContain("[remote omitted]");
     expect(html).not.toContain("<link");
+  });
+
+  it("keeps evidence citations in the exported page while securing external links", () => {
+    const task = createFictionalDemoTask("en");
+    const bundle = copyEvidenceBundle(fixture);
+    const citationId = bundle.records[0].id;
+    const version = {
+      ...task.reportVersions[0],
+      evidenceBundle: bundle,
+      reportSections: {
+        market_report: `Saved source [E:${citationId}] and [external source](https://example.com/report).`,
+      },
+    };
+    const html = renderReportHtml(buildReportDocument(task.id, task.origin, version, "en"));
+    const document = new DOMParser().parseFromString(html, "text/html");
+    const citation = document.querySelector(`a[href="#${citationId}"]`);
+    expect(citation).not.toBeNull();
+    expect(citation?.hasAttribute("target")).toBe(false);
+    expect(document.getElementById(citationId)).not.toBeNull();
+    const external = document.querySelector('a[href="https://example.com/report"]');
+    expect(external?.getAttribute("target")).toBe("_blank");
+    expect(external?.getAttribute("rel")).toBe("noreferrer noopener");
   });
 
   it("creates cross-platform safe export names", () => {

@@ -7,15 +7,20 @@ import type { ReportDocument } from "../types";
 import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
 
 const markdownComponents: Components = {
-  a: ({ href, children }) => createElement(
-    "a",
-    { href: safeUrl(href), target: "_blank", rel: "noreferrer noopener" },
-    children,
-  ),
+  a: ({ href, children }) => {
+    const url = safeUrl(href);
+    return createElement(
+      "a",
+      url.startsWith("#") ? { href: url } : { href: url, target: "_blank", rel: "noreferrer noopener" },
+      children,
+    );
+  },
   img: ({ alt }) => createElement("span", { className: "omitted-image" }, `[${alt || "image"} omitted]`),
 };
 
 export function renderReportHtml(document: ReportDocument) {
+  const invalid = document.evidence.invalid ?? document.version.evidenceValidation;
+  if (invalid) document = { ...document, evidence: { invalid } };
   const metadataRows = document.metadata
     .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
     .join("");

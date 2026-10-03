@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getRuntimeAdapter } from "@/lib/runtime";
-import type { AnalysisTask, SystemLanguage } from "@/lib/types";
+import type { AnalysisTask, ReportVersion, SystemLanguage } from "@/lib/types";
 import type { ExportFormat } from "../types";
 import { buildReportDocument } from "../lib/report-document";
 import { reportExportFilename } from "../lib/filename";
@@ -32,15 +32,18 @@ export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
     setExporting(format);
     setMessage("");
     try {
-      if (selectedVersion.evidenceValidation) throw new Error(`Evidence bundle is invalid: ${selectedVersion.evidenceValidation.reason}`);
-      if (selectedVersion.evidenceBundle) await verifyEvidenceBundle(selectedVersion.evidenceBundle, selectedVersion.reportSections);
-      if (format === "json" && !selectedVersion.evidenceBundle) throw new Error(language === "zh" ? "此版本未保存证据包。" : "No evidence bundle was saved for this version.");
-      const document = buildReportDocument(task.id, task.origin, selectedVersion, language);
-      const content = format === "json" ? JSON.stringify(selectedVersion.evidenceBundle, null, 2) : format === "html"
+      const frozenVersion = JSON.parse(JSON.stringify(selectedVersion)) as ReportVersion;
+      const taskId = task.id;
+      const origin = task.origin;
+      if (frozenVersion.evidenceValidation) throw new Error(`Evidence bundle is invalid: ${frozenVersion.evidenceValidation.reason}`);
+      if (frozenVersion.evidenceBundle) frozenVersion.evidenceBundle = await verifyEvidenceBundle(frozenVersion.evidenceBundle, frozenVersion.reportSections);
+      if (format === "json" && !frozenVersion.evidenceBundle) throw new Error(language === "zh" ? "此版本未保存证据包。" : "No evidence bundle was saved for this version.");
+      const document = buildReportDocument(taskId, origin, frozenVersion, language);
+      const content = format === "json" ? JSON.stringify(frozenVersion.evidenceBundle, null, 2) : format === "html"
         ? renderReportHtml(document)
         : renderReportMarkdown(document);
       const result = await getRuntimeAdapter().saveTextExport({
-        suggestedName: reportExportFilename(selectedVersion, format),
+        suggestedName: reportExportFilename(frozenVersion, format),
         format,
         content,
       });

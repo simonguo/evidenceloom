@@ -2,6 +2,7 @@ import type { EvidenceBundle, EvidenceValidation } from "../types";
 import { copyEvidenceBundle, invalidEvidence } from "./validation";
 
 export function exportEvidence(bundle: unknown, invalid?: EvidenceValidation): { bundle?: EvidenceBundle; invalid?: EvidenceValidation } {
+  if (invalid !== undefined) return { invalid: { ...invalid } };
   if (bundle === undefined) return { invalid };
   try { return { bundle: copyEvidenceBundle(bundle) }; }
   catch (error) { return { invalid: invalidEvidence(error) }; }
