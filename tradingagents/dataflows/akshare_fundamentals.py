@@ -6,16 +6,16 @@ from typing import Annotated
 import pandas as pd
 
 from .symbol_utils import NoMarketDataError, is_a_share_symbol, normalize_symbol
+from .date_window import is_historical, withhold_undated_statements
+from .errors import VendorNotConfiguredError
 
 
 def _import_akshare():
     try:
         import akshare as ak  # type: ignore
     except ImportError as exc:
-        raise NoMarketDataError(
-            "A-share",
-            "A-share",
-            "AkShare is not installed. Install project dependencies or run `pip install akshare`.",
+        raise VendorNotConfiguredError(
+            "AkShare is not installed. Install project dependencies or run `pip install akshare`."
         ) from exc
     return ak
 
@@ -76,10 +76,28 @@ def _format_frame(
 ) -> str:
     if _is_empty_frame(data):
         raise NoMarketDataError(ticker, ticker, f"AkShare returned no rows for {title}")
+    if is_historical(curr_date):
+        filing_column = next(
+            (c for c in ("公告日期", "公告时间", "NOTICE_DATE", "ANNOUNCEMENT_DATE") if c in data),
+            None,
+        )
+        if filing_column is None:
+            return withhold_undated_statements(curr_date, ticker, title)
+        data = data.copy()
+        filed = pd.to_datetime(data[filing_column], errors="coerce")
+        data = data[
+            filed.notna()
+            & (
+                filed
+                <= pd.Timestamp(curr_date) + pd.Timedelta(days=1) - pd.Timedelta(microseconds=1)
+            )
+        ]
     frame = _trim_frame(data, curr_date)
+    if frame.empty:
+        raise NoMarketDataError(ticker, ticker, f"no {title} publicly filed by {curr_date}")
     header = f"# {title} for {ticker}\n"
     header += f"# Source: AkShare / {source}\n"
-    header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    header += f"# Analysis date: {curr_date}\n\n" if curr_date else "\n"
     return header + _to_markdown_or_csv(frame)
 
 

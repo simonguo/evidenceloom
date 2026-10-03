@@ -69,6 +69,10 @@ Run the upstream-compatible CLI:
 uv run tradingagents
 ```
 
+Selected analysts run concurrently up to `TRADINGAGENTS_ANALYST_CONCURRENCY_LIMIT` (default 1); the desktop uses its concurrency setting. `TRADINGAGENTS_MAX_TOOL_ROUNDS` bounds each analyst's tool rounds (default 20), after which it is asked to finish its report. Optional `TRADINGAGENTS_MAX_TOKENS` and `TRADINGAGENTS_LLM_MAX_RETRIES` bound model output and SDK retries. Set `TRADINGAGENTS_CHECKPOINT_ENABLED=true` or pass `--checkpoint` to resume compatible CLI runs; changed run settings start a fresh checkpoint. See [.env.example](.env.example) for provider-specific thinking controls and the holding period used to settle memory entries.
+
+The Portfolio Manager's explicit rating is authoritative. A decision with no readable rating displays **REVIEW** and can be filtered separately. Historical tools enforce the run's instrument and cutoff date; financial records without a known publication date are withheld for historical runs. Missing historical data remains a limitation rather than a reconstructed filing vintage.
+
 Run the Docker CLI environment:
 
 ```bash
@@ -108,6 +112,8 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D w
 cargo test --manifest-path src-tauri/Cargo.toml --locked
 ```
 
+`uv run pytest` uses dummy credentials, temporary storage, and blocked network access. Tests marked `integration` are excluded by default. Run them explicitly with `uv run pytest -m integration` only when external provider calls are intended and the required credentials are configured.
+
 Build outputs and architecture-specific sidecars are generated locally and must not be committed. See [frontend/SIDECAR.md](frontend/SIDECAR.md) and [frontend/DESKTOP_DISTRIBUTION.md](frontend/DESKTOP_DISTRIBUTION.md) for packaging details.
 
 ## Troubleshooting
@@ -128,6 +134,6 @@ Build outputs and architecture-specific sidecars are generated locally and must 
 
 ## License and upstream
 
-Evidence Loom is licensed under [Apache License 2.0](LICENSE). It includes a modified copy of TradingAgents, pinned to upstream tag `v0.2.5` at commit `a5cb7cbd61d217fb0bc43f017392a861257afe6a`. The internal Python module remains named `tradingagents` for upstream compatibility; Evidence Loom does not publish that name to PyPI.
+Evidence Loom is licensed under [Apache License 2.0](LICENSE). Its modified TradingAgents core starts from `v0.2.5` at commit `a5cb7cbd61d217fb0bc43f017392a861257afe6a`, with selected fixes adapted from `v0.5.2` at commit `8b22d43d01d9ddda5d686d093d5385884622f3de`. This is a selective synchronization; the embedded package version remains `0.2.5`. The internal Python module remains named `tradingagents` for upstream compatibility; Evidence Loom does not publish that name to PyPI.
 
 See [NOTICE](NOTICE), [MODIFICATIONS.md](MODIFICATIONS.md), [UPSTREAM.md](UPSTREAM.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for attribution, modifications, and dependency licensing.

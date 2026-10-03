@@ -396,3 +396,16 @@ class TestSentimentAnalystAgent:
         llm.with_structured_output.return_value = structured
         llm.invoke.return_value = MagicMock(content=plain)
         assert create_sentiment_analyst(llm)(_make_sentiment_state())["sentiment_report"] == plain
+
+
+@pytest.fixture(autouse=True)
+def offline_sentiment_sources(monkeypatch):
+    import tradingagents.agents.analysts.sentiment_analyst as module
+
+    monkeypatch.setattr(module.get_news, "func", lambda *args, **kwargs: "No news in this test.")
+    monkeypatch.setattr(
+        module, "fetch_stocktwits_messages", lambda *args, **kwargs: "No posts in this test."
+    )
+    monkeypatch.setattr(
+        module, "fetch_reddit_posts", lambda *args, **kwargs: "No posts in this test."
+    )

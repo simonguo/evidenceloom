@@ -1,6 +1,8 @@
 import os
+import re
 import time
 from typing import Any, Optional
+from urllib.parse import urlsplit
 
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
@@ -32,8 +34,17 @@ class NormalizedChatOpenAI(ChatOpenAI):
     """
 
     def invoke(self, input, config=None, **kwargs):
-        max_attempts = int(os.environ.get("TRADINGAGENTS_LLM_RETRY_ATTEMPTS", "3"))
+        # An explicit SDK retry budget is the complete budget, without an
+        # additional outer loop multiplying attempts. Keep the legacy fallback
+        # for clients whose SDK retries have not been configured.
+        max_attempts = (
+            1
+            if "max_retries" in self.model_fields_set
+            else int(os.environ.get("TRADINGAGENTS_LLM_RETRY_ATTEMPTS", "3"))
+        )
         base_delay = float(os.environ.get("TRADINGAGENTS_LLM_RETRY_BASE_DELAY", "2"))
+        if max_attempts < 1 or base_delay < 0:
+            raise ValueError("LLM retry attempts must be positive and retry delay non-negative")
         for attempt in range(max_attempts):
             try:
                 return normalize_content(super().invoke(input, config, **kwargs))
@@ -58,6 +69,16 @@ class NormalizedChatOpenAI(ChatOpenAI):
         # value. The schema is still bound as a tool — exactly what
         # DeepSeek's official tool-calling examples do.
         if method == "function_calling" and not caps.supports_tool_choice:
+            kwargs.setdefault("tool_choice", None)
+        return super().with_structured_output(schema, method=method, **kwargs)
+
+
+class LocalCompatibleChatOpenAI(NormalizedChatOpenAI):
+    """Bind schemas without forcing a tool choice that local servers reject."""
+
+    def with_structured_output(self, schema, *, method=None, **kwargs):
+        resolved = method or get_capabilities(self.model_name).preferred_structured_method
+        if resolved == "function_calling":
             kwargs.setdefault("tool_choice", None)
         return super().with_structured_output(schema, method=method, **kwargs)
 
@@ -158,11 +179,24 @@ _PASSTHROUGH_KWARGS = (
     "max_retries",
     "reasoning_effort",
     "temperature",
+    "max_tokens",
     "api_key",
     "callbacks",
     "http_client",
     "http_async_client",
 )
+
+
+def _is_native_openai_base_url(base_url: Optional[str]) -> bool:
+    if not base_url:
+        return True
+    parsed = urlsplit(base_url if "://" in base_url else "https://" + base_url)
+    return parsed.hostname == "api.openai.com"
+
+
+def _supports_reasoning_effort(model: str) -> bool:
+    return bool(re.match(r"^(?:gpt-(?:[5-9]|[1-9]\d)|o[1-9])(?:[.-]|$)", model.lower()))
+
 
 # Provider base URLs. API-key env vars live in api_key_env.PROVIDER_API_KEY_ENV
 # (one canonical mapping consulted by both this client and the CLI's
@@ -247,12 +281,21 @@ class OpenAIClient(BaseLLMClient):
         # Forward user-provided kwargs
         for key in _PASSTHROUGH_KWARGS:
             if key in self.kwargs:
+                if (
+                    key == "reasoning_effort"
+                    and self.provider == "openai"
+                    and not _supports_reasoning_effort(self.model)
+                ):
+                    continue
                 llm_kwargs[key] = self.kwargs[key]
 
         # Native OpenAI: use Responses API for consistent behavior across
         # all model families. Third-party providers use Chat Completions.
+        native_openai = self.provider == "openai" and _is_native_openai_base_url(
+            self.base_url or os.environ.get("OPENAI_BASE_URL")
+        )
         if self.provider == "openai":
-            llm_kwargs["use_responses_api"] = True
+            llm_kwargs["use_responses_api"] = native_openai
 
         # Provider-specific quirks live in their own subclasses so the
         # base NormalizedChatOpenAI stays free of provider branches.
@@ -260,6 +303,8 @@ class OpenAIClient(BaseLLMClient):
             chat_cls = DeepSeekChatOpenAI
         elif self.provider in ("minimax", "minimax-cn"):
             chat_cls = MinimaxChatOpenAI
+        elif self.provider == "ollama" or (self.provider == "openai" and not native_openai):
+            chat_cls = LocalCompatibleChatOpenAI
         else:
             chat_cls = NormalizedChatOpenAI
         return chat_cls(**llm_kwargs)

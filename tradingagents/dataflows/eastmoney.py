@@ -189,6 +189,11 @@ def get_stock_data(
     datetime.strptime(end_date, "%Y-%m-%d")
 
     code, data = _fetch_kline(symbol, start_date, end_date)
+    data = data[
+        (data["Date"] >= pd.Timestamp(start_date)) & (data["Date"] <= pd.Timestamp(end_date))
+    ]
+    if data.empty:
+        raise NoMarketDataError(symbol, code, f"no prices between {start_date} and {end_date}")
     rounded = data.copy()
     for column in ["Open", "High", "Low", "Close"]:
         rounded[column] = rounded[column].round(2)
@@ -196,7 +201,7 @@ def get_stock_data(
     csv_string = rounded.to_csv(index=False)
     header = f"# Stock data for {code} (Eastmoney, from {symbol}) from {start_date} to {end_date}\n"
     header += f"# Total records: {len(rounded)}\n"
-    header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    header += "\n"
     return header + csv_string
 
 

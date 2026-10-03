@@ -10,9 +10,6 @@ uv run python scripts/generate_third_party_notices.py
 
 | Package | Version | Declared license | Project |
 | --- | --- | --- | --- |
-| `aiohappyeyeballs` | `2.7.1` | PSF-2.0 | [link](https://github.com/aio-libs/aiohappyeyeballs/issues) |
-| `aiohttp` | `3.14.2` | Apache-2.0 AND MIT | [link](https://github.com/aio-libs/aiohttp) |
-| `aiosignal` | `1.4.0` | Apache-2.0 | [link](https://gitter.im/aio-libs/Lobby) |
 | `aiosqlite` | `0.22.1` | MIT | [link](https://aiosqlite.omnilib.dev) |
 | `akracer` | `0.0.14` | MIT | [link](https://github.com/akfamily/akracer#readme) |
 | `akshare` | `1.18.73` | MIT | [link](https://github.com/akfamily/akshare) |
@@ -20,14 +17,11 @@ uv run python scripts/generate_third_party_notices.py
 | `annotated-types` | `0.7.0` | MIT | [link](https://github.com/annotated-types/annotated-types) |
 | `anthropic` | `0.117.1` | MIT | [link](https://github.com/anthropics/anthropic-sdk-python) |
 | `anyio` | `4.14.2` | MIT | [link](https://anyio.readthedocs.io/en/latest/) |
-| `async-timeout` | `4.0.3` | Apache-2.0 | [link](https://gitter.im/aio-libs/Lobby) |
-| `attrs` | `26.1.0` | MIT | [link](https://www.attrs.org/) |
 | `beautifulsoup4` | `4.15.0` | MIT | [link](https://www.crummy.com/software/BeautifulSoup/bs4/download/) |
 | `certifi` | `2026.7.22` | MPL-2.0 | [link](https://github.com/certifi/python-certifi) |
 | `cffi` | `2.1.0` | MIT-0 | [link](https://cffi.readthedocs.io/) |
 | `charset-normalizer` | `3.4.9` | MIT | [link](https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md) |
 | `cryptography` | `49.0.0` | Apache-2.0 OR BSD-3-Clause | [link](https://cryptography.io/en/latest/changelog/) |
-| `cssselect` | `1.4.0` | BSD-3-Clause | [link](https://github.com/scrapy/cssselect) |
 | `curl_cffi` | `0.15.0` | MIT | [link](https://github.com/lexiforest/curl_cffi) |
 | `decorator` | `5.3.1` | BSD-2-Clause | — |
 | `distro` | `1.9.0` | Apache-2.0 | [link](https://github.com/python-distro/distro) |
@@ -35,30 +29,22 @@ uv run python scripts/generate_third_party_notices.py
 | `et_xmlfile` | `2.0.0` | MIT | [link](https://openpyxl.pages.heptapod.net/et_xmlfile/) |
 | `exceptiongroup` | `1.3.1` | MIT | [link](https://github.com/agronholm/exceptiongroup/blob/main/CHANGES.rst) |
 | `filetype` | `1.2.0` | MIT | [link](https://github.com/h2non/filetype.py) |
-| `frozenlist` | `1.8.0` | Apache-2.0 | [link](https://matrix.to/#/#aio-libs:matrix.org) |
 | `google-auth` | `2.56.2` | Apache-2.0 | [link](https://github.com/googleapis/google-cloud-python/tree/main/packages/google-auth) |
 | `google-genai` | `2.13.0` | Apache-2.0 | [link](https://github.com/googleapis/python-genai) |
-| `greenlet` | `3.5.3` | MIT AND PSF-2.0 | [link](https://greenlet.readthedocs.io) |
 | `h11` | `0.16.0` | MIT | [link](https://github.com/python-hyper/h11) |
 | `html5lib` | `1.1` | MIT | [link](https://github.com/html5lib/html5lib-python) |
 | `httpcore` | `1.0.9` | BSD-3-Clause | [link](https://www.encode.io/httpcore) |
 | `httpx` | `0.28.1` | BSD | [link](https://github.com/encode/httpx/blob/master/CHANGELOG.md) |
-| `httpx-sse` | `0.4.3` | MIT | [link](https://github.com/florimondmanca/httpx-sse) |
 | `idna` | `3.18` | BSD-3-Clause | [link](https://github.com/kjd/idna/blob/master/HISTORY.md) |
 | `jiter` | `0.16.0` | MIT | [link](https://github.com/pydantic/jiter/) |
-| `jmespath` | `1.1.0` | MIT | [link](https://github.com/jmespath/jmespath.py) |
 | `jsonpatch` | `1.33` | BSD | [link](https://github.com/stefankoegl/python-json-patch) |
 | `jsonpath` | `0.82.2` | MIT | [link](http://www.ultimate.com/phil/python/#jsonpath) |
 | `jsonpointer` | `3.1.1` | BSD | [link](https://github.com/stefankoegl/python-json-pointer) |
 | `langchain-anthropic` | `1.5.0` | MIT | [link](https://docs.langchain.com/oss/python/integrations/providers/anthropic) |
-| `langchain-classic` | `1.0.8` | MIT | [link](https://docs.langchain.com/) |
-| `langchain-community` | `0.4.2` | MIT | [link](https://docs.langchain.com/) |
 | `langchain-core` | `1.5.0` | MIT | [link](https://docs.langchain.com/) |
-| `langchain-experimental` | `0.4.2` | MIT | [link](https://github.com/langchain-ai/langchain-experimental/tree/main/libs/experimental) |
 | `langchain-google-genai` | `4.3.1` | MIT | [link](https://docs.langchain.com/oss/python/integrations/providers/google) |
 | `langchain-openai` | `1.4.0` | MIT | [link](https://docs.langchain.com/oss/python/integrations/providers/openai) |
 | `langchain-protocol` | `0.0.18` | MIT | [link](https://github.com/langchain-ai/agent-protocol/tree/main/streaming) |
-| `langchain-text-splitters` | `1.1.2` | MIT | [link](https://docs.langchain.com/) |
 | `langgraph` | `1.2.9` | MIT | [link](https://docs.langchain.com/oss/python/langgraph/overview) |
 | `langgraph-checkpoint` | `4.1.1` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint) |
 | `langgraph-checkpoint-sqlite` | `3.1.0` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint-sqlite) |
@@ -69,7 +55,6 @@ uv run python scripts/generate_third_party_notices.py
 | `markdown-it-py` | `4.2.0` | MIT | [link](https://markdown-it-py.readthedocs.io) |
 | `mdurl` | `0.1.2` | MIT | [link](https://github.com/executablebooks/mdurl) |
 | `mini-racer` | `0.14.1` | ISC | [link](https://github.com/bpcreech/PyMiniRacer) |
-| `multidict` | `6.7.1` | Apache License 2.0 | [link](https://matrix.to/#/#aio-libs:matrix.org) |
 | `multitasking` | `0.0.13` | Apache-2.0 | [link](https://github.com/ranaroussi/multitasking) |
 | `numpy` | `2.2.6` | BSD | [link](https://numpy.org) |
 | `numpy` | `2.5.1` | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | [link](https://numpy.org) |
@@ -80,18 +65,15 @@ uv run python scripts/generate_third_party_notices.py
 | `packaging` | `26.2` | Apache-2.0 OR BSD-2-Clause | [link](https://packaging.pypa.io/) |
 | `pandas` | `2.3.3` | BSD | [link](https://pandas.pydata.org) |
 | `pandas` | `3.0.3` | BSD | [link](https://pandas.pydata.org) |
-| `parsel` | `1.11.0` | BSD-3-Clause | [link](https://github.com/scrapy/parsel) |
 | `peewee` | `4.2.6` | MIT | [link](https://github.com/coleifer/peewee) |
 | `platformdirs` | `4.11.0` | MIT | [link](https://platformdirs.readthedocs.io/en/latest/changelog.html) |
 | `prompt_toolkit` | `3.0.52` | BSD | [link](https://github.com/prompt-toolkit/python-prompt-toolkit) |
-| `propcache` | `0.5.2` | Apache-2.0 | [link](https://matrix.to/#/#aio-libs:matrix.org) |
 | `protobuf` | `7.35.1` | 3-Clause BSD License | [link](https://developers.google.com/protocol-buffers/) |
 | `py-mini-racer` | `0.6.0` | ISC | [link](https://github.com/sqreen/PyMiniRacer) |
 | `pyasn1` | `0.6.4` | BSD-2-Clause | [link](https://github.com/pyasn1/pyasn1) |
 | `pyasn1_modules` | `0.4.2` | BSD | [link](https://github.com/pyasn1/pyasn1-modules) |
 | `pycparser` | `3.0` | BSD-3-Clause | [link](https://github.com/eliben/pycparser) |
 | `pydantic` | `2.13.4` | MIT | [link](https://github.com/pydantic/pydantic) |
-| `pydantic-settings` | `2.14.2` | MIT | [link](https://github.com/pydantic/pydantic-settings) |
 | `pydantic_core` | `2.46.4` | MIT | [link](https://github.com/sponsors/samuelcolvin) |
 | `Pygments` | `2.20.0` | BSD-2-Clause | [link](https://pygments.org) |
 | `python-dateutil` | `2.9.0.post0` | Apache-2.0 OR BSD | [link](https://dateutil.readthedocs.io/en/stable/) |
@@ -99,7 +81,6 @@ uv run python scripts/generate_third_party_notices.py
 | `pytz` | `2026.2` | MIT | [link](http://pythonhosted.org/pytz) |
 | `PyYAML` | `6.0.3` | MIT | [link](https://github.com/yaml/pyyaml/issues) |
 | `questionary` | `2.1.1` | MIT | [link](https://questionary.readthedocs.io/) |
-| `redis` | `8.0.1` | MIT | [link](https://github.com/redis/redis-py/releases) |
 | `regex` | `2026.7.19` | Apache-2.0 AND CNRI-Python | [link](https://github.com/mrabarnett/mrab-regex) |
 | `requests` | `2.34.2` | Apache-2.0 | [link](https://requests.readthedocs.io) |
 | `requests-toolbelt` | `1.0.0` | Apache-2.0 | [link](https://github.com/requests/toolbelt/blob/master/HISTORY.rst) |
@@ -109,7 +90,6 @@ uv run python scripts/generate_third_party_notices.py
 | `six` | `1.17.0` | MIT | [link](https://github.com/benjaminp/six) |
 | `sniffio` | `1.3.1` | Apache-2.0 OR MIT | [link](https://github.com/python-trio/sniffio) |
 | `soupsieve` | `2.9.1` | MIT | [link](https://github.com/facelessuser/soupsieve) |
-| `SQLAlchemy` | `2.0.51` | MIT | [link](https://docs.sqlalchemy.org) |
 | `sqlite-vec` | `0.1.9` | MIT License, Apache License, Version 2.0 | [link](https://TODO.com) |
 | `stockstats` | `0.6.8` | BSD-3-Clause | [link](https://github.com/jealous/stockstats) |
 | `tabulate` | `0.10.0` | MIT | [link](https://github.com/astanin/python-tabulate) |
@@ -122,13 +102,11 @@ uv run python scripts/generate_third_party_notices.py
 | `tzdata` | `2026.3` | Apache-2.0 | [link](https://github.com/python/tzdata/issues) |
 | `urllib3` | `2.7.0` | MIT | [link](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) |
 | `uuid_utils` | `0.17.0` | BSD-3-Clause | [link](https://github.com/aminalaee/uuid-utils) |
-| `w3lib` | `2.4.1` | BSD-3-Clause | [link](https://github.com/scrapy/w3lib) |
 | `wcwidth` | `0.8.2` | MIT | [link](https://github.com/jquast/wcwidth) |
 | `webencodings` | `0.5.1` | BSD | [link](https://github.com/SimonSapin/python-webencodings) |
 | `websockets` | `15.0.1` | BSD | [link](https://github.com/python-websockets/websockets) |
 | `xlrd` | `2.0.2` | BSD | [link](http://www.python-excel.org/) |
 | `xxhash` | `3.8.1` | BSD-2-Clause | [link](https://github.com/ifduyue/python-xxhash) |
-| `yarl` | `1.24.5` | Apache-2.0 | [link](https://matrix.to/#/#aio-libs:matrix.org) |
 | `yfinance` | `1.5.1` | Apache-2.0 | [link](https://github.com/ranaroussi/yfinance) |
 | `zstandard` | `0.25.0` | BSD-3-Clause | [link](https://github.com/indygreg/python-zstandard) |
 ## Node.js frontend

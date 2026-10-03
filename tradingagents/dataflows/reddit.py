@@ -18,16 +18,18 @@ rather than raising, so callers never special-case missing data.
 from __future__ import annotations
 
 import html
+import http.client
 import json
 import logging
 import re
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional
-from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
+
+from .date_window import coverage_gap, in_window, is_historical
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,21 @@ _ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
 # discussion. wallstreetbets has the most volume but most noise; stocks /
 # investing trend more measured. Caller can override.
 DEFAULT_SUBREDDITS = ("wallstreetbets", "stocks", "investing")
+
+
+def _posted_at(post) -> datetime | None:
+    try:
+        return datetime.fromtimestamp(post.get("created_utc"), tz=timezone.utc)
+    except (ValueError, TypeError, OSError):
+        return None
+
+
+def _within_window(posts, start_date, end_date):
+    if not (start_date and end_date):
+        return posts
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    return [p for p in posts if in_window(_posted_at(p), start, end)]
 
 
 def _search_qs(ticker: str, limit: int) -> str:
@@ -96,9 +113,9 @@ def _fetch_subreddit_rss(
     try:
         with urlopen(req, timeout=timeout) as resp:
             root = ET.fromstring(resp.read())
-    except (HTTPError, URLError, TimeoutError, ET.ParseError) as exc:
+    except (OSError, http.client.HTTPException, ET.ParseError) as exc:
         logger.warning("Reddit RSS fetch failed for r/%s · %s: %s", sub, ticker, exc)
-        return []
+        return None
 
     posts = []
     for entry in root.findall("atom:entry", _ATOM_NS)[:limit]:
@@ -133,7 +150,7 @@ def _fetch_subreddit(
             payload = json.loads(resp.read())
         children = (payload.get("data") or {}).get("children") or []
         return [c.get("data", {}) for c in children if isinstance(c, dict)]
-    except (HTTPError, URLError, json.JSONDecodeError, TimeoutError) as exc:
+    except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
         logger.warning(
             "Reddit JSON fetch failed for r/%s · %s: %s — falling back to RSS feed.",
             sub,
@@ -149,6 +166,8 @@ def fetch_reddit_posts(
     limit_per_sub: int = 5,
     timeout: float = 10.0,
     inter_request_delay: float = 0.4,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> str:
     """Fetch recent Reddit posts mentioning ``ticker`` across finance
     subreddits and return them as a formatted plaintext block.
@@ -156,22 +175,42 @@ def fetch_reddit_posts(
     ``inter_request_delay`` keeps us under Reddit's public rate limit
     (~10 req/min per IP) even if the caller queries many subreddits.
     """
+    subreddits = tuple(subreddits)
+    historical = is_historical(end_date)
     blocks = []
-    total_posts = 0
     for i, sub in enumerate(subreddits):
         if i > 0:
             time.sleep(inter_request_delay)
-        posts = _fetch_subreddit(ticker, sub, limit_per_sub, timeout)
-        total_posts += len(posts)
+        fetched = _fetch_subreddit(ticker, sub, limit_per_sub, timeout)
+        if fetched is None:
+            blocks.append(f"r/{sub}: <Reddit unavailable; discussion could not be retrieved>")
+            continue
+        posts = _within_window(fetched, start_date, end_date)
         if not posts:
+            gap = None
+            if start_date and end_date:
+                dates = [_posted_at(p) for p in fetched]
+                if len(fetched) < limit_per_sub:
+                    dates.append(datetime.now(timezone.utc) - timedelta(days=7))
+                gap = coverage_gap(
+                    dates, start_date, end_date, "Reddit", f"posts about {ticker.upper()}"
+                )
+            period = (
+                f"within {start_date}..{end_date}"
+                if start_date and end_date
+                else "in the past 7 days"
+            )
             blocks.append(
-                f"r/{sub}: <no posts found mentioning {ticker.upper()} in the past 7 days>"
+                f"r/{sub}: " + (gap or f"<no posts found mentioning {ticker.upper()} {period}>")
             )
             continue
 
         via_rss = any(p.get("source") == "rss" for p in posts)
         header = f"r/{sub} — {len(posts)} recent posts mentioning {ticker.upper()}"
-        header += " (via RSS feed; scores/comments unavailable):" if via_rss else ":"
+        if historical:
+            header += " (historical window; current scores/comments withheld):"
+        else:
+            header += " (via RSS feed; scores/comments unavailable):" if via_rss else ":"
         lines = [header]
         for p in posts:
             title = (p.get("title") or "").replace("\n", " ").strip()
@@ -179,10 +218,10 @@ def fetch_reddit_posts(
             comments = p.get("num_comments")
             created = p.get("created_utc")
             created_str = time.strftime("%Y-%m-%d", time.gmtime(created)) if created else "?"
-            # Score / comment counts are absent on the RSS fallback path —
-            # show them only when present rather than printing fake zeros.
+            # Engagement is a current snapshot even when a post was published
+            # within a historical window. It has no historical vintage.
             meta = created_str
-            if score is not None and comments is not None:
+            if not historical and score is not None and comments is not None:
                 meta += f" · {score:>4}↑ · {comments:>3}c"
             selftext = (p.get("selftext") or "").replace("\n", " ").strip()
             if len(selftext) > 240:
@@ -192,9 +231,4 @@ def fetch_reddit_posts(
             )
         blocks.append("\n".join(lines))
 
-    if total_posts == 0:
-        return (
-            f"<no Reddit posts found mentioning {ticker.upper()} across "
-            f"{', '.join(f'r/{s}' for s in subreddits)} in the past 7 days>"
-        )
     return "\n\n".join(blocks)

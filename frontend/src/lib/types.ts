@@ -85,8 +85,32 @@ export type ReportTaskSnapshot = {
   outputLanguage: string;
 };
 
+export type RuntimeRunSettings = {
+  version?: string;
+  core_version?: string;
+  upstream_revision?: string;
+  trade_date?: string;
+  asset_type?: string;
+  llm_provider?: string;
+  quick_think_llm?: string;
+  deep_think_llm?: string;
+  analysts?: string[];
+  output_language?: string;
+  max_debate_rounds?: number;
+  max_risk_discuss_rounds?: number;
+  max_tool_rounds?: number;
+  analyst_concurrency_limit?: number;
+  temperature?: number;
+  max_tokens?: number;
+  data_vendors?: Record<string, string>;
+  tool_vendors?: Record<string, string>;
+};
+
 export type ReportRunManifest = {
   appVersion: string;
+  coreVersion?: string;
+  toolVendors?: Record<string, string>;
+  runtimeRunSettings?: RuntimeRunSettings;
   llmProvider: string;
   quickThinkLlm: string;
   deepThinkLlm: string;
@@ -177,6 +201,7 @@ export type AnalysisEvent = {
   stats?: AnalysisStats;
   decision?: string;
   finalState?: Record<string, unknown>;
+  runSettings?: RuntimeRunSettings;
   error?: string;
   agent?: string;
 };

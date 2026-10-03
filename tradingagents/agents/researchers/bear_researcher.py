@@ -1,6 +1,7 @@
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
+    report_or_unavailable,
 )
 
 
@@ -11,10 +12,12 @@ def create_bear_researcher(llm):
         bear_history = investment_debate_state.get("bear_history", "")
 
         current_response = investment_debate_state.get("current_response", "")
-        market_research_report = state["market_report"]
-        sentiment_report = state["sentiment_report"]
-        news_report = state["news_report"]
-        fundamentals_report = state["fundamentals_report"]
+        market_research_report = report_or_unavailable(state.get("market_report"), "Market report")
+        sentiment_report = report_or_unavailable(state.get("sentiment_report"), "Sentiment report")
+        news_report = report_or_unavailable(state.get("news_report"), "News report")
+        fundamentals_report = report_or_unavailable(
+            state.get("fundamentals_report"), "Fundamentals report"
+        )
         instrument_context = get_instrument_context_from_state(state)
         asset_type = state.get("asset_type", "stock")
         target_label = "stock" if asset_type == "stock" else "asset"
@@ -44,6 +47,7 @@ Latest world affairs news: {news_report}
 Conversation history of the debate: {history}
 Last bull argument: {current_response}
 Use this information to deliver a compelling bear argument, refute the bull's claims, and engage in a dynamic debate that demonstrates the risks and weaknesses of investing in the {target_label}.
+If the other analyst has not spoken yet, open with your own case from the provided evidence. Do not invent, quote or rebut an argument that is absent from the debate history.
 """ + get_language_instruction()
 
         response = llm.invoke(prompt)

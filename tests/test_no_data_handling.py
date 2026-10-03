@@ -8,6 +8,7 @@ Covers two systematic fixes:
 """
 
 import os
+import tempfile
 import unittest
 from unittest import mock
 
@@ -15,7 +16,7 @@ import pandas as pd
 import pytest
 
 from tradingagents.dataflows import stockstats_utils, interface, eastmoney
-from tradingagents.dataflows.config import set_config
+from tradingagents.dataflows.config import run_config
 from tradingagents.dataflows.symbol_utils import NoMarketDataError
 from yfinance.exceptions import YFRateLimitError
 
@@ -23,25 +24,37 @@ from yfinance.exceptions import YFRateLimitError
 @pytest.mark.unit
 class TestLoadOhlcvNoPoison(unittest.TestCase):
     def setUp(self):
-        self._tmp = os.path.join(os.path.dirname(__file__), "_tmp_cache")
-        os.makedirs(self._tmp, exist_ok=True)
-        set_config({"data_cache_dir": self._tmp})
+        self._directory = tempfile.TemporaryDirectory()
+        self._tmp = self._directory.name
+        self._config_scope = run_config({"data_cache_dir": self._tmp})
+        self._config_scope.__enter__()
 
     def tearDown(self):
-        for f in os.listdir(self._tmp):
-            os.remove(os.path.join(self._tmp, f))
-        os.rmdir(self._tmp)
+        self._config_scope.__exit__(None, None, None)
+        self._directory.cleanup()
 
     def test_empty_download_raises_and_does_not_cache(self):
         empty = pd.DataFrame()
-        with mock.patch.object(stockstats_utils.yf, "download", return_value=empty):
+        with (
+            mock.patch.object(stockstats_utils.yf, "Ticker") as ticker,
+            mock.patch(
+                "tradingagents.dataflows.yfinance_common.vendor_reachable", return_value=True
+            ),
+        ):
+            ticker.return_value.history.return_value = empty
             with self.assertRaises(NoMarketDataError):
                 stockstats_utils.load_ohlcv("FAKE", "2026-01-01")
         # Nothing should have been written to the cache.
         self.assertEqual(os.listdir(self._tmp), [])
 
         # A second call must re-attempt the fetch (no poisoned cache served).
-        with mock.patch.object(stockstats_utils.yf, "download", return_value=empty) as dl2:
+        with (
+            mock.patch.object(stockstats_utils.yf, "Ticker") as dl2,
+            mock.patch(
+                "tradingagents.dataflows.yfinance_common.vendor_reachable", return_value=True
+            ),
+        ):
+            dl2.return_value.history.return_value = empty
             with self.assertRaises(NoMarketDataError):
                 stockstats_utils.load_ohlcv("FAKE", "2026-01-01")
             self.assertTrue(dl2.called)
@@ -49,6 +62,11 @@ class TestLoadOhlcvNoPoison(unittest.TestCase):
 
 @pytest.mark.unit
 class TestRouteToVendorSentinel(unittest.TestCase):
+    def setUp(self):
+        patcher = mock.patch.object(interface, "get_vendor", return_value="default")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_no_data_from_all_vendors_returns_sentinel(self):
         def raises_no_data(symbol, *a, **k):
             raise NoMarketDataError(symbol, "GC=F", "no rows")
@@ -66,6 +84,11 @@ class TestRouteToVendorSentinel(unittest.TestCase):
 
 @pytest.mark.unit
 class TestAShareDataFallback(unittest.TestCase):
+    def setUp(self):
+        patcher = mock.patch.object(interface, "get_vendor", return_value="default")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_non_a_share_fundamentals_skip_akshare(self):
         def raises_not_a_share(symbol, *a, **k):
             raise NoMarketDataError(
@@ -139,7 +162,9 @@ class TestAShareDataFallback(unittest.TestCase):
             raise NoMarketDataError(symbol, symbol, "no rows")
 
         def raises_unavailable(symbol, *a, **k):
-            raise ValueError("ALPHA_VANTAGE_API_KEY environment variable is not set.")
+            raise interface.VendorNotConfiguredError(
+                "ALPHA_VANTAGE_API_KEY environment variable is not set."
+            )
 
         patched = {"yfinance": raises_no_data, "alpha_vantage": raises_unavailable}
         with mock.patch.dict(interface.VENDOR_METHODS, {"get_stock_data": patched}, clear=False):

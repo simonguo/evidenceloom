@@ -65,6 +65,10 @@ npm --prefix frontend run tauri:dev
 uv run tradingagents
 ```
 
+选中的分析员按照 `TRADINGAGENTS_ANALYST_CONCURRENCY_LIMIT` 并发执行（默认 1）；桌面模式使用界面的并发设置。`TRADINGAGENTS_MAX_TOOL_ROUNDS` 限制每位分析员的工具轮数（默认 20），达到上限后要求其完成报告。可用 `TRADINGAGENTS_MAX_TOKENS` 和 `TRADINGAGENTS_LLM_MAX_RETRIES` 限制模型输出与 SDK 重试次数。设置 `TRADINGAGENTS_CHECKPOINT_ENABLED=true` 或传入 `--checkpoint` 可恢复兼容的 CLI 任务；运行设置改变后会重新开始。各 Provider 的思考设置和记忆结算持有期见 [.env.example](.env.example)。
+
+最终结果以组合经理的明确评级为准。无法读取评级的决策显示 **待复核（REVIEW）**，支持单独筛选。历史工具遵守任务标的和截止日期；无法确认公开日期的财务记录不会用于历史任务。系统不会将这些缺失数据当作完整的历史财报快照。
+
 使用 Docker 运行 CLI 环境：
 
 ```bash
@@ -104,6 +108,8 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D w
 cargo test --manifest-path src-tauri/Cargo.toml --locked
 ```
 
+`uv run pytest` 使用虚拟凭据、临时存储并阻止网络访问，默认排除标记为 `integration` 的测试。只有在明确需要调用外部服务、且已配置对应凭据时，才使用 `uv run pytest -m integration`。
+
 构建产物和架构相关 sidecar 均由构建流程生成，禁止提交到 Git。打包细节见 [frontend/SIDECAR.md](frontend/SIDECAR.md) 和 [frontend/DESKTOP_DISTRIBUTION.md](frontend/DESKTOP_DISTRIBUTION.md)。
 
 ## 故障排查
@@ -124,6 +130,6 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked
 
 ## 许可与上游
 
-Evidence Loom 使用 [Apache License 2.0](LICENSE)，包含基于 TradingAgents 修改的代码，上游固定为 `v0.2.5`、提交 `a5cb7cbd61d217fb0bc43f017392a861257afe6a`。内部 Python 模块继续使用 `tradingagents` 以保持上游兼容，但 Evidence Loom 不会用该名称发布 PyPI 包。
+Evidence Loom 使用 [Apache License 2.0](LICENSE)，TradingAgents 核心以 `v0.2.5`、提交 `a5cb7cbd61d217fb0bc43f017392a861257afe6a` 为基础，并选择性同步 `v0.5.2`、提交 `8b22d43d01d9ddda5d686d093d5385884622f3de` 的修复。这不是完整的上游版本升级，内嵌包版本仍为 `0.2.5`。内部 Python 模块继续使用 `tradingagents` 以保持上游兼容，但 Evidence Loom 不会用该名称发布 PyPI 包。
 
 归属、修改和依赖许可见 [NOTICE](NOTICE)、[MODIFICATIONS.md](MODIFICATIONS.md)、[UPSTREAM.md](UPSTREAM.md) 和 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

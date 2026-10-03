@@ -21,10 +21,10 @@ from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
     build_analyst_execution_plan,
-    get_initial_analyst_node,
 )
-from tradingagents.graph.checkpointer import clear_checkpoint, thread_id
 from tradingagents.graph.trading_graph import TradingAgentsGraph
+from tradingagents.agents.utils.rating import run_rating
+from tradingagents.llm_clients.factory import build_llm_kwargs
 from tradingagents.llm_clients.base_client import normalize_utf8_text
 
 REPORT_SECTION_KEYS = [
@@ -72,6 +72,14 @@ def build_config(payload: Dict[str, Any]) -> Dict[str, Any]:
         payload.get("globalNewsLookbackDays"), config.get("global_news_lookback_days", 7)
     )
     config["checkpoint_enabled"] = bool(payload.get("checkpointEnabled", False))
+    for payload_key, config_key in (
+        ("maxTokens", "max_tokens"),
+        ("llmMaxRetries", "llm_max_retries"),
+        ("maxToolRounds", "max_tool_rounds"),
+        ("holdingPeriodDays", "holding_period_days"),
+    ):
+        if payload.get(payload_key) is not None:
+            config[config_key] = payload[payload_key]
 
     provider = payload.get("llmProvider")
     if isinstance(provider, str) and provider.strip():
@@ -110,6 +118,7 @@ def build_config(payload: Dict[str, Any]) -> Dict[str, Any]:
         "news_data": str(payload.get("newsData") or config["data_vendors"]["news_data"]).strip(),
     }
 
+    build_llm_kwargs(config)
     return config
 
 
@@ -209,6 +218,13 @@ def infer_chunk_agent(buffer: MessageBuffer, chunk: Dict[str, Any]) -> str:
     risk_state = chunk.get("risk_debate_state") or {}
     if risk_state.get("judge_decision"):
         return "Portfolio Manager"
+    risk_speakers = {
+        "Aggressive": "Aggressive Analyst",
+        "Conservative": "Conservative Analyst",
+        "Neutral": "Neutral Analyst",
+    }
+    if risk_state.get("latest_speaker") in risk_speakers:
+        return risk_speakers[risk_state["latest_speaker"]]
     risk_current = [
         ("current_aggressive_response", "Aggressive Analyst"),
         ("current_conservative_response", "Conservative Analyst"),
@@ -325,7 +341,8 @@ def update_reports_from_chunk(buffer: MessageBuffer, chunk: Dict[str, Any]) -> N
 
 
 def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
-    return {key: final_state.get(key) for key in REPORT_SECTION_KEYS if key in final_state}
+    keys = [*REPORT_SECTION_KEYS, "final_rating", "run_settings"]
+    return {key: final_state.get(key) for key in keys if key in final_state}
 
 
 def run_post_completion_tasks(
@@ -354,13 +371,16 @@ def run_post_completion_tasks(
             ticker=ticker,
             trade_date=analysis_date,
             final_trade_decision=str(final_state.get("final_trade_decision") or ""),
+            rating=run_rating(final_state),
         )
     except Exception as exc:  # noqa: BLE001 - memory persistence is best-effort after completion
         record_warning("failed to store memory decision", exc)
 
     if config.get("checkpoint_enabled"):
         try:
-            clear_checkpoint(config["data_cache_dir"], ticker, analysis_date)
+            graph.clear_checkpoint_on_success(
+                ticker, analysis_date, str(final_state.get("asset_type") or "stock")
+            )
         except Exception as exc:  # noqa: BLE001 - checkpoint cleanup should not mark analysis failed
             record_warning("failed to clear checkpoint", exc)
 
@@ -422,42 +442,36 @@ def run(payload: Dict[str, Any]) -> None:
         }
     )
 
-    first_analyst = get_initial_analyst_node(analyst_execution_plan)
-    buffer.update_agent_status(first_analyst, "in_progress")
-    analyst_wall_time_tracker.mark_started(selected_analysts[0])
-    emit_progress(buffer, stats_handler, started_at, f"Running {first_analyst}")
-
-    graph.ticker = ticker
-    resolve_pending_entries_safely(graph, ticker, buffer, stats_handler, started_at)
-
-    if config.get("checkpoint_enabled"):
-        from tradingagents.graph.checkpointer import get_checkpointer
-
-        graph._checkpointer_ctx = get_checkpointer(config["data_cache_dir"], ticker)
-        saver = graph._checkpointer_ctx.__enter__()
-        graph.graph = graph.workflow.compile(checkpointer=saver)
-
     try:
-        instrument_context = graph.resolve_instrument_context(ticker, asset_type)
-        init_agent_state = graph.propagator.create_initial_state(
-            ticker,
-            analysis_date,
-            asset_type=asset_type,
-            past_context=graph.memory_log.get_past_context(ticker),
-            instrument_context=instrument_context,
-        )
+        tid = graph.begin_checkpoint(ticker, analysis_date, asset_type)
+        init_agent_state = graph.create_run_state(ticker, analysis_date, asset_type)
         args = graph.propagator.get_graph_args(callbacks=[stats_handler])
-        if config.get("checkpoint_enabled"):
-            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = thread_id(
-                ticker, analysis_date
+        if tid is not None:
+            args.setdefault("config", {}).setdefault("configurable", {})["thread_id"] = tid
+            emit_progress(
+                buffer,
+                stats_handler,
+                started_at,
+                "Resuming saved analysis" if graph._resuming else "Starting fresh analysis",
             )
 
-        trace: List[Dict[str, Any]] = []
+        final_state: Dict[str, Any] = {}
+        previous_state: Dict[str, Any] = {}
         processed_message_ids = set()
 
-        for chunk in graph.graph.stream(init_agent_state, **args):
-            chunk_agent = infer_chunk_agent(buffer, chunk)
-            for message in chunk.get("messages", []):
+        for messages, state, agent in graph.stream_run(
+            graph.checkpoint_input(init_agent_state), include_agent=True, **args
+        ):
+            chunk = state or {}
+            if agent is None:
+                changes = {
+                    key: value for key, value in chunk.items() if previous_state.get(key) != value
+                }
+                previous_state.update(chunk)
+            else:
+                changes = chunk
+            chunk_agent = agent or infer_chunk_agent(buffer, changes)
+            for message in messages:
                 message_id = getattr(message, "id", None)
                 if message_id is not None:
                     if message_id in processed_message_ids:
@@ -490,17 +504,15 @@ def run(payload: Dict[str, Any]) -> None:
                             }
                         )
 
-            update_analyst_statuses(buffer, chunk, wall_time_tracker=analyst_wall_time_tracker)
-            update_reports_from_chunk(buffer, chunk)
+            update_analyst_statuses(buffer, changes, wall_time_tracker=analyst_wall_time_tracker)
+            update_reports_from_chunk(buffer, changes)
             emit_progress(buffer, stats_handler, started_at)
-            trace.append(chunk)
-
-        final_state: Dict[str, Any] = {}
-        for chunk in trace:
-            final_state.update(chunk)
+            final_state.update(
+                {key: value for key, value in chunk.items() if key != "analyst_started"}
+            )
 
         graph.curr_state = final_state
-        decision = graph.process_signal(final_state["final_trade_decision"])
+        decision = run_rating(final_state)
         for agent in list(buffer.agent_status.keys()):
             buffer.update_agent_status(agent, "completed")
         for section in list(buffer.report_sections.keys()):
@@ -516,6 +528,7 @@ def run(payload: Dict[str, Any]) -> None:
                 "reportSections": report_snapshot(buffer),
                 "stats": current_stats(stats_handler, started_at),
                 "decision": decision,
+                "runSettings": final_state.get("run_settings", graph.run_settings()),
                 "finalState": compact_final_state(final_state),
             }
         )
@@ -523,10 +536,7 @@ def run(payload: Dict[str, Any]) -> None:
             graph, config, ticker, analysis_date, final_state, buffer, stats_handler, started_at
         )
     finally:
-        if graph._checkpointer_ctx is not None:
-            graph._checkpointer_ctx.__exit__(None, None, None)
-            graph._checkpointer_ctx = None
-            graph.graph = graph.workflow.compile()
+        graph.end_checkpoint()
 
 
 def main() -> int:

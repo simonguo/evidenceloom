@@ -14,6 +14,8 @@ from datetime import datetime, timedelta
 
 import requests
 
+from .date_window import is_historical
+
 
 EASTMONEY_SEARCH_URL = "https://search-api-web.eastmoney.com/search/jsonp"
 EASTMONEY_GUBA_URL = "https://gbapi.eastmoney.com/webarticlelist/api/Article/Articlelist"
@@ -46,7 +48,10 @@ def fetch_china_sentiment_sources(
     limit: int = 12,
 ) -> str:
     code = normalize_a_share_code(symbol)
-    company_name = _fetch_company_name(code)
+    historical = is_historical(end_date)
+    # Today's name (including ST status) can differ from the historical name;
+    # use the code for lookup and display when no identity vintage is available.
+    company_name = None if historical else _fetch_company_name(code)
     article_keywords = [code]
     if company_name:
         article_keywords.extend([company_name, f"{code} {company_name}"])
@@ -72,8 +77,16 @@ def fetch_china_sentiment_sources(
                 recent_days=45,
             ),
         )[: min(limit, 8)]
-    hot_keywords = _fetch_eastmoney_hot_keywords(code, limit=8)
+    hot_keywords = [] if historical else _fetch_eastmoney_hot_keywords(code, limit=8)
     posts = _fetch_eastmoney_guba_posts(code, limit=8)
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+    posts = [
+        post
+        for post in posts
+        if (published := _parse_datetime(post.get("date") or "")) is not None
+        and start_dt <= published < end_dt
+    ]
 
     lines = [
         f"## A股中文舆情数据：{company_name or code}（{code}）",
@@ -104,7 +117,11 @@ def fetch_china_sentiment_sources(
             heat_text = f"热度 {heat}" if heat not in (None, "") else "热度未知"
             lines.append(f"- [{date}] {keyword}（{heat_text}）")
     else:
-        lines.append("<未获取到东方财富人气关键词；不要据此推断市场关注度为低>")
+        lines.append(
+            "<历史日期不提供实时人气热度；此数据没有历史版本>"
+            if historical
+            else "<未获取到东方财富人气关键词；不要据此推断市场关注度为低>"
+        )
 
     lines.extend(["", "### 东方财富股吧"])
     if posts:
@@ -114,9 +131,9 @@ def fetch_china_sentiment_sources(
             read_count = post.get("read_count")
             comment_count = post.get("comment_count")
             engagement = []
-            if read_count not in (None, ""):
+            if not historical and read_count not in (None, ""):
                 engagement.append(f"阅读 {read_count}")
-            if comment_count not in (None, ""):
+            if not historical and comment_count not in (None, ""):
                 engagement.append(f"评论 {comment_count}")
             suffix = f"（{'，'.join(engagement)}）" if engagement else ""
             lines.append(f"- [{date}] {title}{suffix}")
@@ -206,9 +223,7 @@ def _fetch_eastmoney_articles(
         for row in rows:
             date_text = row.get("date") or ""
             published = _parse_datetime(date_text)
-            if published and not (
-                earliest <= published <= end.replace(hour=23, minute=59, second=59)
-            ):
+            if published is None or not (earliest <= published < end + timedelta(days=1)):
                 continue
             articles.append(
                 {
@@ -218,8 +233,7 @@ def _fetch_eastmoney_articles(
                     "source": row.get("mediaName") or "",
                     "url": row.get("url") or "",
                     "source_type": "东方财富资讯搜索",
-                    "in_window": published is None
-                    or start <= published <= end.replace(hour=23, minute=59, second=59),
+                    "in_window": start <= published < end + timedelta(days=1),
                 }
             )
     return _merge_articles(articles)[:limit]

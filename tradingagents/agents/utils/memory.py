@@ -3,8 +3,10 @@
 from typing import List, Optional
 from pathlib import Path
 import re
+from datetime import datetime
 
-from tradingagents.agents.utils.rating import parse_rating
+from tradingagents.agents.utils.rating import normalize_rating, parse_rating
+from tradingagents.agents.utils.memory_files import locked_memory_file, write_memory_file
 
 
 class TradingMemoryLog:
@@ -33,21 +35,25 @@ class TradingMemoryLog:
         ticker: str,
         trade_date: str,
         final_trade_decision: str,
+        rating: Optional[str] = None,
     ) -> None:
-        """Append pending entry at end of propagate(). No LLM call."""
+        """Store one decision per ticker/date, whether pending or already resolved."""
         if not self._log_path:
             return
-        # Idempotency guard: fast raw-text scan instead of full parse
-        if self._log_path.exists():
-            raw = self._log_path.read_text(encoding="utf-8")
-            for line in raw.splitlines():
-                if line.startswith(f"[{trade_date} | {ticker} |") and line.endswith("| pending]"):
+        with locked_memory_file(self._log_path):
+            text = self._log_path.read_text(encoding="utf-8") if self._log_path.exists() else ""
+            for block in text.split(self._SEPARATOR):
+                entry = self._parse_entry(block)
+                if (
+                    entry
+                    and entry["date"] == trade_date
+                    and entry["ticker"].upper() == ticker.upper()
+                ):
                     return
-        rating = parse_rating(final_trade_decision)
-        tag = f"[{trade_date} | {ticker} | {rating} | pending]"
-        entry = f"{tag}\n\nDECISION:\n{final_trade_decision}{self._SEPARATOR}"
-        with open(self._log_path, "a", encoding="utf-8") as f:
-            f.write(entry)
+            final_rating = normalize_rating(rating) or parse_rating(final_trade_decision)
+            tag = f"[{trade_date} | {ticker} | {final_rating} | pending]"
+            entry = f"{tag}\n\nDECISION:\n{final_trade_decision}{self._SEPARATOR}"
+            write_memory_file(self._log_path, text + entry)
 
     # --- Read path (Phase A) ---
 
@@ -68,9 +74,20 @@ class TradingMemoryLog:
         """Return entries with outcome:pending (for Phase B)."""
         return [e for e in self.load_entries() if e.get("pending")]
 
-    def get_past_context(self, ticker: str, n_same: int = 5, n_cross: int = 3) -> str:
-        """Return formatted past context string for agent prompt injection."""
+    def get_past_context(
+        self, ticker: str, n_same: int = 5, n_cross: int = 3, as_of: Optional[str] = None
+    ) -> str:
+        """Read only outcomes known by as_of; undated legacy lessons stay live-only."""
         entries = [e for e in self.load_entries() if not e.get("pending")]
+        if as_of is not None:
+            cutoff = _iso_date(as_of)
+            if cutoff is None:
+                raise ValueError("as_of must be a date in YYYY-MM-DD format")
+            entries = [
+                e
+                for e in entries
+                if e.get("resolved") and e["resolved"] <= cutoff and e["date"] <= cutoff
+            ]
         if not entries:
             return ""
 
@@ -105,114 +122,58 @@ class TradingMemoryLog:
         alpha_return: float,
         holding_days: int,
         reflection: str,
+        resolution_date: Optional[str] = None,
     ) -> None:
-        """Replace pending tag and append REFLECTION section using atomic write.
-
-        Finds the first pending entry matching (trade_date, ticker), updates
-        its tag with return figures, and appends a REFLECTION section.  Uses
-        a temp-file + os.replace() so a crash mid-write never corrupts the log.
-        """
-        if not self._log_path or not self._log_path.exists():
-            return
-
-        text = self._log_path.read_text(encoding="utf-8")
-        blocks = text.split(self._SEPARATOR)
-
-        pending_prefix = f"[{trade_date} | {ticker} |"
-        raw_pct = f"{raw_return:+.1%}"
-        alpha_pct = f"{alpha_return:+.1%}"
-
-        updated = False
-        new_blocks = []
-        for block in blocks:
-            stripped = block.strip()
-            if not stripped:
-                new_blocks.append(block)
-                continue
-
-            lines = stripped.splitlines()
-            tag_line = lines[0].strip()
-
-            if (
-                not updated
-                and tag_line.startswith(pending_prefix)
-                and tag_line.endswith("| pending]")
-            ):
-                # Parse rating from the existing pending tag
-                fields = [f.strip() for f in tag_line[1:-1].split("|")]
-                rating = fields[2]
-                new_tag = (
-                    f"[{trade_date} | {ticker} | {rating}"
-                    f" | {raw_pct} | {alpha_pct} | {holding_days}d]"
-                )
-                rest = "\n".join(lines[1:])
-                new_blocks.append(f"{new_tag}\n\n{rest.lstrip()}\n\nREFLECTION:\n{reflection}")
-                updated = True
-            else:
-                new_blocks.append(block)
-
-        if not updated:
-            return
-
-        new_blocks = self._apply_rotation(new_blocks)
-        new_text = self._SEPARATOR.join(new_blocks)
-        tmp_path = self._log_path.with_suffix(".tmp")
-        tmp_path.write_text(new_text, encoding="utf-8")
-        tmp_path.replace(self._log_path)
+        """Record a settled outcome and the date its closing prices became known."""
+        self.batch_update_with_outcomes(
+            [
+                {
+                    "ticker": ticker,
+                    "trade_date": trade_date,
+                    "raw_return": raw_return,
+                    "alpha_return": alpha_return,
+                    "holding_days": holding_days,
+                    "reflection": reflection,
+                    "resolution_date": resolution_date,
+                }
+            ]
+        )
 
     def batch_update_with_outcomes(self, updates: List[dict]) -> None:
-        """Apply multiple outcome updates in a single read + atomic write.
-
-        Each element of updates must have keys: ticker, trade_date,
-        raw_return, alpha_return, holding_days, reflection.
-        """
-        if not self._log_path or not self._log_path.exists() or not updates:
+        """Read, update and atomically replace the log under one writer lock."""
+        if not self._log_path or not updates:
             return
-
-        text = self._log_path.read_text(encoding="utf-8")
-        blocks = text.split(self._SEPARATOR)
-
-        # Build lookup keyed by (trade_date, ticker) for O(1) dispatch
-        update_map = {(u["trade_date"], u["ticker"]): u for u in updates}
-
-        new_blocks = []
-        for block in blocks:
-            stripped = block.strip()
-            if not stripped:
-                new_blocks.append(block)
-                continue
-
-            lines = stripped.splitlines()
-            tag_line = lines[0].strip()
-
-            matched = False
-            for (trade_date, ticker), upd in list(update_map.items()):
-                pending_prefix = f"[{trade_date} | {ticker} |"
-                if tag_line.startswith(pending_prefix) and tag_line.endswith("| pending]"):
-                    fields = [f.strip() for f in tag_line[1:-1].split("|")]
-                    rating = fields[2]
-                    raw_pct = f"{upd['raw_return']:+.1%}"
-                    alpha_pct = f"{upd['alpha_return']:+.1%}"
-                    new_tag = (
-                        f"[{trade_date} | {ticker} | {rating}"
-                        f" | {raw_pct} | {alpha_pct} | {upd['holding_days']}d]"
+        with locked_memory_file(self._log_path):
+            if not self._log_path.exists():
+                return
+            text = self._log_path.read_text(encoding="utf-8")
+            updates_by_key = {(u["trade_date"], u["ticker"].upper()): u for u in updates}
+            blocks, changed = [], False
+            for block in text.split(self._SEPARATOR):
+                entry = self._parse_entry(block)
+                update = (
+                    updates_by_key.pop((entry["date"], entry["ticker"].upper()), None)
+                    if entry
+                    else None
+                )
+                if entry and entry["pending"] and update is not None:
+                    tag = (
+                        f"[{entry['date']} | {entry['ticker']} | {entry['rating']}"
+                        f" | {update['raw_return']:+.1%} | {update['alpha_return']:+.1%}"
+                        f" | {update['holding_days']}d"
                     )
-                    rest = "\n".join(lines[1:])
-                    new_blocks.append(
-                        f"{new_tag}\n\n{rest.lstrip()}\n\nREFLECTION:\n{upd['reflection']}"
-                    )
-                    del update_map[(trade_date, ticker)]
-                    matched = True
-                    break
-
-            if not matched:
-                new_blocks.append(block)
-
-        new_blocks = self._apply_rotation(new_blocks)
-        new_text = self._SEPARATOR.join(new_blocks)
-        tmp_path = self._log_path.with_suffix(".tmp")
-        tmp_path.write_text(new_text, encoding="utf-8")
-        tmp_path.replace(self._log_path)
+                    resolved = _iso_date(update.get("resolution_date"))
+                    if resolved:
+                        tag += f" | resolved:{resolved}"
+                    rest = "\n".join(block.strip().splitlines()[1:]).lstrip()
+                    blocks.append(f"{tag}]\n\n{rest}\n\nREFLECTION:\n{update['reflection']}")
+                    changed = True
+                else:
+                    blocks.append(block)
+            if changed:
+                write_memory_file(
+                    self._log_path, self._SEPARATOR.join(self._apply_rotation(blocks))
+                )
 
     # --- Helpers ---
 
@@ -271,6 +232,10 @@ class TradingMemoryLog:
             "raw": fields[3] if fields[3] != "pending" else None,
             "alpha": fields[4] if len(fields) > 4 else None,
             "holding": fields[5] if len(fields) > 5 else None,
+            "resolved": next(
+                (_iso_date(field[9:]) for field in fields[6:] if field.startswith("resolved:")),
+                None,
+            ),
         }
         body = "\n".join(lines[1:]).strip()
         decision_match = self._DECISION_RE.search(body)
@@ -296,3 +261,13 @@ class TradingMemoryLog:
         text = e["decision"][:300]
         suffix = "..." if len(e["decision"]) > 300 else ""
         return f"{tag}\n{text}{suffix}"
+
+
+def _iso_date(value) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d").strftime("%Y-%m-%d")
+        return parsed if parsed == value else None
+    except ValueError:
+        return None

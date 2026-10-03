@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from time import monotonic
 from typing import Dict, Iterable, List, Optional
 
+from tradingagents.agents.analysts import fundamentals_analyst, market_analyst, news_analyst
+
 
 @dataclass(frozen=True)
 class AnalystNodeSpec:
@@ -10,6 +12,7 @@ class AnalystNodeSpec:
     clear_node: str
     tool_node: str
     report_key: str
+    tools: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -25,6 +28,7 @@ ANALYST_NODE_SPECS: Dict[str, AnalystNodeSpec] = {
         clear_node="Msg Clear Market",
         tool_node="tools_market",
         report_key="market_report",
+        tools=market_analyst.TOOLS,
     ),
     "social": AnalystNodeSpec(
         # Wire key stays "social" for saved-config back-compat; the
@@ -43,6 +47,7 @@ ANALYST_NODE_SPECS: Dict[str, AnalystNodeSpec] = {
         clear_node="Msg Clear News",
         tool_node="tools_news",
         report_key="news_report",
+        tools=news_analyst.TOOLS,
     ),
     "fundamentals": AnalystNodeSpec(
         key="fundamentals",
@@ -50,6 +55,7 @@ ANALYST_NODE_SPECS: Dict[str, AnalystNodeSpec] = {
         clear_node="Msg Clear Fundamentals",
         tool_node="tools_fundamentals",
         report_key="fundamentals_report",
+        tools=fundamentals_analyst.TOOLS,
     ),
 }
 
@@ -58,7 +64,11 @@ def build_analyst_execution_plan(
     selected_analysts: Iterable[str],
     concurrency_limit: int = 1,
 ) -> AnalystExecutionPlan:
-    if concurrency_limit < 1:
+    if (
+        isinstance(concurrency_limit, bool)
+        or not isinstance(concurrency_limit, int)
+        or concurrency_limit < 1
+    ):
         raise ValueError("analyst concurrency limit must be >= 1")
 
     specs: List[AnalystNodeSpec] = []
@@ -66,7 +76,8 @@ def build_analyst_execution_plan(
         spec = ANALYST_NODE_SPECS.get(analyst_key)
         if spec is None:
             raise ValueError(f"unknown analyst key: {analyst_key}")
-        specs.append(spec)
+        if spec not in specs:
+            specs.append(spec)
 
     if not specs:
         raise ValueError("at least one analyst must be selected")

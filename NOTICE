@@ -4,6 +4,9 @@ Copyright 2026 Evidence Loom contributors
 This product includes modified software from the TradingAgents project:
 https://github.com/TauricResearch/TradingAgents
 
+Original base: v0.2.5, a5cb7cbd61d217fb0bc43f017392a861257afe6a.
+Selected later changes: v0.5.2, 8b22d43d01d9ddda5d686d093d5385884622f3de.
+
 TradingAgents is distributed under the Apache License, Version 2.0. Evidence Loom
 is an independent community project and is not affiliated with or endorsed by
 TauricResearch. See UPSTREAM.md for the exact source revision and modification

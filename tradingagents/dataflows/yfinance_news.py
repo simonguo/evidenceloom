@@ -1,18 +1,21 @@
 """yfinance-based news data fetching functions."""
 
-from typing import Optional
+import contextlib
+from datetime import datetime, timezone
 
 import yfinance as yf
-from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-from .config import get_config
-from .stockstats_utils import yf_retry
+from tradingagents.dataflows.config import get_config
+from tradingagents.dataflows.date_window import coverage_gap, in_window
+from tradingagents.dataflows.symbol_utils import normalize_symbol
+from tradingagents.dataflows.yfinance_common import yf_retry
+
+UTC = timezone.utc
 
 
 def _extract_article_data(article: dict) -> dict:
     """Extract article data from yfinance news format (handles nested 'content' structure)."""
-    # Handle nested content structure
     if "content" in article:
         content = article["content"]
         title = content.get("title", "No title")
@@ -20,18 +23,14 @@ def _extract_article_data(article: dict) -> dict:
         provider = content.get("provider", {})
         publisher = provider.get("displayName", "Unknown")
 
-        # Get URL from canonicalUrl or clickThroughUrl
         url_obj = content.get("canonicalUrl") or content.get("clickThroughUrl") or {}
         link = url_obj.get("url", "")
 
-        # Get publish date
         pub_date_str = content.get("pubDate", "")
         pub_date = None
         if pub_date_str:
-            try:
+            with contextlib.suppress(ValueError, AttributeError):
                 pub_date = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
-            except (ValueError, AttributeError):
-                pass
 
         return {
             "title": title,
@@ -41,13 +40,22 @@ def _extract_article_data(article: dict) -> dict:
             "pub_date": pub_date,
         }
     else:
-        # Fallback for flat structure
+        # Fallback for flat structure. Parse the epoch publish time so flat
+        # articles are date-filterable too (otherwise they bypass the
+        # historical window and leak future news, #992/#1007).
+        pub_date = None
+        ts = article.get("providerPublishTime")
+        if ts:
+            # Epoch seconds are UTC; parse them as UTC-aware so filtering does
+            # not shift with the host timezone (#1126).
+            with contextlib.suppress(ValueError, OSError, TypeError):
+                pub_date = datetime.fromtimestamp(ts, tz=UTC)
         return {
             "title": article.get("title", "No title"),
             "summary": article.get("summary", ""),
             "publisher": article.get("publisher", "Unknown"),
             "link": article.get("link", ""),
-            "pub_date": None,
+            "pub_date": pub_date,
         }
 
 
@@ -68,50 +76,51 @@ def get_news_yfinance(
         Formatted string containing news articles
     """
     article_limit = get_config()["news_article_limit"]
-    try:
-        stock = yf.Ticker(ticker)
-        news = yf_retry(lambda: stock.get_news(count=article_limit))
+    # Query Yahoo with the canonical symbol, like every other yfinance path —
+    # a raw broker/forex/crypto alias (XAUUSD, BTCUSD) otherwise silently
+    # returns no news. Keep the user's ticker in the report header.
+    canonical = normalize_symbol(ticker)
+    resolved = "" if canonical == ticker else f" (resolved to {canonical})"
+    news = yf_retry(lambda: yf.Ticker(canonical).get_news(count=article_limit)) or []
 
-        if not news:
-            return f"No news found for {ticker}"
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 
-        # Parse date range for filtering
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    news_str = ""
+    filtered_count = 0
 
-        news_str = ""
-        filtered_count = 0
+    for article in news:
+        data = _extract_article_data(article)
 
-        for article in news:
-            data = _extract_article_data(article)
+        # Keep only articles within the requested window (look-ahead safe).
+        if not in_window(data["pub_date"], start_dt, end_dt):
+            continue
 
-            # Filter by date if publish time is available
-            if data["pub_date"]:
-                pub_date_naive = data["pub_date"].replace(tzinfo=None)
-                if not (start_dt <= pub_date_naive <= end_dt + relativedelta(days=1)):
-                    continue
+        news_str += f"### {data['title']} (source: {data['publisher']})\n"
+        if data["summary"]:
+            news_str += f"{data['summary']}\n"
+        if data["link"]:
+            news_str += f"Link: {data['link']}\n"
+        news_str += "\n"
+        filtered_count += 1
 
-            news_str += f"### {data['title']} (source: {data['publisher']})\n"
-            if data["summary"]:
-                news_str += f"{data['summary']}\n"
-            if data["link"]:
-                news_str += f"Link: {data['link']}\n"
-            news_str += "\n"
-            filtered_count += 1
+    if filtered_count == 0:
+        gap = coverage_gap(
+            (_extract_article_data(a)["pub_date"] for a in news),
+            start_date,
+            end_date,
+            "Yahoo Finance news",
+            f"news for {ticker}{resolved}",
+        )
+        return gap or f"No news found for {ticker}{resolved} between {start_date} and {end_date}"
 
-        if filtered_count == 0:
-            return f"No news found for {ticker} between {start_date} and {end_date}"
-
-        return f"## {ticker} News, from {start_date} to {end_date}:\n\n{news_str}"
-
-    except Exception as e:
-        return f"Error fetching news for {ticker}: {str(e)}"
+    return f"## {ticker}{resolved} News, from {start_date} to {end_date}:\n\n{news_str}"
 
 
 def get_global_news_yfinance(
     curr_date: str,
-    look_back_days: Optional[int] = None,
-    limit: Optional[int] = None,
+    look_back_days: int | None = None,
+    limit: int | None = None,
 ) -> str:
     """
     Retrieve global/macro economic news using yfinance Search.
@@ -133,76 +142,54 @@ def get_global_news_yfinance(
         limit = config["global_news_article_limit"]
     search_queries = config["global_news_queries"]
 
-    all_news = []
+    curr_dt = datetime.strptime(curr_date, "%Y-%m-%d")
+    start_dt = curr_dt - relativedelta(days=look_back_days)
+    start_date = start_dt.strftime("%Y-%m-%d")
+
+    in_window_news = []
     seen_titles = set()
 
-    try:
-        for query in search_queries:
-            search = yf_retry(
-                lambda q=query: yf.Search(
+    for query in search_queries:
+        found = yf_retry(
+            lambda q=query: (
+                yf.Search(
                     query=q,
                     news_count=limit,
                     enable_fuzzy_query=True,
-                )
+                ).news
             )
+        )
 
-            if search.news:
-                for article in search.news:
-                    # Handle both flat and nested structures
-                    if "content" in article:
-                        data = _extract_article_data(article)
-                        title = data["title"]
-                    else:
-                        title = article.get("title", "")
+        for article in found or []:
+            # Window first: the limit counts what the run may read, so an
+            # out-of-window article must not spend the budget or cut the
+            # remaining searches short (#1356). Flat articles are filtered
+            # on the same rule, so none can leak future news (#1007).
+            data = _extract_article_data(article)
+            if not in_window(data["pub_date"], start_dt, curr_dt):
+                continue
+            if data["title"] and data["title"] not in seen_titles:
+                seen_titles.add(data["title"])
+                in_window_news.append(data)
 
-                    # Deduplicate by title
-                    if title and title not in seen_titles:
-                        seen_titles.add(title)
-                        all_news.append(article)
+        if len(in_window_news) >= limit:
+            break
 
-            if len(all_news) >= limit:
-                break
+    news_str = ""
+    for data in in_window_news[:limit]:
+        news_str += f"### {data['title']} (source: {data['publisher']})\n"
+        if data["summary"]:
+            news_str += f"{data['summary']}\n"
+        if data["link"]:
+            news_str += f"Link: {data['link']}\n"
+        news_str += "\n"
 
-        if not all_news:
-            return f"No global news found for {curr_date}"
+    # Nothing fell inside the window -> say so rather than return an
+    # empty-bodied report (#993).
+    if not news_str:
+        # Results merge several fuzzy searches, so their timestamps prove no
+        # continuous coverage; judge the window against the present only.
+        gap = coverage_gap((), start_date, curr_date, "Yahoo Finance global news", "market news")
+        return gap or f"No global news found between {start_date} and {curr_date}"
 
-        # Calculate date range
-        curr_dt = datetime.strptime(curr_date, "%Y-%m-%d")
-        start_dt = curr_dt - relativedelta(days=look_back_days)
-        start_date = start_dt.strftime("%Y-%m-%d")
-
-        news_str = ""
-        for article in all_news[:limit]:
-            # Handle both flat and nested structures
-            if "content" in article:
-                data = _extract_article_data(article)
-                # Skip articles published after curr_date (look-ahead guard)
-                if data.get("pub_date"):
-                    pub_naive = (
-                        data["pub_date"].replace(tzinfo=None)
-                        if hasattr(data["pub_date"], "replace")
-                        else data["pub_date"]
-                    )
-                    if pub_naive > curr_dt + relativedelta(days=1):
-                        continue
-                title = data["title"]
-                publisher = data["publisher"]
-                link = data["link"]
-                summary = data["summary"]
-            else:
-                title = article.get("title", "No title")
-                publisher = article.get("publisher", "Unknown")
-                link = article.get("link", "")
-                summary = ""
-
-            news_str += f"### {title} (source: {publisher})\n"
-            if summary:
-                news_str += f"{summary}\n"
-            if link:
-                news_str += f"Link: {link}\n"
-            news_str += "\n"
-
-        return f"## Global Market News, from {start_date} to {curr_date}:\n\n{news_str}"
-
-    except Exception as e:
-        return f"Error fetching global news: {str(e)}"
+    return f"## Global Market News, from {start_date} to {curr_date}:\n\n{news_str}"

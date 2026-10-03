@@ -31,7 +31,8 @@ import { normalizeSettingsForSave } from "@/features/settings/lib/normalize-sett
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, RunContext, TaskStatus } from "@/lib/types";
 import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
 import { createTranslator } from "@/lib/i18n";
-import { extractDecisionFromReport, prependLog } from "./utils";
+import { prependLog } from "./utils";
+import { resolveTaskDecision } from "./decisions";
 import { useTaskQueueController } from "./queue/useTaskQueueController";
 
 type TaskCenterContextValue = {
@@ -169,14 +170,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   }
 
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
-    const reportDecision = extractDecisionFromReport(task.reportSections?.final_trade_decision);
+    const decision = resolveTaskDecision(task.decision, task.reportSections?.final_trade_decision);
     const normalizedTask: AnalysisTask = {
       ...task,
       origin: task.origin ?? "analysis",
       reportVersions: task.reportVersions ?? [],
       queuedAt: task.queuedAt ?? "",
       queueOrder: Number.isFinite(task.queueOrder) ? task.queueOrder : null,
-      ...(reportDecision ? { decision: reportDecision } : {}),
+      decision,
     };
     if (normalizedTask.status === "running") {
       return ensureLegacyReportVersion({
@@ -202,7 +203,6 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         : task.logs;
       const nextAgentStatuses = event.agentStatuses ?? task.agentStatuses;
       const reportSections = event.reportSections ?? task.reportSections;
-      const reportDecision = extractDecisionFromReport(reportSections.final_trade_decision);
       const status: TaskStatus = event.type === "completed"
         ? "completed"
         : event.type === "error"
@@ -212,7 +212,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         ...task,
         status,
         updatedAt: new Date().toISOString(),
-        decision: reportDecision || event.decision || task.decision,
+        decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
         stats: event.stats ?? task.stats,
         agentStatuses: status === "error" ? finalizeAgentStatuses(nextAgentStatuses) : nextAgentStatuses,
         reportSections,

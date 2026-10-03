@@ -36,7 +36,8 @@ def test_china_sentiment_uses_recent_company_news_when_window_is_empty(monkeypat
 
     assert "窗口外近况" in block
     assert "每日互动与武汉数据集团签署战略合作协议" in block
-    assert "数据要素（热度 149）" in block
+    assert "历史日期不提供实时人气热度" in block
+    assert "149" not in block
     assert "股吧接口未返回有效帖子" in block
 
 

@@ -21,8 +21,6 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.graph.analyst_execution import (
     AnalystWallTimeTracker,
     build_analyst_execution_plan,
-    get_initial_analyst_node,
-    sync_analyst_tracker_from_chunk,
 )
 from tradingagents.default_config import DEFAULT_CONFIG
 from cli.utils import (
@@ -772,6 +770,15 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
 
     # Write consolidated report
     header = f"# Trading Analysis Report: {ticker}\n\nGenerated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    settings = final_state.get("run_settings")
+    if settings:
+        import json
+
+        header += (
+            "Run settings:\n\n```json\n"
+            + json.dumps(settings, ensure_ascii=False, indent=2)
+            + "\n```\n\n"
+        )
     (save_path / "complete_report.md").write_text(header + "\n\n".join(sections), encoding="utf-8")
     return save_path / "complete_report.md"
 
@@ -883,48 +890,31 @@ ANALYST_REPORT_MAP = {
 
 
 def update_analyst_statuses(message_buffer, chunk, wall_time_tracker=None):
-    """Update analyst statuses based on accumulated report state.
-
-    Logic:
-    - Store new report content from the current chunk if present
-    - Check accumulated report_sections (not just current chunk) for status
-    - Analysts with reports = completed
-    - First analyst without report = in_progress
-    - Remaining analysts without reports = pending
-    - When all analysts done, set Bull Researcher to in_progress
-    """
+    """Track actual analyst starts and reports, including parallel subgraphs."""
     selected = message_buffer.selected_analysts
-    found_active = False
-
-    if wall_time_tracker is not None:
-        sync_analyst_tracker_from_chunk(wall_time_tracker, chunk)
-
-    for analyst_key in ANALYST_ORDER:
-        if analyst_key not in selected:
-            continue
-
-        agent_name = ANALYST_AGENT_NAMES[analyst_key]
-        report_key = ANALYST_REPORT_MAP[analyst_key]
-
-        # Capture new report content from current chunk
+    started = chunk.get("analyst_started")
+    for key in selected:
+        agent = ANALYST_AGENT_NAMES[key]
+        report_key = ANALYST_REPORT_MAP[key]
+        if started == agent and message_buffer.agent_status.get(agent) != "completed":
+            message_buffer.update_agent_status(agent, "in_progress")
+            if wall_time_tracker is not None:
+                wall_time_tracker.mark_started(key)
         if chunk.get(report_key):
             message_buffer.update_report_section(report_key, chunk[report_key])
-
-        # Determine status from accumulated sections, not just current chunk
-        has_report = bool(message_buffer.report_sections.get(report_key))
-
-        if has_report:
-            message_buffer.update_agent_status(agent_name, "completed")
-        elif not found_active:
-            message_buffer.update_agent_status(agent_name, "in_progress")
-            found_active = True
-        else:
-            message_buffer.update_agent_status(agent_name, "pending")
-
-    # When all analysts complete, transition research team to in_progress
-    if not found_active and selected:
-        if message_buffer.agent_status.get("Bull Researcher") == "pending":
-            message_buffer.update_agent_status("Bull Researcher", "in_progress")
+            message_buffer.update_agent_status(agent, "completed")
+            if wall_time_tracker is not None:
+                wall_time_tracker.mark_started(key)
+                wall_time_tracker.mark_completed(key)
+    if (
+        selected
+        and all(
+            message_buffer.agent_status.get(ANALYST_AGENT_NAMES[key]) == "completed"
+            for key in selected
+        )
+        and message_buffer.agent_status.get("Bull Researcher") == "pending"
+    ):
+        message_buffer.update_agent_status("Bull Researcher", "in_progress")
 
 
 def extract_content_string(content):
@@ -1004,14 +994,16 @@ def format_tool_args(args, max_length=80) -> str:
     return result
 
 
-def run_analysis(checkpoint: bool = False):
+def run_analysis(checkpoint: bool | None = None):
     # First get all user selections
     selections = get_user_selections()
 
     # Create config with selected research depth
     config = DEFAULT_CONFIG.copy()
-    config["max_debate_rounds"] = selections["research_depth"]
-    config["max_risk_discuss_rounds"] = selections["research_depth"]
+    if not os.environ.get("TRADINGAGENTS_MAX_DEBATE_ROUNDS"):
+        config["max_debate_rounds"] = selections["research_depth"]
+    if not os.environ.get("TRADINGAGENTS_MAX_RISK_ROUNDS"):
+        config["max_risk_discuss_rounds"] = selections["research_depth"]
     config["quick_think_llm"] = selections["shallow_thinker"]
     config["deep_think_llm"] = selections["deep_thinker"]
     config["backend_url"] = selections["backend_url"]
@@ -1021,7 +1013,8 @@ def run_analysis(checkpoint: bool = False):
     config["openai_reasoning_effort"] = selections.get("openai_reasoning_effort")
     config["anthropic_effort"] = selections.get("anthropic_effort")
     config["output_language"] = selections.get("output_language", "English")
-    config["checkpoint_enabled"] = checkpoint
+    if checkpoint is not None:
+        config["checkpoint_enabled"] = checkpoint
 
     # Create stats callback handler for tracking LLM/tool calls
     stats_handler = StatsCallbackHandler()
@@ -1115,7 +1108,12 @@ def run_analysis(checkpoint: bool = False):
     # Now start the display layout
     layout = create_layout()
 
-    with Live(layout, refresh_per_second=4):
+    with (
+        graph.checkpoint_scope(
+            selections["ticker"], selections["analysis_date"], selections["asset_type"]
+        ) as checkpoint_thread,
+        Live(layout, refresh_per_second=4),
+    ):
         # Initial display
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
@@ -1130,38 +1128,34 @@ def run_analysis(checkpoint: bool = False):
         )
         update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
-        # Update agent status to in_progress for the first analyst
-        first_analyst = get_initial_analyst_node(analyst_execution_plan)
-        message_buffer.update_agent_status(first_analyst, "in_progress")
-        analyst_wall_time_tracker.mark_started(selected_analyst_keys[0])
-        update_display(layout, stats_handler=stats_handler, start_time=start_time)
-
         # Create spinner text
         spinner_text = f"Analyzing {selections['ticker']} on {selections['analysis_date']}..."
         update_display(layout, spinner_text, stats_handler=stats_handler, start_time=start_time)
 
-        # Initialize state and get graph args with callbacks.
-        # Resolve the instrument identity once here so all agents anchor to
-        # the real company (#814); the CLI builds state directly rather than
-        # going through propagate(), so this must happen on the CLI path too.
-        instrument_context = graph.resolve_instrument_context(
-            selections["ticker"], selections["asset_type"]
+        init_agent_state = graph.create_run_state(
+            selections["ticker"], selections["analysis_date"], selections["asset_type"]
         )
-        init_agent_state = graph.propagator.create_initial_state(
-            selections["ticker"],
-            selections["analysis_date"],
-            asset_type=selections["asset_type"],
-            instrument_context=instrument_context,
-        )
-        # Pass callbacks to graph config for tool execution tracking
-        # (LLM tracking is handled separately via LLM constructor)
         args = graph.propagator.get_graph_args(callbacks=[stats_handler])
+        if checkpoint_thread is not None:
+            args["config"].setdefault("configurable", {})["thread_id"] = checkpoint_thread
+            message_buffer.add_message(
+                "System",
+                "Resuming saved analysis" if graph._resuming else "Starting fresh analysis",
+            )
 
-        # Stream the analysis
-        trace = []
-        for chunk in graph.graph.stream(init_agent_state, **args):
-            # Process all messages in chunk, deduplicating by message ID
-            for message in chunk.get("messages", []):
+        final_state = {}
+        previous_state = {}
+        for messages, state in graph.stream_run(graph.checkpoint_input(init_agent_state), **args):
+            chunk = state or {}
+            final_state.update(
+                {key: value for key, value in chunk.items() if key != "analyst_started"}
+            )
+            changes = {
+                key: value for key, value in chunk.items() if previous_state.get(key) != value
+            }
+            previous_state.update(chunk)
+            chunk = changes
+            for message in messages:
                 msg_id = getattr(message, "id", None)
                 if msg_id is not None:
                     if msg_id in message_buffer._processed_message_ids:
@@ -1260,14 +1254,10 @@ def run_analysis(checkpoint: bool = False):
             # Update the display
             update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
-            trace.append(chunk)
-
-        # Streamed chunks are per-node deltas, not full state. Merge them
-        # so every report field populated across the run is present.
-        final_state = {}
-        for chunk in trace:
-            final_state.update(chunk)
-        graph.process_signal(final_state["final_trade_decision"])
+        graph.record_decision(selections["ticker"], selections["analysis_date"], final_state)
+        graph.clear_checkpoint_on_success(
+            selections["ticker"], selections["analysis_date"], selections["asset_type"]
+        )
 
         # Update all agent statuses to completed
         for agent in message_buffer.agent_status:
@@ -1313,9 +1303,9 @@ def run_analysis(checkpoint: bool = False):
 
 @app.command()
 def analyze(
-    checkpoint: bool = typer.Option(
-        False,
-        "--checkpoint",
+    checkpoint: bool | None = typer.Option(
+        None,
+        "--checkpoint/--no-checkpoint",
         help="Enable checkpoint/resume: save state after each node so a crashed run can resume.",
     ),
     clear_checkpoints: bool = typer.Option(

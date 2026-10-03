@@ -6,9 +6,24 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ### Changed
 
+- Selectively synchronized TradingAgents v0.5.2 reliability fixes while retaining the v0.2.5 package version, Python 3.10 compatibility, and A-share integrations.
+- Run selected analysts in private parallel subgraphs with a shared concurrency limit, per-agent progress, and a report join before research.
+- Record safe runtime settings with report versions and exports; expose token, retry, tool-round, concurrency, and holding-period controls.
+- Restrict fallback to configured data vendors, distinguish provider outages from missing data, and remove unused direct Python dependencies.
+- Default Python tests to offline execution; external-service tests are explicitly opt-in.
 - Rebranded the desktop application as Evidence Loom.
 - Moved desktop API keys to the operating-system credential store.
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
+
+### Fixed
+
+- Carry the Portfolio Manager's typed rating into desktop results and memory. Unparseable decisions now display REVIEW instead of silently becoming Hold.
+- Bind tool symbols and dates to the current run, clip historical market/news/social inputs, and withhold historical fundamentals whose publication date cannot be established.
+- Register market verification tools, bound analyst tool rounds, and stream under each run's own vendor configuration.
+- Resume compatible CLI and desktop checkpoints without duplicate work, close SQLite savers after failures, and start fresh when graph settings change.
+- Serialize memory writes, prevent duplicate decisions, exclude lessons learned after the analysis date, and settle only complete holding windows with matching benchmark endpoints.
+- Ground Trader decisions in the market report, preserve valid decisions when optional prices are unreadable, and avoid invented debate opponents or forced verdicts under ambiguity.
+- Apply explicit retry budgets once and avoid native OpenAI endpoint assumptions for custom compatible providers.
 
 ## [0.1.0-beta.5] - 2026-07-23
 

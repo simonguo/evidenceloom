@@ -79,9 +79,11 @@ def create_sentiment_analyst(llm):
             reddit_block = "<skipped for A-share: Reddit finance subreddits rarely discuss specific A-share tickers>"
             source_mode = "china_a_share"
         else:
-            news_block = get_news.func(ticker, start_date, end_date)
-            stocktwits_block = fetch_stocktwits_messages(ticker, limit=30)
-            reddit_block = fetch_reddit_posts(ticker)
+            news_block = get_news.func(ticker, start_date, end_date, trade_date=end_date)
+            stocktwits_block = fetch_stocktwits_messages(
+                ticker, limit=30, start_date=start_date, end_date=end_date
+            )
+            reddit_block = fetch_reddit_posts(ticker, start_date=start_date, end_date=end_date)
             source_mode = "global"
 
         system_message = _build_system_message(
@@ -173,7 +175,7 @@ Fast-moving signal. Each message carries a user-labeled sentiment tag (Bullish /
 <end_of_stocktwits>
 
 ### Reddit posts — r/wallstreetbets, r/stocks, r/investing (past 7 days)
-Community discussion. Engagement signal via upvote score and comment count. Subreddit character matters (r/wallstreetbets is often contrarian/exuberant; r/stocks more measured; r/investing longer-term).
+Community discussion. Upvote scores and comment counts are available only for current windows; historical windows withhold these live snapshots. Subreddit character matters (r/wallstreetbets is often contrarian/exuberant; r/stocks more measured; r/investing longer-term).
 
 <start_of_reddit>
 {reddit_block}
@@ -185,7 +187,7 @@ Community discussion. Engagement signal via upvote score and comment count. Subr
 
 2. **Look for cross-source divergences.** If news framing is bearish but StockTwits is overwhelmingly bullish, that mismatch is itself a signal — it can mean retail is leaning into a thesis the news flow hasn't caught up to (or vice versa, that retail is chasing while institutions are cautious).
 
-3. **Weight Reddit posts by engagement.** A 400-upvote / 200-comment thread reflects community attention; a 3-upvote post is noise. Read the body excerpts for context — the title alone often misleads.
+3. **Use Reddit engagement only when supplied for a current window.** Historical windows have no engagement vintage, so do not infer or estimate scores or comment counts. Read the body excerpts and recurring themes for context — the title alone often misleads.
 
 4. **Distinguish opinion from event.** A news headline ("Nvidia announces $500M Corning deal") is an event; a StockTwits post ("buying NVDA, this is going to moon") is opinion. Both are inputs but should be weighted differently in your conclusions.
 

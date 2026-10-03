@@ -77,7 +77,12 @@ export function buildReportDocument(
     title: `${text.title}: ${version.task.ticker}`,
     disclaimer: text.disclaimer,
     fictionalNotice: origin === "demo" ? text.fictional : "",
-    metadata: text.metadata.map((label, index) => [label, metadataValues[index] ?? "—"]),
+    metadata: [
+      ...text.metadata.map((label, index): [string, string] => [label, metadataValues[index] ?? "—"]),
+      ...(version.run?.coreVersion ? [[language === "zh" ? "研究核心版本" : "Research Core Version", version.run.coreVersion] as [string, string]] : []),
+      ...(version.run?.toolVendors && Object.keys(version.run.toolVendors).length
+        ? [[language === "zh" ? "工具数据源" : "Tool Data Vendors", Object.entries(version.run.toolVendors).map(([key, value]) => `${key}: ${value}`).join(", ")] as [string, string]] : []),
+    ],
     sections: buildSections(version, language),
     language,
     version,

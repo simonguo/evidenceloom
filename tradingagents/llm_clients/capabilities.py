@@ -95,6 +95,7 @@ _DEFAULT = ModelCapabilities(
 _BY_ID: dict[str, ModelCapabilities] = {
     "deepseek-chat": _DEEPSEEK_CHAT,
     "deepseek-reasoner": _DEEPSEEK_THINKING,
+    "deepseek-flash": _DEEPSEEK_THINKING,
     "deepseek-v4-flash": _DEEPSEEK_THINKING,
     "deepseek-v4-pro": _DEEPSEEK_THINKING,
     # MiniMax — full official model lineup per
@@ -119,6 +120,8 @@ _BY_PATTERN: list[tuple[re.Pattern[str], ModelCapabilities]] = [
 
 def get_capabilities(model_name: str) -> ModelCapabilities:
     """Resolve capabilities by exact ID, then pattern, then default."""
+    if model_name.startswith("deepseek/"):
+        model_name = model_name.removeprefix("deepseek/")
     if model_name in _BY_ID:
         return _BY_ID[model_name]
     for pattern, caps in _BY_PATTERN:

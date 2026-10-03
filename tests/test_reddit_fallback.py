@@ -75,7 +75,7 @@ class TestRssFallbackParsing:
 
     def test_malformed_xml_fails_open(self):
         with self._patch_rss_response(b"<<not xml>>"):
-            assert reddit._fetch_subreddit_rss("NVDA", "stocks", 5, 5.0) == []
+            assert reddit._fetch_subreddit_rss("NVDA", "stocks", 5, 5.0) is None
 
 
 @pytest.mark.unit

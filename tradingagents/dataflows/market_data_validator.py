@@ -16,6 +16,7 @@ import pandas as pd
 from stockstats import wrap
 
 from tradingagents.dataflows.stockstats_utils import load_ohlcv
+from tradingagents.dataflows.errors import NoMarketDataError
 
 # A fixed, common indicator set so the snapshot is the same shape every run.
 DEFAULT_SNAPSHOT_INDICATORS: tuple[str, ...] = (
@@ -40,16 +41,16 @@ def _verified_rows(symbol: str, curr_date: str) -> pd.DataFrame:
     look-ahead rows, but we re-apply the cutoff defensively — this is a
     verification path, so it must not trust its input to be pre-filtered.
     """
-    data = load_ohlcv(symbol, curr_date)
+    data = load_ohlcv(symbol, curr_date, fill_gaps=False)
     if data is None or data.empty:
-        raise ValueError(f"No OHLCV data available for {symbol}.")
+        raise NoMarketDataError(symbol, symbol, "no OHLCV rows available")
 
     df = data.copy()
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df = df.dropna(subset=["Date"])
     df = df[df["Date"] <= pd.to_datetime(curr_date)].sort_values("Date")
     if df.empty:
-        raise ValueError(f"No OHLCV rows on or before {curr_date} for {symbol}.")
+        raise NoMarketDataError(symbol, symbol, f"no OHLCV rows on or before {curr_date}")
     return df
 
 

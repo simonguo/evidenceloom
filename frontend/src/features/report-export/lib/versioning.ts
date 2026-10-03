@@ -1,3 +1,5 @@
+import { resolveTaskDecision } from "@/components/task-center/decisions";
+import { mergeRuntimeManifest } from "./runtime-settings";
 import packageMetadata from "../../../../package.json";
 import type {
   AnalysisEvent,
@@ -50,8 +52,8 @@ export function appendCompletedReportVersion(
     createdAt,
     legacy: false,
     task: taskSnapshot(task),
-    run: { ...runContext.manifest },
-    decision: event.decision || task.decision,
+    run: mergeRuntimeManifest(runContext.manifest, event.runSettings),
+    decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
     stats: { ...(event.stats ?? task.stats) },
     reportSections: { ...reportSections },
   };

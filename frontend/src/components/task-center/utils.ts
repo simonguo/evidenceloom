@@ -68,38 +68,7 @@ export function localizedDecision(decision: string, language: SystemLanguage) {
   return createTranslator(language)(key);
 }
 
-export function extractDecisionFromReport(report: string | null | undefined) {
-  if (!report?.trim()) return "";
-
-  for (const line of report.split(/\r?\n/)) {
-    const explicitRating = line.match(
-      /(?:评级|建议|最终(?:交易)?决策|交易决策|决策|操作|rating|recommendation|decision|action|signal)[\s*]*[-：:][\s*]*(.+)/i,
-    );
-    const rating = findFirstDecision(explicitRating?.[1] ?? "");
-    if (rating) return rating;
-  }
-
-  return findFirstDecision(report);
-}
-
-const decisionPatterns: Array<{ decision: string; patterns: RegExp[] }> = [
-  { decision: "buy", patterns: [/(?<![A-Za-z])buy(?![A-Za-z])/i, /买入|看多/] },
-  { decision: "overweight", patterns: [/(?<![A-Za-z])overweight(?![A-Za-z])/i, /超配|增持|加仓/] },
-  { decision: "hold", patterns: [/(?<![A-Za-z])hold(?![A-Za-z])/i, /持有|观望|中性/] },
-  { decision: "underweight", patterns: [/(?<![A-Za-z])underweight(?![A-Za-z])/i, /低配|减持/] },
-  { decision: "sell", patterns: [/(?<![A-Za-z])sell(?![A-Za-z])/i, /卖出|清仓|看空/] },
-];
-
-function findFirstDecision(text: string) {
-  let earliest: { index: number; decision: string } | null = null;
-  for (const entry of decisionPatterns) {
-    for (const pattern of entry.patterns) {
-      const index = text.search(pattern);
-      if (index >= 0 && (!earliest || index < earliest.index)) earliest = { index, decision: entry.decision };
-    }
-  }
-  return earliest?.decision ?? "";
-}
+export { extractDecisionFromReport } from "./decisions";
 
 export function runtimeLabel(runtimeInfo: RuntimeInfo, language: SystemLanguage) {
   const t = createTranslator(language);

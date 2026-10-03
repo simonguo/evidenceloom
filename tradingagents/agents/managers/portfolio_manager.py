@@ -11,13 +11,16 @@ back gracefully to free-text generation.
 from __future__ import annotations
 
 from tradingagents.agents.schemas import PortfolioDecision, render_pm_decision
+from tradingagents.agents.utils.rating import parse_rating
 from tradingagents.agents.utils.agent_utils import (
     get_instrument_context_from_state,
     get_language_instruction,
 )
 from tradingagents.agents.utils.structured import (
     bind_structured,
-    invoke_structured_or_freetext,
+    invoke_structured,
+    portfolio_context,
+    NO_EXTERNAL_TOOLS,
 )
 
 
@@ -43,6 +46,8 @@ def create_portfolio_manager(llm):
 
 {instrument_context}
 
+{portfolio_context(state)}
+
 ---
 
 **Rating Scale** (use exactly one):
@@ -61,15 +66,17 @@ def create_portfolio_manager(llm):
 
 ---
 
-Be decisive and ground every conclusion in specific evidence from the analysts.{get_language_instruction()}"""
+Ground every conclusion in specific evidence from the analysts. Weigh conflicting risk arguments on their merits, independent of speaking order. Choose Hold when the evidence remains balanced or too thin to support a direction; do not force a direction to appear decisive.
 
-        final_trade_decision = invoke_structured_or_freetext(
-            structured_llm,
-            llm,
-            prompt,
-            render_pm_decision,
-            "Portfolio Manager",
-        )
+Write the final decision starting with **Rating**: exactly one of Buy / Overweight / Hold / Underweight / Sell on its own line, followed by Executive Summary and Investment Thesis. {NO_EXTERNAL_TOOLS}{get_language_instruction()}"""
+
+        decision = invoke_structured(structured_llm, prompt, "Portfolio Manager")
+        if decision is not None:
+            final_trade_decision = render_pm_decision(decision)
+            final_rating = decision.rating.value
+        else:
+            final_trade_decision = llm.invoke(prompt).content
+            final_rating = parse_rating(final_trade_decision)
 
         new_risk_debate_state = {
             "judge_decision": final_trade_decision,
@@ -87,6 +94,7 @@ Be decisive and ground every conclusion in specific evidence from the analysts.{
         return {
             "risk_debate_state": new_risk_debate_state,
             "final_trade_decision": final_trade_decision,
+            "final_rating": final_rating,
         }
 
     return portfolio_manager_node

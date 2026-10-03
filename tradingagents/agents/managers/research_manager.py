@@ -10,6 +10,7 @@ from tradingagents.agents.utils.agent_utils import (
 from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
+    NO_EXTERNAL_TOOLS,
 )
 
 
@@ -35,12 +36,16 @@ def create_research_manager(llm):
 - **Underweight**: Cautious view; recommend trimming exposure
 - **Sell**: Strong conviction in the bear thesis; recommend exiting or avoiding the position
 
-Commit to a clear stance whenever the debate's strongest arguments warrant one; reserve Hold for situations where the evidence on both sides is genuinely balanced.
+Weigh the opposing cases on their evidence, independent of speaking order. Conflict alone is not a reason to Hold: choose the stronger case and size by how decisively it wins. Choose Hold when the evidence remains balanced or too thin to support a call; do not manufacture a direction to appear decisive.
 
 ---
 
 **Debate History:**
-{history}""" + get_language_instruction()
+{history}
+
+Write Recommendation, Rationale and Strategic Actions in that order, starting with **Recommendation**: exactly one of Buy / Overweight / Hold / Underweight / Sell on its own line.
+
+The research team does not know the caller's holdings. Express sizing against a standard allocation, so the trader can apply the actual portfolio. {NO_EXTERNAL_TOOLS}""" + get_language_instruction()
 
         investment_plan = invoke_structured_or_freetext(
             structured_llm,

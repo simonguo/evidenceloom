@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { AnalysisTask } from "@/lib/types";
 
-export type DecisionFilter = "all" | "buy" | "overweight" | "hold" | "underweight" | "sell" | "none";
+export type DecisionFilter = "all" | "buy" | "overweight" | "hold" | "underweight" | "sell" | "review" | "none";
 
 export function useTaskFilters(tasks: AnalysisTask[]) {
   const [query, setQuery] = useState("");
@@ -32,5 +32,5 @@ export function useTaskFilters(tasks: AnalysisTask[]) {
 
 function normalizeDecision(decision: string) {
   const normalized = decision.trim().toLowerCase().replace(/[\s_-]+/g, "");
-  return ["buy", "overweight", "hold", "underweight", "sell"].includes(normalized) ? normalized : "";
+  return ["buy", "overweight", "hold", "underweight", "sell", "review"].includes(normalized) ? normalized : "";
 }

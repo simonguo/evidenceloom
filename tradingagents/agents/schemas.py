@@ -18,10 +18,27 @@ so that:
 
 from __future__ import annotations
 
+import math
 from enum import Enum
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+
+def _coerce_optional_float(value):
+    """Discard an unreadable optional price without discarding the decision."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        value = value.strip()
+        if "%" in value:
+            return None
+        value = value.replace(",", "").lstrip("$€£¥").strip()
+    try:
+        number = float(value)
+        return number if math.isfinite(number) else None
+    except (TypeError, ValueError):
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +87,9 @@ class ResearchPlan(BaseModel):
     recommendation: PortfolioRating = Field(
         description=(
             "The investment recommendation. Exactly one of Buy / Overweight / "
-            "Hold / Underweight / Sell. Reserve Hold for situations where the "
-            "evidence on both sides is genuinely balanced; otherwise commit to "
-            "the side with the stronger arguments."
+            "Hold / Underweight / Sell. Conflicting arguments alone are not a reason "
+            "to Hold: choose the stronger side, sized by how decisively it wins. "
+            "Choose Hold when the evidence remains balanced or too thin to support a call."
         ),
     )
     rationale: str = Field(
@@ -85,7 +102,8 @@ class ResearchPlan(BaseModel):
     strategic_actions: str = Field(
         description=(
             "Concrete steps for the trader to implement the recommendation, "
-            "including position sizing guidance consistent with the rating."
+            "including sizing against a standard allocation. The research team does not see "
+            "the caller's holdings; the trader applies the actual position."
         ),
     )
 
@@ -128,16 +146,21 @@ class TraderProposal(BaseModel):
     )
     entry_price: Optional[float] = Field(
         default=None,
-        description="Optional entry price target in the instrument's quote currency.",
+        description="Optional entry target as an absolute price in the quote currency, never a percentage or range; omit it when unsupported.",
     )
     stop_loss: Optional[float] = Field(
         default=None,
-        description="Optional stop-loss price in the instrument's quote currency.",
+        description="Optional stop-loss as an absolute price in the quote currency; convert a percentage distance to its price or omit it.",
     )
     position_sizing: Optional[str] = Field(
         default=None,
         description="Optional sizing guidance, e.g. '5% of portfolio'.",
     )
+
+    @field_validator("entry_price", "stop_loss", mode="before")
+    @classmethod
+    def optional_prices(cls, value):
+        return _coerce_optional_float(value)
 
 
 def render_trader_proposal(proposal: TraderProposal) -> str:
@@ -208,6 +231,11 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Optional recommended holding period, e.g. '3-6 months'.",
     )
+
+    @field_validator("price_target", mode="before")
+    @classmethod
+    def optional_target(cls, value):
+        return _coerce_optional_float(value)
 
 
 def render_pm_decision(decision: PortfolioDecision) -> str:

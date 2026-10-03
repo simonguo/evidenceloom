@@ -11,6 +11,7 @@ _PASSTHROUGH_KWARGS = (
     "api_key",
     "reasoning_effort",
     "temperature",
+    "max_tokens",
     "callbacks",
     "http_client",
     "http_async_client",
