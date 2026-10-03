@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 import type { ReportDocument } from "../types";
 import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
+import { renderReadinessHtml } from "@/features/research-readiness/lib/render-appendix";
 import { renderMemoryHtml } from "@/features/memory/lib/render-appendix";
 
 const markdownComponents: Components = {
@@ -77,6 +78,7 @@ export function renderReportHtml(document: ReportDocument) {
     ${sections}
     ${renderEvidenceAppendix(document)}
     ${renderMemoryHtml(document.version, document.language)}
+${renderReadinessHtml(document.version, document.language)}
   </main>
 </body>
 </html>`;

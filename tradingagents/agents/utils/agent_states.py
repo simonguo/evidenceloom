@@ -68,6 +68,8 @@ class AgentState(MessagesState):
     run_settings: Annotated[dict, "Safe configuration manifest for this run"]
     evidence_bundle: Annotated[dict, merge_evidence_bundles]
     research_memory: Annotated[dict, "Frozen memory input, evaluation plan and research start"]
+    research_readiness_policy: Annotated[dict, "Frozen deterministic research input policy"]
+    research_readiness: Annotated[dict, "Saved research input checks before recommendation"]
     memory_bundle: Annotated[dict, "Immutable completion memory and outcome contract"]
     output_quality: Annotated[dict, merge_output_quality]
     past_context: Annotated[

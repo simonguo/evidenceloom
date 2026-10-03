@@ -70,7 +70,7 @@ def create_portfolio_manager(llm):
 
 ---
 
-Ground every conclusion in specific evidence from the analysts. Weigh conflicting risk arguments on their merits, independent of speaking order. Choose Hold when the evidence remains balanced or too thin to support a direction; do not force a direction to appear decisive.
+Ground every conclusion in specific evidence from the analysts. Weigh conflicting risk arguments on their merits, independent of speaking order. The saved deterministic input gate must permit a recommendation before this synthesis. Choose Hold when the permitted evidence remains balanced; do not force a direction to appear decisive. Insufficient required inputs require REVIEW through the input gate.
 
 Write the final decision starting with **Rating**: exactly one of Buy / Overweight / Hold / Underweight / Sell on its own line, followed by Executive Summary and Investment Thesis. {NO_EXTERNAL_TOOLS}{get_language_instruction()}"""
 

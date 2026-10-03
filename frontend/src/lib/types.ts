@@ -1,6 +1,7 @@
 import type { OutputQuality } from "@/features/output-quality/types";
 import type { EvidenceBundle, EvidenceValidation } from "@/features/evidence/types";
 import type { MemoryBundle, MemoryValidation, ReviewAttachment } from "@/features/memory/types";
+import type { ResearchReadiness, ReadinessValidation } from "@/features/research-readiness/types";
 
 export type AnalystKey = "market" | "social" | "news" | "fundamentals";
 export type AssetType = "stock" | "crypto";
@@ -105,6 +106,7 @@ export type RuntimeRunSettings = {
   max_debate_rounds?: number;
   max_risk_discuss_rounds?: number;
   max_tool_rounds?: number;
+  research_readiness_policy_sha256?: string;
   analyst_concurrency_limit?: number;
   temperature?: number | string | null;
   max_tokens?: number;
@@ -146,6 +148,8 @@ export type ReportVersion = {
   evidenceValidation?: EvidenceValidation;
   memoryBundle?: MemoryBundle;
   memoryValidation?: MemoryValidation;
+  researchReadiness?: ResearchReadiness;
+  readinessValidation?: ReadinessValidation;
   evaluationReviews: ReviewAttachment[];
 };
 
@@ -178,6 +182,8 @@ export type AnalysisTask = {
   evidenceValidation?: EvidenceValidation;
   memoryBundle?: MemoryBundle;
   memoryValidation?: MemoryValidation;
+  researchReadiness?: ResearchReadiness;
+  readinessValidation?: ReadinessValidation;
   evaluationReviews: ReviewAttachment[];
   reportVersions: ReportVersion[];
   logs: LogEntry[];
@@ -225,6 +231,7 @@ export type AnalysisEvent = {
   evidenceBundle?: EvidenceBundle;
   memoryBundle?: MemoryBundle;
   error?: string;
+  researchReadiness?: ResearchReadiness;
   agent?: string;
 };
 

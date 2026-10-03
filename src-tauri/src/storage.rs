@@ -13,8 +13,9 @@ use crate::evidence::{validate_bundle, validate_invalid};
 use crate::output_quality::{normalize_output_quality, normalize_report_version_quality};
 use crate::secrets;
 use crate::{research_memory as memory, research_memory_storage as memory_store};
+use crate::{research_readiness as readiness, research_readiness_storage as readiness_store};
 
-const SCHEMA_VERSION: i64 = 7;
+const SCHEMA_VERSION: i64 = 8;
 const SECRET_PREFIX: &str = "enc:v1:";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -136,6 +137,10 @@ pub struct AnalysisTaskRecord {
     pub memory_bundle: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub memory_validation: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub research_readiness: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub readiness_validation: Option<Value>,
     #[serde(default = "empty_array")]
     pub evaluation_reviews: Value,
     pub logs: Value,
@@ -204,6 +209,7 @@ pub fn clear_data(app: &AppHandle) -> Result<(), String> {
         .map(|settings| settings.llm_provider);
     secrets::delete_all_secrets(current_provider.as_deref())?;
     memory_store::clear(&conn)?;
+    readiness_store::clear(&conn)?;
     conn.execute_batch(
         "DELETE FROM task_report_versions;
          DELETE FROM task_reports;
@@ -403,6 +409,7 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     )
     .map_err(|error| error.to_string())?;
     memory_store::initialize(conn)?;
+    readiness_store::initialize(conn)?;
     ensure_column(conn, "tasks", "instrument_name", "TEXT NOT NULL DEFAULT ''")?;
     ensure_column(conn, "tasks", "origin", "TEXT NOT NULL DEFAULT 'analysis'")?;
     ensure_column(conn, "tasks", "queued_at", "TEXT NOT NULL DEFAULT ''")?;
@@ -412,6 +419,14 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     ensure_column(conn, "tasks", "evidence_validation", "TEXT")?;
     ensure_column(conn, "tasks", "memory_bundle_sha256", "TEXT")?;
     ensure_column(conn, "tasks", "memory_validation", "TEXT")?;
+    ensure_column(conn, "tasks", "readiness_assessment_sha256", "TEXT")?;
+    ensure_column(conn, "tasks", "readiness_validation", "TEXT")?;
+    ensure_column(
+        conn,
+        "task_report_versions",
+        "readiness_assessment_sha256",
+        "TEXT",
+    )?;
     ensure_column(conn, "task_report_versions", "memory_bundle_sha256", "TEXT")?;
     ensure_column(
         conn,
@@ -621,7 +636,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
     let mut stmt = conn
         .prepare(
             "SELECT id, ticker, analysis_date, asset_type, research_depth, analysts, output_language, status,
-                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation
+                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation
              FROM tasks ORDER BY updated_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -660,6 +675,27 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
             let evaluation_reviews =
                 memory_store::load_task_reviews(conn, &task_id, memory_bundle.as_ref())
                     .map_err(evidence_sql_error)?;
+            let research_readiness = row
+                .get::<_, Option<String>>(24)?
+                .map(|hash| {
+                    readiness_store::load(
+                        conn,
+                        &hash,
+                        evidence_bundle
+                            .as_ref()
+                            .ok_or_else(|| evidence_sql_error(readiness::ERROR.into()))?,
+                    )
+                    .map_err(evidence_sql_error)
+                })
+                .transpose()?;
+            let readiness_validation = row
+                .get::<_, Option<String>>(25)?
+                .map(|raw| {
+                    let marker = memory::parse_json(&raw).map_err(evidence_sql_error)?;
+                    readiness::validate_fields(None, Some(&marker)).map_err(evidence_sql_error)?;
+                    Ok::<Value, rusqlite::Error>(marker)
+                })
+                .transpose()?;
             Ok(AnalysisTaskRecord {
                 id: task_id,
                 origin: row.get(18)?,
@@ -694,6 +730,8 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                 evidence_validation,
                 memory_bundle,
                 memory_validation,
+                research_readiness,
+                readiness_validation,
                 evaluation_reviews,
                 logs,
                 error: row.get(17)?,
@@ -705,6 +743,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     for task in &tasks {
+        validate_task_readiness(task)?;
         validate_memory_fields(
             task.memory_bundle.as_ref(),
             task.memory_validation.as_ref(),
@@ -785,7 +824,7 @@ fn load_report_sections(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
 
 fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Value> {
     let mut stmt = conn.prepare(
-        "SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,id,run_id,version_number,created_at FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
+        "SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,id,run_id,version_number,created_at,readiness_assessment_sha256 FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
     )?;
     let rows = stmt.query_map(params![task_id], |row| {
         let raw = row.get::<_, String>(0)?;
@@ -876,6 +915,31 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
                 .ok_or_else(|| evidence_sql_error(memory::ERROR.into()))?
                 .insert("evaluationReviews".into(), reviews);
         }
+        if version.get("researchReadiness").is_some() {
+            return Err(evidence_sql_error(readiness::ERROR.into()));
+        }
+        if let Some(hash) = row.get::<_, Option<String>>(7)? {
+            if version["id"] != row.get::<_, String>(3)?
+                || version["runId"] != row.get::<_, String>(4)?
+                || version["versionNumber"] != row.get::<_, i64>(5)?
+                || version["createdAt"] != row.get::<_, String>(6)?
+            {
+                return Err(evidence_sql_error(readiness::ERROR.into()));
+            }
+            let receipt = readiness_store::load(
+                conn,
+                &hash,
+                version
+                    .get("evidenceBundle")
+                    .ok_or_else(|| evidence_sql_error(readiness::ERROR.into()))?,
+            )
+            .map_err(evidence_sql_error)?;
+            version
+                .as_object_mut()
+                .ok_or_else(|| evidence_sql_error(readiness::ERROR.into()))?
+                .insert("researchReadiness".into(), receipt);
+        }
+        validate_version_readiness(&version).map_err(evidence_sql_error)?;
         Ok(version)
     })?;
     let versions = rows
@@ -899,6 +963,7 @@ fn evidence_sql_error(message: String) -> rusqlite::Error {
 }
 
 fn prune_evidence(conn: &Connection) -> Result<(), String> {
+    readiness_store::prune(conn)?;
     memory_store::prune(conn)?;
     conn.execute_batch("DELETE FROM evidence_bundles WHERE sha256 NOT IN (SELECT evidence_bundle_sha256 FROM tasks WHERE evidence_bundle_sha256 IS NOT NULL UNION SELECT evidence_bundle_sha256 FROM task_report_versions WHERE evidence_bundle_sha256 IS NOT NULL);
         DELETE FROM evidence_artifacts WHERE sha256 NOT IN (SELECT artifact_sha256 FROM evidence_bundle_artifacts);")
@@ -955,6 +1020,104 @@ fn validate_memory_fields(
         for review in reviews {
             memory::validate_review_attachment(review, Some(bundle.ok_or(memory::ERROR)?))?;
         }
+    }
+    Ok(())
+}
+
+fn validate_version_readiness(version: &Value) -> Result<(), String> {
+    readiness::validate_fields(
+        version.get("researchReadiness"),
+        version.get("readinessValidation"),
+    )?;
+    if let Some(receipt) = version.get("researchReadiness") {
+        if let Some(settings) = version
+            .get("run")
+            .and_then(|run| run.get("runtimeRunSettings"))
+        {
+            for (setting, policy) in [
+                ("research_readiness_policy_sha256", "policy_sha256"),
+                ("max_tool_rounds", "max_tool_rounds"),
+                ("analysts", "selected_analysts"),
+            ] {
+                if settings
+                    .get(setting)
+                    .is_some_and(|value| value != &receipt["policy"][policy])
+                {
+                    return Err(readiness::ERROR.into());
+                }
+            }
+        }
+        if version["id"].as_str().is_none_or(str::is_empty)
+            || !version["versionNumber"]
+                .as_u64()
+                .is_some_and(|number| (1..=9_007_199_254_740_991).contains(&number))
+        {
+            return Err(readiness::ERROR.into());
+        }
+        memory::timestamp(&version["createdAt"]).map_err(|_| readiness::ERROR)?;
+        readiness::validate_snapshot(
+            receipt,
+            version.get("evidenceBundle"),
+            readiness::SnapshotBinding {
+                ticker: version["task"]["ticker"].as_str().unwrap_or_default(),
+                analysis_date: version["task"]["analysisDate"].as_str().unwrap_or_default(),
+                analysts: &version["task"]["analysts"],
+                run_id: Some(version["runId"].as_str().ok_or(readiness::ERROR)?),
+                completed: true,
+                decision: version["decision"].as_str().unwrap_or_default(),
+                reports: &version["reportSections"],
+                memory: version.get("memoryBundle"),
+            },
+        )?;
+    }
+    Ok(())
+}
+fn validate_task_readiness(task: &AnalysisTaskRecord) -> Result<(), String> {
+    readiness::validate_fields(
+        task.research_readiness.as_ref(),
+        task.readiness_validation.as_ref(),
+    )?;
+    let mut hashes = std::collections::BTreeMap::new();
+    if let Some(receipt) = &task.research_readiness {
+        readiness::validate_snapshot(
+            receipt,
+            task.evidence_bundle.as_ref(),
+            readiness::SnapshotBinding {
+                ticker: &task.ticker,
+                analysis_date: &task.analysis_date,
+                analysts: &task.analysts,
+                run_id: None,
+                completed: task.status == "completed",
+                decision: &task.decision,
+                reports: &task.report_sections,
+                memory: task.memory_bundle.as_ref(),
+            },
+        )?;
+        hashes.insert(
+            receipt["run_id"].as_str().ok_or(readiness::ERROR)?,
+            receipt["assessment_sha256"]
+                .as_str()
+                .ok_or(readiness::ERROR)?,
+        );
+    }
+    if let Some(versions) = task.report_versions.as_array() {
+        for version in versions {
+            validate_version_readiness(version)?;
+            if let Some(receipt) = version.get("researchReadiness") {
+                let run_id = receipt["run_id"].as_str().ok_or(readiness::ERROR)?;
+                let hash = receipt["assessment_sha256"]
+                    .as_str()
+                    .ok_or(readiness::ERROR)?;
+                if hashes
+                    .insert(run_id, hash)
+                    .is_some_and(|saved| saved != hash)
+                {
+                    return Err(readiness::ERROR.into());
+                }
+            }
+        }
+    } else if task.research_readiness.is_some() {
+        return Err(readiness::ERROR.into());
     }
     Ok(())
 }
@@ -1044,6 +1207,7 @@ fn load_evidence_bundle(conn: &Connection, hash: &str) -> rusqlite::Result<Value
 }
 
 fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+    validate_task_readiness(task)?;
     validate_memory_fields(
         task.memory_bundle.as_ref(),
         task.memory_validation.as_ref(),
@@ -1146,6 +1310,17 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
         .as_ref()
         .map(|bundle| memory_store::store_bundle(conn, bundle))
         .transpose()?;
+    let readiness_hash = task
+        .research_readiness
+        .as_ref()
+        .map(|receipt| {
+            readiness_store::store(
+                conn,
+                receipt,
+                task.evidence_bundle.as_ref().ok_or(readiness::ERROR)?,
+            )
+        })
+        .transpose()?;
     let previous_memory_hash: Option<Option<String>> = conn
         .query_row(
             "SELECT memory_bundle_sha256 FROM tasks WHERE id=?1",
@@ -1164,8 +1339,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     conn.execute(
         "INSERT INTO tasks (
             id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
-            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)
+            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26)
          ON CONFLICT(id) DO UPDATE SET
             origin = excluded.origin,
             ticker = excluded.ticker,
@@ -1188,7 +1363,9 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             evidence_bundle_sha256 = excluded.evidence_bundle_sha256,
             evidence_validation = excluded.evidence_validation,
             memory_bundle_sha256 = excluded.memory_bundle_sha256,
-            memory_validation = excluded.memory_validation",
+            memory_validation = excluded.memory_validation,
+            readiness_assessment_sha256 = excluded.readiness_assessment_sha256,
+            readiness_validation = excluded.readiness_validation",
         params![
             task.id,
             task.origin,
@@ -1214,6 +1391,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             task.evidence_validation.as_ref().map(json_string).transpose()?,
             memory_hash,
             task.memory_validation.as_ref().map(json_string).transpose()?,
+            readiness_hash,
+            task.readiness_validation.as_ref().map(json_string).transpose()?,
         ],
     )
     .map_err(|error| error.to_string())?;
@@ -1273,6 +1452,20 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     if let Value::Array(versions) = &task.report_versions {
         for version in versions {
             let mut version = normalize_report_version_quality(version.clone());
+            let readiness_hash = version
+                .get("researchReadiness")
+                .map(|receipt| {
+                    readiness_store::store(
+                        conn,
+                        receipt,
+                        version.get("evidenceBundle").ok_or(readiness::ERROR)?,
+                    )
+                })
+                .transpose()?;
+            version
+                .as_object_mut()
+                .ok_or(readiness::ERROR)?
+                .remove("researchReadiness");
             let reviews = version
                 .as_object_mut()
                 .and_then(|map| map.remove("evaluationReviews"));
@@ -1310,8 +1503,17 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             if id.is_empty() || run_id.is_empty() || version_number < 1 || created_at.is_empty() {
                 continue;
             }
-            let existing: Option<(String, Option<String>, Option<String>, String)> = conn.query_row("SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,task_id FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?,row.get(3)?))).optional().map_err(|error| error.to_string())?;
-            if let Some((snapshot, hash, saved_memory_hash, saved_task)) = existing {
+            type FrozenVersionRow = (
+                String,
+                Option<String>,
+                Option<String>,
+                String,
+                Option<String>,
+            );
+            let existing: Option<FrozenVersionRow> = conn.query_row("SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,task_id,readiness_assessment_sha256 FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?,row.get(3)?,row.get(4)?))).optional().map_err(|error| error.to_string())?;
+            if let Some((snapshot, hash, saved_memory_hash, saved_task, saved_readiness_hash)) =
+                existing
+            {
                 let mut saved = normalize_report_version_quality(
                     serde_json::from_str::<Value>(&snapshot)
                         .map_err(|_| "Invalid saved report version")?,
@@ -1328,6 +1530,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                 if saved != frozen
                     || hash != evidence_hash
                     || saved_memory_hash != memory_hash
+                    || saved_readiness_hash != readiness_hash
                     || saved_task != task.id
                 {
                     return Err("A frozen report version cannot be changed".into());
@@ -1335,8 +1538,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             }
             conn.execute(
                 "INSERT OR IGNORE INTO task_report_versions
-                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256, memory_bundle_sha256)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256, memory_bundle_sha256, readiness_assessment_sha256)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 params![
                     id,
                     task.id,
@@ -1346,6 +1549,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     json_string(&version)?,
                     evidence_hash,
                     memory_hash,
+                    readiness_hash,
                 ],
             )
             .map_err(|error| error.to_string())?;
@@ -1721,6 +1925,313 @@ mod tests {
         upsert_task(&transaction, task)?;
         prune_evidence(&transaction)?;
         transaction.commit().map_err(|_| memory::ERROR.into())
+    }
+
+    fn readiness_task_fixture() -> AnalysisTaskRecord {
+        let receipt = readiness::test_support::receipt();
+        let evidence = readiness::test_support::evidence();
+        let reports =
+            serde_json::json!({"final_trade_decision":"Rating: Hold\nFictional research."});
+        let version = serde_json::json!({"id":"readiness-version","runId":receipt["run_id"],"versionNumber":1,"createdAt":"2026-01-09T10:05:00.000000Z","legacy":false,"task":{"ticker":receipt["instrument"],"analysisDate":receipt["analysis_date"],"assetType":"stock","analysts":receipt["policy"]["selected_analysts"]},"decision":"Hold","reportSections":reports,"evidenceBundle":evidence,"researchReadiness":receipt});
+        let mut task = quality_task_fixture(Value::Null, version);
+        task.ticker = receipt["instrument"].as_str().unwrap().into();
+        task.analysis_date = receipt["analysis_date"].as_str().unwrap().into();
+        task.analysts = receipt["policy"]["selected_analysts"].clone();
+        task.decision = "Hold".into();
+        task.report_sections = reports;
+        task.evidence_bundle = Some(evidence);
+        task.research_readiness = Some(receipt);
+        task
+    }
+    fn withheld_memory_task_fixture(text: &str, rating: &str) -> AnalysisTaskRecord {
+        use readiness::test_support::{assess, receipt, rehash, rehash_evidence};
+        let (mut task, mut bundle) = memory_task_fixture();
+        let decision = &bundle["decision_snapshot"]["decision"];
+        let mut policy = receipt()["policy"].clone();
+        policy["research_started_at"] = decision["research_started_at"].clone();
+        policy["research_as_of"] = decision["research_as_of"].clone();
+        policy["research_calendar_date"] = decision["analysis_calendar_date"].clone();
+        policy["host_utc_offset"] = decision["host_utc_offset"].clone();
+        rehash(&mut policy, "policy_sha256");
+        let evidence = task.evidence_bundle.as_mut().unwrap();
+        evidence["manifest"]["max_tool_rounds"] = policy["max_tool_rounds"].clone();
+        evidence["manifest"]["research_readiness_policy_sha256"] = policy["policy_sha256"].clone();
+        rehash_evidence(evidence);
+        let receipt = assess(evidence, &policy);
+        let snapshot = &mut bundle["decision_snapshot"];
+        let old_hash = snapshot["decision"]["decision_text_sha256"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let artifact = memory::test_support::artifact("text", text);
+        let hash = artifact["sha256"].as_str().unwrap().to_string();
+        snapshot["artifacts"]
+            .as_object_mut()
+            .unwrap()
+            .remove(&old_hash);
+        snapshot["artifacts"]
+            .as_object_mut()
+            .unwrap()
+            .insert(hash.clone(), artifact);
+        snapshot["contract"]["decision_text_sha256"] = hash.clone().into();
+        rehash(&mut snapshot["contract"], "contract_sha256");
+        snapshot["decision"]["contract_sha256"] = snapshot["contract"]["contract_sha256"].clone();
+        snapshot["decision"]["decision_text_sha256"] = hash.into();
+        snapshot["decision"]["rating"] = rating.into();
+        snapshot["decision"]["evidence_bundle_sha256"] = evidence["bundle_sha256"].clone();
+        rehash(&mut snapshot["decision"], "decision_sha256");
+        rehash(snapshot, "snapshot_sha256");
+        bundle["evidence_bundle_sha256"] = evidence["bundle_sha256"].clone();
+        rehash(&mut bundle, "bundle_sha256");
+        task.memory_bundle = Some(bundle.clone());
+        task.research_readiness = Some(receipt.clone());
+        task.analysts = policy["selected_analysts"].clone();
+        task.decision = rating.into();
+        task.report_sections = serde_json::json!({"final_trade_decision":text});
+        task.report_versions[0]["task"]["analysts"] = task.analysts.clone();
+        task.report_versions[0]["decision"] = rating.into();
+        task.report_versions[0]["reportSections"] = task.report_sections.clone();
+        task.report_versions[0]["memoryBundle"] = bundle;
+        task.report_versions[0]["evidenceBundle"] = evidence.clone();
+        task.report_versions[0]["researchReadiness"] = receipt;
+        task
+    }
+
+    #[test]
+    fn readiness_v7_upgrade_preserves_saved_memory_and_keeps_legacy_status_unknown() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (task, _) = memory_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        conn.execute_batch(
+            "DROP TABLE research_readiness_receipts;
+            ALTER TABLE tasks DROP COLUMN readiness_assessment_sha256;
+            ALTER TABLE tasks DROP COLUMN readiness_validation;
+            ALTER TABLE task_report_versions DROP COLUMN readiness_assessment_sha256;
+            DELETE FROM schema_migrations WHERE version=8;
+            INSERT OR IGNORE INTO schema_migrations(version) VALUES(7);",
+        )
+        .unwrap();
+        initialize_schema(&conn).unwrap();
+        initialize_schema(&conn).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].memory_bundle, task.memory_bundle);
+        assert_eq!(loaded[0].evidence_bundle, task.evidence_bundle);
+        assert_eq!(loaded[0].report_versions, task.report_versions);
+        assert!(loaded[0].research_readiness.is_none() && loaded[0].readiness_validation.is_none());
+        assert!(loaded[0].report_versions[0]
+            .get("researchReadiness")
+            .is_none());
+        assert!(loaded[0].report_versions[0]
+            .get("readinessValidation")
+            .is_none());
+    }
+    #[test]
+    fn readiness_v8_save_reload_deduplicates_and_keeps_frozen_receipts_after_rerun() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        initialize_schema(&conn).unwrap();
+        let mut task = readiness_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].research_readiness, task.research_readiness);
+        assert_eq!(loaded[0].evidence_bundle, task.evidence_bundle);
+        assert_eq!(loaded[0].report_versions[0], task.report_versions[0]);
+        assert_eq!(
+            conn.query_row(
+                "SELECT COUNT(*) FROM research_readiness_receipts",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+            1
+        );
+        let raw: String = conn
+            .query_row("SELECT snapshot FROM task_report_versions", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert!(!raw.contains("researchReadiness") && !raw.contains("124.07345678901234"));
+        task.status = "running".into();
+        task.research_readiness = None;
+        task.evidence_bundle = None;
+        task.decision = String::new();
+        task.report_sections = serde_json::json!({});
+        save_test_task(&mut conn, &task).unwrap();
+        let rerun = load_tasks_from_conn(&conn).unwrap();
+        assert!(rerun[0].research_readiness.is_none());
+        assert_eq!(rerun[0].report_versions[0], task.report_versions[0]);
+        conn.execute("DELETE FROM tasks", []).unwrap();
+        prune_evidence(&conn).unwrap();
+        assert_eq!(
+            conn.query_row(
+                "SELECT COUNT(*) FROM research_readiness_receipts",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+    }
+    #[test]
+    fn readiness_withheld_requires_first_text_task_version_and_memory_review_rating() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let task = withheld_memory_task_fixture(
+            "Rating: REVIEW\nFictional missing verification.",
+            "REVIEW",
+        );
+        assert_eq!(
+            task.research_readiness.as_ref().unwrap()["status"],
+            "insufficient_evidence"
+        );
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].research_readiness, task.research_readiness);
+        assert_eq!(loaded[0].memory_bundle, task.memory_bundle);
+        assert_eq!(loaded[0].report_versions[0], task.report_versions[0]);
+        for text in [
+            "Rating: Buy\nRating: REVIEW",
+            "Ｒａｔｉｎｇ： Ｂｕｙ\nRating: REVIEW",
+            "Rating: REVIEW or Buy\nRating: REVIEW",
+            "Ratİng: Buy\nRating: REVIEW",
+            "١. Rating: Buy\nRating: REVIEW",
+            "Rating: Hold\u{338}\nRating: REVIEW",
+            "Rating: REVİEW\nRating: REVIEW",
+        ] {
+            let mut conn = Connection::open_in_memory().unwrap();
+            initialize_schema(&conn).unwrap();
+            let task = withheld_memory_task_fixture(text, "REVIEW");
+            memory::validate_report_binding(
+                task.memory_bundle.as_ref().unwrap(),
+                &task.decision,
+                &task.report_sections,
+            )
+            .unwrap();
+            assert!(save_test_task(&mut conn, &task).is_err());
+            assert!(load_tasks_from_conn(&conn).unwrap().is_empty());
+        }
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        assert!(save_test_task(
+            &mut conn,
+            &withheld_memory_task_fixture("Rating: REVIEW", "Buy")
+        )
+        .is_err());
+    }
+    #[test]
+    fn readiness_explicit_invalid_markers_are_saved_and_contradictions_are_rejected() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let mut task = readiness_task_fixture();
+        task.report_versions[0]["readinessValidation"] =
+            serde_json::json!({"status":"invalid","reason":"malformed"});
+        assert!(save_test_task(&mut conn, &task).is_err());
+        assert!(load_tasks_from_conn(&conn).unwrap().is_empty());
+        task.report_versions[0]
+            .as_object_mut()
+            .unwrap()
+            .remove("readinessValidation");
+        task.readiness_validation =
+            Some(serde_json::json!({"status":"invalid","reason":"hash_mismatch"}));
+        assert!(save_test_task(&mut conn, &task).is_err());
+        assert!(load_tasks_from_conn(&conn).unwrap().is_empty());
+        task.research_readiness = None;
+        task.report_versions = serde_json::json!([]);
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].readiness_validation, task.readiness_validation);
+        assert!(loaded[0].research_readiness.is_none());
+        task.readiness_validation.as_mut().unwrap()["error"] = "private body".into();
+        assert!(save_test_task(&mut conn, &task).is_err());
+    }
+    #[test]
+    fn readiness_frozen_runtime_settings_bind_policy_on_save_and_reload() {
+        for (key, value) in [
+            (
+                "research_readiness_policy_sha256",
+                serde_json::json!("a".repeat(64)),
+            ),
+            ("max_tool_rounds", serde_json::json!(99)),
+            ("analysts", serde_json::json!(["market", "news"])),
+        ] {
+            let mut conn = Connection::open_in_memory().unwrap();
+            initialize_schema(&conn).unwrap();
+            let mut task = readiness_task_fixture();
+            let receipt = task.research_readiness.as_ref().unwrap();
+            task.report_versions[0]["run"] = serde_json::json!({"runtimeRunSettings":{
+                "research_readiness_policy_sha256":receipt["policy"]["policy_sha256"],
+                "max_tool_rounds":receipt["policy"]["max_tool_rounds"],
+                "analysts":receipt["policy"]["selected_analysts"]}});
+            let mut bad = readiness_task_fixture();
+            bad.report_versions = task.report_versions.clone();
+            bad.report_versions[0]["run"]["runtimeRunSettings"][key] = value.clone();
+            assert!(save_test_task(&mut conn, &bad).is_err(), "{key}");
+            assert!(load_tasks_from_conn(&conn).unwrap().is_empty());
+            save_test_task(&mut conn, &task).unwrap();
+            assert_eq!(
+                load_tasks_from_conn(&conn).unwrap()[0].report_versions,
+                task.report_versions
+            );
+            let raw: String = conn
+                .query_row("SELECT snapshot FROM task_report_versions", [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            let mut changed = memory::parse_json(&raw).unwrap();
+            changed["run"]["runtimeRunSettings"][key] = value;
+            conn.execute(
+                "UPDATE task_report_versions SET snapshot=?1",
+                params![json_string(&changed).unwrap()],
+            )
+            .unwrap();
+            assert!(load_tasks_from_conn(&conn).is_err(), "{key}");
+        }
+    }
+    #[test]
+    fn readiness_same_uuid_has_one_assessment_across_different_owners_and_versions() {
+        use readiness::test_support::{assess, rehash, rehash_evidence};
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let mut task = readiness_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        let original = load_tasks_from_conn(&conn).unwrap()[0]
+            .research_readiness
+            .clone();
+        task.id = "different-owner".into();
+        task.report_versions[0]["id"] = "different-version".into();
+        let mut policy = task.research_readiness.as_ref().unwrap()["policy"].clone();
+        policy["max_tool_rounds"] = 21.into();
+        rehash(&mut policy, "policy_sha256");
+        let evidence = task.evidence_bundle.as_mut().unwrap();
+        evidence["manifest"]["max_tool_rounds"] = 21.into();
+        evidence["manifest"]["research_readiness_policy_sha256"] = policy["policy_sha256"].clone();
+        rehash_evidence(evidence);
+        let receipt = assess(evidence, &policy);
+        readiness::validate_receipt(&receipt, evidence).unwrap();
+        task.research_readiness = Some(receipt.clone());
+        task.report_versions[0]["researchReadiness"] = receipt;
+        task.report_versions[0]["evidenceBundle"] = evidence.clone();
+        assert!(save_test_task(&mut conn, &task).is_err());
+        assert_eq!(load_tasks_from_conn(&conn).unwrap().len(), 1);
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].research_readiness,
+            original
+        );
+    }
+    #[test]
+    fn readiness_corruption_in_payload_identity_and_version_columns_fails_reload() {
+        for change in [
+            "UPDATE research_readiness_receipts SET payload='{}'",
+            "UPDATE research_readiness_receipts SET run_id='33333333-3333-4333-8333-333333333333'",
+            "UPDATE task_report_versions SET run_id='33333333-3333-4333-8333-333333333333'",
+        ] {
+            let mut conn = Connection::open_in_memory().unwrap();
+            initialize_schema(&conn).unwrap();
+            save_test_task(&mut conn, &readiness_task_fixture()).unwrap();
+            conn.execute(change, []).unwrap();
+            assert!(load_tasks_from_conn(&conn).is_err());
+        }
     }
     #[test]
     fn memory_v7_reload_keeps_exact_artifacts_and_freezes_versions_across_reruns() {

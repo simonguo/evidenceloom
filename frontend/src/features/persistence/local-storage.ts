@@ -10,6 +10,7 @@ import { ensureLegacyReportVersion } from "@/features/report-export/lib/versioni
 import { normalizeTaskOutputQuality } from "@/features/output-quality/lib/quality";
 import { normalizeTaskEvidence, verifyTaskEvidence } from "@/features/evidence/lib/validation";
 import { normalizeTaskMemory, verifyTaskMemory } from "@/features/memory/lib/validation";
+import { normalizeReadinessTasks, verifyReadinessTasks } from "@/features/research-readiness/lib/validation";
 import type { AnalysisForm, AnalysisTask, GlobalSettings } from "@/lib/types";
 
 const settingsStorageKey = "evidenceloom.globalSettings.v1";
@@ -59,12 +60,12 @@ export function loadTasks(): AnalysisTask[] {
 
 export function saveTasks(tasks: AnalysisTask[]) {
   if (typeof window === "undefined") return;
-  const safe = tasks.map(normalizeTaskOutputQuality).map(normalizeTaskEvidence).map(normalizeTaskMemory);
+  const safe = normalizeReadinessTasks(tasks.map(normalizeTaskOutputQuality).map(normalizeTaskEvidence).map(normalizeTaskMemory));
   window.localStorage.setItem(tasksStorageKey, JSON.stringify(safe));
 }
 
 export async function saveVerifiedTasks(tasks: AnalysisTask[]) {
-  const safe = await Promise.all(tasks.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task))));
+  const safe = await verifyReadinessTasks(await Promise.all(tasks.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))));
   saveTasks(safe);
 }
 
@@ -122,7 +123,7 @@ export function stripSecretFields<T extends { apiKey?: string; alphaVantageApiKe
 }
 
 function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
-  return tasks.map((task) => {
+  return normalizeReadinessTasks(tasks.map((task) => {
     const status = task.status === "running" ? "stopped" : task.status;
     const normalized: AnalysisTask = {
       ...createEmptyTask({
@@ -150,7 +151,7 @@ function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
       reportVersions: task.reportVersions ?? [],
     };
     return normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality(ensureLegacyReportVersion(normalized))));
-  });
+  }));
 }
 
 function firstJson<T>(keys: string[]): T | undefined {

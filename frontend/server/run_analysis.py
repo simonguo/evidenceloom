@@ -392,6 +392,8 @@ def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
         compact["evidence_bundle"] = validate_evidence_bundle(final_state["evidence_bundle"])
     if final_state.get("memory_bundle"):
         compact["memory_bundle"] = validate_memory_bundle(final_state["memory_bundle"])
+    if final_state.get("research_readiness"):
+        compact["research_readiness"] = final_state["research_readiness"]
     return compact
 
 
@@ -610,6 +612,11 @@ def run(payload: Dict[str, Any]) -> None:
                 **(
                     {"memoryBundle": validate_memory_bundle(final_state["memory_bundle"])}
                     if final_state.get("memory_bundle")
+                    else {}
+                ),
+                **(
+                    {"researchReadiness": final_state["research_readiness"]}
+                    if final_state.get("research_readiness")
                     else {}
                 ),
                 "finalState": compact_final_state(final_state),

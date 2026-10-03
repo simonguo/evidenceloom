@@ -26,6 +26,7 @@ import { StatusPill } from "@/components/task-center/components/StatusPill";
 import { EventStream } from "@/components/task-center/components/EventStream";
 import { DecisionSummaryCard } from "@/components/task-center/components/DecisionSummaryCard";
 import { ReportVersionsPanel } from "@/features/report-export";
+import { ReadinessInspector } from "@/features/research-readiness/components/ReadinessInspector";
 import { MemoryInspector } from "@/features/memory/components/MemoryInspector";
 import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
 import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
@@ -257,6 +258,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                 onOpen={() => openAgentDrawer("Portfolio Manager")}
               />
               <OutputQualityPanel quality={task.outputQuality} language={settings.systemLanguage} />
+              <ReadinessInspector snapshot={task} language={settings.systemLanguage} />
               <EvidenceInspector bundle={task.evidenceBundle} invalid={task.evidenceValidation} reports={task.reportSections} checkReportCitations={task.status === "completed"} language={settings.systemLanguage} />
               <MemoryInspector snapshot={task} language={settings.systemLanguage} />
             </div>

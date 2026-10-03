@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+  "instrument": "FICT",
+  "analysis_date": "2026-01-09",
+  "policy": {
+    "schema_version": 1,
+    "policy_version": "research-readiness-v1",
+    "selected_analysts": [
+      "market"
+    ],
+    "required_checks": [
+      "temporal_availability",
+      "market_verification",
+      "indicator_warmup",
+      "selected_sources.market"
+    ],
+    "research_started_at": "2026-01-09T09:00:00.000000Z",
+    "research_as_of": "2026-01-09T23:59:59.999999Z",
+    "research_calendar_date": "2026-01-09",
+    "host_utc_offset": "+00:00",
+    "temporal_mode": "same_host_date",
+    "max_tool_rounds": 20,
+    "max_complete_row_age_days": 3,
+    "required_indicators": [
+      "close_10_ema",
+      "close_50_sma",
+      "close_200_sma",
+      "rsi",
+      "boll",
+      "boll_ub",
+      "boll_lb",
+      "macd",
+      "macds",
+      "macdh",
+      "atr"
+    ],
+    "policy_sha256": "0fe4d4c13dd390ee1e11d565312e112b5a9db03c159841e8fd001af7f6dfbb27"
+  },
+  "evidence_inputs": [
+    {
+      "record_id": "ev-ea6ca02c72344956acdd59b967ffce61",
+      "output_sha256": "66412925da3511803fdceec980e845fb58de3b05f1bc2dcc0da0d320ad6d8827",
+      "data_sha256s": [
+        "9f7aa398716f220aa83bf2ba5e83343e550bb3c140ad3bc93328d48e7e967fe8",
+        "afbf02c97997350f298fb92862037fed40f4fcdd9868711532c269b80cc98a4a",
+        "d80e576b9f72cc0a51a455262c6ca3544b54cf96907d6da9a0ebd12327330a91"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "key": "temporal_availability",
+      "required": true,
+      "status": "passed",
+      "reason_codes": [],
+      "evidence_ids": [
+        "ev-ea6ca02c72344956acdd59b967ffce61"
+      ],
+      "artifact_sha256s": [
+        "9f7aa398716f220aa83bf2ba5e83343e550bb3c140ad3bc93328d48e7e967fe8",
+        "afbf02c97997350f298fb92862037fed40f4fcdd9868711532c269b80cc98a4a",
+        "d80e576b9f72cc0a51a455262c6ca3544b54cf96907d6da9a0ebd12327330a91"
+      ]
+    },
+    {
+      "key": "market_verification",
+      "required": true,
+      "status": "passed",
+      "reason_codes": [],
+      "evidence_ids": [
+        "ev-ea6ca02c72344956acdd59b967ffce61"
+      ],
+      "artifact_sha256s": [
+        "9f7aa398716f220aa83bf2ba5e83343e550bb3c140ad3bc93328d48e7e967fe8",
+        "afbf02c97997350f298fb92862037fed40f4fcdd9868711532c269b80cc98a4a",
+        "d80e576b9f72cc0a51a455262c6ca3544b54cf96907d6da9a0ebd12327330a91"
+      ]
+    },
+    {
+      "key": "indicator_warmup",
+      "required": true,
+      "status": "passed",
+      "reason_codes": [],
+      "evidence_ids": [
+        "ev-ea6ca02c72344956acdd59b967ffce61"
+      ],
+      "artifact_sha256s": [
+        "9f7aa398716f220aa83bf2ba5e83343e550bb3c140ad3bc93328d48e7e967fe8",
+        "afbf02c97997350f298fb92862037fed40f4fcdd9868711532c269b80cc98a4a",
+        "d80e576b9f72cc0a51a455262c6ca3544b54cf96907d6da9a0ebd12327330a91"
+      ]
+    },
+    {
+      "key": "selected_sources.market",
+      "required": true,
+      "status": "passed",
+      "reason_codes": [],
+      "evidence_ids": [
+        "ev-ea6ca02c72344956acdd59b967ffce61"
+      ],
+      "artifact_sha256s": [
+        "9f7aa398716f220aa83bf2ba5e83343e550bb3c140ad3bc93328d48e7e967fe8",
+        "afbf02c97997350f298fb92862037fed40f4fcdd9868711532c269b80cc98a4a",
+        "d80e576b9f72cc0a51a455262c6ca3544b54cf96907d6da9a0ebd12327330a91"
+      ]
+    },
+    {
+      "key": "price_vintage",
+      "required": false,
+      "status": "unknown",
+      "reason_codes": [
+        "unknown_price_vintage"
+      ],
+      "evidence_ids": [
+        "ev-ea6ca02c72344956acdd59b967ffce61"
+      ],
+      "artifact_sha256s": [
+        "9f7aa398716f220aa83bf2ba5e83343e550bb3c140ad3bc93328d48e7e967fe8",
+        "afbf02c97997350f298fb92862037fed40f4fcdd9868711532c269b80cc98a4a",
+        "d80e576b9f72cc0a51a455262c6ca3544b54cf96907d6da9a0ebd12327330a91"
+      ]
+    },
+    {
+      "key": "exchange_calendar_coverage",
+      "required": false,
+      "status": "unknown",
+      "reason_codes": [
+        "unknown_exchange_calendar"
+      ],
+      "evidence_ids": [
+        "ev-ea6ca02c72344956acdd59b967ffce61"
+      ],
+      "artifact_sha256s": [
+        "9f7aa398716f220aa83bf2ba5e83343e550bb3c140ad3bc93328d48e7e967fe8",
+        "afbf02c97997350f298fb92862037fed40f4fcdd9868711532c269b80cc98a4a",
+        "d80e576b9f72cc0a51a455262c6ca3544b54cf96907d6da9a0ebd12327330a91"
+      ]
+    }
+  ],
+  "status": "ready",
+  "recommendation_allowed": true,
+  "assessment_sha256": "7733d0e3c887658d4214b3584e5b332839c18763b7bd80f165bdf58d0a1fdf39"
+}

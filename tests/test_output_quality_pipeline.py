@@ -25,9 +25,10 @@ def test_full_graph_logs_each_agent_format_status(tmp_path, monkeypatch, request
     graph = _graph(tmp_path, monkeypatch, ScriptedModel(structured=structured))
     state, rating = graph.propagate("NVDA", TRADE_DATE)
 
-    assert rating == "Overweight"
+    assert rating == "REVIEW"
+    assert not state["research_readiness"]["recommendation_allowed"]
     quality = state["output_quality"]
-    assert set(quality) == set(OUTPUT_SCHEMAS)
+    assert set(quality) == set(OUTPUT_SCHEMAS) - {"portfolio_manager"}
     for agent, record in quality.items():
         assert record["schema"] == OUTPUT_SCHEMAS[agent]
         if structured:
@@ -62,7 +63,9 @@ def test_other_parallel_analysts_cannot_restore_stale_sentiment_quality(
     with run_config(graph.config):
         state = graph.graph.invoke(initial, **graph.propagator.get_graph_args())
 
-    assert state["output_quality"] == {agent: validated(agent) for agent in OUTPUT_SCHEMAS}
+    assert state["output_quality"] == {
+        agent: validated(agent) for agent in OUTPUT_SCHEMAS if agent != "portfolio_manager"
+    }
 
 
 def test_checkpoint_keeps_validated_records_without_repeating_finished_agents(
@@ -82,7 +85,9 @@ def test_checkpoint_keeps_validated_records_without_repeating_finished_agents(
         }
 
     state, _ = graph.propagate("NVDA", TRADE_DATE)
-    assert state["output_quality"] == {agent: validated(agent) for agent in OUTPUT_SCHEMAS}
+    assert state["output_quality"] == {
+        agent: validated(agent) for agent in OUTPUT_SCHEMAS if agent != "portfolio_manager"
+    }
     assert len(model.calls) - calls_before < calls_before
     assert graph._checkpointer_ctx is None
 
@@ -91,7 +96,7 @@ def test_desktop_events_keep_earlier_records_and_completed_snapshot_agrees(reque
     _, events, _ = request.getfixturevalue("bridge")
     runner.run(payload(analysts=["market", "social", "news", "fundamentals"]))
     completed = next(event for event in events if event["type"] == "completed")
-    quality = {agent: validated(agent) for agent in OUTPUT_SCHEMAS}
+    quality = {agent: validated(agent) for agent in OUTPUT_SCHEMAS if agent != "portfolio_manager"}
     assert completed["outputQuality"] == completed["finalState"]["output_quality"] == quality
     previous = {}
     for event in events:
@@ -117,7 +122,8 @@ def test_desktop_resume_exposes_saved_quality_before_new_decision(request):
     assert progress["outputQuality"] == {
         agent: validated(agent) for agent in ("sentiment", "research_manager", "trader")
     }
-    assert events[-1]["outputQuality"]["portfolio_manager"] == validated("portfolio_manager")
+    assert "portfolio_manager" not in events[-1]["outputQuality"]
+    assert not events[-1]["researchReadiness"]["recommendation_allowed"]
     assert len(model.calls) - calls_before < calls_before
 
 
@@ -125,7 +131,7 @@ def test_desktop_does_not_invent_a_quality_record_for_an_unselected_analyst(requ
     _, events, _ = request.getfixturevalue("bridge")
     runner.run(payload())
     assert events[-1]["outputQuality"] == {
-        agent: validated(agent) for agent in ("research_manager", "trader", "portfolio_manager")
+        agent: validated(agent) for agent in ("research_manager", "trader")
     }
 
 

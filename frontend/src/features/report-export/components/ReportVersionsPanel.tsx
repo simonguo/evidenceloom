@@ -3,6 +3,7 @@
 import { Download, FileCode2, FileText, Loader2 } from "lucide-react";
 import type { AnalysisTask, GlobalSettings, SystemLanguage } from "@/lib/types";
 import type { ReviewAttachment } from "@/features/memory/types";
+import { ReadinessInspector } from "@/features/research-readiness/components/ReadinessInspector";
 import { MemoryInspector } from "@/features/memory/components/MemoryInspector";
 import { useEvaluationReview } from "@/features/memory/hooks/useEvaluationReview";
 import { useReportExport } from "../hooks/useReportExport";
@@ -43,8 +44,8 @@ export function ReportVersionsPanel({
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
             {zh
-              ? "每次成功完成的分析都会冻结为只读版本。导出文件会离开本机，分享前请检查内容。"
-              : "Every successful run is frozen as a read-only version. Exported files leave this device; review them before sharing."}
+              ? "每次完成的研究运行都会冻结为只读版本；输入检查结果独立于运行完成。导出文件会离开本机，分享前请检查内容。"
+              : "Every completed research run is frozen as a read-only version; input-check results are separate from run completion. Exported files leave this device; review them before sharing."}
           </p>
         </div>
 
@@ -105,6 +106,7 @@ export function ReportVersionsPanel({
         <div className="mt-4 space-y-3">
           <OutputQualityPanel quality={selectedVersion.outputQuality} language={language} />
           <EvidenceInspector bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
+          <ReadinessInspector snapshot={selectedVersion} language={language} />
           <MemoryInspector snapshot={selectedVersion} language={language} />
           <details key={selectedVersion.id} className="rounded-lg border border-zinc-800 p-4">
             <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">

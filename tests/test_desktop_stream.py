@@ -41,7 +41,9 @@ def test_desktop_stream_preserves_parallel_progress_tools_rating_and_manifest(br
     runner.run(payload())
 
     result = next(event for event in events if event["type"] == "completed")
-    assert result["decision"] == result["finalState"]["final_rating"] == "Overweight"
+    assert result["decision"] == result["finalState"]["final_rating"] == "REVIEW"
+    assert result["researchReadiness"] == result["finalState"]["research_readiness"]
+    assert not result["researchReadiness"]["recommendation_allowed"]
     assert result["runSettings"]["core_version"] == "0.2.5"
     assert result["runSettings"]["analyst_concurrency_limit"] == 2
     assert not {"backend_url", "api_key", "memory_log_path"}.intersection(result["runSettings"])
@@ -66,7 +68,7 @@ def test_desktop_stream_preserves_parallel_progress_tools_rating_and_manifest(br
     store = graphs[0]._research_memory().store
     memory = result["memoryBundle"]
     assert store.load_bundle(memory["run_id"]) == memory == result["finalState"]["memory_bundle"]
-    assert memory["decision_snapshot"]["decision"]["rating"] == "Overweight"
+    assert memory["decision_snapshot"]["decision"]["rating"] == "REVIEW"
     assert memory["evidence_bundle_sha256"] == result["evidenceBundle"]["bundle_sha256"]
     assert memory["decision_snapshot"]["contract"]["evaluation_mode"] == "not_evaluable"
     assert graphs[0].memory_log.load_entries() == []

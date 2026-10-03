@@ -174,7 +174,12 @@ def test_a_full_run_reaches_a_logged_decision(tmp_path, monkeypatch, offline, st
 
     state, signal = graph.propagate("NVDA", TRADE_DATE)
 
-    assert signal == state["final_rating"] == "Overweight"
+    assert signal == state["final_rating"] == "REVIEW"
+    assert not state["research_readiness"]["recommendation_allowed"]
+    assert (
+        "historical_availability_unknown"
+        in state["research_readiness"]["checks"][0]["reason_codes"]
+    )
     for key in (
         "market_report",
         "sentiment_report",
@@ -200,7 +205,7 @@ def test_a_full_run_reaches_a_logged_decision(tmp_path, monkeypatch, offline, st
     assert offline == tool_methods
     memory = state["memory_bundle"]
     assert graph._research_memory().store.load_bundle(memory["run_id"]) == memory
-    assert memory["decision_snapshot"]["decision"]["rating"] == "Overweight"
+    assert memory["decision_snapshot"]["decision"]["rating"] == "REVIEW"
     assert memory["evidence_bundle_sha256"] == state["evidence_bundle"]["bundle_sha256"]
     assert graph.memory_log.load_entries() == []
 
@@ -215,11 +220,12 @@ def test_an_interrupted_run_resumes_from_its_checkpoint(tmp_path, monkeypatch, o
 
     _, signal = graph.propagate("NVDA", TRADE_DATE)
 
-    assert signal == "Overweight"
+    assert signal == "REVIEW"
     resumed_calls = len(model.calls) - calls_before
     full_run = ScriptedModel()
     _graph(tmp_path / "fresh", monkeypatch, full_run).propagate("NVDA", TRADE_DATE)
-    # The resumed run makes only the calls the interrupted one had not completed.
+    # The resumed run makes only the calls the interrupted one had not completed;
+    # unknown historical inputs withhold the Portfolio Manager call.
     assert resumed_calls == len(full_run.calls) - (model.fail_at - 1)
 
 
@@ -243,7 +249,7 @@ def test_a_debug_run_prints_the_analysts_work_and_reaches_the_same_decision(
 
     state, signal = graph.propagate("NVDA", TRADE_DATE)
 
-    assert signal == "Overweight"
+    assert signal == "REVIEW"
     assert state["market_report"].strip() and state["fundamentals_report"].strip()
     printed = capsys.readouterr().out
     assert "get_stock_data" in printed and "get_balance_sheet" in printed
@@ -338,7 +344,11 @@ def test_an_analyst_that_keeps_calling_tools_writes_its_report_at_the_limit(
     assert len(model.tool_turns) == 3 * 3  # three tool-using analysts, three rounds each
     for key in ("market_report", "news_report", "fundamentals_report"):
         assert final_state[key] == TEXT
-    assert rating == "Overweight"
+    assert rating == "REVIEW"
+    assert (
+        "missing_required_verification"
+        in final_state["research_readiness"]["checks"][1]["reason_codes"]
+    )
 
 
 @pytest.mark.unit

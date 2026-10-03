@@ -141,7 +141,7 @@ fn safe(value: &Value, depth: usize, integers_only: bool) -> Check {
         _ => Ok(()),
     }
 }
-fn bounded(value: &Value) -> Check {
+pub(crate) fn bounded(value: &Value) -> Check {
     safe(value, 0, true)?;
     ensure(canonical_json(value)?.len() <= MAX_BYTES)
 }
@@ -265,7 +265,7 @@ pub fn parse_json(raw: &str) -> Result<Value, String> {
         .map_err(|_| ERROR.into())
 }
 
-fn day(value: &str) -> Option<i64> {
+pub(crate) fn day(value: &str) -> Option<i64> {
     let bytes = value.as_bytes();
     if bytes.len() != 10
         || bytes[4] != b'-'
@@ -338,7 +338,7 @@ pub fn timestamp(value: &Value) -> Result<i64, String> {
     };
     Ok((date * 86400 + hour * 3600 + minute * 60 + second) * 1_000_000 + micros)
 }
-fn offset(value: &Value) -> Result<i64, String> {
+pub(crate) fn offset(value: &Value) -> Result<i64, String> {
     let text = string(value)?;
     ensure(
         text.len() == 6

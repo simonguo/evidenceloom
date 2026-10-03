@@ -26,6 +26,7 @@ from tradingagents.agents.analysts.turn import WRAP_UP
 from tradingagents.agents.utils.agent_states import AgentState
 from tradingagents.agents.utils.output_quality import sanitize_output_quality
 from tradingagents.evidence import analyst_evidence, current_ledger
+from tradingagents.research.readiness import assess_readiness, validate_readiness, withheld_decision
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
@@ -172,6 +173,46 @@ class GraphSetup:
         conservative_analyst = create_conservative_debator(self.quick_thinking_llm)
         portfolio_manager_node = create_portfolio_manager(self.deep_thinking_llm)
 
+        def gated_portfolio_manager(state):
+            ledger = current_ledger()
+            evidence = ledger.bundle() if ledger is not None else state.get("evidence_bundle")
+            policy = state.get("research_readiness_policy")
+            if not evidence or not policy:
+                # Embedded callers without a frozen capture cannot establish
+                # input readiness from model prose or a completed execution.
+                text = (
+                    "Rating: REVIEW\n\nNo frozen research input contract is available. "
+                    "Earlier analyst reports and debate require human review."
+                )
+                return {
+                    "final_rating": "REVIEW",
+                    "final_trade_decision": text,
+                    "risk_debate_state": {
+                        **state["risk_debate_state"],
+                        "judge_decision": text,
+                        "latest_speaker": "Judge",
+                    },
+                }
+            assessment = assess_readiness(evidence, policy)
+            if state.get("research_readiness"):
+                validate_readiness(state["research_readiness"], evidence)
+                if state["research_readiness"] != assessment:
+                    raise ValueError("Research readiness changed after it was frozen")
+            if assessment["recommendation_allowed"]:
+                result = portfolio_manager_node(state)
+            else:
+                text = withheld_decision(assessment)
+                result = {
+                    "final_rating": "REVIEW",
+                    "final_trade_decision": text,
+                    "risk_debate_state": {
+                        **state["risk_debate_state"],
+                        "judge_decision": text,
+                        "latest_speaker": "Judge",
+                    },
+                }
+            return {**result, "research_readiness": assessment, "evidence_bundle": evidence}
+
         workflow = StateGraph(AgentState)
 
         slots = BoundedSemaphore(self.analyst_concurrency_limit)
@@ -215,7 +256,7 @@ class GraphSetup:
         workflow.add_node("Aggressive Analyst", aggressive_analyst)
         workflow.add_node("Neutral Analyst", neutral_analyst)
         workflow.add_node("Conservative Analyst", conservative_analyst)
-        workflow.add_node("Portfolio Manager", portfolio_manager_node)
+        workflow.add_node("Portfolio Manager", gated_portfolio_manager)
 
         # The analysts work at the same time; the research debate starts once
         # every one of them has filed its report.

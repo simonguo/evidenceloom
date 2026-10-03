@@ -1,5 +1,6 @@
 import type { ReportDocument } from "../types";
 import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
+import { renderReadinessMarkdown } from "@/features/research-readiness/lib/render-appendix";
 import { renderMemoryMarkdown } from "@/features/memory/lib/render-appendix";
 import { fencedJson } from "./markdown-fence";
 
@@ -42,6 +43,7 @@ export function renderReportMarkdown(document: ReportDocument) {
     sections,
     renderEvidenceAppendix(document),
     renderMemoryMarkdown(document.version, document.language),
+    renderReadinessMarkdown(document.version, document.language),
     "",
   ].filter((line, index, lines) => line || lines[index - 1] !== "").join("\n");
 }

@@ -3,6 +3,8 @@ mod output_quality;
 mod research_memory;
 mod research_memory_inventory;
 mod research_memory_storage;
+mod research_readiness;
+mod research_readiness_storage;
 mod runtime_probe;
 mod secrets;
 mod storage;

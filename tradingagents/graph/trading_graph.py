@@ -26,6 +26,7 @@ from tradingagents.dataflows.config import run_config, run_config_context, set_c
 from tradingagents.agents.utils.rating import run_rating
 from tradingagents.agents.utils.settlement import compute_returns
 from tradingagents.memory.evaluation import make_evaluation_plan
+from tradingagents.research import make_policy, validate_policy, validate_readiness
 from tradingagents.memory.schema import (
     validate_context_snapshot,
     validate_bundle as validate_memory_bundle,
@@ -305,7 +306,7 @@ class TradingAgentsGraph:
             [
                 "analysts=" + ",".join(self.selected_analysts),
                 f"asset={asset_type}",
-                "layout=parallel-v4-evidence-v1-memory-v1",
+                "layout=parallel-v5-evidence-v1-memory-v1-readiness-v1",
                 "code=" + _source_code_sha256(Path(tradingagents.__file__).parent)[:16],
                 f"settings={digest}",
             ]
@@ -446,9 +447,24 @@ class TradingAgentsGraph:
         ):
             raise ValueError("research evidence does not match the frozen run context")
         memory = state.get("research_memory")
+        if bundle["manifest"].get("research_readiness_policy_sha256") and not memory:
+            raise ValueError("Frozen research input checks require their original memory start")
+        policy = state.get("research_readiness_policy")
+        if bundle["manifest"].get("research_readiness_policy_sha256"):
+            validate_policy(policy, bundle)
+        elif policy:
+            raise ValueError("Research readiness policy has no frozen manifest binding")
+        if state.get("research_readiness"):
+            validate_readiness(state["research_readiness"], bundle)
         if memory:
             context = validate_context_snapshot(memory["input_snapshot"])
             plan = memory["evaluation_plan"]
+            if policy and (
+                policy["research_started_at"] != memory["research_started_at"]
+                or policy["research_calendar_date"] != plan["research_calendar_date"]
+                or policy["host_utc_offset"] != plan["host_utc_offset"]
+            ):
+                raise ValueError("Research input policies disagree with the frozen memory start")
             if (
                 context["instrument"] != bundle["instrument"]
                 or context["research_cutoff"] != bundle["research_as_of"]
@@ -513,6 +529,14 @@ class TradingAgentsGraph:
             )
             offset = local_start.strftime("%z")
             host_utc_offset = offset[:3] + ":" + offset[3:]
+            readiness_policy = make_policy(
+                selected_analysts=self.selected_analysts,
+                analysis_date=trade_date,
+                research_started_at=research_started_at,
+                research_calendar_date=local_start.date().isoformat(),
+                host_utc_offset=host_utc_offset,
+                max_tool_rounds=self.config.get("max_tool_rounds", 20),
+            )
             evaluation_plan = make_evaluation_plan(
                 analysis_date=trade_date,
                 resolved_benchmark=self._resolve_benchmark(company_name),
@@ -540,6 +564,7 @@ class TradingAgentsGraph:
                 "code_sha256": _source_code_sha256(package),
                 "prompt_templates_sha256": _source_code_sha256(package / "agents"),
                 "memory_input_sha256": _context_sha256(past_context),
+                "research_readiness_policy_sha256": readiness_policy["policy_sha256"],
                 "instrument_identity_context_sha256": _context_sha256(source_instrument_context),
                 "model_context_sha256": _context_sha256(
                     {
@@ -590,6 +615,7 @@ class TradingAgentsGraph:
                 instrument_context=instrument_context,
                 run_settings=bundle["manifest"],
                 evidence_bundle=bundle,
+                research_readiness_policy=readiness_policy,
                 research_memory={
                     "research_started_at": research_started_at,
                     "evaluation_plan": evaluation_plan,
@@ -615,6 +641,15 @@ class TradingAgentsGraph:
                 "asset_type": final_state.get("asset_type", "stock"),
             }
         decision = final_state.get("final_trade_decision")
+        if final_state.get("research_readiness"):
+            final_state["research_readiness"] = validate_readiness(
+                final_state["research_readiness"],
+                final_state["evidence_bundle"],
+                rating=run_rating(final_state),
+                final_text=decision,
+            )
+        elif final_state.get("research_readiness_policy") and decision:
+            raise ValueError("Completed research has no frozen input assessment")
         if decision and final_state.get("evidence_bundle"):
             final_state["memory_bundle"] = self._research_memory().record_final(
                 final_state, final_state["evidence_bundle"], run_rating(final_state)
@@ -748,6 +783,11 @@ class TradingAgentsGraph:
             "run_settings": final_state.get("run_settings", self.run_settings()),
             "output_quality": sanitize_output_quality(final_state.get("output_quality")),
             "evidence_bundle": final_state.get("evidence_bundle", {}),
+            **(
+                {"research_readiness": final_state["research_readiness"]}
+                if final_state.get("research_readiness")
+                else {}
+            ),
             **(
                 {"memory_bundle": validate_memory_bundle(final_state["memory_bundle"])}
                 if final_state.get("memory_bundle")

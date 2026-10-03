@@ -78,6 +78,7 @@ const MANIFEST_KEYS: &[&str] = &[
     "memory_input_sha256",
     "instrument_identity_context_sha256",
     "model_context_sha256",
+    "research_readiness_policy_sha256",
 ];
 const REPORT_KEYS: &[&str] = &[
     "market_report",

@@ -1,5 +1,6 @@
 import type { AnalysisTask, ReportVersion } from "@/lib/types";
 import { normalizeOutputQuality } from "@/features/output-quality/lib/quality";
+import { copyExportReadiness } from "@/features/research-readiness/lib/export";
 import { sanitizeRuntimeSettings } from "./runtime-settings";
 
 /** Export the report protocol's public fields, never arbitrary saved metadata. */
@@ -22,5 +23,5 @@ export function reportJson(taskId: string, origin: AnalysisTask["origin"], versi
     outputQuality: normalizeOutputQuality(version.outputQuality),
   };
   return { schema_version: 1, kind: "research_report", report, evidence_bundle: version.evidenceBundle ?? null,
-    memory_bundle: version.memoryBundle ?? null, evaluation_reviews: version.evaluationReviews ?? [] };
+    memory_bundle: version.memoryBundle ?? null, evaluation_reviews: version.evaluationReviews ?? [], research_readiness: copyExportReadiness(version) ?? null };
 }

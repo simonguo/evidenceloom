@@ -21,10 +21,11 @@ def get_verified_market_snapshot(
 ) -> str:
     """Deterministic verification snapshot for exact market-data claims.
 
-    Returns the latest OHLCV row on or before curr_date, common technical
-    indicators, and recent closes. Call this before making exact claims about
-    price levels, Bollinger bands, RSI, MACD, moving averages, support /
-    resistance, or historical comparisons, and treat it as the source of truth.
+    Returns observed OHLCV, conservatively completed provider daily rows,
+    scientific integrity checks and indicator warm-up assessments. Call this
+    before exact price or indicator claims; inspect its limitations first.
+    Invalid/provisional rows and N/A indicators cannot establish verified
+    claims. Revision vintage and exchange-calendar coverage remain unknown.
     """
     curr_date = as_of(curr_date, trade_date)
     look_back_days = max(1, min(int(look_back_days), 30))

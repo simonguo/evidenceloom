@@ -187,7 +187,13 @@ def test_snapshot_persists_source_rows_and_exact_indicator_values_before_roundin
             "Volume": [1234567] * 230,
         }
     )
-    frame.attrs.update({"source": "Tencent", "source_url": eastmoney.TENCENT_KLINE_URL})
+    frame.attrs.update(
+        {
+            "source": "Tencent",
+            "source_url": eastmoney.TENCENT_KLINE_URL,
+            "source_timezone": "Asia/Shanghai",
+        }
+    )
     monkeypatch.setattr(market_data_validator, "load_ohlcv", lambda *args, **kwargs: frame)
     expected = wrap(frame[frame["Date"] <= "2024-01-02"].copy())
     expected["close_10_ema"]

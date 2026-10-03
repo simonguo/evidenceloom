@@ -4,6 +4,9 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ## [Unreleased]
 
+- Freeze deterministic research input policies and save replayable readiness checks with every report version. Missing, invalid or unverified required inputs produce REVIEW and skip the final rating model call.
+- Preserve provider timestamps/timezones, reject impossible OHLCV and conflicting daily rows, exclude provisional rows from calculations, enforce indicator warm-up and load history relative to the requested research date.
+
 ### Changed
 
 - Freeze per-run research memory inputs, decision identity, actual recording time, effective benchmark, holding-period policy, and evaluator source hash in a separate MemoryBundle v1.

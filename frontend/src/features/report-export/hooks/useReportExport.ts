@@ -10,6 +10,7 @@ import { renderReportHtml } from "../lib/render-html";
 import { renderReportMarkdown } from "../lib/render-markdown";
 import { verifyEvidenceBundle } from "@/features/evidence/lib/validation";
 import { verifiedExportVersion } from "@/features/memory/lib/export";
+import { verifiedReadinessExport } from "@/features/research-readiness/lib/export";
 import { reportJson } from "../lib/report-json";
 
 export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
@@ -40,6 +41,7 @@ export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
       if (frozenVersion.evidenceValidation) throw new Error(`Evidence bundle is invalid: ${frozenVersion.evidenceValidation.reason}`);
       if (frozenVersion.evidenceBundle) frozenVersion.evidenceBundle = await verifyEvidenceBundle(frozenVersion.evidenceBundle, frozenVersion.reportSections);
       frozenVersion = await verifiedExportVersion(frozenVersion);
+      frozenVersion = await verifiedReadinessExport(frozenVersion);
       const document = buildReportDocument(taskId, origin, frozenVersion, language);
       const content = format === "json" ? JSON.stringify(reportJson(taskId, origin, frozenVersion), null, 2) : format === "html"
         ? renderReportHtml(document)

@@ -4,6 +4,7 @@ import { createTranslator } from "./i18n";
 import { stripSecretFields } from "@/features/persistence/local-storage";
 import type { MemoryInventory } from "@/features/memory/types";
 import { verifyMemoryInventory } from "@/features/memory/lib/validation";
+import { verifyTaskReadiness } from "@/features/research-readiness/lib/validation";
 import type { AnalysisEvent, AnalysisForm, AnalysisTask, GlobalSettings, OhlcvBar, ResolvedInstrument, SystemLanguage } from "./types";
 
 export type RuntimeKind = "web" | "tauri";
@@ -215,7 +216,7 @@ export const tauriRuntimeAdapter: RuntimeAdapter = {
   },
   async saveDesktopTask(task) {
     const { invoke } = await getTauriApi();
-    await invoke("save_desktop_task", { task });
+    await invoke("save_desktop_task", { task: await verifyTaskReadiness(JSON.parse(JSON.stringify(task)) as AnalysisTask) });
   },
   async deleteDesktopTask(taskId) {
     const { invoke } = await getTauriApi();

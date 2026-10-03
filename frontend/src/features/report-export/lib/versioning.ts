@@ -3,6 +3,7 @@ import { mergeEventOutputQuality, normalizeOutputQuality } from "@/features/outp
 import { mergeRuntimeManifest } from "./runtime-settings";
 import { normalizeTaskEvidence } from "@/features/evidence/lib/validation";
 import { normalizeTaskMemory } from "@/features/memory/lib/validation";
+import { normalizeReadinessTaskFields } from "@/features/research-readiness/lib/validation";
 import packageMetadata from "../../../../package.json";
 import type {
   AnalysisEvent,
@@ -66,10 +67,12 @@ export function appendCompletedReportVersion(
     evidenceValidation: evidenceTask.evidenceValidation,
     memoryBundle: task.memoryValidation ? undefined : event.memoryBundle ?? event.finalState?.memory_bundle as ReportVersion["memoryBundle"] ?? task.memoryBundle,
     memoryValidation: task.memoryValidation,
+    researchReadiness: task.readinessValidation ? undefined : event.researchReadiness ?? event.finalState?.research_readiness as ReportVersion["researchReadiness"] ?? task.researchReadiness,
+    readinessValidation: task.readinessValidation,
     evaluationReviews: [],
   };
 
-  return normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [...task.reportVersions, version] }));
+  return normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [...task.reportVersions, version] })));
 }
 
 export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
@@ -97,6 +100,8 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     evidenceValidation: task.evidenceValidation,
     memoryBundle: task.memoryBundle,
     memoryValidation: task.memoryValidation,
+    researchReadiness: task.researchReadiness,
+    readinessValidation: task.readinessValidation,
     evaluationReviews: task.evaluationReviews ?? [],
   };
   return normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [version] }));

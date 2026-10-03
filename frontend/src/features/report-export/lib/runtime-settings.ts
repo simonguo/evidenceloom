@@ -15,6 +15,7 @@ export function sanitizeRuntimeSettings(settings: RuntimeRunSettings): RuntimeRu
   }
   if (Number.isSafeInteger(settings.holding_period_days) && (settings.holding_period_days ?? 0) > 0) safe.holding_period_days = settings.holding_period_days;
   if (typeof settings.benchmark_ticker === "string" && /^[A-Za-z0-9^=._-]{1,128}$/.test(settings.benchmark_ticker)) safe.benchmark_ticker = settings.benchmark_ticker;
+  if (typeof settings.research_readiness_policy_sha256 === "string" && /^[a-f0-9]{64}$/.test(settings.research_readiness_policy_sha256)) safe.research_readiness_policy_sha256 = settings.research_readiness_policy_sha256;
   if (settings.temperature === null) safe.temperature = null;
   if (typeof settings.temperature === "string" && /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(settings.temperature) && Number.isFinite(Number(settings.temperature))) {
     safe.temperature = settings.temperature;
