@@ -10,6 +10,8 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Tuple, List, Optional
 
+from cli.research_manifest import context_sha256 as _context_sha256
+from cli.research_manifest import source_code_sha256 as _source_code_sha256
 import yfinance as yf  # noqa: F401 - legacy patch point shared with the settlement helper
 import tradingagents
 from langgraph.prebuilt import ToolNode
@@ -59,29 +61,6 @@ _NOT_IN_SIGNATURE = frozenset(
         "llm_max_retries",
     }
 )
-
-
-def _context_sha256(value) -> str:
-    """Hash reproducibility inputs using the evidence bundle's canonical JSON."""
-    return hashlib.sha256(
-        json.dumps(
-            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
-        ).encode("utf-8")
-    ).hexdigest()
-
-
-def _source_code_sha256(directory: Path) -> str:
-    """Hash local source content, without exposing its absolute filesystem path."""
-    try:
-        sources = {
-            path.relative_to(directory).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted(directory.rglob("*.py"))
-        }
-    except OSError:
-        raise ValueError("Research source files could not be read for code verification") from None
-    if not sources:
-        raise ValueError("Research source files are unavailable for code and prompt verification")
-    return _context_sha256(sources)
 
 
 def _reports_for_audit(state):
