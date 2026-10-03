@@ -83,7 +83,36 @@ def test_inventory_retains_full_attachment_and_does_not_change_completion(tmp_pa
     assert store.load_bundle(frozen["run_id"]) == completed
 
 
-def blocked_research_request(raw, tmp_path):
+@pytest.mark.parametrize("saved", [False, True])
+def test_configured_inventory_does_not_require_home(tmp_path, monkeypatch, saved):
+    path = tmp_path / "missing" / "legacy.md"
+    monkeypatch.setenv("TRADINGAGENTS_MEMORY_LOG_PATH", str(path))
+    frozen = json.loads((REPOSITORY / "tests/fixtures/memory_bundle_v1.json").read_text())
+    store = MemoryStore(path)
+    if saved:
+        store.record_decision(frozen["decision_snapshot"])
+        completed = store.bundle(
+            frozen["run_id"],
+            frozen["input_snapshot"],
+            evidence_bundle_sha256=frozen["evidence_bundle_sha256"],
+        )
+
+    def unavailable_home():
+        raise RuntimeError("Home directory is unavailable")
+
+    monkeypatch.setattr(Path, "home", unavailable_home)
+    result = inventory({"decisionIds": [frozen["run_id"]]})
+    if saved:
+        attachment = validate_review_attachment(result["reviews"][0], completed)
+        assert attachment["snapshot"] == completed["decision_snapshot"]
+        assert result["missing_ids"] == []
+        assert store.load_bundle(frozen["run_id"]) == completed
+    else:
+        assert result["reviews"] == [] and result["missing_ids"] == [frozen["run_id"]]
+        assert not path.parent.exists()
+
+
+def blocked_research_request(raw, tmp_path, *, default_without_home=False):
     program = """
 import runpy, sys
 class BlockResearchImports:
@@ -93,6 +122,16 @@ class BlockResearchImports:
 sys.meta_path.insert(0, BlockResearchImports())
 runpy.run_path(sys.argv[1], run_name='__main__')
 """
+    if default_without_home:
+        program = (
+            """
+from pathlib import Path
+def unavailable_home():
+    raise RuntimeError('Private home failure body must not escape')
+Path.home = unavailable_home
+"""
+            + program
+        )
     environment = {
         key: os.environ[key]
         for key in ("PATH", "HOME", "TMPDIR", "SYSTEMROOT", "WINDIR")
@@ -105,6 +144,8 @@ runpy.run_path(sys.argv[1], run_name='__main__')
             "TRADINGAGENTS_MEMORY_LOG_PATH": str(tmp_path / "missing" / "legacy.md"),
         }
     )
+    if default_without_home:
+        environment.pop("TRADINGAGENTS_MEMORY_LOG_PATH")
     return subprocess.run(
         [sys.executable, "-c", program, str(REPOSITORY / "frontend/server/run_analysis.py")],
         input=raw,
@@ -128,6 +169,22 @@ def test_memory_flag_finishes_before_models_sources_or_dotenv_import(tmp_path):
     assert event["type"] == "memory_inventory" and event["missing_ids"] == [run_id]
     assert result.stdout.endswith("\n") and len(result.stdout.splitlines()) == 1
     assert result.stderr == "" and not (tmp_path / "missing").exists()
+
+
+def test_unavailable_default_home_is_safe_without_research_imports(tmp_path):
+    result = blocked_research_request(
+        json.dumps(
+            {"__command": "smoke_test", "memoryInventory": True, "decisionIds": [str(uuid4())]}
+        ),
+        tmp_path,
+        default_without_home=True,
+    )
+    assert result.returncode == 1
+    event = json.loads(result.stdout)
+    assert event["type"] == "error" and event["error"] == "Runner diagnostic failed"
+    assert result.stderr == "Evidence Loom runner error (RuntimeError): Runner diagnostic failed\n"
+    assert "Private home failure" not in result.stdout + result.stderr
+    assert not (tmp_path / "missing").exists()
 
 
 @pytest.mark.parametrize(

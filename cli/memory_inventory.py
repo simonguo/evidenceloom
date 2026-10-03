@@ -26,8 +26,9 @@ def validate_decision_ids(value):
 
 def inventory(payload):
     requested = validate_decision_ids(payload.get("decisionIds"))
-    default_path = Path.home() / ".tradingagents" / "memory" / "trading_memory.md"
-    configured_path = os.environ.get("TRADINGAGENTS_MEMORY_LOG_PATH", str(default_path))
+    configured_path = os.environ.get("TRADINGAGENTS_MEMORY_LOG_PATH")
+    if configured_path is None:
+        configured_path = Path.home() / ".tradingagents" / "memory" / "trading_memory.md"
     store = MemoryStore(configured_path)
     reviews, missing = [], []
     for run_id in requested:
