@@ -1,0 +1,432 @@
+{
+  "schema_version": 1,
+  "validation_date": "2026-10-04",
+  "record_status": "recorded",
+  "acceptance_status": "local_slice_verified_release_acceptance_incomplete",
+  "scope": "Immutable MemoryBundle v1 implementation; engineering checks with fictional/offline inputs.",
+  "product_quality_objective_complete": false,
+  "references": [
+    "docs/MEMORY_BUNDLE.md",
+    "docs/PROFESSIONAL_QUALITY.md"
+  ],
+  "candidate": {
+    "base_revision": "1220036aae02fc9dc52e19e6edcf114a482ed65c",
+    "working_tree_candidate": false,
+    "source_snapshot_status": "final_research_source_freeze_matches_packaged_manifest",
+    "source_snapshot_recorded_at": "2026-10-03T22:14:52.896228Z",
+    "research_manifest": {
+      "type": "evidence_ready",
+      "schema_version": 1,
+      "code_sha256": "ebad8790de86569f2a7c26b32a308677bae8fdcdb15aac7c7e52fbbce1c0b62c",
+      "prompt_templates_sha256": "34a914c246430d0532bb0af699fbe765e8cd0bc8944bc7ab3177679e0cad7226",
+      "source_file_count": 85
+    },
+    "component_sha256": {
+      "tradingagents/memory/evaluation.py": "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e",
+      "tradingagents/memory/schema.py": "ecb525a1fa0b9059d6132f753fa15a38d3e23bb3910425dd40bf9decaa71966a",
+      "tradingagents/memory/store.py": "529d3f6a97de257be4574554e24f04b93e1c4138fd8fa665b04f590051a6580c",
+      "tradingagents/graph/research_memory.py": "4628e66cd9fe19d16d4d4c6a98e21719bdd4c63a19a722a3001b902696fde603",
+      "tradingagents/graph/reflection.py": "fe052879002ec112b6f79dd50c1961b9dec9f98c18322efd1ef07575311b34c3",
+      "tradingagents/agents/managers/portfolio_manager.py": "3ee1799d4731365914402c2e133c7fd277c0c3fb6f9af5a824fe02196f7a4c32",
+      "cli/memory_inventory.py": "13b888a9756099b492571f00a72e9071ea7a4d358a7e6307becca3d097109d29",
+      "cli/runner_diagnostics.py": "939f9f6c72b41b7540cd9ce9d7ea7d1caca809439d5b46405e3856c51fe0f197",
+      "frontend/server/run_analysis.py": "d61405ee84a2792f77e27177b272109a33e0fe6066d01cfe36c7d8473a6df955",
+      "frontend/src/app/api/memory/route.ts": "09c8404b102e01ed9614b71a371eeaf289a0892e57382981f03ee3d3ad5eeef4",
+      "frontend/src/features/memory/lib/guards.ts": "6c94b251b17835bb2ce879e6b468bc1ceadf7dd30ac69d2b658b1195fc34d448",
+      "frontend/src/features/memory/lib/validation.ts": "abe270544d4a575af9c9ab1f125739e69149df7b85c5825c6e6b321fb97bcde5",
+      "src-tauri/src/research_memory.rs": "a66623e3259d042b8d98656a6bf2904592d5d7d25bc4afa02faa86a7165bfa8c",
+      "src-tauri/src/research_memory_storage.rs": "fb3c3ff20c32462ee21310d6cdc4233c367edd2a80c830a8802f2e95607d27ca",
+      "src-tauri/src/research_memory_inventory.rs": "3185daba2b49dc6b3c77b9175f06afe16d980b7afa3d33014f516181afa5bf7f",
+      ".github/workflows/sidecar-diagnostics.yml": "659fcfecd5bbded61cb1aa70f9d157dcc2555a9dc88e354d1465f9d960d45459"
+    },
+    "hash_scope": {
+      "research_manifest": "tradingagents/**/*.py",
+      "prompt_manifest": "tradingagents/agents/**/*.py",
+      "separate_components": "Explicit relative paths in component_sha256; frontend, CLI and Rust are outside research manifest hashes."
+    },
+    "source_revision": "9502aa431617dcc3e66c6616970ca2f379322e86",
+    "validation_document_commit": "separate_follow_up_commit"
+  },
+  "mechanisms": {
+    "contract": {
+      "schema_version": 1,
+      "freeze_at": "research_start",
+      "bind_decision_text_at": "actual_successful_completion",
+      "holding_period_unit": "common_complete_provider_daily_rows",
+      "frozen_fields": [
+        "resolved_benchmark",
+        "holding_period_days",
+        "evaluator_version",
+        "evaluator_code_sha256",
+        "policies",
+        "effective_history_parameters",
+        "host_calendar_date",
+        "host_utc_offset"
+      ],
+      "prospective_mode": "prospective_reference",
+      "prospective_condition": "analysis_date_equals_frozen_host_local_calendar_date_at_start",
+      "historical_reason": "historical_decision_availability_unknown",
+      "host_calendar_is_market_timezone": false
+    },
+    "evaluation": {
+      "entry_policy": "first_common_complete_date_after_recorded_source_and_utc_dates",
+      "exit_policy": "holding_count_common_row_transitions",
+      "alignment_policy": "identical_session_date_no_fill",
+      "completion_policy": "date_elapsed_in_source_timezone_and_utc",
+      "price_basis": "provider_adjusted_close",
+      "requires_original_timezone": true,
+      "effective_history_parameters": {
+        "interval": "1d",
+        "auto_adjust": false,
+        "back_adjust": false,
+        "actions": true,
+        "repair": false,
+        "rounding": false,
+        "keepna": true,
+        "prepost": false
+      },
+      "return_formula": "(instrument_exit_adj_close / instrument_entry_adj_close - 1) - (benchmark_exit_adj_close / benchmark_entry_adj_close - 1)",
+      "currency_policy": "native_currencies_no_fx_conversion",
+      "pending_is_terminal": false,
+      "saved_facts_before_reflection": true,
+      "offline_replay_verifies_saved_endpoints_and_formula": true,
+      "evaluator_mismatch_silently_recomputed": false,
+      "unknown_metadata": [
+        "publication_dates",
+        "price_vintage",
+        "content_revision_history",
+        "complete_exchange_calendar_coverage"
+      ]
+    },
+    "persistence": {
+      "authority": "Python_per_decision_JSON",
+      "legacy_markdown": "read_only_excluded_from_authoritative_records_and_context",
+      "completion_bundle": "frozen_once_per_run_id",
+      "outcomes_and_reflections": "immutable_non_null_components",
+      "review_history": "append_only_monotonic_snapshots_separate_from_as_generated_bundle",
+      "mirrors": [
+        "validated_SQLite_schema_v7",
+        "validated_browser_storage"
+      ],
+      "numeric_payloads": "original_canonical_json_strings_hashed_verbatim",
+      "inventory": "read_only_no_graph_model_provider_or_dotenv_initialization",
+      "inventory_command": {
+        "__command": "smoke_test",
+        "memoryInventory": true
+      },
+      "inventory_max_ids": 20,
+      "inventory_max_bytes": 67108864,
+      "inventory_total_deadline_seconds": 90
+    },
+    "ui_and_exports": {
+      "original_context_and_completion_frozen": true,
+      "later_reviews_separate": true,
+      "selected_version_binding_verified": true,
+      "invalid_attachment_blocks_export": true,
+      "formats": [
+        "report_JSON",
+        "self_contained_HTML",
+        "self_contained_Markdown"
+      ],
+      "numeric_payloads_preserved_in_full_exports": true,
+      "lazy_preview_character_limit": 100000
+    }
+  },
+  "fictional_fixtures": {
+    "memory": {
+      "path": "tests/fixtures/memory_bundle_v1.json",
+      "file_sha256": "f408ba206896063a744301c18eba26e1762c9f014c85485e845ec4a394849647",
+      "bundle_sha256": "c5b12f3f25950fe9412cc1f5acb5cc6ef04e98b0f6da0a436711be0980076a23",
+      "pending_completion_run_id": "11111111-1111-4111-8111-111111111111",
+      "prior_available_run_id": "22222222-2222-4222-8222-222222222222",
+      "prior_snapshot_sha256": "19bb0783b217e585d57b25cf661b4a91eccb4113be375ca23d17ba8e6648337a",
+      "evaluator_code_sha256": "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e"
+    },
+    "paired_evidence": {
+      "path": "tests/fixtures/memory_evidence_bundle_v1.json",
+      "file_sha256": "1ce5c561072decd01763a3a7b5f44d9dfe16d25baf54bf18b2b9b61986303e02",
+      "bundle_sha256": "b9a1f561d85816ec6944d67313705db48df8fe11dc50066b39b0327dded1d60e"
+    },
+    "generated_with": "injected_fictional_timezone_aware_daily_DataFrames_and_local_mock_reflection",
+    "real_market_data": false,
+    "paid_model_or_provider_requests_for_this_slice": 0
+  },
+  "checks": {
+    "python_full_suite": {
+      "status": "passed_before_final_numeric_guard",
+      "provenance": "root_reported",
+      "passed": 933,
+      "subtests_passed": 75,
+      "deselected": 1,
+      "known_model_warnings": 8,
+      "timing_note": "The full suite preceded the final narrow finite-f64 integer guard. The final core suite ran after it; native CI will run the final candidate.",
+      "portable_command": "PYTHONPATH=. python -m pytest -q",
+      "reported_duration_seconds": 110.64,
+      "log_retention": "Complete console output confirmed by root; no persisted log file."
+    },
+    "frontend_suite": {
+      "status": "passed",
+      "provenance": "runtime_owner_reported_via_root",
+      "passed": 192,
+      "files": 19,
+      "portable_command": "npm test",
+      "working_directory": "frontend"
+    },
+    "frontend_typecheck": {
+      "status": "passed",
+      "provenance": "runtime_owner_reported_via_root",
+      "portable_command": "npm run typecheck",
+      "working_directory": "frontend"
+    },
+    "frontend_eslint": {
+      "status": "passed",
+      "provenance": "runtime_owner_reported_via_root",
+      "portable_command": "npm run lint",
+      "working_directory": "frontend"
+    },
+    "frontend_production_build": {
+      "status": "passed",
+      "provenance": "runtime_owner_reported_via_root",
+      "portable_command": "npm run build",
+      "working_directory": "frontend"
+    },
+    "independent_python_memory_review": {
+      "status": "passed",
+      "passed": 108,
+      "command": "python -m pytest -q tests/test_memory_evaluation.py tests/test_memory_contract.py tests/test_memory_inventory.py tests/test_research_memory_pipeline.py"
+    },
+    "independent_frontend_memory_review": {
+      "status": "passed",
+      "passed": 42,
+      "files": 3,
+      "command": "vitest run src/features/memory/lib/validation.test.ts src/features/memory/lib/persistence.test.ts src/features/memory/lib/export.test.ts"
+    },
+    "independent_diff_check": {
+      "status": "passed",
+      "command": "git diff --check"
+    },
+    "final_packaged_memory_inventory": {
+      "status": "passed",
+      "provenance": "root_supplied_measurement_record",
+      "schema_version": 1,
+      "observed_at": "2026-10-03T22:07:01.301166Z",
+      "fixture_policy": "entirely_fictional_no_external_retrieval_or_model_calls",
+      "host_cpu": "arm64",
+      "python_cpu": "x86_64",
+      "execution": "Rosetta_on_Apple_Silicon",
+      "artifact_sha256": "4f8ef6663d2db1bf47c19369320d87b13d4e81f726ca9cff9e5ee1672c0ac0a6",
+      "artifact_bytes": 53827456,
+      "manifest": {
+        "type": "evidence_ready",
+        "schema_version": 1,
+        "code_sha256": "ebad8790de86569f2a7c26b32a308677bae8fdcdb15aac7c7e52fbbce1c0b62c",
+        "prompt_templates_sha256": "34a914c246430d0532bb0af699fbe765e8cd0bc8944bc7ab3177679e0cad7226",
+        "source_file_count": 85
+      },
+      "measurements": [
+        {
+          "probe": "source_manifest",
+          "elapsed_seconds": 0.07158124999841675,
+          "stdout_bytes": 276,
+          "event_type": "evidence_ready"
+        },
+        {
+          "probe": "packaged_manifest",
+          "elapsed_seconds": 22.03596991597442,
+          "stdout_bytes": 276,
+          "event_type": "evidence_ready"
+        },
+        {
+          "probe": "source_memory_inventory",
+          "elapsed_seconds": 0.3609519590099808,
+          "stdout_bytes": 14225,
+          "event_type": "memory_inventory"
+        },
+        {
+          "probe": "packaged_memory_inventory",
+          "elapsed_seconds": 13.581076457980089,
+          "stdout_bytes": 14225,
+          "event_type": "memory_inventory"
+        }
+      ],
+      "manifest_matches": true,
+      "inventory_preserves_full_snapshots_and_precision": true,
+      "inventory_is_read_only": true,
+      "configured_legacy_file_exists": false,
+      "root_sidecar_unchanged": true
+    },
+    "final_browser_acceptance": {
+      "status": "passed",
+      "provenance": "root_supplied_actual_browser_and_download_record",
+      "fixture": "entirely_fictional",
+      "original_bundle_sha256": "c5b12f3f25950fe9412cc1f5acb5cc6ef04e98b0f6da0a436711be0980076a23",
+      "original_input_sha256": "d24421bcead38fd01203ceadd102bde129cf15cf66f01bbf83a2c43162140db5",
+      "review_snapshot_sha256": "e4cb05b997436b4950537076a61ba969b86b1d029e27e4ff8e567e59fb4c65dd",
+      "checks": {
+        "three_exports_preserve_complete_original_bundle": true,
+        "three_exports_preserve_all_review_payloads": true,
+        "three_exports_preserve_evidence": true,
+        "original_has_no_outcome_later_review_available": true,
+        "full_precision_preserved": true,
+        "reload_preserved_full_tasks": true,
+        "selected_legacy_version_has_unknown_memory": true,
+        "legacy_review_disabled": true,
+        "selected_v1_retains_full_review": true,
+        "mismatched_decision_attachment_blocks_export": true,
+        "hash_mismatch_blocks_export": true,
+        "original_tasks_restored_after_corruption_cases": true,
+        "rendered_html_original_exact": true,
+        "rendered_html_reviews_exact": true,
+        "rendered_html_evidence_exact": true
+      },
+      "downloads": {
+        "json": {
+          "bytes": 42299,
+          "sha256": "141d7ff6ee48a4247715176881d676c52b502b7057733e54d2c19e6d8639657c"
+        },
+        "md": {
+          "bytes": 44618,
+          "sha256": "429d07db962f89925c60e489dab3cef219a8c1243706f57c0b38176c52d26421"
+        },
+        "html": {
+          "bytes": 73174,
+          "sha256": "01241a230d249ec64ff3ffef6c40f489822dc4bfff7b14cc34c2bf6f5cddb7f3"
+        }
+      },
+      "comparison_method": "Python parsed structural equality; JSON object key order is not part of structural comparison, while artifact payload strings compare exactly.",
+      "origin": "isolated_task_owned_localhost_31939",
+      "browser_and_server_closed": true,
+      "screenshots": [
+        {
+          "case": "original_and_review",
+          "path": "docs/screenshots/memory-original-and-review.jpg",
+          "bytes": 115061,
+          "sha256": "10d5b623ad9b55c97c1b0877a4621d4ec8d5292802c7ac8366407a9bfd7aed6a"
+        },
+        {
+          "case": "legacy_version",
+          "path": "docs/screenshots/memory-legacy-version.jpg",
+          "bytes": 143147,
+          "sha256": "da6d02ad3daef052469b1de77fc4b852e351e659099e229d220e5c2a215c3508"
+        },
+        {
+          "case": "binding_corruption_rejected",
+          "path": "docs/screenshots/memory-corruption-rejected.jpg",
+          "bytes": 125453,
+          "sha256": "ef16173f0e44f9d6d8ebe4e70d89f317ef01252550f4697c33df3dab04110de6"
+        },
+        {
+          "case": "hash_corruption_rejected",
+          "path": "docs/screenshots/memory-hash-rejected.jpg",
+          "bytes": 88670,
+          "sha256": "cab4c2f907a7d966aec919a4a541e0867853aa4049e395127cfad04c7b6b7a53"
+        },
+        {
+          "case": "downloaded_html_appendix",
+          "path": "docs/screenshots/memory-export-appendix.jpg",
+          "bytes": 77168,
+          "sha256": "ce3af60d2e3ae7f5da8ecdba82e8541382d9b420fb84efdd4cca7b340bf9421f"
+        }
+      ]
+    },
+    "native_memory_ci": {
+      "status": "not_started_for_final_candidate",
+      "workflow": ".github/workflows/sidecar-diagnostics.yml",
+      "targets": [
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-msvc"
+      ]
+    },
+    "python_final_memory_core": {
+      "status": "passed",
+      "passed": 49,
+      "provenance": "runtime_owner_reported_via_root",
+      "scope": "Final core schema suite after narrow huge-integer parity guard."
+    },
+    "rust_host_suite": {
+      "status": "passed",
+      "provenance": "workspace_owner_reported_via_root",
+      "passed": 45,
+      "deliberate_ignored_packaged_tests": 2,
+      "reported_test_duration_seconds": 5.29,
+      "optional_asset_type_fix_retested": true
+    },
+    "rust_format": {
+      "status": "passed",
+      "provenance": "workspace_owner_reported_via_root"
+    },
+    "rust_clippy_all_targets": {
+      "status": "passed",
+      "provenance": "workspace_owner_reported_via_root",
+      "warnings_denied": true
+    },
+    "windows_exact_module_compilation_and_clippy": {
+      "status": "passed",
+      "provenance": "workspace_owner_reported_via_root",
+      "native_execution": false
+    },
+    "rust_packaged_memory_inventory": {
+      "status": "passed",
+      "passed": 1,
+      "explicit_ignored_test": "research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory",
+      "reported_test_duration_seconds": 13.97,
+      "provenance": "root_reported_real_packaged_execution"
+    },
+    "rust_packaged_runtime_readiness": {
+      "status": "passed",
+      "passed": 1,
+      "explicit_ignored_test": "runtime_probe::tests::packaged_artifact_verifies_actual_runtime",
+      "reported_test_duration_seconds": 58.48,
+      "event_type": "runtime_ready",
+      "provenance": "root_reported_real_packaged_execution"
+    },
+    "frontend_tauri_static_build": {
+      "status": "passed",
+      "provenance": "root_reported_final_static_build",
+      "portable_command": "npm run build:tauri",
+      "working_directory": "frontend"
+    },
+    "ruff_check": {
+      "status": "passed",
+      "files": 169,
+      "provenance": "root_reported_final_check"
+    },
+    "ruff_format": {
+      "status": "passed",
+      "files": 169,
+      "provenance": "root_reported_final_format_check"
+    },
+    "final_diff_check": {
+      "status": "passed",
+      "portable_command": "git diff --check",
+      "provenance": "root_reported_final_check"
+    }
+  },
+  "covered_offline_cases": [
+    "Frozen_five_row_horizon_and_benchmark_A_survive_later_twenty_and_B_settings",
+    "Frozen_resolved_benchmark_survives_current_alias_resolver_drift",
+    "Crypto_weekend_and_equity_daily_rows_use_identical_common_dates",
+    "Completion_day_UTC_edges_DST_offsets_unknown_timezone_duplicate_and_non_midnight_labels",
+    "Missing_adjusted_close_split_dividend_and_full_precision_reference_returns",
+    "Historical_date_only_decisions_do_not_fetch_prices",
+    "Unsupported_evaluator_version_or_source_hash_does_not_recompute_silently",
+    "Saved_facts_replay_offline_despite_later_provider_revisions",
+    "Reflection_failure_empty_reflection_and_restart_reuse_durable_facts",
+    "Atomic_replace_fsync_and_independent_process_writer_conflicts",
+    "Cross_language_hashes_temporal_availability_and_exact_report_binding",
+    "Append_only_review_deduplication_and_immutable_completion_preservation",
+    "Inventory_legacy_malformed_nonzero_timeout_oversize_duplicate_JSONL_and_secret_stderr",
+    "Private_URL_local_path_decoded_JSON_secret_and_numeric_safety",
+    "Self_contained_export_roundtrip_and_invalid_attachment_rejection"
+  ],
+  "remaining_acceptance": [
+    "Terminal_native_memory_CI_results_on_macOS_arm64_Intel_and_Windows_x86_64",
+    "Live_provider_compatibility_and_independently_verified_price_metadata",
+    "Market_specific_intraday_boundaries_filing_availability_price_vintage_and_revision_history",
+    "Claim_level_factual_and_numerical_support_checks_and_expert_labelled_research_evaluation",
+    "Out_of_sample_predictive_evaluation_with_fair_baselines_costs_and_FX",
+    "Target_analyst_task_completion_accessibility_and_competitive_comparison",
+    "Clean_install_upgrade_migration_backup_restore_and_release_signing"
+  ]
+}
