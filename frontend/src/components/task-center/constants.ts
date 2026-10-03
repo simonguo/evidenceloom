@@ -91,6 +91,7 @@ export const reportTitleKeys: Record<string, I18nKey> = {
 };
 
 export const decisionLabelKeys: Record<string, I18nKey> = {
+  review: "decisionReview",
   overweight: "decisionOverweight",
   underweight: "decisionUnderweight",
   neutral: "decisionNeutral",

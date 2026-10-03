@@ -14,7 +14,7 @@ type TaskListFiltersProps = {
   onDecisionChange: (decision: DecisionFilter) => void;
 };
 
-const decisions: Exclude<DecisionFilter, "all" | "none">[] = ["buy", "overweight", "hold", "underweight", "sell"];
+const decisions: Exclude<DecisionFilter, "all" | "none">[] = ["buy", "overweight", "hold", "underweight", "sell", "review"];
 
 export function TaskListFilters({ query, decisionFilter, resultCount, totalCount, language, onQueryChange, onDecisionChange }: TaskListFiltersProps) {
   const t = createTranslator(language);

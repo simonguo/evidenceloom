@@ -13,22 +13,18 @@ authors = [{ name = "Evidence Loom contributors" }]
 dependencies = [
     "langchain-core>=0.3.81",
     "langchain-anthropic>=0.3.15",
-    "langchain-experimental>=0.3.4",
     "langchain-google-genai>=4.0.0",
     "langchain-openai>=0.3.23",
     "langgraph>=0.4.8",
     "langgraph-checkpoint-sqlite>=2.0.0",
     "pandas>=2.3.0",
-    "parsel>=1.10.0",
+    "python-dotenv>=1.0.0",
     "pytz>=2025.2",
     "questionary>=2.1.0",
-    "redis>=6.2.0",
     "requests>=2.32.4",
     "rich>=14.0.0",
     "typer>=0.21.0",
-    "setuptools>=80.9.0",
     "stockstats>=0.6.5",
-    "tqdm>=4.67.1",
     "typing-extensions>=4.14.0",
     "yfinance>=1.4.1",
     "akshare>=1.17.0",
@@ -50,7 +46,7 @@ cli = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+addopts = '-ra --strict-markers -m "not integration"'
 markers = [
     "unit: fast isolated unit tests",
     "integration: tests requiring external services",

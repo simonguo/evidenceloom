@@ -14,6 +14,8 @@ from tradingagents.agents.utils.agent_utils import (
 from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
+    NO_EXTERNAL_TOOLS,
+    portfolio_context,
 )
 
 
@@ -24,6 +26,10 @@ def create_trader(llm):
         company_name = state["company_of_interest"]
         instrument_context = get_instrument_context_from_state(state)
         investment_plan = state["investment_plan"]
+        market_report = (
+            state.get("market_report", "")
+            or "No technical market report was provided; do not invent price levels."
+        )
 
         messages = [
             {
@@ -31,7 +37,11 @@ def create_trader(llm):
                 "content": (
                     "You are a trading agent analyzing market data to make investment decisions. "
                     "Based on your analysis, provide a specific recommendation to buy, sell, or hold. "
-                    "Anchor your reasoning in the analysts' reports and the research plan."
+                    "Anchor your reasoning in the analysts' reports and the research plan. "
+                    "Ground entry and stop-loss in the technical market report. State them as "
+                    "absolute prices in the quote currency, never percentages or ranges; "
+                    "convert a percentage distance to its absolute price or omit the field. "
+                    + NO_EXTERNAL_TOOLS
                     + get_language_instruction()
                 ),
             },
@@ -42,7 +52,8 @@ def create_trader(llm):
                     f"plan tailored for {company_name}. {instrument_context} This plan incorporates "
                     f"insights from current technical market trends, macroeconomic indicators, and "
                     f"social media sentiment. Use this plan as a foundation for evaluating your next "
-                    f"trading decision.\n\nProposed Investment Plan: {investment_plan}\n\n"
+                    f"trading decision.\n\nTechnical Market Report:\n{market_report}\n\n"
+                    f"{portfolio_context(state)}\n\nProposed Investment Plan: {investment_plan}\n\n"
                     f"Leverage these insights to make an informed and strategic decision."
                 ),
             },

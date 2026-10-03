@@ -35,6 +35,7 @@ class GoogleClient(BaseLLMClient):
             "timeout",
             "max_retries",
             "temperature",
+            "max_output_tokens",
             "callbacks",
             "http_client",
             "http_async_client",

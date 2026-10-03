@@ -23,27 +23,9 @@ from __future__ import annotations
 import logging
 import re
 
+from .errors import NoMarketDataError as NoMarketDataError  # re-export for existing callers
+
 logger = logging.getLogger(__name__)
-
-
-class NoMarketDataError(Exception):
-    """Raised when a vendor returns no rows/records for a symbol.
-
-    Carries both the symbol the user requested and the canonical symbol the
-    vendor was actually queried with, so callers can build a clear message
-    instead of emitting a vendor-specific empty string into the data channel.
-    """
-
-    def __init__(self, symbol: str, canonical: str | None = None, detail: str = ""):
-        self.symbol = symbol
-        self.canonical = canonical or symbol
-        self.detail = detail
-        msg = f"No market data for {symbol!r}"
-        if canonical and canonical != symbol:
-            msg += f" (queried as {canonical!r})"
-        if detail:
-            msg += f": {detail}"
-        super().__init__(msg)
 
 
 # ISO-4217 codes common enough to appear in retail forex pairs. A bare
@@ -158,6 +140,12 @@ def normalize_symbol(raw: str) -> str:
 
     if s in _ALIASES:
         canonical = _ALIASES[s]
+    elif re.fullmatch(r"\d{6}\.SH", s):
+        canonical = s[:-3] + ".SS"
+    elif re.fullmatch(r"(?:SH|SZ)\d{6}", s):
+        canonical = s[2:] + (".SS" if s.startswith("SH") else ".SZ")
+    elif re.fullmatch(r"\d{1,3}\.HK", s):
+        canonical = s[:-3].zfill(4) + ".HK"
     elif len(s) == 6 and s[:3] in _CRYPTO_BASES and s[3:] == "USD":
         canonical = f"{s[:3]}-USD"
     elif s[:-3] in _CRYPTO_BASES and s.endswith("USD") and "-" not in s:
@@ -183,3 +171,10 @@ def is_a_share_symbol(symbol: str) -> bool:
         return False
     s = symbol.strip().upper()
     return s.endswith(_A_SHARE_SUFFIXES) or _A_SHARE_CODE.fullmatch(s) is not None
+
+
+def crypto_base(ticker: str) -> str | None:
+    """A supported crypto's base symbol for sentiment vendors."""
+    canonical = normalize_symbol(ticker)
+    base = canonical.split("-", 1)[0]
+    return base if "-" in canonical and base in _CRYPTO_BASES else None

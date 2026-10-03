@@ -4,6 +4,7 @@ from typing import Any, Mapping, Optional
 
 import yfinance as yf
 from langchain_core.messages import HumanMessage, RemoveMessage
+from tradingagents.dataflows.symbol_utils import normalize_symbol
 
 # Import tools from separate utility files
 from tradingagents.agents.utils.core_stock_tools import get_stock_data
@@ -39,6 +40,7 @@ __all__ = [
     "get_stock_data",
     "get_verified_market_snapshot",
     "resolve_instrument_identity",
+    "report_or_unavailable",
 ]
 
 logger = logging.getLogger(__name__)
@@ -58,7 +60,11 @@ def get_language_instruction() -> str:
     lang = get_config().get("output_language", "English")
     if lang.strip().lower() == "english":
         return ""
-    return f" Write your entire response in {lang}."
+    return (
+        f" Write your response in {lang}, while keeping the labelled lines "
+        "Rating: X, Recommendation: X and Action: X in English, including their "
+        "canonical rating values Buy / Overweight / Hold / Underweight / Sell."
+    )
 
 
 def _clean_identity_value(value: Any) -> Optional[str]:
@@ -72,7 +78,7 @@ def _clean_identity_value(value: Any) -> Optional[str]:
 
 
 @functools.lru_cache(maxsize=256)
-def resolve_instrument_identity(ticker: str) -> dict:
+def _cached_instrument_identity(ticker: str) -> dict:
     """Resolve deterministic identity metadata (company name, sector, …) for a ticker.
 
     This exists to stop the pipeline from hallucinating a *different* company
@@ -86,11 +92,9 @@ def resolve_instrument_identity(ticker: str) -> dict:
     ticker-only context rather than failing before analysis starts. Cached so
     the lookup happens at most once per ticker per process.
     """
-    try:
-        info = yf.Ticker(ticker.upper()).info or {}
-    except Exception as exc:  # noqa: BLE001 — fail open, never block the run
-        logger.debug("Could not resolve instrument identity for %s: %s", ticker, exc)
-        return {}
+    # Exceptions and empty responses are deliberately not cached; a transient
+    # outage must not remove identity information for the rest of the process.
+    info = yf.Ticker(ticker).info or {}
 
     identity: dict[str, str] = {}
     company_name = _clean_identity_value(info.get("longName")) or _clean_identity_value(
@@ -107,13 +111,30 @@ def resolve_instrument_identity(ticker: str) -> dict:
         value = _clean_identity_value(info.get(source_key))
         if value:
             identity[target_key] = value
+    if not identity:
+        raise ValueError("identity lookup returned no metadata")
     return identity
+
+
+def resolve_instrument_identity(ticker: str) -> dict:
+    """Resolve and cache successful identity lookups, retrying failed lookups later."""
+    try:
+        return dict(_cached_instrument_identity(normalize_symbol(ticker)))
+    except Exception as exc:  # noqa: BLE001 - identification must fail open
+        logger.debug("Could not resolve instrument identity for %s: %s", ticker, exc)
+        return {}
+
+
+# Preserve the public cache controls used by embedded callers and tests.
+resolve_instrument_identity.cache_clear = _cached_instrument_identity.cache_clear
+resolve_instrument_identity.cache_info = _cached_instrument_identity.cache_info
 
 
 def build_instrument_context(
     ticker: str,
     asset_type: str = "stock",
     identity: Optional[Mapping[str, str]] = None,
+    trade_date: Optional[str] = None,
 ) -> str:
     """Describe the exact instrument so agents preserve identity and ticker.
 
@@ -131,18 +152,22 @@ def build_instrument_context(
     )
 
     details = []
+    from tradingagents.dataflows.utils import get_current_date
+
+    historical = trade_date is not None and str(trade_date) < get_current_date()
     if identity:
         name = identity.get("company_name") or identity.get("name")
         if name:
             details.append(f"{'Name' if is_crypto else 'Company'}: {name}")
-        sector, industry = identity.get("sector"), identity.get("industry")
+        sector = identity.get("sector") if not historical else None
+        industry = identity.get("industry") if not historical else None
         if sector and industry:
             details.append(f"Business classification: {sector} / {industry}")
         elif sector:
             details.append(f"Sector: {sector}")
         elif industry:
             details.append(f"Industry: {industry}")
-        if identity.get("exchange"):
+        if not historical and identity.get("exchange"):
             details.append(f"Exchange: {identity['exchange']}")
 
     if details:
@@ -151,6 +176,11 @@ def build_instrument_context(
             "Do not substitute a different company or ticker unless a tool "
             "result explicitly disproves this resolved identity."
         )
+        if historical:
+            context += (
+                " This is the company's current name, supplied only as an identifier; "
+                "it is not evidence of its name, business or listing on the analysis date."
+            )
 
     if is_crypto:
         context += (
@@ -175,7 +205,13 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
     return build_instrument_context(
         str(state["company_of_interest"]),
         state.get("asset_type", "stock"),
+        trade_date=state.get("trade_date"),
     )
+
+
+def report_or_unavailable(report: Any, label: str = "This report") -> str:
+    """Make a missing analyst's evidence explicit to downstream agents."""
+    return report if isinstance(report, str) and report.strip() else f"{label} was not produced."
 
 
 def create_msg_delete():

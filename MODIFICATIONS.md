@@ -4,6 +4,12 @@ Evidence Loom is derived in part from TradingAgents `v0.2.5` at commit
 `a5cb7cbd61d217fb0bc43f017392a861257afe6a`. The copy in this repository has
 been modified by Evidence Loom contributors.
 
+Selected reliability and execution changes are also adapted from upstream
+`v0.5.2`, commit `8b22d43d01d9ddda5d686d093d5385884622f3de`. They include
+historical data boundaries, authoritative ratings, safe memory settlement,
+checkpoint resume, private parallel analysts, and run provenance. This is a
+selective synchronization, not a complete upgrade of the upstream package.
+
 The modifications include, but are not limited to:
 
 - provider integrations, model capability handling, structured output, and

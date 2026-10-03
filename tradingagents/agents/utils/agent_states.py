@@ -62,6 +62,8 @@ class AgentState(MessagesState):
     # risk management team discussion step
     risk_debate_state: Annotated[RiskDebateState, "Current state of the debate on evaluating risk"]
     final_trade_decision: Annotated[str, "Final decision made by the Risk Analysts"]
+    final_rating: Annotated[str, "Portfolio Manager rating, or REVIEW when unavailable"]
+    run_settings: Annotated[dict, "Safe configuration manifest for this run"]
     past_context: Annotated[
         str,
         "Memory log context injected at run start (same-ticker decisions + cross-ticker lessons)",

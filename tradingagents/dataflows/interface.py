@@ -27,12 +27,16 @@ from .akshare_fundamentals import (
     get_cashflow as get_akshare_cashflow,
     get_income_statement as get_akshare_income_statement,
 )
-from .alpha_vantage_common import AlphaVantageRateLimitError
-from .symbol_utils import NoMarketDataError
+from .alpha_vantage_common import AlphaVantageRateLimitError as AlphaVantageRateLimitError
+from .errors import NoMarketDataError, VendorNotConfiguredError, VendorUnavailableError
+import logging
+
 from yfinance.exceptions import YFRateLimitError
 
 # Configuration and routing logic
 from .config import get_config
+
+logger = logging.getLogger(__name__)
 
 # Tools organized by category
 TOOLS_CATEGORIES = {
@@ -136,79 +140,68 @@ def get_vendor(category: str, method: str = None) -> str:
     return config.get("data_vendors", {}).get(category, "default")
 
 
-def route_to_vendor(method: str, *args, **kwargs):
-    """Route method calls to appropriate vendor implementation with fallback support."""
-    category = get_category_for_method(method)
-    vendor_config = get_vendor(category, method)
-    primary_vendors = [v.strip() for v in vendor_config.split(",")]
+def vendor_unavailable(method: str, error: Exception) -> str:
+    return (
+        f"DATA_UNAVAILABLE: configured vendors for '{method}' are rate limited or "
+        f"unavailable ({error}). This says nothing about the instrument. "
+        "Do not estimate or fabricate values; report the data as unavailable."
+    )
 
+
+def no_data_available(error: NoMarketDataError) -> str:
+    resolved = "" if error.canonical == error.symbol else f" (resolved to '{error.canonical}')"
+    reason = f" Detail: {error.detail}." if error.detail else ""
+    return (
+        f"NO_DATA_AVAILABLE: No usable market data for '{error.symbol}'{resolved} "
+        f"from any configured vendor.{reason} The symbol may be invalid, delisted, "
+        "not covered, or the returned data may be stale. Do not estimate or "
+        "fabricate values; report that data is unavailable for this symbol."
+    )
+
+
+def route_to_vendor(method: str, *args, **kwargs):
+    """Try exactly the configured vendor chain, retaining each failure's meaning."""
+    category = get_category_for_method(method)
     if method not in VENDOR_METHODS:
         raise ValueError(f"Method '{method}' not supported")
+    available = VENDOR_METHODS[method]
+    configured = [v.strip() for v in get_vendor(category, method).split(",") if v.strip()]
+    if not configured or configured == ["default"]:
+        chain = list(available)
+    else:
+        unknown = [v for v in configured if v not in available]
+        if unknown:
+            raise ValueError(
+                f"Configured vendor(s) {unknown} not available for '{method}'. "
+                f"Available: {list(available)}."
+            )
+        chain = list(dict.fromkeys(configured))
 
-    # Build fallback chain: primary vendors first, then remaining available vendors
-    all_available_vendors = list(VENDOR_METHODS[method].keys())
-    fallback_vendors = primary_vendors.copy()
-    for vendor in all_available_vendors:
-        if vendor not in fallback_vendors:
-            fallback_vendors.append(vendor)
-
-    last_no_data: NoMarketDataError | None = None
-    no_data_details: list[str] = []
-    last_rate_limit: Exception | None = None
-    first_error: Exception | None = None
-    for vendor in fallback_vendors:
-        if vendor not in VENDOR_METHODS[method]:
-            continue
-
-        vendor_impl = VENDOR_METHODS[method][vendor]
-        impl_func = vendor_impl[0] if isinstance(vendor_impl, list) else vendor_impl
-
+    last_no_data = None
+    last_unavailable = None
+    not_configured = None
+    failed = None
+    for vendor in chain:
+        impl = available[vendor]
+        impl = impl[0] if isinstance(impl, list) else impl
         try:
-            return impl_func(*args, **kwargs)
-        except (AlphaVantageRateLimitError, YFRateLimitError) as e:
-            last_rate_limit = e
-            continue  # Rate limits: try the next vendor
-        except NoMarketDataError as e:
-            last_no_data = e  # No data here; another vendor may have it
-            if e.detail:
-                no_data_details.append(e.detail)
-            continue
-        except Exception as e:
-            # A fallback vendor failing for an incidental reason (e.g. no API
-            # key configured) must not crash the call when another vendor
-            # already determined the symbol simply has no data. Remember the
-            # first error so a genuine primary-vendor failure still surfaces.
-            if first_error is None:
-                first_error = e
-            continue
+            return impl(*args, **kwargs)
+        except VendorNotConfiguredError as exc:
+            logger.warning("Vendor %s not configured for %s; trying next vendor", vendor, method)
+            not_configured = exc
+        except (VendorUnavailableError, YFRateLimitError) as exc:
+            logger.warning("Vendor %s unavailable for %s: %s", vendor, method, exc)
+            last_unavailable = exc
+        except NoMarketDataError as exc:
+            last_no_data = exc
+        except Exception as exc:
+            logger.warning("Vendor %s failed for %s: %s", vendor, method, exc)
+            failed = exc
 
-    # If any vendor reported "no data", the symbol is genuinely unavailable.
-    # Return one explicit, instructive sentinel rather than a vendor-specific
-    # empty string, so the agent reports "unavailable" instead of inventing a
-    # value. This takes precedence over incidental fallback errors.
+    if last_unavailable is not None or failed is not None:
+        return vendor_unavailable(method, last_unavailable or failed)
     if last_no_data is not None:
-        sym = last_no_data.symbol
-        canonical = last_no_data.canonical
-        resolved = "" if canonical == sym else f" (resolved to '{canonical}')"
-        detail = f" Detail: {' | '.join(no_data_details)}." if no_data_details else ""
-        return (
-            f"NO_DATA_AVAILABLE: No market data found for '{sym}'{resolved} from "
-            f"any configured vendor. The symbol may be invalid, delisted, or not "
-            f"covered by the configured data vendors.{detail} Do not estimate or "
-            f"fabricate values — report that data is unavailable for this symbol."
-        )
-
-    if last_rate_limit is not None:
-        return (
-            f"DATA_UNAVAILABLE: All configured vendors for '{method}' are "
-            f"temporarily rate limited or unavailable. Do not estimate or "
-            f"fabricate values — report that market data is currently "
-            f"unavailable and suggest retrying later."
-        )
-
-    # No vendor returned data and none reported clean "no data" — surface the
-    # first real error (e.g. the primary vendor's network failure).
-    if first_error is not None:
-        raise first_error
-
+        return no_data_available(last_no_data)
+    if not_configured is not None:
+        return vendor_unavailable(method, not_configured)
     raise RuntimeError(f"No available vendor for '{method}'")

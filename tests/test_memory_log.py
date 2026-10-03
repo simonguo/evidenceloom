@@ -57,7 +57,9 @@ def _resolve_entry(log, ticker, date, decision, reflection="Good call."):
 
 def _price_df(prices):
     """Minimal DataFrame matching yfinance .history() output shape."""
-    return pd.DataFrame({"Close": prices})
+    return pd.DataFrame(
+        {"Close": prices}, index=pd.date_range("2026-01-05", periods=len(prices), freq="B")
+    )
 
 
 def _make_pm_state(past_context=""):
@@ -182,10 +184,10 @@ class TestTradingMemoryLogCore:
         log.store_decision("AAPL", "2026-01-11", DECISION_OVERWEIGHT)
         assert log.load_entries()[0]["rating"] == "Overweight"
 
-    def test_rating_fallback_hold(self, tmp_path):
+    def test_missing_rating_requires_review(self, tmp_path):
         log = make_log(tmp_path)
         log.store_decision("MSFT", "2026-01-12", DECISION_NO_RATING)
-        assert log.load_entries()[0]["rating"] == "Hold"
+        assert log.load_entries()[0]["rating"] == "REVIEW"
 
     def test_rating_priority_over_prose(self, tmp_path):
         """'Rating: X' label wins even when an opposing rating word appears earlier in prose."""
@@ -446,13 +448,14 @@ class TestDeferredReflection:
         assert msft["ticker"] == "MSFT" and msft["pending"] is True
 
     def test_update_atomic_write(self, tmp_path):
-        """A pre-existing .tmp file is overwritten; the log is correctly updated."""
+        """Each atomic write owns its temp path, leaving unrelated temp files alone."""
         log = make_log(tmp_path)
         log.store_decision("NVDA", "2026-01-10", DECISION_BUY)
         stale_tmp = tmp_path / "trading_memory.tmp"
         stale_tmp.write_text("GARBAGE CONTENT — should be overwritten", encoding="utf-8")
         log.update_with_outcome("NVDA", "2026-01-10", 0.042, 0.021, 5, "Correct.")
-        assert not stale_tmp.exists()
+        assert stale_tmp.read_text(encoding="utf-8") == "GARBAGE CONTENT — should be overwritten"
+        assert not list(tmp_path.glob("trading_memory.md.*.tmp"))
         entries = log.load_entries()
         assert len(entries) == 1
         assert entries[0]["reflection"] == "Correct."
@@ -560,8 +563,7 @@ class TestDeferredReflection:
 
             mock_ticker_cls.side_effect = _make_ticker
             raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
-        assert raw is not None and alpha is not None and days is not None
-        assert days == 2
+        assert raw is None and alpha is None and days is None
 
     # TradingAgentsGraph._resolve_benchmark — picks index for alpha calc
 
@@ -676,8 +678,13 @@ class TestDeferredReflection:
         log.store_decision("AAPL", "2026-01-10", DECISION_BUY)
         mock_graph = MagicMock(spec=TradingAgentsGraph)
         mock_graph.memory_log = log
+        mock_graph.config = {}
         mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
+        with patch(
+            "tradingagents.graph.trading_graph.compute_returns",
+            return_value=(0.05, 0.02, 5, "2026-01-12"),
+        ):
+            TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
         mock_graph._fetch_returns.assert_not_called()
         assert len(log.get_pending_entries()) == 1
 
@@ -689,9 +696,14 @@ class TestDeferredReflection:
         mock_reflector.reflect_on_final_decision.return_value = "Momentum confirmed."
         mock_graph = MagicMock(spec=TradingAgentsGraph)
         mock_graph.memory_log = log
+        mock_graph.config = {}
         mock_graph.reflector = mock_reflector
         mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
+        with patch(
+            "tradingagents.graph.trading_graph.compute_returns",
+            return_value=(0.05, 0.02, 5, "2026-01-12"),
+        ):
+            TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
         assert log.get_pending_entries() == []
         entries = log.load_entries()
         assert len(entries) == 1
@@ -708,11 +720,16 @@ class TestDeferredReflection:
         mock_reflector.reflect_on_final_decision.side_effect = RuntimeError("subscription expired")
         mock_graph = MagicMock(spec=TradingAgentsGraph)
         mock_graph.memory_log = log
+        mock_graph.config = {}
         mock_graph.reflector = mock_reflector
         mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
         mock_graph._resolve_benchmark = MagicMock(return_value="SPY")
 
-        TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
+        with patch(
+            "tradingagents.graph.trading_graph.compute_returns",
+            return_value=(0.05, 0.02, 5, "2026-01-12"),
+        ):
+            TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
 
         mock_reflector.reflect_on_final_decision.assert_called_once()
         assert len(log.get_pending_entries()) == 1
@@ -726,11 +743,16 @@ class TestDeferredReflection:
         mock_reflector.reflect_on_final_decision.return_value = "Momentum confirmed."
         mock_graph = MagicMock(spec=TradingAgentsGraph)
         mock_graph.memory_log = log
+        mock_graph.config = {}
         mock_graph.reflector = mock_reflector
         mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
         mock_graph._resolve_benchmark = MagicMock(return_value="SPY")
 
-        TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
+        with patch(
+            "tradingagents.graph.trading_graph.compute_returns",
+            return_value=(0.05, 0.02, 5, "2026-01-12"),
+        ):
+            TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
 
         log.batch_update_with_outcomes.assert_called_once()
         assert len(log.get_pending_entries()) == 1
@@ -940,11 +962,19 @@ class TestLegacyRemoval:
         mock_graph.config = {"results_dir": str(tmp_path)}
         mock_graph.graph.invoke.return_value = fake_state
         mock_graph.propagator.create_initial_state.return_value = fake_state
-        mock_graph.propagator.get_graph_args.return_value = {}
+        mock_graph.propagator.get_graph_args.return_value = {"config": {}}
+        mock_graph.create_run_state.return_value = fake_state
+        mock_graph.checkpoint_input.return_value = fake_state
+        mock_graph.selected_analysts = ["market"]
+        mock_graph.run_settings.return_value = {}
         mock_graph.signal_processor.process_signal.return_value = "Buy"
         # Bind the real _run_graph so propagate's call to self._run_graph executes
         # the actual write path instead of the auto-MagicMock.
         mock_graph._run_graph = functools.partial(TradingAgentsGraph._run_graph, mock_graph)
+        mock_graph.record_decision = functools.partial(
+            TradingAgentsGraph.record_decision, mock_graph
+        )
+        mock_graph._log_state = functools.partial(TradingAgentsGraph._log_state, mock_graph)
         TradingAgentsGraph.propagate(mock_graph, "NVDA", "2026-01-10")
         entries = mock_graph.memory_log.load_entries()
         assert len(entries) == 1

@@ -88,3 +88,17 @@ describe("report versioning", () => {
     expect(secondPass.reportVersions).toEqual(migrated.reportVersions);
   });
 });
+
+it("freezes the backend's REVIEW and actual runtime provenance", () => {
+  const task = createEmptyTask(defaultTaskDraft(), "task-runtime");
+  const event: AnalysisEvent = {
+    type: "completed", decision: "REVIEW", reportSections: { final_trade_decision: "Rating: Buy" },
+    runSettings: { core_version: "core-test", llm_provider: "deepseek", tool_vendors: { get_news: "yfinance" } },
+  };
+  const versioned = appendCompletedReportVersion(task, event, createRunContext(defaultAnalysisForm(), "run-runtime"));
+  expect(versioned.reportVersions[0]).toMatchObject({ decision: "REVIEW", run: {
+    coreVersion: "core-test", llmProvider: "deepseek", toolVendors: { get_news: "yfinance" },
+  } });
+  event.runSettings!.tool_vendors!.get_news = "alpha_vantage";
+  expect(versioned.reportVersions[0].run?.toolVendors?.get_news).toBe("yfinance");
+});

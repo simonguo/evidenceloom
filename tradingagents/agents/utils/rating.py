@@ -1,99 +1,83 @@
-"""Shared 5-tier rating vocabulary and a deterministic heuristic parser.
-
-The same five-tier scale (Buy, Overweight, Hold, Underweight, Sell) is used by:
-- The Research Manager (investment plan recommendation)
-- The Portfolio Manager (final position decision)
-- The signal processor (rating extracted for downstream consumers)
-- The memory log (rating tag stored alongside each decision entry)
-
-Centralising it here avoids drift between those call sites.
-"""
+"""Read the Portfolio Manager's own labelled rating without inferring a trade."""
 
 from __future__ import annotations
 
 import re
-from typing import Tuple
+import unicodedata
+from typing import Mapping, Any, Tuple
 
-
-# Canonical, ordered 5-tier scale (most bullish to most bearish).
-RATINGS_5_TIER: Tuple[str, ...] = (
-    "Buy",
-    "Overweight",
-    "Hold",
-    "Underweight",
-    "Sell",
-)
-
-# Free-text fallbacks may localise the label and punctuation even though the
-# canonical rating remains English. Capture the full value so Chinese-only
-# ratings can be normalised as well.
-_RATING_LABEL_RE = re.compile(
-    r"(?:rating|评级|建议|最终(?:交易)?决策|交易决策|决策|action|signal)"
-    r"[\s*]*[：:\-][\s*]*(.+)",
+RATINGS_5_TIER: Tuple[str, ...] = ("Buy", "Overweight", "Hold", "Underweight", "Sell")
+RATING_REVIEW = "REVIEW"
+_RATINGS = {rating.lower(): rating for rating in (*RATINGS_5_TIER, RATING_REVIEW)}
+_CHINESE_RATINGS = {
+    "买入": "Buy",
+    "看多": "Buy",
+    "超配": "Overweight",
+    "增持": "Overweight",
+    "加仓": "Overweight",
+    "持有": "Hold",
+    "观望": "Hold",
+    "中性": "Hold",
+    "低配": "Underweight",
+    "减持": "Underweight",
+    "卖出": "Sell",
+    "清仓": "Sell",
+    "看空": "Sell",
+    "待复核": RATING_REVIEW,
+}
+# A rating must introduce its own line, not quote a rating in a thesis, table,
+# blockquote or scale. Accept the numbered labels written by older models.
+_RATING_LINE_RE = re.compile(
+    r"^\s*(?:\d+[.)]\s+)?[*_#\s]*(?:(?:final|our)\s+rating|rating|"
+    r"(?:最终|建议|组合)?评级|最终(?:交易)?决策|交易决策|决策|建议)"
+    r"[*_\s]*[:\-\u2010-\u2015][*_\s]*(.+)$",
     re.IGNORECASE,
 )
-
-_RATING_PATTERNS: Tuple[Tuple[str, Tuple[re.Pattern[str], ...]], ...] = (
-    ("Buy", (re.compile(r"(?<![A-Za-z])buy(?![A-Za-z])", re.IGNORECASE), re.compile(r"买入|看多"))),
-    (
-        "Overweight",
-        (
-            re.compile(r"(?<![A-Za-z])overweight(?![A-Za-z])", re.IGNORECASE),
-            re.compile(r"超配|增持|加仓"),
-        ),
-    ),
-    (
-        "Hold",
-        (
-            re.compile(r"(?<![A-Za-z])hold(?![A-Za-z])", re.IGNORECASE),
-            re.compile(r"持有|观望|中性"),
-        ),
-    ),
-    (
-        "Underweight",
-        (
-            re.compile(r"(?<![A-Za-z])underweight(?![A-Za-z])", re.IGNORECASE),
-            re.compile(r"低配|减持"),
-        ),
-    ),
-    (
-        "Sell",
-        (
-            re.compile(r"(?<![A-Za-z])sell(?![A-Za-z])", re.IGNORECASE),
-            re.compile(r"卖出|清仓|看空"),
-        ),
-    ),
-)
+_VALUE_RE = re.compile(r"^(Buy|Overweight|Hold|Underweight|Sell|REVIEW)\b", re.IGNORECASE)
+_ENGLISH_RATING_RE = re.compile(r"\b(Buy|Overweight|Hold|Underweight|Sell|REVIEW)\b", re.IGNORECASE)
+_EXPLANATION_RE = re.compile(r"\s+[\-\u2013\u2014]\s+|[:：;；.。]")
 
 
-def parse_rating(text: str, default: str = "Hold") -> str:
-    """Heuristically extract a 5-tier rating from prose text.
+def normalize_rating(value: Any) -> str | None:
+    """Normalize an already explicit rating, accepting the review sentinel."""
+    if not isinstance(value, str):
+        return None
+    return _RATINGS.get(value.strip().lower())
 
-    Two-pass strategy:
-    1. Look for an explicit "Rating: X" label (tolerant of markdown bold).
-    2. Fall back to the first 5-tier rating word found anywhere in the text.
 
-    Returns a Title-cased rating string, or ``default`` if no rating word appears.
-    """
-    for line in text.splitlines():
-        match = _RATING_LABEL_RE.search(line)
-        if match:
-            rating = _find_first_rating(match.group(1))
-            if rating:
+def extract_rating(text: str) -> str | None:
+    """Read the first explicit decision label; a prose rating word is no call."""
+    if not isinstance(text, str) or not text:
+        return None
+    for line in unicodedata.normalize("NFKC", text).splitlines():
+        match = _RATING_LINE_RE.match(line)
+        if match is None:
+            continue
+        value = match.group(1).strip()
+        # A label listing alternatives is not a call. Translated aliases of
+        # the same rating are fine; explanations after a separator are prose.
+        clause = _EXPLANATION_RE.split(value, maxsplit=1)[0]
+        ratings = {
+            normalize_rating(found.group(1)) for found in _ENGLISH_RATING_RE.finditer(clause)
+        }
+        ratings.update(rating for chinese, rating in _CHINESE_RATINGS.items() if chinese in clause)
+        if len(ratings) > 1:
+            return None
+        english = _VALUE_RE.match(value)
+        if english:
+            return normalize_rating(english.group(1))
+        for chinese, rating in _CHINESE_RATINGS.items():
+            if value.startswith(chinese):
                 return rating
-
-    rating = _find_first_rating(text)
-    if rating:
-        return rating
-
-    return default
+    return None
 
 
-def _find_first_rating(text: str) -> str:
-    earliest: tuple[int, str] | None = None
-    for rating, patterns in _RATING_PATTERNS:
-        for pattern in patterns:
-            match = pattern.search(text)
-            if match and (earliest is None or match.start() < earliest[0]):
-                earliest = (match.start(), rating)
-    return earliest[1] if earliest else ""
+def parse_rating(text: str, default: str = RATING_REVIEW) -> str:
+    """Return a labelled rating, or REVIEW when the decision cannot be read."""
+    return extract_rating(text) or default
+
+
+def run_rating(final_state: Mapping[str, Any]) -> str:
+    """Prefer the typed Portfolio Manager rating; support older saved states."""
+    rating = normalize_rating(final_state.get("final_rating"))
+    return rating or parse_rating(final_state.get("final_trade_decision", ""))

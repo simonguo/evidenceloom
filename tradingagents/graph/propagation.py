@@ -10,9 +10,10 @@ from tradingagents.agents.utils.agent_states import (
 class Propagator:
     """Handles state initialization and propagation through the graph."""
 
-    def __init__(self, max_recur_limit=100):
+    def __init__(self, max_recur_limit=100, analyst_concurrency_limit=1):
         """Initialize with configuration parameters."""
         self.max_recur_limit = max_recur_limit
+        self.analyst_concurrency_limit = analyst_concurrency_limit
 
     def create_initial_state(
         self,
@@ -21,6 +22,7 @@ class Propagator:
         asset_type: str = "stock",
         past_context: str = "",
         instrument_context: str = "",
+        run_settings: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create the initial state for the agent graph.
 
@@ -37,6 +39,7 @@ class Propagator:
             "instrument_context": instrument_context,
             "trade_date": str(trade_date),
             "past_context": past_context,
+            "run_settings": run_settings or {},
             "investment_debate_state": InvestDebateState(
                 {
                     "bull_history": "",
@@ -74,7 +77,10 @@ class Propagator:
             callbacks: Optional list of callback handlers for tool execution tracking.
                        Note: LLM callbacks are handled separately via LLM constructor.
         """
-        config = {"recursion_limit": self.max_recur_limit}
+        config = {
+            "recursion_limit": self.max_recur_limit,
+            "max_concurrency": self.analyst_concurrency_limit,
+        }
         if callbacks:
             config["callbacks"] = callbacks
         return {

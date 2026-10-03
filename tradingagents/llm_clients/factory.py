@@ -2,6 +2,45 @@ from typing import Optional
 
 from .base_client import BaseLLMClient
 
+
+def _integer_setting(value, name: str, minimum: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, str)):
+        raise ValueError(f"{name} must be an integer >= {minimum}")
+    try:
+        result = int(value)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be an integer >= {minimum}") from exc
+    if result < minimum:
+        raise ValueError(f"{name} must be an integer >= {minimum}")
+    return result
+
+
+def build_llm_kwargs(config: dict) -> dict:
+    """Translate the run's reasoning controls and resource limits to SDK kwargs."""
+    kwargs = {}
+    provider = str(config.get("llm_provider", "")).lower()
+    controls = {
+        "google": ("google_thinking_level", "thinking_level"),
+        "openai": ("openai_reasoning_effort", "reasoning_effort"),
+        "anthropic": ("anthropic_effort", "effort"),
+    }
+    if provider in controls:
+        source, target = controls[provider]
+        if config.get(source):
+            kwargs[target] = config[source]
+    temperature = config.get("temperature")
+    if temperature is not None and temperature != "":
+        kwargs["temperature"] = float(temperature)
+    for source, target, minimum in (
+        ("llm_max_retries", "max_retries", 0),
+        ("max_tokens", "max_output_tokens" if provider == "google" else "max_tokens", 1),
+    ):
+        value = config.get(source)
+        if value is not None and value != "":
+            kwargs[target] = _integer_setting(value, source, minimum)
+    return kwargs
+
+
 # Providers that use the OpenAI-compatible chat completions API
 _OPENAI_COMPATIBLE = (
     "openai",

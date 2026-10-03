@@ -18,17 +18,35 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_CHECKPOINT_ENABLED": "checkpoint_enabled",
     "TRADINGAGENTS_BENCHMARK_TICKER": "benchmark_ticker",
     "TRADINGAGENTS_TEMPERATURE": "temperature",
+    "TRADINGAGENTS_MAX_TOKENS": "max_tokens",
+    "TRADINGAGENTS_LLM_MAX_RETRIES": "llm_max_retries",
+    "TRADINGAGENTS_MAX_TOOL_ROUNDS": "max_tool_rounds",
+    "TRADINGAGENTS_ANALYST_CONCURRENCY_LIMIT": "analyst_concurrency_limit",
+    "TRADINGAGENTS_OPENAI_REASONING_EFFORT": "openai_reasoning_effort",
+    "TRADINGAGENTS_GOOGLE_THINKING_LEVEL": "google_thinking_level",
+    "TRADINGAGENTS_ANTHROPIC_EFFORT": "anthropic_effort",
+    "TRADINGAGENTS_HOLDING_PERIOD_DAYS": "holding_period_days",
 }
 
 
 def _coerce(value: str, reference):
     """Coerce env-var string to the type of the existing default value."""
     if isinstance(reference, bool):
-        return value.strip().lower() in ("true", "1", "yes", "on")
+        normalized = value.strip().lower()
+        if normalized not in ("true", "1", "yes", "on", "false", "0", "no", "off"):
+            raise ValueError(f"Invalid boolean setting: {value!r}")
+        return normalized in ("true", "1", "yes", "on")
     if isinstance(reference, int) and not isinstance(reference, bool):
         return int(value)
     if isinstance(reference, float):
         return float(value)
+    return value
+
+
+def validate_holding_period_days(value, *, setting_name="holding_period_days") -> int:
+    """Reject invalid holding windows before any analysis or market-data request."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError(f"{setting_name} must be a positive integer")
     return value
 
 
@@ -39,6 +57,8 @@ def _apply_env_overrides(config: dict) -> dict:
         if raw is None or raw == "":
             continue
         config[key] = _coerce(raw, config.get(key))
+    if "holding_period_days" in config:
+        validate_holding_period_days(config["holding_period_days"])
     return config
 
 
@@ -78,6 +98,8 @@ DEFAULT_CONFIG = _apply_env_overrides(
         # variation on models that honor it; reasoning models largely ignore it
         # and no setting makes LLM output bit-identical across runs (see README).
         "temperature": None,
+        "max_tokens": None,
+        "llm_max_retries": None,
         # Checkpoint/resume: when True, LangGraph saves state after each node
         # so a crashed run can resume from the last successful step.
         "checkpoint_enabled": False,
@@ -88,6 +110,8 @@ DEFAULT_CONFIG = _apply_env_overrides(
         "max_debate_rounds": 1,
         "max_risk_discuss_rounds": 1,
         "max_recur_limit": 100,
+        "max_tool_rounds": 20,
+        "holding_period_days": 5,
         "analyst_concurrency_limit": 1,
         # News / data fetching parameters
         # Increase for longer lookback strategies or to broaden macro coverage;

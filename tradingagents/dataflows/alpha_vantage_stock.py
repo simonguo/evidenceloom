@@ -1,5 +1,10 @@
 from datetime import datetime
+from io import StringIO
+
+import pandas as pd
+
 from .alpha_vantage_common import _make_api_request, _filter_csv_by_date_range
+from .errors import NoMarketDataError
 
 
 def get_stock(symbol: str, start_date: str, end_date: str) -> str:
@@ -32,4 +37,9 @@ def get_stock(symbol: str, start_date: str, end_date: str) -> str:
 
     response = _make_api_request("TIME_SERIES_DAILY_ADJUSTED", params)
 
-    return _filter_csv_by_date_range(response, start_date, end_date)
+    filtered = _filter_csv_by_date_range(response, start_date, end_date)
+    if not filtered.strip() or pd.read_csv(StringIO(filtered)).empty:
+        raise NoMarketDataError(
+            symbol, detail=f"no Alpha Vantage rows within {start_date}..{end_date}"
+        )
+    return filtered
