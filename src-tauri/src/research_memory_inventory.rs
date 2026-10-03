@@ -319,18 +319,26 @@ mod tests {
     }
     #[test]
     fn slow_validation_cannot_return_a_success_after_the_total_deadline() {
-        let start = Instant::now();
-        let result = validate_bounded(
-            Vec::new(),
-            ids(),
-            start + Duration::from_millis(30),
-            |_, _| {
-                thread::sleep(Duration::from_millis(100));
-                Ok(serde_json::json!({}))
-            },
-        );
-        assert_eq!(result, Err(TIMED_OUT.into()));
-        assert!(start.elapsed() < Duration::from_millis(90));
+        let (release, blocked) = mpsc::channel();
+        let (returned, result) = mpsc::channel();
+        let caller = thread::spawn(move || {
+            let outcome = validate_bounded(
+                Vec::new(),
+                ids(),
+                Instant::now() + Duration::from_millis(30),
+                move |_, _| {
+                    // Keep validation unfinished until the caller returns.
+                    // A finite guard also releases it if a regression blocks.
+                    let _ = blocked.recv_timeout(Duration::from_secs(5));
+                    Ok(serde_json::json!({}))
+                },
+            );
+            let _ = returned.send(outcome);
+        });
+        let outcome = result.recv_timeout(Duration::from_secs(2));
+        let _ = release.send(());
+        caller.join().unwrap();
+        assert_eq!(outcome.unwrap(), Err(TIMED_OUT.into()));
     }
     #[cfg(unix)]
     #[test]
