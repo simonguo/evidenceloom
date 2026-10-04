@@ -49,7 +49,7 @@ uv run python scripts/generate_third_party_notices.py
 | `langgraph-checkpoint` | `4.1.1` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint) |
 | `langgraph-checkpoint-sqlite` | `3.1.1` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint-sqlite) |
 | `langgraph-prebuilt` | `1.1.0` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/prebuilt) |
-| `langgraph-sdk` | `0.4.2` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/sdk-py) |
+| `langgraph-sdk` | `0.4.4` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/sdk-py) |
 | `langsmith` | `0.10.9` | MIT | [link](https://smith.langchain.com/) |
 | `lxml` | `6.1.1` | BSD-3-Clause | [link](https://github.com/lxml/lxml) |
 | `markdown-it-py` | `4.2.0` | MIT | [link](https://markdown-it-py.readthedocs.io) |
