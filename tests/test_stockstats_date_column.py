@@ -99,8 +99,10 @@ def test_negative_zero_offset_is_retained_as_unknown_instead_of_observed_utc(
     cleaned = su._clean_dataframe(frame)
     assert cleaned.iloc[0]["Date"] == pd.Timestamp("2026-04-01")
     assert cleaned.iloc[0]["SourceTimestamp"] == original
-    assert cleaned.iloc[0]["SourceTimezone"] is None
-    assert cleaned.iloc[0]["SourceUTCOffset"] is None
+    # Pandas 3 string columns represent assigned None as NaN; both mean that
+    # no clock metadata was observed, and normalized artifacts must use null.
+    assert pd.isna(cleaned.iloc[0]["SourceTimezone"])
+    assert pd.isna(cleaned.iloc[0]["SourceUTCOffset"])
     assert cleaned.iloc[0]["TimezoneOrigin"] == "unknown"
 
 

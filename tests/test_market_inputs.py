@@ -354,9 +354,17 @@ def test_negative_zero_timestamp_offset_cannot_become_observed_utc(tmp_path):
         validate_market_observations(quality, record, evidence)
 
 
-def test_raw_negative_zero_source_remains_unknown_in_captured_quality(tmp_path):
+@pytest.mark.parametrize("existing_source_columns", [False, True])
+def test_raw_negative_zero_source_remains_unknown_in_captured_quality(
+    tmp_path, existing_source_columns
+):
     frame = _frame()
     frame["Date"] = [value.strftime("%Y-%m-%dT00:00:00-00:00") for value in frame["Date"]]
+    if existing_source_columns:
+        frame["SourceTimestamp"] = frame["Date"]
+        frame["SourceTimezone"] = "UTC"
+        frame["SourceUTCOffset"] = "+00:00"
+        frame["TimezoneOrigin"] = "timestamp"
     evidence = _real_quality(tmp_path, frame)
     quality, record = _quality(evidence)
     assert quality["source_timezone"] is None
@@ -371,7 +379,10 @@ def test_raw_negative_zero_source_remains_unknown_in_captured_quality(tmp_path):
             row[columns.index("SourceTimestamp")].endswith("-00:00") for row in payload["rows"]
         )
         assert all(row[columns.index("SourceTimezone")] is None for row in payload["rows"])
+        assert all(row[columns.index("SourceUTCOffset")] is None for row in payload["rows"])
         assert all(row[columns.index("TimezoneOrigin")] == "unknown" for row in payload["rows"])
+    with pytest.raises(ValueError, match=f"^{ERROR}$"):
+        validate_market_observations(quality, record, evidence)
 
 
 def test_original_zone_completion_remains_conservative_across_dst(tmp_path):
