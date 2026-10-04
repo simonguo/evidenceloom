@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "recorded_at": "2026-10-04T08:02:44.319682+00:00",
+  "recorded_at": "2026-10-04T08:28:45.137532+00:00",
   "fictional": true,
   "provider_calls": 0,
   "model_calls": 0,
@@ -1858,6 +1858,1582 @@
         "host_architecture": "x86_64"
       },
       "helper_source_sha256": "e894cdc57b434e2dd8be34d3257002caca8d3e8134f3d4d24dea0fdf49cfb49f"
+    }
+  },
+  "cross_platform_source_bytes": {
+    "initial_windows_ci_failure": {
+      "path": "/tmp/evidenceloom-pr89-windows-newline-proof.json",
+      "sha256": "394bddd75ed75367a855ad92abc44e112fbb09591c5dc63fa80319754aed9bfc",
+      "result": {
+        "schema_version": 1,
+        "source_revision": "fec47c128d4ba2b470d2f2eba46967c48515288f",
+        "status": "root_cause_confirmed_byte_transform",
+        "ci_job_id": 111393513437,
+        "ci_run_id": 37187827418,
+        "ci_summary": "14 failed, 646 passed, 15 skipped in 346.11s",
+        "log_sha256": "7ad39a347b50abd661629adbf8254a5b766b62938277a636fcfe05e5b509cafa",
+        "direct_hash_failure_log_lines": [
+          351,
+          352,
+          354,
+          355,
+          597,
+          602,
+          604,
+          605
+        ],
+        "independent_transform_matches_ci": true,
+        "source_byte_hashes": [
+          {
+            "path": "tradingagents/memory/_evaluation_v1.py",
+            "has_crlf": false,
+            "line_feeds": 655,
+            "lf_sha256": "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e",
+            "hypothetical_checkout_crlf_sha256": "56cce61e720b91e871f5500573d90cf93f1cc5368129c86ad7dc76b4679972ee"
+          },
+          {
+            "path": "tradingagents/memory/evaluation.py",
+            "has_crlf": false,
+            "line_feeds": 817,
+            "lf_sha256": "694495520a37c2557c7defd7422bc1ca2262503d67e6e049ddfc66a04b0215f1",
+            "hypothetical_checkout_crlf_sha256": "e6cd9ca775270eac70a50a2c9d7e71e55da0e6fc9fb2ae1a2114a76f069d92dc"
+          },
+          {
+            "path": "tradingagents/memory/targets.py",
+            "has_crlf": false,
+            "line_feeds": 384,
+            "lf_sha256": "964da0879e6fb24dce7f0c215ff533fdada6516c46db0dc21287df1a9601d3d6",
+            "hypothetical_checkout_crlf_sha256": "6e191c9e1c905e5b7c13756108c9de99af03946188dd463983f4c2fa147b6b89"
+          },
+          {
+            "path": "tradingagents/memory/history_adapter.py",
+            "has_crlf": false,
+            "line_feeds": 25,
+            "lf_sha256": "ded64555d1f42562950fa2491e6f2353c86e443fe812dff3f209cb8d0bfde278",
+            "hypothetical_checkout_crlf_sha256": "a2082be707ca1d015619eeee965cac01b11e162d8be45e554cc3fd51387dc91c"
+          }
+        ],
+        "repository_edits": 0,
+        "provider_calls": 0,
+        "model_calls": 0,
+        "recommended_scope": "Preserve LF checkout for source-byte-hashed files via committed Git attributes. Preserve archived bytes/hash contracts; no timeout widening or fixture rehash to Windows CRLF."
+      }
+    },
+    "actual_git_autocrlf_checkout": {
+      "path": "/tmp/evidenceloom-pr89-git-checkout-proof.json",
+      "sha256": "77cf49bec37f893260cc62d56ea128b929597a36dc559d79f0ae0a8fa9d4be29",
+      "result": {
+        "schema_version": 1,
+        "recorded_at": "2026-10-04T08:25:57.574251+00:00",
+        "source_revision": "55b2ddd1328c266562700fa79670a9dcbcf7e3cb",
+        "checkout": "/tmp/evidenceloom-pr89-autocrlf-checkout",
+        "method": "Real Git clone --no-checkout followed by checkout after setting core.autocrlf=true and core.eol=crlf on macOS; actual Windows CI is a separate gate.",
+        "git_version": "git version 2.50.1 (Apple Git-155)",
+        "attributes": {
+          "path": ".gitattributes",
+          "sha256": "d33fef7c8cdafaada884de93e9a32aac91c6c5ea97d448b0ea01fe68904bbc09",
+          "bytes": "# Source identities and frozen artifacts require stable bytes across checkouts.\n*.py text eol=lf\n/docs/contracts/*.json text eol=lf\n/tests/fixtures/*.json text eol=lf\n"
+        },
+        "verified_checkout_files": [
+          {
+            "path": "cli/__init__.py",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/announcements.py",
+            "bytes": 1507,
+            "sha256": "2c3dd67fc0bea2f21d0f24f8c2e2ee470e4cdc41b601917334db8d5fd1f90d9c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/config.py",
+            "bytes": 300,
+            "sha256": "80f45b542b9842df01b413fd3fe74b086c838163f3a184d97a43ee1290087fa3",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/main.py",
+            "bytes": 60947,
+            "sha256": "38ac8ce2521841ec66e95ae63a60bc797e951ffadb44bafa49dfa432f13d82d3",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/memory_inventory.py",
+            "bytes": 1907,
+            "sha256": "ced9d2cca9b986a986b65f63effd5d5e4d5e5af66aca1c334dc4889afa66a960",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/models.py",
+            "bytes": 360,
+            "sha256": "ae9355c576a4d550471de1d949eaf4e038945b467e3c59ee13e513c0af99443e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/research_manifest.py",
+            "bytes": 1588,
+            "sha256": "42d8f220abffd02791b4d781250f425dcd3344e8e4ab29cd702a814a0bf64f52",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/runner_diagnostics.py",
+            "bytes": 4435,
+            "sha256": "939f9f6c72b41b7540cd9ce9d7ea7d1caca809439d5b46405e3856c51fe0f197",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/runner_protocol.py",
+            "bytes": 1286,
+            "sha256": "17f74a40c6e9f73a80925a3f3260dd04f87bacc90ce20049de5efa572ad84fd0",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/stats_handler.py",
+            "bytes": 2366,
+            "sha256": "54d1ffe27d06f9fd45a9934efa8e2e1837084dc24ef67e1c38d5078255a81b2a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "cli/utils.py",
+            "bytes": 21165,
+            "sha256": "b7bbf3689c26a2952c2b6e69eec977b9b99177b34d5f0d84e5f4f0a8d72aea97",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "docs/contracts/effective_request_identity_policy_v1.json",
+            "bytes": 5382,
+            "sha256": "857dff03beea2173761a877ec8275999e974ae76ab1eefc78d3782f585471624",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "docs/contracts/memory_target_policy_v1.json",
+            "bytes": 1826,
+            "sha256": "f6879792d66060d2000985f9d86f97b381810ae1146f1f5b487cbc37832be669",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "docs/contracts/numeric_review_policy_v1.json",
+            "bytes": 730,
+            "sha256": "2ff34c9f6992e7e98567a84d2fe4c6068991a1e535a2df8c7cdbbccb4edb3832",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "frontend/server/load_ohlcv_chart.py",
+            "bytes": 1268,
+            "sha256": "9640d940b05c09ac56cbe1a62990caa4ddadf0ca2c72f2172192d37290042843",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "frontend/server/resolve_instrument.py",
+            "bytes": 14557,
+            "sha256": "7c59fd7f02e57ca353a71f6804add9c9a8307eac8608c695913d06fa54d6ad08",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "frontend/server/run_analysis.py",
+            "bytes": 31194,
+            "sha256": "440aded271e02f4aa0b0edb6281817b4432e27b92d6e499c328f176dc44ec5ca",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "frontend/server/test_llm.py",
+            "bytes": 3192,
+            "sha256": "341eabf4642280ae98cc1f90d1de9c4b81f8a402f67cf7c8e4eeb2ab57007ba6",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "main.py",
+            "bytes": 756,
+            "sha256": "e52b1e3f7ee662ea70eb11374caf173e2396fb68b0979e27ed61dc416b93f08f",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "scripts/check_frontend_audit.py",
+            "bytes": 16028,
+            "sha256": "27a4b6a79ebe67bf8135ecc1b801f42b042f912c4295f17dd2ac98af20b8b1d3",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "scripts/check_versions.py",
+            "bytes": 2145,
+            "sha256": "49a1039a1f32c1a4baf212530d00461f651afcc702fdce2ee106f8387b1f39ed",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "scripts/generate_third_party_notices.py",
+            "bytes": 12353,
+            "sha256": "b1ad5d8f25130f595d4f169b7bff988cb962240d5737ea848431692a9a57b401",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "scripts/sidecar_architecture.py",
+            "bytes": 8932,
+            "sha256": "2598d7a5c505b8f7bfb105217f240b81edd3efabff8d534c42e81fa9d2f0bbd2",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "scripts/sidecar_probe.py",
+            "bytes": 15136,
+            "sha256": "e894cdc57b434e2dd8be34d3257002caca8d3e8134f3d4d24dea0fdf49cfb49f",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "scripts/smoke_structured_output.py",
+            "bytes": 7572,
+            "sha256": "dc010a90d9bb48d9cc8be0b5a75e60b324c1159142d1193ee04784f69cd2f0c9",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/__init__.py",
+            "bytes": 1,
+            "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/conftest.py",
+            "bytes": 3137,
+            "sha256": "3b133adf09c2c9620fc4abf210cb68be7d1c882b7c112c337a11b9b8510899e4",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/effective_request_identity_marked_v1.json",
+            "bytes": 13390,
+            "sha256": "9851973f3376efe99c6589a49086c8f1207547b79376c115fcb4d0f16c8a1dc4",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/effective_request_identity_v1.json",
+            "bytes": 63579,
+            "sha256": "031c86614c09ff9df83f996a16b45175161266bd953f053148dc026e04d075d9",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/evidence_bundle_v1.json",
+            "bytes": 2389,
+            "sha256": "d0b403ca20d823ae6f5c21f4a26f3feac74cd59cf5ae1e8a48930f0a45235f73",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/generate_memory_target_binding_v2.py",
+            "bytes": 7180,
+            "sha256": "2476c5f25d6c435b819992d49a2fcd2dabf3b8b576ca83926159fd5b9952d88b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/memory_bundle_v1.json",
+            "bytes": 19433,
+            "sha256": "f408ba206896063a744301c18eba26e1762c9f014c85485e845ec4a394849647",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/memory_evidence_bundle_v1.json",
+            "bytes": 2556,
+            "sha256": "1ce5c561072decd01763a3a7b5f44d9dfe16d25baf54bf18b2b9b61986303e02",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/memory_target_binding_v2.json",
+            "bytes": 58352,
+            "sha256": "a6290b809a5dc37705ecdcbf907dd5db18caf4a2b924feba373b2b43f9a67649",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/numeric_review_v1.json",
+            "bytes": 90146,
+            "sha256": "eacc93223761be4c903ef5f332d6747352a7c04c0799b758ce0b0b55fa039d5e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/research_readiness_evidence_v1.json",
+            "bytes": 56222,
+            "sha256": "d896104d406c99f4f3481232d05d378e05a1e475af580c038d532452e462de4c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/fixtures/research_readiness_v1.json",
+            "bytes": 4527,
+            "sha256": "ff17c5b32eb6e4f49537c196442028b2f31bfe176d334e1efe8579bed9dc5339",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_a_share_source_attribution.py",
+            "bytes": 6191,
+            "sha256": "6cc1f8b8a3253431702b1640e360db0c5d4a6782f489fd64ed5868d1ad4f83a6",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_analyst_execution.py",
+            "bytes": 3628,
+            "sha256": "781abe442bac36eb7d1caf3e811c28473cec0a16475f4a4a52064cd6f9e6e251",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_anthropic_effort.py",
+            "bytes": 3243,
+            "sha256": "108d8e6a1e37c6c54da1db6fb4574504329fb11b981885541d2e83db7fe7499c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_api_key_env.py",
+            "bytes": 5605,
+            "sha256": "0089f4aabda919c95ea2eac2594c8b7ef49d2831c47bbe4763d1992ffe781e49",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_capabilities.py",
+            "bytes": 4867,
+            "sha256": "846fb1c53cf2d9d394cfc1bd0c71447f2d9e5cccca0772bf88165442809be359",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_checkpoint_lifecycle.py",
+            "bytes": 7173,
+            "sha256": "00632ae7aa207823e9c0fbda97ca4b8b14f45db7c58476ce092f67740aa81852",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_checkpoint_resume.py",
+            "bytes": 4935,
+            "sha256": "b6000bbdc845d7b7042d2527659ebc6efda0a7409294192661b8d8529d9f2ca3",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_china_sentiment.py",
+            "bytes": 1955,
+            "sha256": "c466142a0cf4682f5583190c5e4521a1595918d24c92ee228d64aec0e4457a1b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_cli_env_skip.py",
+            "bytes": 3822,
+            "sha256": "84abd972289937a48f3197a5eb4603906bf2138189efb349e30c729b35a94825",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_cli_stream.py",
+            "bytes": 5715,
+            "sha256": "e7cd94876c589dbd2d561117a6e8c4ed713ecc5c842f086181e19930719cdf3e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_crypto_asset_mode.py",
+            "bytes": 1764,
+            "sha256": "0059bda7d1f1589d304074e612ca0b178cfd5180175ca16f95aa30bf3562259c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_dataflows_config.py",
+            "bytes": 2393,
+            "sha256": "3b49403f002955d0ff6d1022b8b1ccf2ec758eb4017234f241cea12a55729966",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_decision_reliability.py",
+            "bytes": 4722,
+            "sha256": "8eb128fb636c8ffc300e9af422588ee9ed3edbc2660501aebb0be698271f3271",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_deepseek_reasoning.py",
+            "bytes": 10374,
+            "sha256": "7cd07ce6d722b1ef99c3798656ac8315095ef668025e9a2333d98d81de6125de",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_desktop_runner_config.py",
+            "bytes": 1059,
+            "sha256": "35b6435a1d73eb93341771eeb05a7d48fd7cbf7e0817497a3842e7dd86e9cb07",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_desktop_stream.py",
+            "bytes": 4867,
+            "sha256": "8cc626de11515cf1becf4c503bc0898c15b0c03a041c4898fcb7fb55053f9c3e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_effective_request_identity.py",
+            "bytes": 13855,
+            "sha256": "b3838997a8aade0bb3781036cba20743810f40cb1a4d8888b5cba234e7aa96b4",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_effective_request_identity_persistence.py",
+            "bytes": 6855,
+            "sha256": "ed12d9acc60f64691807a351487f8e6b53c4077b39de7e00b68cb665bb48e57c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_effective_request_pipeline.py",
+            "bytes": 10737,
+            "sha256": "4c97e247811292857bece90e1cf0208cd429d98bc7e46ba2a1d46be90e5d7bcf",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_env_overrides.py",
+            "bytes": 3811,
+            "sha256": "765a515f7e857cb2c1c268b68defd43c18b949d944437c0b4f59672b365c71dd",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_evidence_desktop_pipeline.py",
+            "bytes": 3681,
+            "sha256": "f50db32587ad261399e368a230a820044702d8a9d1f2877d6dbfd3fe11bf4edc",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_evidence_ledger.py",
+            "bytes": 15443,
+            "sha256": "026c06d89dab3ad80e5b475e636fb2f1a8cbde11efd7e7ba99d102495549867c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_evidence_persistence.py",
+            "bytes": 6046,
+            "sha256": "6ddabbf8656ef2035d3da4414672c46deb9db67efdb7bd54aed411d9e736fdda",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_evidence_runtime.py",
+            "bytes": 16418,
+            "sha256": "558794a78271a366754b118610f78bbac4997c16d3524d2e1170ea4ab09ca00c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_evidence_sources.py",
+            "bytes": 24344,
+            "sha256": "711962344a84b34a0164fbd4cee2751d13f2d817cb8be05a697e6d7fe00cd6e7",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_format_smoke.py",
+            "bytes": 1847,
+            "sha256": "72bee3150e708dae88f88fe17d00e32d9d8790cfd7a71951fa53d3a6ed058871",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_frontend_audit.py",
+            "bytes": 14475,
+            "sha256": "8ae976c6bb66dc87d1cd0cd394416ea58472b27414c3956c03ab7f6f24cfa065",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_google_api_key.py",
+            "bytes": 1293,
+            "sha256": "c67461b2605fcbe1ff0edb904763715caea8bd7677b7d3ad741e5cbe9e319659",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_graph_runtime.py",
+            "bytes": 21614,
+            "sha256": "f42dc3ea7fe25e76b067abd189ea89b4c7a433ad3253570f6a9f252441aaa4c6",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_holding_period_config.py",
+            "bytes": 2278,
+            "sha256": "7cbdc43411aca4687bbb67f5c3af7adcfd60adec50fb6c7ca25f50cad54f1639",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_instrument_identity.py",
+            "bytes": 6882,
+            "sha256": "1972175d4007e8c4fb6790aab6f1897c53bee9f433b6feded5d2bd8a57fce7c0",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_llm_run_limits.py",
+            "bytes": 3695,
+            "sha256": "bd20fc56b35f1f9390ce9c1c55d13f19ce88a36b4eacaebc2fb704ac458d1f06",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_market_data_validator.py",
+            "bytes": 16255,
+            "sha256": "d59c9cef24116a6bd0628f0877074dd4c6b825d6fb2b5126f40e003ed706031c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_market_inputs.py",
+            "bytes": 18414,
+            "sha256": "c42be9d98d24bfecc492803ba67e357565220131cb6cfd3c613b30911dec4483",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_contract.py",
+            "bytes": 22108,
+            "sha256": "4b5491c226fd157242ad44dd1140eb0d1ca8e2de94dfb8ee3c1613a5fdeb2593",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_evaluation.py",
+            "bytes": 26202,
+            "sha256": "5cde82913b5103e1c7b4d1287f2568409142f8ea4cd6aeebff00c7ca85267a8b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_inventory.py",
+            "bytes": 7830,
+            "sha256": "78240f1cdda778823650dfc29d75507dc742dd8b721d42e28f18f2a0704383fc",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_log.py",
+            "bytes": 41052,
+            "sha256": "a9cb8a35f5f47d0162382c7d27841236608960a09e8f92347b907ee729bfc72e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_persistence.py",
+            "bytes": 12805,
+            "sha256": "ca737607ea1c51490db180eec539defa560ee02531823c7d01519f793cfc5e15",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_reliability.py",
+            "bytes": 2877,
+            "sha256": "a58762fb032609d71bbb11d82beef7f1c2685c4b0711945ef2c9b058d4741ae2",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_target_binding.py",
+            "bytes": 20829,
+            "sha256": "d13ac4b462131d04192fbd2200333ab755bedd168c8210de3fb00e7ac766a9fe",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_target_binding_boundaries.py",
+            "bytes": 26793,
+            "sha256": "892eefe0e258ec1ae907f972a1be60ad14e79c4d4b23177894a3e7b2f65ee6b0",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_memory_target_publication.py",
+            "bytes": 7359,
+            "sha256": "88340d5f8e8f16f804c438e57124f2375ae609310ea4b21d683ac220d5eb3449",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_minimax.py",
+            "bytes": 2898,
+            "sha256": "73d5cb362ccde8dcb235013190c4bf02bc9628cf2572f5e018677e23729dd6f1",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_model_validation.py",
+            "bytes": 1918,
+            "sha256": "39550fec1c36d6325f4ba0b35ea13275017d002960ea60c344667146159b9c15",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_no_data_handling.py",
+            "bytes": 7856,
+            "sha256": "64cbc36e27e9d04754b7b5e49f4f9fb511bf767aab9b7a212becc81365d3fe2d",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_numeric_pipeline.py",
+            "bytes": 13831,
+            "sha256": "2388b4c0647098b642877faffdbd5e353900e6d08a29781c24ee875830b0f806",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_numeric_review.py",
+            "bytes": 34551,
+            "sha256": "e061c924c0ad2112644490d877ca93c219e05bddcc4d65e9634bd86ccbcd5c58",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_ollama_base_url.py",
+            "bytes": 7154,
+            "sha256": "6edad83c027b5f941548a024b89dd6b95152070fbbe12c2d2a9405f750ee7cad",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_openai_retry_budget.py",
+            "bytes": 8115,
+            "sha256": "8c6c88de258add267e1f9ee15217b2dce09df66b08a6a5a4532b68b8c10d4a8a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_output_quality_pipeline.py",
+            "bytes": 6690,
+            "sha256": "cc5941a79c3ffdd85433d1ab3a97752c08d5f18e58dcd34c30d6ced51fff4d2e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_rating_ambiguity.py",
+            "bytes": 904,
+            "sha256": "fbd95c7e8dfacc253d3af95d5418f1b436b2f3effed803e2c86e8eb5154c271e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_reddit_fallback.py",
+            "bytes": 4943,
+            "sha256": "066233a0d0be811477c32330f03ecdedf4631f5cd04b867ac02ddcc25c648e00",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_research_memory_pipeline.py",
+            "bytes": 8784,
+            "sha256": "3252419ef2e89ae2ffe477dc272318ad66565de7da9028dc6d72c9ee14acaa63",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_research_readiness.py",
+            "bytes": 11059,
+            "sha256": "f52092fc0fc11f6d8264a91fbbe1d3545cf33ba07ebda79e5e82e93a63d502ef",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_resolve_instrument.py",
+            "bytes": 1342,
+            "sha256": "7095d9ae4e2991c27cd975b3d64d4675c8587c4614862340a9d5ca0f192f3a57",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_runner_diagnostics.py",
+            "bytes": 7803,
+            "sha256": "4a283180b3e623bd04819a0fc8bb63ce2143a7a462bdabe659db98df2e2deae5",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_runner_source_manifest.py",
+            "bytes": 3700,
+            "sha256": "23428ecf39fa592b33a65bf5917fa1edfdd11039a27fe4b82838fd5578a66fdf",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_safe_ticker_component.py",
+            "bytes": 2200,
+            "sha256": "85232a22a49def5d66c75c220c73a63f3e22bb9188e14c89ec7eed3978dc0a92",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_settlement.py",
+            "bytes": 7595,
+            "sha256": "b51069e4bdec42bb4393300f5f02c017cc6a1c9ee7f6945c2bae18f795996430",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_sidecar_architecture.py",
+            "bytes": 16771,
+            "sha256": "ca03fa8cdcf99392a97825a35ff3ddbcd577731010eb0b7a329a878beddb3902",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_sidecar_probe.py",
+            "bytes": 10886,
+            "sha256": "58df58170bcfc20111331eeab38d14f551bf048bace73732604ca588f02e6061",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_signal_processing.py",
+            "bytes": 4073,
+            "sha256": "eb9ce6336a6027cf47de2f35bcbf029d0cceb132bc497b19895691392a710ac7",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_stockstats_date_column.py",
+            "bytes": 8433,
+            "sha256": "5414edfbc300cc4e0962df0adcf0a7018a5e9dee6a8161b5eb35ba47e15ad9d5",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_structured_agents.py",
+            "bytes": 16059,
+            "sha256": "c2c86d358bb03f768924408a4900cb8acc95af673d3bbd8c8f45ce5d42c64412",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_structured_output_quality.py",
+            "bytes": 15381,
+            "sha256": "d0597f411dfcec0b7e0ece55f0fbe81716c5189ad27e389f3f5e7d9b4e491632",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_symbol_utils.py",
+            "bytes": 2958,
+            "sha256": "06e1701cb352915fdebe5cac5dfdfce2fab78fc307fd3ed0e57a97f0536aa089",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_temperature_config.py",
+            "bytes": 2914,
+            "sha256": "4edfea8e639b945b211692f28ec8339c6afeb91b0676175ba46bc352b106b42c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_third_party_notices.py",
+            "bytes": 1544,
+            "sha256": "f66bba6ecb462325392e69c1e802ccf8cdbedfda9c03d5e9eb8ce64527b4d685",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_ticker_symbol_handling.py",
+            "bytes": 1016,
+            "sha256": "e4ee63e15271a06d03ce6bcb45ca5afd524a30138c131fc9cb27d9f6f98a7610",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_upstream_data_reliability.py",
+            "bytes": 26834,
+            "sha256": "3349e1bc37ba7e6e0d4ca8602750a5d84bfd5bcbf4bbbf4e4d8c90e03f8b7d7a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tests/test_utf8_safety.py",
+            "bytes": 3889,
+            "sha256": "aabfda9c47b2117f3e582daf7d109fe425a073bc2073347b51993d7e0dfab1d8",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/__init__.py",
+            "bytes": 1980,
+            "sha256": "744605ebe2db4f9d4b4488beeb11716ccda0d9e81c75499c511adcab44edf73a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/__init__.py",
+            "bytes": 1522,
+            "sha256": "4e9832f92a24dc82dec6f023164ea728382766709d05e36b50b6832a1a6c50bc",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/analysts/fundamentals_analyst.py",
+            "bytes": 3148,
+            "sha256": "32363f66cc1e29fbcf23e74f8075f649556462c2100ee43b021a057829993384",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/analysts/market_analyst.py",
+            "bytes": 6769,
+            "sha256": "dd6bb3773549ed0ec98edef0f1ef75d9022f220356842a147155f36fc14d260c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/analysts/news_analyst.py",
+            "bytes": 2863,
+            "sha256": "44290436abc445ec717e5d9058112462bdaca5c5405fce97d682b7726456de2c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/analysts/sentiment_analyst.py",
+            "bytes": 13900,
+            "sha256": "9af8e98d34b31822f7e9dce4c2e80800b2388dadf49bcfa193475bdbe1aebc86",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/analysts/social_media_analyst.py",
+            "bytes": 787,
+            "sha256": "22241a1cdaeda887f2c641c739f61fd3ba2254c26dd059b3a716ccfa654d6b87",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/analysts/turn.py",
+            "bytes": 1689,
+            "sha256": "9d0cea10f4d69d6e89162b94ed6d570fbe809ffc03e850418b0d489cb9f0e95a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/managers/portfolio_manager.py",
+            "bytes": 4686,
+            "sha256": "9da031592ac4b265a8cf1014c1bcdac52c68cabab411c5b35a7c8baa11bf843a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/managers/research_manager.py",
+            "bytes": 3111,
+            "sha256": "61cdfa7be29da1bfccc679fedc75f9e58c3630417bf31eed7d270cbcdd865682",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/researchers/bear_researcher.py",
+            "bytes": 3638,
+            "sha256": "8987086909db90c2460e7e74e5424aacc089cc56624dd53f389a134af65066c6",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/researchers/bull_researcher.py",
+            "bytes": 3562,
+            "sha256": "a4624ea485af75d89a6c6ca0a9537f9f8155c3a92d0bf19a0bb28714483fa012",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/risk_mgmt/aggressive_debator.py",
+            "bytes": 4228,
+            "sha256": "56ab2400b0e9fe8d8087879d1e0901150ec0fba20633334a63a3756ad5c5bc43",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/risk_mgmt/conservative_debator.py",
+            "bytes": 4073,
+            "sha256": "1452d7410a42fc63312557293e1e664bf22aea8b43c89f89829956d7a18007c0",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/risk_mgmt/neutral_debator.py",
+            "bytes": 3985,
+            "sha256": "0838322dbcd0916b3d25c7503cb4edf47a047d0d4f571cc9ec9e0b1b8f8d74dd",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/schemas.py",
+            "bytes": 13294,
+            "sha256": "bf4e8f6aef6b56d235837c3f889d0276e555f6f6928fb1ba97dd9a9840476fb5",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/trader/trader.py",
+            "bytes": 3142,
+            "sha256": "683834c801aa87626189b31016700557f507387ba2eaef9130c272b34fbf3bcf",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/agent_states.py",
+            "bytes": 4190,
+            "sha256": "59ca18ff64f2cc1c1d3e749ee7a88583f02de6a368b7f5b60d2d0ea373fd74d8",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/agent_utils.py",
+            "bytes": 10171,
+            "sha256": "2f450af6ee5b36e5a0da781273616f155dee1124f4a01e66e3fa3ef0bdd89047",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/core_stock_tools.py",
+            "bytes": 1143,
+            "sha256": "add08e07c7b06bf1b576543e7baa00bc0148da3093902fab214a2d2fcf3a4f2e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/fundamental_data_tools.py",
+            "bytes": 3444,
+            "sha256": "38da1d255de66739f56c5ada6bd98edc12358aa2e0239676e8a20ab276e5d9c7",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/market_data_validation_tools.py",
+            "bytes": 1918,
+            "sha256": "f1b55ae73fcf2bbfb202026740340e1e07f03819b23603f2345c1fe4a9dcd793",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/memory.py",
+            "bytes": 10920,
+            "sha256": "eb3b74ce2c11ec504b9c072149904367b3d64031598a717540eecd132de3c554",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/memory_files.py",
+            "bytes": 1806,
+            "sha256": "fd667d40d960d8edbb9d7de460ed3d2ae7786862b35e7de73d419a63b1d21dfd",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/news_data_tools.py",
+            "bytes": 2607,
+            "sha256": "cc50f7c377341cb0e0907aa68195e70023f331f81bba189a044ba9c59e09c92e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/output_quality.py",
+            "bytes": 1719,
+            "sha256": "5d4937b383c8d9e011313e716953001482e08f41029c6d596fcfb903ac616912",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/rating.py",
+            "bytes": 3272,
+            "sha256": "ede12c330e5f02e92f980fc882d0c578c5da70eabb03557f26890394829ca18e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/settlement.py",
+            "bytes": 3376,
+            "sha256": "f021eaea5015282ae261a0c3cd108ef7b28c9a68a9bb430cd58a586014bf348b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/structured.py",
+            "bytes": 10351,
+            "sha256": "b35fde4b1a25053541070e64896646872f8ebbfb0ca0201cb0ae1793e5e9b431",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/agents/utils/technical_indicators_tools.py",
+            "bytes": 1792,
+            "sha256": "abdeee9072a41e6dd1891e3aeddff386b6509be789fc4c35d1eda3b1f226fd82",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/__init__.py",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/akshare_fundamentals.py",
+            "bytes": 9718,
+            "sha256": "73429fa2ce6e468e9e1f8377faca676893d7e4e2b3b31848b21810cd5996bf9c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/alpha_vantage.py",
+            "bytes": 576,
+            "sha256": "35cee117811a79056e6856850b7745f1bd214a330ef007af0f55880adccc343f",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/alpha_vantage_common.py",
+            "bytes": 7438,
+            "sha256": "9b185fdff97c33bd94c142a46ea2a0fde13b813e59f004da218be4296ddb4e78",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/alpha_vantage_fundamentals.py",
+            "bytes": 7127,
+            "sha256": "c182cda46f1e7dd2eb3100e54e90c2f347f6db1d76f8dbe5ffd9e82df00a75e2",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/alpha_vantage_indicator.py",
+            "bytes": 12861,
+            "sha256": "af956e3adfd1cfe08d2932ef6417af4dff7b2cb2ad476bbc633d83365a90b825",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/alpha_vantage_news.py",
+            "bytes": 7463,
+            "sha256": "5f90ae0ddbf91a48e123a2007a51f2a0a986baa0fdc19b76bf169178517b79f1",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/alpha_vantage_stock.py",
+            "bytes": 2505,
+            "sha256": "b2c0d45c66c5ffbab87d08746027bf8395aa53c44e2320029b084cdede334fc0",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/china_sentiment.py",
+            "bytes": 16926,
+            "sha256": "c6b9f9cb3cc59924a122f8478c6a290763a2073f9bf94cf161a4bd10466b3d64",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/config.py",
+            "bytes": 2516,
+            "sha256": "0158c7a3bf506eb8d633896632858eb086ecbd063c78344b58f145201928314f",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/date_window.py",
+            "bytes": 7595,
+            "sha256": "d598018a77340c471bc55875f540d9c45048932f827a0c08e9684b1e2679a176",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/eastmoney.py",
+            "bytes": 9975,
+            "sha256": "2298d8dc88211c7fbb3110ffd78c85bf5539cda4d750579227caf9e3613b3a13",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/errors.py",
+            "bytes": 2294,
+            "sha256": "ceaff104123ac2a55b50635f27d39f80b6455c74617f67f7f54d908e00477b13",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/evidence_utils.py",
+            "bytes": 3261,
+            "sha256": "e913539815c705eb4de625c15037b7f93bb048e038e9c4a6a4e978d95899befd",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/files.py",
+            "bytes": 2472,
+            "sha256": "9d0c36f0bc25f91bb8888bbcaf59dcf8859df2c67109bbdf432f5000fd60db89",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/interface.py",
+            "bytes": 10260,
+            "sha256": "0268d70c2e528a8ce8ae2089933788c6950b6d2513dc10e206de8f046fcd912d",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/market_data_validator.py",
+            "bytes": 18743,
+            "sha256": "5809b60f8e488ebed52fad3b5dee86318c597460505cae7dd287bc9800a8b487",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/net.py",
+            "bytes": 1560,
+            "sha256": "809b5872d6bfed43d2fc5c17c9940933676899aeba4f901c88873641c904877e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/reddit.py",
+            "bytes": 12044,
+            "sha256": "f903a9f7b7c995e7adc87b5acb8a67ade2f6b8021917552234346793c2dc0550",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/stockstats_utils.py",
+            "bytes": 20559,
+            "sha256": "d7a0b4b268807f82645b43712a6b54cc0e5cb80eeabd0384735533e2a99b0a30",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/stocktwits.py",
+            "bytes": 8172,
+            "sha256": "4b00d5af3342a31814656330172dda97fb27a6716584e11552dde378876b1c51",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/symbol_utils.py",
+            "bytes": 5968,
+            "sha256": "6506d1608d971b71cbf1f3076fdfd87462fc369c6adf8cd038e946a396c67e97",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/utils.py",
+            "bytes": 2720,
+            "sha256": "b73ccdf4f2bdf10eee35726d7faf3a7cfb092fcaf3921ccfb37173d989eac520",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/y_finance.py",
+            "bytes": 21031,
+            "sha256": "1e01a4b2031ec39b1e7c87725c1a446daf172331caa34ef1da7354ce29b2352d",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/yfinance_common.py",
+            "bytes": 4534,
+            "sha256": "338d6774b422cca59d19abffbc444a590741013e7ff6c19c8a2f70b1e95655b9",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/dataflows/yfinance_news.py",
+            "bytes": 9238,
+            "sha256": "f73b8983f42eff3fe1452148e24460e42dc0fc25fca3b527bdb1db98573bb3fc",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/default_config.py",
+            "bytes": 8135,
+            "sha256": "6b8f7c9756ba6e914f784367668f7b0cfe1fa21c02a215d775ad66a506c37d12",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/evidence/__init__.py",
+            "bytes": 703,
+            "sha256": "203622819b6f35e6d4a09619a2c1bcfa141ec62752b418c55dc562e2e41b95bc",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/evidence/ledger.py",
+            "bytes": 37193,
+            "sha256": "a613671ae2316efaf7e48c6d16c4f379c1ca1a1dc358b501470d7322bfcd287e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/evidence/persistence.py",
+            "bytes": 3516,
+            "sha256": "6d0d11e5960e1b20489266a3aa6e44497e396b954ebd89ebbf51eda82b982c66",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/__init__.py",
+            "bytes": 417,
+            "sha256": "49cba98adcc760000c00d57442169ea822cfbb4b5ec59fa7363b1983f40a16a9",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/analyst_execution.py",
+            "bytes": 4903,
+            "sha256": "ff3107839603fb98e1d5e297514c500a247c6634fc75ffc2f093f83dcfcd94e0",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/checkpointer.py",
+            "bytes": 3360,
+            "sha256": "fd9a26f49ec1c4630a8556e138baeb3cbf7e22f88511d6d603fc80cb08e87c3b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/conditional_logic.py",
+            "bytes": 3010,
+            "sha256": "c03af669b8fca7bd9689f045b9dc26a8d38e4c8de984e7693c1c3a9e040c048b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/propagation.py",
+            "bytes": 3586,
+            "sha256": "79859ce57a4df3d380f82d1c922174008cdd57327468ec0ef89f4687425c537c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/reflection.py",
+            "bytes": 4213,
+            "sha256": "fe052879002ec112b6f79dd50c1961b9dec9f98c18322efd1ef07575311b34c3",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/research_memory.py",
+            "bytes": 10836,
+            "sha256": "34828f18539f39189ff96cc74912d3ff32ea929505a707bbc1993977a41e2c99",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/setup.py",
+            "bytes": 13047,
+            "sha256": "20f8962aec9ab4ebb6376caf68c8fdbba634bb5952372c1b4f09050945ddb3b4",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/signal_processing.py",
+            "bytes": 1299,
+            "sha256": "d5802d62e257ab1b00139770b7c35fd3673ad2e2b6e8ae4ea2b9bc5e3babb398",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/graph/trading_graph.py",
+            "bytes": 42049,
+            "sha256": "1d223a159ded02b0d74b11cf33730ba973e61035d2450751cc2faa5d714d422b",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/__init__.py",
+            "bytes": 128,
+            "sha256": "094e8757c990865316132a8dd424df94b1ced2b26d730535c0d3b8e94d3d6f7d",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/anthropic_client.py",
+            "bytes": 2428,
+            "sha256": "f0286ed12be42655408f40ed9a0c2b9779e8f73a41f4c89d2463561f47768a92",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/api_key_env.py",
+            "bytes": 1576,
+            "sha256": "c9272cf99e22a8691cc4bf5f037ad7f13ec4a6bb5fc158477031ebd7cef0913f",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/azure_client.py",
+            "bytes": 1671,
+            "sha256": "e92838076b98be112ebd8e8b624c1c48f9171dd4f0ecfd3c7331e2948b4ba700",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/base_client.py",
+            "bytes": 3154,
+            "sha256": "0e9e9c9b4f8e57aa61118134e76e5011ba4ad291b3765c5dc8f3e47a9de5bcbc",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/capabilities.py",
+            "bytes": 5200,
+            "sha256": "f99f3c2f089b1bfa8cb60d2d32cb24bb7ccf892c1af3c1b0001165acd0ab5ee7",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/factory.py",
+            "bytes": 3242,
+            "sha256": "2f53a657ab93db0e50b74b320d1cba6a1165318da92fffe2438f74129bab0d18",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/google_client.py",
+            "bytes": 2599,
+            "sha256": "931626d55b99297be6f7b6090458e826d9c90af2be3748b165b605b6263fe03c",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/model_catalog.py",
+            "bytes": 8825,
+            "sha256": "44755d9a67ac3f7a9fbafa931ed174e2d64afdc4c10f86cbae401e5355b442e7",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/openai_client.py",
+            "bytes": 12872,
+            "sha256": "926e855d9565f005c7b89614ea5b35a42f806070a3f44cdf784bcefc590711e4",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/llm_clients/validators.py",
+            "bytes": 639,
+            "sha256": "4cc597d1189c4207fe02f049bba6f1c978490ed1ab235ee227fe20465d1222fd",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/__init__.py",
+            "bytes": 1006,
+            "sha256": "914aa1f38fb2a272052fc196a442cc526cba87ac4621347b66ac54200eb35c89",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/_evaluation_v1.py",
+            "bytes": 24798,
+            "sha256": "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/evaluation.py",
+            "bytes": 31292,
+            "sha256": "694495520a37c2557c7defd7422bc1ca2262503d67e6e049ddfc66a04b0215f1",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/history_adapter.py",
+            "bytes": 766,
+            "sha256": "ded64555d1f42562950fa2491e6f2353c86e443fe812dff3f209cb8d0bfde278",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/publication.py",
+            "bytes": 2709,
+            "sha256": "81ba67483ccf35b9d24d3f7fbcb50e0cf869bbf27c397d6764fa920a77e97734",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/schema.py",
+            "bytes": 33547,
+            "sha256": "9592dc56d9bfe218f9746b02efef2264032b5cbfbe6403815de5de3ee507bc81",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/store.py",
+            "bytes": 20017,
+            "sha256": "cd59de6515ead85296412b0f2ac85c692745ad58c0dceee55ad2cc976deeccb5",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/memory/targets.py",
+            "bytes": 13495,
+            "sha256": "964da0879e6fb24dce7f0c215ff533fdada6516c46db0dc21287df1a9601d3d6",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/__init__.py",
+            "bytes": 234,
+            "sha256": "47e09843c097f1aff1d43a920286fb38b49dc88d4888eb1c9e3b2225a9c83fe7",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/effective_request_identity.py",
+            "bytes": 18535,
+            "sha256": "df4af6519f39b44c902fb02c931c050229f842e38a05af0839a25f6fc6e3a8d4",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/effective_request_identity_persistence.py",
+            "bytes": 3370,
+            "sha256": "0963c2bce9907f257d772da6c20c77218e3af12de8f9ec9f16e0c699b38a9d19",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/market_inputs.py",
+            "bytes": 14007,
+            "sha256": "b23c29dce9a90ed727bd2d6ae0e6e0d13f1e83c304eded175809d6a781130990",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/numeric_decimal.py",
+            "bytes": 2611,
+            "sha256": "361e1909bc010af8f96d04c12e999427afaaf87a1c017529010850a0c0448e89",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/numeric_persistence.py",
+            "bytes": 3483,
+            "sha256": "8b2d55159c2ec08a0c47e586ad7ccc47faa8bb22bb04cc94440da2fde17b83f3",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/numeric_review.py",
+            "bytes": 22634,
+            "sha256": "aea93051841d1f376735d78f7bbe6350be3abec1d51d35983a9ecb47b4b75c4a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/numeric_spans.py",
+            "bytes": 6018,
+            "sha256": "af8593b120602e7847f7a33205a1afd5d2cc33d7a9603a528d60f79a297ae54a",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          },
+          {
+            "path": "tradingagents/research/readiness.py",
+            "bytes": 24535,
+            "sha256": "a318bbb9cffa0ca591129ff140e7f32575bfbc78205410e9af478213c4b42927",
+            "committed_bytes_equal": true,
+            "crlf_absent": true
+          }
+        ],
+        "protected_python_files": 195,
+        "protected_contract_and_fixture_json_files": 12,
+        "all_113_validated_python_source_hashes_unchanged": true,
+        "autocrlf_control": {
+          "path": "README.md",
+          "committed_sha256": "4c4e06bdba220fc23b1448c925834387282f596372dc9572eea53fbbb1ea596f",
+          "checkout_sha256": "ec873e6875e78a2356c78b8bb49f4339c9f7dd2554397e9a751fc0c9abe14894",
+          "actual_lf_to_crlf": true
+        },
+        "clean_checkout": true,
+        "provider_calls": 0,
+        "model_calls": 0
+      }
+    },
+    "affected_tests_in_checkout": {
+      "path": "/tmp/evidenceloom-pr89-checkout-tests.json",
+      "sha256": "7a41ae3d767167fc79e6fbc759f0a4fca9d909d6d9d77c0ab73a624071b4e2af",
+      "result": {
+        "schema_version": 1,
+        "recorded_at": "2026-10-04T08:27:35.005558+00:00",
+        "checkout": "/tmp/evidenceloom-pr89-autocrlf-checkout",
+        "source_revision": "55b2ddd1328c266562700fa79670a9dcbcf7e3cb",
+        "platform": "macOS with real Git core.autocrlf=true/core.eol=crlf checkout",
+        "tests": [
+          "tests/test_memory_evaluation.py",
+          "tests/test_research_memory_pipeline.py",
+          "tests/test_memory_target_binding.py",
+          "tests/test_memory_target_binding_boundaries.py"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 42.82948658301029,
+        "summary": "122 passed in 34.07s",
+        "log": {
+          "path": "/tmp/evidenceloom-pr89-checkout-tests.log",
+          "bytes": 181,
+          "sha256": "5911ec5b97412fb3415e7fe43ec32179bf612608512babaf0c7bd9d88be13ab4"
+        },
+        "research_manifest": {
+          "type": "evidence_ready",
+          "schema_version": 1,
+          "code_sha256": "f7a75949fd22f0b3faf70cd46cb6c6d654e3110245b53ad92ba756da6da7981d",
+          "prompt_templates_sha256": "13b7859a609a7b84fdc7d221fcc7544668c3f739c845948a161ce2fb95a3ae9d",
+          "source_file_count": 98
+        },
+        "manifest_unchanged": true,
+        "provider_calls": 0,
+        "model_calls": 0,
+        "limits": "Tests use frozen mocked observations; this macOS checkout simulation does not substitute for Windows-native CI."
+      }
     }
   },
   "independent_reviews": {

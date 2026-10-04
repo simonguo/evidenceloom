@@ -131,6 +131,28 @@ are closed. All 32 prior report downloads retain their size, mtime and SHA-256.
 The [JSON record](2026-10-04-memory-target-binding.json) retains source, build,
 probe, independent-review, DOM, screenshot and actual-download hashes.
 
+## Stable bytes on Windows checkouts
+
+The first Windows-native CI attempt at `fec47c1` reported 14 failures, 646
+passes and 15 skips. Its archived evaluator SHA-256 exactly matches conversion
+of the original source from LF to CRLF. That checkout conversion also changes
+the current evaluator, resolver and adapter identities, so saved outcomes become
+unverified before the dependent completion and context checks can succeed.
+
+The committed `.gitattributes` preserves LF for Python sources, normative policy
+JSON and shared fixture JSON. Frozen hashes, evaluator bytes, fixtures, timeouts
+and eligibility gates retain their original values. A fresh real Git checkout
+with `core.autocrlf=true` and `core.eol=crlf` keeps all 195 Python files and 12
+policy/fixture JSON files byte-identical to committed blobs. An unprotected
+README control actually changes to CRLF, confirming conversion was active.
+The 113 previously validated Python source hashes and both the 98-file research
+manifest and prompt manifest remain exact. The four affected test files pass in
+that checkout: 122 tests, 34.07 seconds (42.83 seconds including command overhead).
+
+This is a macOS Git-checkout reproduction and repair check. Windows-native CI,
+including the packaged sidecar and Rust bridge, remains a separate final-head
+gate; local simulation does not establish a Windows desktop or installer result.
+
 ## Limits
 
 Frozen requests establish neither provider-returned entity identity nor historical
