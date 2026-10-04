@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-10-04T14:55:24.330674+00:00",
+  "base_commit": "f9e7be469a8be2d27db40109b88f1b4ab14850b0",
+  "source_commit": "10f4abb6bac3457b76bca03e33cedd9982a4a998",
+  "source_files": [
+    {
+      "path": "uv.lock",
+      "bytes": 529478,
+      "sha256": "6bd7a835544b346f8b3fe4ab553116240bd05a63497382bfc25a1b39143b88be"
+    }
+  ],
+  "source_snapshot": {
+    "base_tracked_count": 602,
+    "unchanged_existing_count": 601,
+    "changed_existing_paths": [
+      "uv.lock"
+    ],
+    "scope": "Pin-only source snapshot; later documentation separate."
+  },
+  "lock": {
+    "previous": "6.21.0",
+    "candidate": "6.22.1",
+    "package_count": 113,
+    "other_ordered_records_equal": 112,
+    "outside_package_bytes_equal": true,
+    "constraints_and_dependency_edges_unchanged": true,
+    "before_sha256": "7574a279f791497aa1ea0006a3d17ddcc329214ce7498dc0d6ddf81e396e0f11",
+    "after_sha256": "6bd7a835544b346f8b3fe4ab553116240bd05a63497382bfc25a1b39143b88be",
+    "installation_scope": "Locked development packager; old installations and already-built binaries require upgrade/rebuild."
+  },
+  "advisory": {
+    "url": "https://github.com/pyinstaller/pyinstaller/security/advisories/GHSA-9fxf-4qw3-ghmr",
+    "id": "GHSA-9fxf-4qw3-ghmr",
+    "severity": "High",
+    "cvss_v3_1_score": 7.8,
+    "affected": "<6.22.1",
+    "patched": "6.22.1",
+    "actual_onefile_packaging": true,
+    "application_privileged_exploitability": "NOT_DEMONSTRATED"
+  },
+  "official_release_artifacts": [
+    {
+      "url": "https://files.pythonhosted.org/packages/c3/28/11937d2d139139d5645cbaf905f7dcaa9c4929bd7b740ad9157af730fd39/pyinstaller-6.22.1.tar.gz",
+      "hash": "sha256:4e7ed495fccb9974d47cf72ef8cffc92afa05d60bc265c5585a68f3d229ca8d1",
+      "size": 4093778
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/5b/51/82e66bc31b42f4ccb9bfb8a54c7b63e586a8f4668d1b5569c0ebf7810cf3/pyinstaller-6.22.1-py3-none-macosx_10_13_universal2.whl",
+      "hash": "sha256:d519a5549bf560407a9cffa8547f278e79c1093dc1cade6d9658c67b650d66c4",
+      "size": 1062734
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/76/ef/7bcf8c48fbd413f5d83e618c376029625b1db5af8e60b198dedf17af6b9c/pyinstaller-6.22.1-py3-none-manylinux2014_aarch64.whl",
+      "hash": "sha256:0f257d6329d90def6b96f3ad9b601f4e10e549017d2ad09e730f4a9741b42138",
+      "size": 755696
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/0d/92/3d425e8342b57ac0e856e5abba8d52a4c10227d8d364d342e9799a36a855/pyinstaller-6.22.1-py3-none-manylinux2014_i686.whl",
+      "hash": "sha256:1df884760a6efc4cc9bdcd48899f1382c072ab499bb16ed0b03606f8f10380c6",
+      "size": 768870
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/a9/ab/49a3ad7987e68215f47acbb68352d519cb93934212d1f7d1d2f9ad49afe6/pyinstaller-6.22.1-py3-none-manylinux2014_ppc64le.whl",
+      "hash": "sha256:bc964609e73f32f79b4c967d1c29a05f913629fcf54b3752ec6ec82bf17cffdd",
+      "size": 767445
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/3b/79/ecf886650e5caafd1958f07913bf23838a5188f9429599d125ac0e837fdc/pyinstaller-6.22.1-py3-none-manylinux2014_s390x.whl",
+      "hash": "sha256:3b654721a9fa13abdd8a3a8e266debf750a6f50115d17addc54e3269dc944e75",
+      "size": 762114
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/3c/20/0efa9067556893788e59cfe077edbd0ef3af95d06ce020b42795697d9afc/pyinstaller-6.22.1-py3-none-manylinux2014_x86_64.whl",
+      "hash": "sha256:10d009ac9ddf17b57dbfe22a453363a02be4cb0d5bd8a119ba59ef530b936296",
+      "size": 762173
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/54/0d/0490244f31101e671d75ef0499dcd079d6ea79a5242b1b33cca32606c16a/pyinstaller-6.22.1-py3-none-musllinux_1_1_aarch64.whl",
+      "hash": "sha256:ff3c51c1a3b793d1917f75d0f5f31ef8bd889c0accc8478d604bbcc363fcb74b",
+      "size": 761673
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/a1/ec/f4ca5f2dd787a445d5b57010ad74a83acfd0fff9d6ef40984b05a995a28f/pyinstaller-6.22.1-py3-none-musllinux_1_1_x86_64.whl",
+      "hash": "sha256:bf5f4634b18add9381caa73bd1656a1f0736839aa41ca750fbd511116d5ae2ca",
+      "size": 761052
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/f7/9e/b53c56c5ace1a5cf8f780067c9f10036cc7f184792e4661a06f68087538f/pyinstaller-6.22.1-py3-none-win32.whl",
+      "hash": "sha256:c5d7859b59c17f5c28973eb683e2236abb7a6eed1a7f354dc7f65ee3a7dff8ab",
+      "size": 1345562
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/f1/77/894e6815f61022621661a32806ea6e41935ab6171df0408fc4502a9b772e/pyinstaller-6.22.1-py3-none-win_amd64.whl",
+      "hash": "sha256:9fe5d028023073b63c3e396e145c68a9c3382ab59889c749c4c248126d313945",
+      "size": 1406578
+    },
+    {
+      "url": "https://files.pythonhosted.org/packages/79/d3/863ba7ee499664a367d5095b11d5565f8576b87ff873b81a85fc4eb95d2a/pyinstaller-6.22.1-py3-none-win_arm64.whl",
+      "hash": "sha256:bb7a405ef0fbea9b20b7312484d2766d2aa157026a0406a8e7ce63a573748eae",
+      "size": 1354948
+    }
+  ],
+  "minimum_program_validation": {
+    "captured_at": "2026-10-04T14:18:14.540621+00:00",
+    "results": [
+      {
+        "runtime": "python312",
+        "status": "MINIMAL_ONEFILE_NONPRIVILEGED_PASS",
+        "actual_build_distpath": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python312/dist",
+        "build_exit_code": 0,
+        "build_exit_basis": "Captured subprocess completed with exit0 before original supervisor failed on mismatched expected output path; complete actual PyInstaller success log retained.",
+        "build_timing_record": "Whole corrected supervisor elapsed10.423388 seconds for two parallel builds; individual per-build timing was not written before that bookkeeping failure.",
+        "build_stdout_sha256": "e140b435bc068e8cd1b9bc0a4579b6d4af6387a8c50cb2077c6d2458ea05d9c8",
+        "build_stderr_sha256": "7012e7ff887144a4c98da094295007f0ade092cd76089c38530f55aa6d95178d",
+        "binary_sha256": "b041ac0a4ec8360ac52604dc1f119b154b105cff1f05aa4423337db7c127c856",
+        "binary_bytes": 7167344,
+        "binary_format": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python312/dist/owned-pyinstaller-hello: Mach-O 64-bit executable x86_64",
+        "binary_mode_octal": "0o755",
+        "uid_equals_euid_non_root": true,
+        "source_sha256": "415c9e9653fcc56890dcc8c70b3a2935a26e5b2158549b2a802474712998c91d",
+        "runs": [
+          {
+            "name": "binary-format",
+            "argv": [
+              "/usr/bin/file",
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python312/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 0.01889975000085542,
+            "stdout_sha256": "014da5f02fc1cfeb4d94d46140cf5f71be3776f41b6fe5e37611f3af5c122dfa",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME"
+            ]
+          },
+          {
+            "name": "normal-run",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python312/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 11.598238624999794,
+            "stdout_sha256": "959e5cafe5bbff877c82f4d6618a70a060e6efcaa293a731e674257627789661",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME"
+            ]
+          },
+          {
+            "name": "reset-environment-run",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python312/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 6.513879166999686,
+            "stdout_sha256": "959e5cafe5bbff877c82f4d6618a70a060e6efcaa293a731e674257627789661",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYINSTALLER_RESET_ENVIRONMENT",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME"
+            ]
+          },
+          {
+            "name": "spoofed-inherited-environment",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python312/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 255,
+            "elapsed_seconds": 0.019530417001078604,
+            "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_sha256": "0f776c59134ead3b73ea7f8e353c5be9938d6ad4135209a32ea3ee23543f0c0a",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME",
+              "_PYI_APPLICATION_HOME_DIR",
+              "_PYI_ARCHIVE_FILE",
+              "_PYI_PARENT_PROCESS_LEVEL"
+            ]
+          },
+          {
+            "name": "explicit-reset-spoof-control",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python312/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 5.547226083999703,
+            "stdout_sha256": "959e5cafe5bbff877c82f4d6618a70a060e6efcaa293a731e674257627789661",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYINSTALLER_RESET_ENVIRONMENT",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME",
+              "_PYI_APPLICATION_HOME_DIR",
+              "_PYI_ARCHIVE_FILE",
+              "_PYI_PARENT_PROCESS_LEVEL"
+            ]
+          }
+        ],
+        "spoofed_environment_rejected_nonprivileged": true,
+        "sentinel_retained": true,
+        "explicit_reset_controls_pass": true,
+        "limits": [
+          "Minimal integer/JSON standard-library program only, not production Evidence Loom sidecar/Tauri.",
+          "Local macOS x86_64/Rosetta evidence only, not Windows/arm64/Linux.",
+          "No privileged/setuid execution; harmless spoofed inherited directory fixture is exclusively owned.",
+          "Main packager guard plus clean child environment and owned cache/temp controls; no claim of OS-wide network sandbox.",
+          "Original project runner and existing environments not written."
+        ]
+      },
+      {
+        "runtime": "python310",
+        "status": "MINIMAL_ONEFILE_NONPRIVILEGED_PASS",
+        "actual_build_distpath": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python310/dist",
+        "build_exit_code": 0,
+        "build_exit_basis": "Captured subprocess completed with exit0 before original supervisor failed on mismatched expected output path; complete actual PyInstaller success log retained.",
+        "build_timing_record": "Whole corrected supervisor elapsed10.423388 seconds for two parallel builds; individual per-build timing was not written before that bookkeeping failure.",
+        "build_stdout_sha256": "c94b327738f08ccafe73b2708c5380a62b5ddb2543ca74633633514083783856",
+        "build_stderr_sha256": "be94ac718912c2b38557f85bbc3f289e69d5f111e945f7e5b7bb964ecf7c7b7e",
+        "binary_sha256": "8b68668cf8c79368eab06bb44b9797bd5b43be41fe394568121639a77679f88b",
+        "binary_bytes": 6926384,
+        "binary_format": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python310/dist/owned-pyinstaller-hello: Mach-O 64-bit executable x86_64",
+        "binary_mode_octal": "0o755",
+        "uid_equals_euid_non_root": true,
+        "source_sha256": "415c9e9653fcc56890dcc8c70b3a2935a26e5b2158549b2a802474712998c91d",
+        "runs": [
+          {
+            "name": "binary-format",
+            "argv": [
+              "/usr/bin/file",
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python310/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 0.02354649999688263,
+            "stdout_sha256": "cb75e86d128e0830fa1be605d4dfc18ff27f6a8b190442964314eb4274eb2271",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME"
+            ]
+          },
+          {
+            "name": "normal-run",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python310/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 14.373821417000727,
+            "stdout_sha256": "959e5cafe5bbff877c82f4d6618a70a060e6efcaa293a731e674257627789661",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME"
+            ]
+          },
+          {
+            "name": "reset-environment-run",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python310/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 7.161916584002029,
+            "stdout_sha256": "959e5cafe5bbff877c82f4d6618a70a060e6efcaa293a731e674257627789661",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYINSTALLER_RESET_ENVIRONMENT",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME"
+            ]
+          },
+          {
+            "name": "spoofed-inherited-environment",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python310/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 255,
+            "elapsed_seconds": 0.020966125000995817,
+            "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "stderr_sha256": "632e9bc0d10805629b2604c9e60965e61a818541740cf0309bc8d385756f1d9f",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME",
+              "_PYI_APPLICATION_HOME_DIR",
+              "_PYI_ARCHIVE_FILE",
+              "_PYI_PARENT_PROCESS_LEVEL"
+            ]
+          },
+          {
+            "name": "explicit-reset-spoof-control",
+            "argv": [
+              "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-pyinstaller-security/minimal-onefile/python310/dist/owned-pyinstaller-hello"
+            ],
+            "exit_code": 0,
+            "elapsed_seconds": 7.018619166003191,
+            "stdout_sha256": "959e5cafe5bbff877c82f4d6618a70a060e6efcaa293a731e674257627789661",
+            "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "environment_key_names": [
+              "EVIDENCELOOM_BOOTSTRAP_ONLY",
+              "PATH",
+              "PYINSTALLER_CONFIG_DIR",
+              "PYINSTALLER_RESET_ENVIRONMENT",
+              "PYTHONDONTWRITEBYTECODE",
+              "PYTHON_DOTENV_DISABLED",
+              "TMPDIR",
+              "XDG_CACHE_HOME",
+              "_PYI_APPLICATION_HOME_DIR",
+              "_PYI_ARCHIVE_FILE",
+              "_PYI_PARENT_PROCESS_LEVEL"
+            ]
+          }
+        ],
+        "spoofed_environment_rejected_nonprivileged": true,
+        "sentinel_retained": true,
+        "explicit_reset_controls_pass": true,
+        "limits": [
+          "Minimal integer/JSON standard-library program only, not production Evidence Loom sidecar/Tauri.",
+          "Local macOS x86_64/Rosetta evidence only, not Windows/arm64/Linux.",
+          "No privileged/setuid execution; harmless spoofed inherited directory fixture is exclusively owned.",
+          "Main packager guard plus clean child environment and owned cache/temp controls; no claim of OS-wide network sandbox.",
+          "Original project runner and existing environments not written."
+        ]
+      }
+    ],
+    "previous_failures_retained": [
+      "minimal-onefile-validation.json",
+      "minimal-build-corrected-execution.json"
+    ],
+    "supervisor_correction": "Original corrected supervisor expected minimal-onefile-corrected dist; driver actually built into its declared minimal-onefile dist. Continue by reading actual captured build arguments, without rebuilding or replacing failed logs."
+  },
+  "actual_binary_run_count": 8,
+  "separate_file_format_commands": 2,
+  "actual_successful_minimal_builds": 2,
+  "actual_spoof_exit_codes": [
+    255,
+    255
+  ],
+  "minimal_validation_source_base": "67afab6d9b15c62017216c0c4f7f6f7a37695f86",
+  "minimal_overlay_sdk_version": "0.4.2",
+  "not_rebuilt_after_sdk_or_performance_stack": true,
+  "notice_scope": "Current generator enumerates runtime project dependency closure, excludes PyInstaller development tool; existing runtime notices unchanged.",
+  "coverage": "Runtime-only audit excludes this development packager; captured PyPI and OSV package-version feeds omit the published repository advisory. No ignore or threshold added.",
+  "contrary": [
+    "Initial owned guard denied legitimate /dev/null use; original failure retained.",
+    "Corrected supervisor captured successful builds then failed expected distpath lookup; continuation used actual recorded output paths without rebuild.",
+    "Individual build timings were not retained before supervisor failure; combined supervisor timing is not individual build timing.",
+    "Earlier author summary states spoof exit1; actual raw records show255; both original and corrected statements retained."
+  ],
+  "scope_limits": [
+    "Two minimal stdlib programs, nonprivileged macOS x86_64; not actual production sidecar or Windows/ARM64/Linux/privileged acceptance.",
+    "Old SDK0.4.2 packager-only overlays; five other inherited Python3.10 packages also differ from final lock.",
+    "12 published artifact tuples match metadata; four actual Mac release components hash checked; not inspection of all platform binaries.",
+    "Exact-head native frozen installs, complete production packaging and real bridges required before Ready.",
+    "External analyst/expert approval, signed/notarized release, clean-machine upgrade and broader professional objective remain open."
+  ],
+  "artifact_root": "evidenceloom-validation/",
+  "artifacts": [
+    {
+      "path": "dependency-pyinstaller-security/root-independent-lock-proof.json",
+      "bytes": 5333,
+      "sha256": "9a6e75e8e454adac2b23563dbb388f45767b261b983e6f1e109ad76060941ee8"
+    },
+    {
+      "path": "dependency-pyinstaller-security/pyinstaller-source-freeze.json",
+      "bytes": 6041,
+      "sha256": "bbab7b337967d5c6d13a66bf098d316f1ba665c1668ca1f1c84b401cea2c1a20"
+    },
+    {
+      "path": "dependency-pyinstaller-security/pyinstaller-final-candidate-review.json",
+      "bytes": 16259,
+      "sha256": "54bf61539670a165ccf5f69d278af247c113309707e481c1cb782bb348df80c4"
+    },
+    {
+      "path": "dependency-pyinstaller-security/pyinstaller-pre-stack-evidence.json",
+      "bytes": 2296,
+      "sha256": "856e90bb8d5e2c63fc29bb7c62b80fe3dd6f2359ab849d6d854e28abcf89cd7c"
+    },
+    {
+      "path": "dependency-pyinstaller-security/pyinstaller-stack-execution.json",
+      "bytes": 695,
+      "sha256": "9cb69562440c16430097126a7f082f831b76a9e6e135eef532231c8b9a4c93ad"
+    },
+    {
+      "path": "dependency-pyinstaller-security/pyinstaller-stacked-source-freeze.json",
+      "bytes": 117384,
+      "sha256": "b5c22375d2d12f0a1dee6c55de4247cf16fecf63bf22f73ca952d8cfde108668"
+    },
+    {
+      "path": "dependency-pyinstaller-security/pyinstaller-performance-stacked-source-freeze.json",
+      "bytes": 118929,
+      "sha256": "652ef8558e94081a367fd71af0ffc26986179b376951c73a21b3a6b83cee7f07"
+    },
+    {
+      "path": "dependency-pyinstaller-security/minimal-onefile-final-validation.json",
+      "bytes": 13235,
+      "sha256": "7b62a5e6b0d626d553fb247b4a023369b11fa4506ffe123455840c54bb4861b1"
+    },
+    {
+      "path": "dependency-security-next-pass/python-primary-metadata/pyinstaller-6.21.0.json",
+      "bytes": 18999,
+      "sha256": "f7b50ba09148c4675de2bc76c545650af81f8cc016940c66893047cbd66f01ba"
+    },
+    {
+      "path": "dependency-security-next-pass/python-primary-metadata/pyinstaller-6.22.1.json",
+      "bytes": 18999,
+      "sha256": "6d05bbdb34f1d104fd9af21b70dbcc95fa624f679d1dc28739d4a52cfd9c3efc"
+    },
+    {
+      "path": "dependency-security-next-pass/python-primary-metadata/pyinstaller-repository-advisory.json",
+      "bytes": 7415,
+      "sha256": "f2c68b09ab101e7b66db57fc21fcd4291e637f77af01f963698d2fbb92a9b493"
+    }
+  ]
+}

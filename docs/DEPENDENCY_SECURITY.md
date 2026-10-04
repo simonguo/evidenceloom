@@ -10,6 +10,7 @@ Reviewed on 2026-10-04. This record distinguishes registry audits, bundled code,
 | cryptography | 49.0.0 | 50.0.2 | [PKCS#7 decryption advisory](https://github.com/pyca/cryptography/security/advisories/GHSA-g6cj-pr64-35w5) and subsequent [50.0.x packaging updates](https://cryptography.io/en/latest/changelog/) |
 | langgraph-checkpoint-sqlite | 3.1.0 | 3.1.1 | [Namespace segment isolation](https://github.com/langchain-ai/langgraph/security/advisories/GHSA-47pj-3jcm-6whg) |
 | langgraph-sdk | 0.4.2 | 0.4.4 | [Resource decorator action selection](https://github.com/langchain-ai/langgraph/security/advisories/GHSA-fvww-7h3r-vfhp) |
+| PyInstaller (development packager) | 6.21.0 | 6.22.1 | [Privileged onefile environment inheritance](https://github.com/pyinstaller/pyinstaller/security/advisories/GHSA-9fxf-4qw3-ghmr) |
 | Vitest and its seven pinned companion packages | 4.1.10 | 4.1.11 | [Redirect mock path traversal](https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9) |
 | brace-expansion | 1.1.16 / 5.0.8 | 1.1.21 / 5.0.12 | [Unbounded expansion advisory](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-q2hr-2g5m-vwhr) |
 | Browserslist | 4.28.2 | 4.28.7 | [Unbounded caches](https://github.com/browserslist/browserslist/security/advisories/GHSA-c83g-rgw3-j3cx) and [statistics object handling](https://github.com/browserslist/browserslist/security/advisories/GHSA-73wf-gq98-2v4g) |
@@ -40,6 +41,14 @@ The normal Next.js standalone output also copies `next/dist/compiled/browserslis
 An offline reproduction distinguishes the old vendored implementation from the patched npm implementation. Static source inspection identifies callers in build configuration and the development bundler; no externally controlled production request path was identified. The Next helper catches the statistics error, so the direct Browserslist reproduction does not demonstrate a whole-build or server crash. This is a bounded source finding, not proof of non-exploitability. The latest stable Next.js 15 release at review time remains 15.5.27. The registry-integrity-verified Next.js 16.3.8 archive retains the same two behaviors. A compatible upstream fix or separately reviewed replacement remains open.
 
 ## Automated checks and local scope
+
+### PyInstaller onefile bootloader
+
+The upstream High 7.8 [advisory](https://github.com/pyinstaller/pyinstaller/security/advisories/GHSA-9fxf-4qw3-ghmr) affects PyInstaller `<6.22.1` and is patched in 6.22.1. Spoofed bootloader environment state can affect privileged onefile executables. Evidence Loom's packaging spec uses onefile, but bounded source inspection found no request for setuid/UAC elevation; current application privileged exploitability is not demonstrated. This locked build-tool update requires rebuilding binaries; it does not modify previously built sidecars automatically.
+
+The [validation record](validation/2026-10-04-pyinstaller-security.md) verifies all 12 published artifact tuples, unchanged package constraints and 112 other lock records. Two isolated, nonprivileged macOS x86_64 minimal programs built successfully with Python 3.10 and 3.12; six normal/reset controls exited 0 and two spoofed-state runs exited 255 with a parent-executable validation error, preserving the owned sentinel. These are minimal-program checks on original SDK 0.4.2 overlays, not a fresh combined release installation or a privileged exploit test. All three production sidecar builds and real bridges remain exact-head CI requirements.
+
+PyInstaller is in the development group and is excluded by the current runtime-only Python audit export. Captured PyPI/OSV package-version responses also omitted this repository advisory, so adding development packages to that audit alone would not demonstrate complete coverage. No ignore or audit threshold changes were added. The generated third-party Python notice enumerates the runtime dependency closure and has no PyInstaller row; its scope remains unchanged. Complete build-tool inventory/security, signed release artifacts and clean-machine acceptance remain open.
 
 ### LangGraph SDK authorization registration
 
