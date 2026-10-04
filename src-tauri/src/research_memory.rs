@@ -4,6 +4,9 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::sync::OnceLock;
 
+#[path = "research_memory_targets.rs"]
+mod targets;
+
 pub const ERROR: &str = "Invalid or conflicting research memory";
 pub const MAX_BYTES: usize = 64 * 1024 * 1024;
 const MAX_TEXT_BYTES: usize = 8 * 1024 * 1024;
@@ -427,6 +430,7 @@ const POLICIES: &[(&str, &str)] = &[
     ("return_policy", "simple_return_difference_no_fx"),
 ];
 fn validate_contract(value: &Value) -> Check {
+    let target_bound = value["schema_version"].as_i64() == Some(2);
     let mut keys = vec![
         "schema_version",
         "analysis_date",
@@ -443,8 +447,11 @@ fn validate_contract(value: &Value) -> Check {
         "contract_sha256",
     ];
     keys.extend(POLICIES.iter().map(|(key, _)| *key));
+    if target_bound {
+        keys.push("target_binding");
+    }
     shape(value, &keys)?;
-    version(value)?;
+    ensure(matches!(value["schema_version"].as_i64(), Some(1 | 2)))?;
     date(&value["analysis_date"])?;
     date(&value["research_calendar_date"])?;
     offset(&value["host_utc_offset"])?;
@@ -466,7 +473,29 @@ fn validate_contract(value: &Value) -> Check {
     )?;
     let analysis = string(&value["analysis_date"])?;
     let research = string(&value["research_calendar_date"])?;
-    if analysis == research {
+    let mut unknown_target = false;
+    if target_bound {
+        let binding = &value["target_binding"];
+        targets::validate_binding(binding)?;
+        ensure(binding["targets"][1]["request_symbol"] == value["resolved_benchmark"])?;
+        ensure(
+            (timestamp(&binding["research_started_at"])?
+                + offset(&value["host_utc_offset"])? * 60_000_000)
+                .div_euclid(86_400_000_000)
+                == day(research).ok_or(ERROR)?,
+        )?;
+        unknown_target = binding["targets"]
+            .as_array()
+            .ok_or(ERROR)?
+            .iter()
+            .any(|target| target["relation"] == "unknown");
+    }
+    if analysis == research && unknown_target {
+        ensure(
+            value["evaluation_mode"] == "not_evaluable"
+                && value["not_evaluable_reason"] == "target_resolution_unknown",
+        )?;
+    } else if analysis == research {
         ensure(
             value["evaluation_mode"] == "prospective_reference"
                 && value["not_evaluable_reason"].is_null(),
@@ -555,6 +584,14 @@ pub fn validate_decision(value: &Value) -> Check {
         ensure(decision[left] == contract[right])?;
     }
     check_hash(decision, "decision_sha256")?;
+    let target_bound = contract["schema_version"] == 2;
+    if target_bound {
+        ensure(
+            contract["target_binding"]["research_started_at"] == decision["research_started_at"]
+                && contract["target_binding"]["targets"][0]["requested_symbol"]
+                    == decision["instrument"],
+        )?;
+    }
     let artifacts = &value["artifacts"];
     let map = artifacts.as_object().ok_or(ERROR)?;
     ensure(map.len() <= 16)?;
@@ -563,6 +600,11 @@ pub fn validate_decision(value: &Value) -> Check {
         ensure(artifact["sha256"] == *key)?;
     }
     let mut references = BTreeSet::new();
+    if target_bound {
+        let reference = &contract["target_binding"]["policy_artifact_sha256"];
+        artifact_ref(artifacts, reference, "canonical_json", &mut references)?;
+        ensure(artifacts[string(reference)?] == targets::policy_artifact()?)?;
+    }
     artifact_ref(
         artifacts,
         &decision["decision_text_sha256"],
@@ -667,6 +709,9 @@ pub fn validate_decision(value: &Value) -> Check {
         check_hash(reflection, "reflection_sha256")?;
     }
     ensure(map.keys().cloned().collect::<BTreeSet<_>>() == references)?;
+    if target_bound {
+        targets::validate_saved_subjects(decision, contract, outcome, artifacts)?;
+    }
     check_hash(value, "snapshot_sha256")
 }
 pub fn merge_decision(first: &Value, second: &Value) -> Result<Value, String> {
@@ -701,7 +746,7 @@ pub fn merge_decision(first: &Value, second: &Value) -> Result<Value, String> {
 fn same_instrument(first: &str, second: &str) -> bool {
     first.eq_ignore_ascii_case(second)
 }
-fn render_context(instrument: &str, decisions: &[Value]) -> Result<String, String> {
+fn render_context(instrument: &str, decisions: &[Value], selector: &str) -> Result<String, String> {
     let mut sections = Vec::new();
     for same in [true, false] {
         let mut entries = Vec::new();
@@ -736,6 +781,23 @@ fn render_context(instrument: &str, decisions: &[Value]) -> Result<String, Strin
                     string(&artifacts[string(&decision["decision_text_sha256"])?]["payload"])?
                         .into(),
                 );
+            }
+            if selector == "recent-reflections-v2" {
+                if snapshot["contract"]["schema_version"] == 1 {
+                    lines.push("Legacy completed reference: target was not frozen at research start; request/entity alignment is unknown.".into());
+                } else {
+                    for target in snapshot["contract"]["target_binding"]["targets"]
+                        .as_array()
+                        .ok_or(ERROR)?
+                    {
+                        lines.push(format!(
+                            "Frozen {} request: yfinance/yahoo_finance_ticker/{}; relation: {}; request only, not provider/entity confirmation.",
+                            string(&target["role"])?,
+                            string(&target["request_symbol"])?,
+                            string(&target["relation"])?,
+                        ));
+                    }
+                }
             }
             lines.extend([
                 format!(
@@ -783,7 +845,8 @@ pub fn validate_context_snapshot(value: &Value) -> Check {
         ],
     )?;
     version(value)?;
-    ensure(value["selector_version"] == "recent-reflections-v1")?;
+    let selector = string(&value["selector_version"])?;
+    ensure(["recent-reflections-v1", "recent-reflections-v2"].contains(&selector))?;
     text(&value["instrument"], true)?;
     let cutoff = timestamp(&value["availability_cutoff"])?;
     ensure(cutoff == timestamp(&value["selected_at"])?.min(timestamp(&value["research_cutoff"])?))?;
@@ -801,6 +864,7 @@ pub fn validate_context_snapshot(value: &Value) -> Check {
     let mut same = 0;
     for decision in decisions {
         validate_decision(decision)?;
+        ensure(selector != "recent-reflections-v1" || decision["contract"]["schema_version"] == 1)?;
         ensure(ids.insert(string(&decision["run_id"])?))?;
         ensure(
             !decision["outcome"].is_null()
@@ -852,7 +916,8 @@ pub fn validate_context_snapshot(value: &Value) -> Check {
     let artifact = &value["context_artifact"];
     validate_artifact(artifact)?;
     ensure(
-        artifact["kind"] == "text" && artifact["payload"] == render_context(instrument, decisions)?,
+        artifact["kind"] == "text"
+            && artifact["payload"] == render_context(instrument, decisions, selector)?,
     )?;
     let payload = string(&artifact["payload"])?;
     ensure(
@@ -911,6 +976,13 @@ pub fn validate_bundle(value: &Value) -> Check {
 }
 pub fn validate_bundle_evidence(value: &Value, evidence: &Value) -> Check {
     validate_bundle(value)?;
+    let marked = evidence["manifest"].get("memory_target_binding_sha256");
+    let contract = &value["decision_snapshot"]["contract"];
+    ensure((contract["schema_version"] == 2) == marked.is_some())?;
+    if let Some(marker) = marked {
+        sha(marker)?;
+        ensure(*marker == contract["target_binding"]["binding_sha256"])?;
+    }
     if let Some(asset_type) = evidence["manifest"].get("asset_type") {
         ensure(*asset_type == value["decision_snapshot"]["decision"]["asset_type"])?;
     }
@@ -926,6 +998,27 @@ pub fn validate_bundle_evidence(value: &Value, evidence: &Value) -> Check {
             && value["decision_snapshot"]["contract"]["resolved_benchmark"]
                 == evidence["manifest"]["benchmark_ticker"],
     )
+}
+
+/// Required fresh completion binding; absent legacy envelopes stay unknown.
+pub fn validate_required_target_memory(
+    evidence: Option<&Value>,
+    bundle: Option<&Value>,
+    invalid: Option<&Value>,
+    completed: bool,
+) -> Check {
+    let Some(evidence) = evidence else {
+        return Ok(());
+    };
+    if evidence["manifest"]
+        .get("memory_target_binding_sha256")
+        .is_some()
+        && completed
+        && bundle.is_none()
+    {
+        validate_invalid(invalid.ok_or(ERROR)?)?;
+    }
+    Ok(())
 }
 pub fn validate_report_binding(value: &Value, decision: &str, reports: &Value) -> Check {
     let snapshot = &value["decision_snapshot"];

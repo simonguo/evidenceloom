@@ -47,7 +47,7 @@ export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
       frozenVersion = await verifiedNumericExport(taskId, frozenVersion);
       frozenVersion = await verifiedIdentityExport(frozenVersion);
       const document = buildReportDocument(taskId, origin, frozenVersion, language);
-      const content = format === "json" ? JSON.stringify(reportJson(taskId, origin, frozenVersion), null, 2) : format === "html"
+      const content = format === "json" ? JSON.stringify(reportJson(taskId, origin, frozenVersion, { memoryHashesVerified: Boolean(frozenVersion.memoryBundle) }), null, 2) : format === "html"
         ? renderReportHtml(document)
         : renderReportMarkdown(document);
       const result = await getRuntimeAdapter().saveTextExport({

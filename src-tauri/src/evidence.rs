@@ -76,6 +76,7 @@ const MANIFEST_KEYS: &[&str] = &[
     "code_sha256",
     "prompt_templates_sha256",
     "memory_input_sha256",
+    "memory_target_binding_sha256",
     "instrument_identity_context_sha256",
     "model_context_sha256",
     "research_readiness_policy_sha256",

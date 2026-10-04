@@ -6,7 +6,7 @@ import { resolveTaskDecision } from "@/components/task-center/decisions";
 import { mergeEventOutputQuality, normalizeOutputQuality } from "@/features/output-quality/lib/quality";
 import { mergeRuntimeManifest } from "./runtime-settings";
 import { normalizeTaskEvidence } from "@/features/evidence/lib/validation";
-import { normalizeTaskMemory } from "@/features/memory/lib/validation";
+import { normalizeMemoryTaskFields } from "@/features/memory/lib/validation";
 import { normalizeReadinessTaskFields } from "@/features/research-readiness/lib/validation";
 import packageMetadata from "../../../../package.json";
 import type {
@@ -83,7 +83,7 @@ export function appendCompletedReportVersion(
     evaluationReviews: [],
   };
 
-  return normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, ...numeric, ...identity, reportVersions: [...task.reportVersions, version] })))));
+  return normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeMemoryTaskFields(normalizeTaskEvidence({ ...task, ...numeric, ...identity, reportVersions: [...task.reportVersions, version] })))));
 }
 
 export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
@@ -118,7 +118,7 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     readinessValidation: task.readinessValidation,
     evaluationReviews: task.evaluationReviews ?? [],
   };
-  return normalizeNumericTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [version] })));
+  return normalizeNumericTaskFields(normalizeMemoryTaskFields(normalizeTaskEvidence({ ...task, reportVersions: [version] })));
 }
 
 export function hasReportContent(sections: Record<string, string | null | undefined>) {

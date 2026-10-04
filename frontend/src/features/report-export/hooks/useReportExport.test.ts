@@ -11,6 +11,7 @@ import { useReportExport } from "./useReportExport";
 import type { ExportFormat } from "../types";
 import { reviewFor } from "@/features/memory/fixtures/test-data";
 import { numericFixture } from "@/features/numeric-review/fixtures/fictional-numeric";
+import { targetMemoryTask } from "@/features/memory/fixtures/target-memory";
 
 const { saveTextExport } = vi.hoisted(() => ({ saveTextExport: vi.fn() }));
 vi.mock("@/lib/runtime", () => ({ getRuntimeAdapter: () => ({ saveTextExport }) }));
@@ -80,6 +81,25 @@ describe("verified report export snapshot", () => {
     await act(async () => exportSelected(format));
     expect(saveTextExport).not.toHaveBeenCalled();
     expect(container.textContent).toContain("hash_mismatch");
+  });
+
+  it("publishes the explicitly scoped verification metadata only after v2 memory hashes pass", async () => {
+    const task = targetMemoryTask();
+    await act(async () => root.render(createElement(Session, { task })));
+    await act(async () => exportSelected("json"));
+    expect(saveTextExport).toHaveBeenCalledOnce();
+    const exported = JSON.parse(saveTextExport.mock.calls[0][0].content);
+    expect(exported.memory_bundle).toEqual(task.memoryBundle);
+    expect(exported.memory_verification_scope).toMatchObject({ content_checks: "structure_references_and_hashes", arithmetic_replay: "not_performed_by_exporter", model_eligibility: "not_established_by_exporter" });
+  });
+
+  it.each(["html", "md", "json"] as const)("blocks a marked completed version with missing memory before saving %s", async (format) => {
+    const task = targetMemoryTask();
+    delete task.reportVersions[0].memoryBundle;
+    await act(async () => root.render(createElement(Session, { task })));
+    await act(async () => exportSelected(format));
+    expect(saveTextExport).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("reference_mismatch");
   });
 
   it.each(["html", "md", "json"] as const)("blocks invalid numeric review hashes before saving %s", async (format) => {

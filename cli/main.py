@@ -675,6 +675,8 @@ def get_analysis_date():
 def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()):
     """Save complete analysis report to disk with organized subfolders."""
     from tradingagents.agents.utils.rating import normalize_rating
+    from tradingagents.memory.publication import validate_completed_memory
+    from tradingagents.memory.schema import MemoryValidationError
     from tradingagents.research.numeric_review import (
         REPORT_SECTION_KEYS,
         NumericReviewError,
@@ -688,6 +690,11 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()
         validate_effective_request_identity,
     )
 
+    memory = validate_completed_memory(
+        final_state.get("memory_bundle"), final_state.get("evidence_bundle"), owner=final_state
+    )
+    if memory is not None and ticker != memory["instrument"]:
+        raise MemoryValidationError()
     snapshot = None
     if final_state.get("report_text_snapshot"):
         snapshot = validate_report_text_snapshot(
@@ -731,6 +738,13 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()
         ):
             raise EffectiveRequestIdentityError()
     final_state = public_report_copy(final_state, secrets=secrets)
+    if memory is not None:
+        decision = memory["decision_snapshot"]["decision"]
+        decision_text = memory["decision_snapshot"]["artifacts"][decision["decision_text_sha256"]][
+            "payload"
+        ]
+        if final_state.get("final_trade_decision") != decision_text:
+            raise MemoryValidationError()
     if snapshot is not None and snapshot["report_sections"] != {
         key: final_state.get(key) for key in REPORT_SECTION_KEYS
     }:
@@ -833,6 +847,41 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()
         header += (
             "Run settings:\n\n```json\n"
             + json.dumps(settings, ensure_ascii=False, indent=2)
+            + "\n```\n\n"
+        )
+    if memory is not None:
+        import json
+
+        evidence = final_state["evidence_bundle"]
+        write_utf8(
+            save_path / "evidence_bundle.json",
+            json.dumps(evidence, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+        write_utf8(
+            save_path / "memory_bundle.json",
+            json.dumps(memory, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+        contract = memory["decision_snapshot"]["contract"]
+        limitation = (
+            "Legacy reference: the request target was not frozen at research start; request/entity alignment is unknown."
+            if contract["schema_version"] == 1
+            else "Frozen yfinance request subjects do not confirm provider entity identity or realized profit. "
+            + (
+                "Proxy reference returns are not the requested asset's performance."
+                if any(
+                    target["relation"] == "proxy"
+                    for target in contract["target_binding"]["targets"]
+                )
+                else "Reference returns describe the saved provider requests."
+            )
+        )
+        header += (
+            "As-generated research memory:\n\n"
+            + limitation
+            + " Arithmetic replay and current evaluation eligibility are not verified by this export.\n\n```json\n"
+            + json.dumps(memory, ensure_ascii=False, sort_keys=True, indent=2)
+            + "\n```\n\nSaved evidence:\n\n```json\n"
+            + json.dumps(evidence, ensure_ascii=False, sort_keys=True, indent=2)
             + "\n```\n\n"
         )
     if snapshot is not None:

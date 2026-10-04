@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { memoryTask } from "../fixtures/test-data";
 import { MemoryInspector } from "./MemoryInspector";
+import { proxyTargetMemoryTask, targetMemoryReviewFor } from "../fixtures/target-memory";
 describe("immutable memory inspection", () => {
   let root: Root; let container: HTMLDivElement;
   beforeEach(() => { vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container); });
@@ -34,5 +35,24 @@ describe("immutable memory inspection", () => {
     await waitForText("hash_mismatch");
     expect(container.querySelector('[role="alert"]')?.textContent).toContain("hash_mismatch");
     expect(container.textContent).not.toContain("No immutable memory attachment");
+  });
+  it("keeps v2 proxy targets, saved facts and legacy uncertainty distinct without claiming arithmetic replay", async () => {
+    const task = await proxyTargetMemoryTask();
+    const version = { ...task.reportVersions[0], evaluationReviews: [await targetMemoryReviewFor(task)] };
+    await act(async () => root.render(createElement(MemoryInspector, { snapshot: version, language: "zh" })));
+    await waitForText("内容哈希已核验");
+    expect(container.textContent).toContain("US500 → ^GSPC");
+    expect(container.textContent).toContain("代理参考品种；不是原请求资产");
+    expect(container.textContent).toContain("结构、引用和内容哈希核验不代表独立重算");
+    expect(container.textContent).toContain("未保存完整的评估事实；原因未知");
+    expect(container.textContent).toContain("后续评估审阅");
+    expect(container.textContent).toContain("available");
+    expect(version.memoryBundle!.decision_snapshot.outcome).toBeNull();
+    const legacy = memoryTask().reportVersions[0];
+    await act(async () => root.render(createElement(MemoryInspector, { snapshot: legacy, language: "zh" })));
+    await waitForText("未知；旧版合约未冻结供应商请求目标");
+    expect(container.textContent).toContain("unknown · legacy_target_not_frozen");
+    expect(container.textContent).not.toContain("US500 → ^GSPC");
+    expect(container.textContent).not.toContain("后续评估审阅");
   });
 });

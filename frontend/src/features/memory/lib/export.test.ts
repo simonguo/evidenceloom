@@ -8,10 +8,42 @@ import { appendEvaluationReviews } from "./reviews";
 import { verifiedExportVersion } from "./export";
 import { reportJson } from "@/features/report-export/lib/report-json";
 import { verifyMemoryBundle, verifyReviewAttachment } from "./validation";
+import { proxyTargetMemoryTask, targetMemoryReviewFor } from "../fixtures/target-memory";
 
 beforeEach(() => vi.stubGlobal("crypto", webcrypto));
 afterEach(() => vi.unstubAllGlobals());
 describe("complete research-report attachments", () => {
+  it("preserves target-bound proxy facts and exact number spellings in all three formats with scoped verification", async () => {
+    const task = await proxyTargetMemoryTask();
+    const review = await targetMemoryReviewFor(task);
+    const settled = appendEvaluationReviews(task, task.reportVersions[0].id, [review]);
+    const version = await verifiedExportVersion(settled.reportVersions[0]);
+    const report = buildReportDocument(task.id, task.origin, version, "en");
+    const html = renderReportHtml(report);
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    expect(JSON.parse(parsed.getElementById("memory-bundle-json")!.textContent!)).toEqual(version.memoryBundle);
+    expect(JSON.parse(parsed.getElementById("evaluation-reviews-json")!.textContent!)).toEqual([review]);
+    const markdown = renderReportMarkdown(report);
+    const blocks = [...markdown.matchAll(/^(`{3,})json\n([\s\S]*?)\n\1$/gm)].map((match) => JSON.parse(match[2]));
+    expect(blocks).toContainEqual(version.memoryBundle);
+    expect(blocks).toContainEqual([review]);
+    const json = reportJson(task.id, task.origin, version, { memoryHashesVerified: true });
+    expect(json.memory_verification_scope).toEqual({ content_checks: "structure_references_and_hashes", arithmetic_replay: "not_performed_by_exporter", model_eligibility: "not_established_by_exporter" });
+    expect(reportJson(task.id, task.origin, version)).not.toHaveProperty("memory_verification_scope");
+    expect(json.memory_bundle).toEqual(version.memoryBundle);
+    expect(json.evaluation_reviews).toEqual([review]);
+    await expect(verifyReviewAttachment(review, version.memoryBundle)).resolves.toEqual(review);
+    for (const text of [html, markdown]) {
+      expect(text).toContain("US500");
+      expect(text).toContain("^GSPC");
+      expect(text).toContain("Proxy reference; not the requested asset");
+      expect(text).toContain("not independent arithmetic replay");
+      expect(text).toContain("Legacy completed reference: target was not frozen at research start");
+    }
+    expect(review.snapshot.artifacts[review.snapshot.outcome!.facts_sha256!].payload).toContain("123.45678901234567");
+    expect(review.snapshot.artifacts[review.snapshot.outcome!.facts_sha256!].payload).toContain("1.0");
+    expect(review.snapshot.artifacts[review.snapshot.outcome!.facts_sha256!].payload).toContain("1e-07");
+  });
   it("round-trips exact dated bundle, outcome/reflection, prior input and full precision in every format", async () => {
     const task = memoryTask();
     const review = await reviewFor(task.memoryBundle!.decision_snapshot, { response: "ENTRY_END\nREFLECTION\n<script>fictional()</script>\n```\nUntrusted model prose remains text." });

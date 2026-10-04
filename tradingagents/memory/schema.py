@@ -18,6 +18,7 @@ MAX_TEXT_BYTES = 8 * 1024 * 1024
 MAX_SAFE_INTEGER = 2**53 - 1
 MAX_CONTEXT_DECISIONS = 128
 SELECTOR_VERSION = "recent-reflections-v1"
+TARGET_SELECTOR_VERSION = "recent-reflections-v2"
 FORBIDDEN_FIELDS = frozenset(
     {
         "api_key",
@@ -298,6 +299,9 @@ def validate_artifact(value) -> dict:
 
 
 def validate_contract(value) -> dict:
+    from .targets import validate_binding
+
+    contract_version = value.get("schema_version") if isinstance(value, dict) else None
     _shape(
         value,
         [
@@ -315,10 +319,11 @@ def validate_contract(value) -> dict:
             "decision_text_sha256",
             "contract_sha256",
             *CONTRACT_POLICIES,
+            *(["target_binding"] if contract_version == 2 else []),
         ],
     )
     _bounded(value)
-    if value["schema_version"] != 1 or type(value["schema_version"]) is not int:
+    if contract_version not in (1, 2) or type(contract_version) is not int:
         _fail()
     _day(value["analysis_date"])
     _day(value["research_calendar_date"])
@@ -343,7 +348,23 @@ def validate_contract(value) -> dict:
         )
     ):
         _fail()
-    if value["analysis_date"] == value["research_calendar_date"]:
+    unknown_target = False
+    if contract_version == 2:
+        binding = validate_binding(value["target_binding"])
+        if binding["targets"][1]["request_symbol"] != value["resolved_benchmark"]:
+            _fail()
+        if (
+            utc_timestamp(binding["research_started_at"]) + _offset(value["host_utc_offset"])
+        ).date().isoformat() != value["research_calendar_date"]:
+            _fail()
+        unknown_target = any(target["relation"] == "unknown" for target in binding["targets"])
+    if value["analysis_date"] == value["research_calendar_date"] and unknown_target:
+        if (
+            value["evaluation_mode"] != "not_evaluable"
+            or value["not_evaluable_reason"] != "target_resolution_unknown"
+        ):
+            _fail()
+    elif value["analysis_date"] == value["research_calendar_date"]:
         if (
             value["evaluation_mode"] != "prospective_reference"
             or value["not_evaluable_reason"] is not None
@@ -444,6 +465,13 @@ def validate_decision(value) -> dict:
         ):
             _fail()
         _hash(decision, "decision_sha256")
+        if contract["schema_version"] == 2:
+            binding = contract["target_binding"]
+            if (
+                binding["research_started_at"] != decision["research_started_at"]
+                or binding["targets"][0]["requested_symbol"] != decision["instrument"]
+            ):
+                _fail()
         artifacts = value["artifacts"]
         if not isinstance(artifacts, dict) or len(artifacts) > 16:
             _fail()
@@ -451,6 +479,15 @@ def validate_decision(value) -> dict:
             if _sha(key) != validate_artifact(artifact)["sha256"]:
                 _fail()
         references = {_artifact_ref(artifacts, decision["decision_text_sha256"], "text")}
+        if contract["schema_version"] == 2:
+            from .targets import policy_artifact
+
+            reference = _artifact_ref(
+                artifacts, contract["target_binding"]["policy_artifact_sha256"], "canonical_json"
+            )
+            if artifacts[reference] != policy_artifact():
+                _fail()
+            references.add(reference)
         if not artifacts[decision["decision_text_sha256"]]["payload"]:
             _fail()
         outcome, reflection = value["outcome"], value["reflection"]
@@ -538,6 +575,10 @@ def validate_decision(value) -> dict:
             _hash(reflection, "reflection_sha256")
         if set(artifacts) != references:
             _fail()
+        if contract["schema_version"] == 2:
+            from .targets import validate_saved_subjects
+
+            validate_saved_subjects(decision, contract, outcome, artifacts)
         _hash(value, "snapshot_sha256")
         return deepcopy(value)
     except (KeyError, TypeError, ValueError, UnicodeError, RecursionError, OverflowError):
@@ -562,6 +603,12 @@ def build_decision_snapshot(
 ) -> dict:
     artifact = make_artifact("text", decision_text)
     contract = validate_contract(contract)
+    artifacts = {artifact["sha256"]: artifact}
+    if contract["schema_version"] == 2:
+        from .targets import policy_artifact
+
+        policy = policy_artifact()
+        artifacts[policy["sha256"]] = policy
     decision = make_component(
         {
             "schema_version": 1,
@@ -591,7 +638,7 @@ def build_decision_snapshot(
                 "contract": contract,
                 "outcome": None,
                 "reflection": None,
-                "artifacts": {artifact["sha256"]: artifact},
+                "artifacts": artifacts,
             },
             "snapshot_sha256",
         )
@@ -616,7 +663,9 @@ def merge_decision(first, second) -> dict:
     return validate_decision(make_component(result, "snapshot_sha256"))
 
 
-def render_context(instrument: str, decisions: list[dict]) -> str:
+def render_context(
+    instrument: str, decisions: list[dict], *, selector_version=SELECTOR_VERSION
+) -> str:
     """Render frozen records; model prose never supplies record boundaries."""
     same = [
         item
@@ -645,6 +694,16 @@ def render_context(instrument: str, decisions: list[dict]) -> str:
             ]
             if full:
                 lines += ["Decision:", artifacts[decision["decision_text_sha256"]]["payload"]]
+            if selector_version == TARGET_SELECTOR_VERSION:
+                if item["contract"]["schema_version"] == 1:
+                    lines.append(
+                        "Legacy completed reference: target was not frozen at research start; request/entity alignment is unknown."
+                    )
+                else:
+                    for target in item["contract"]["target_binding"]["targets"]:
+                        lines.append(
+                            f"Frozen {target['role']} request: yfinance/yahoo_finance_ticker/{target['request_symbol']}; relation: {target['relation']}; request only, not provider/entity confirmation."
+                        )
             lines += [
                 f"Frozen benchmark: {item['contract']['resolved_benchmark']}; horizon: {item['contract']['holding_period_days']} common complete provider daily rows.",
                 f"Outcome observed at: {outcome['observed_at']}",
@@ -682,7 +741,7 @@ def validate_context_snapshot(value) -> dict:
         if (
             type(value["schema_version"]) is not int
             or value["schema_version"] != 1
-            or value["selector_version"] != SELECTOR_VERSION
+            or value["selector_version"] not in (SELECTOR_VERSION, TARGET_SELECTOR_VERSION)
         ):
             _fail()
         _text(value["instrument"], nonempty=True)
@@ -746,8 +805,12 @@ def validate_context_snapshot(value) -> dict:
         if value["decisions"] != expected:
             _fail()
         artifact = validate_artifact(value["context_artifact"])
+        if value["selector_version"] == SELECTOR_VERSION and any(
+            item["contract"]["schema_version"] != 1 for item in value["decisions"]
+        ):
+            _fail()
         if artifact["kind"] != "text" or artifact["payload"] != render_context(
-            value["instrument"], value["decisions"]
+            value["instrument"], value["decisions"], selector_version=value["selector_version"]
         ):
             _fail()
         if value["raw_text_sha256"] != hashlib.sha256(

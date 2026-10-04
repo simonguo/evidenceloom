@@ -1,5 +1,10 @@
 # MemoryBundle v1
 
+The outer v1 envelope also admits the nested [EvaluationContract v2](MEMORY_TARGET_BINDING.md)
+for new runs. Its frozen request-target policy does not upgrade retained v1
+contracts, contexts or outcomes. Browser/native structural and hash verification
+does not establish arithmetic replay or eligibility for new model use.
+
 This is the authoritative cross-language contract for immutable research memory.
 EvidenceBundle v1 is unchanged. JSON records, never model-written Markdown tags or
 delimiters, are settlement authority. Existing Markdown is retained read-only and

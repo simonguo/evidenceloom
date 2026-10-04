@@ -15,7 +15,7 @@ from tradingagents.graph.reflection import Reflector
 from tradingagents.memory.evaluation import (
     bind_evaluation_contract,
     evaluate_decision,
-    make_evaluation_plan,
+    make_target_evaluation_plan,
 )
 from tradingagents.memory.schema import build_decision_snapshot, make_artifact
 from tradingagents.memory.store import MemoryStore
@@ -23,9 +23,11 @@ from tradingagents.memory.store import MemoryStore
 
 def initial_decision():
     text = "Fictional thesis. Rating: Buy."
-    plan = make_evaluation_plan(
+    plan = make_target_evaluation_plan(
         analysis_date="2026-01-15",
-        resolved_benchmark="BENCH.TEST",
+        instrument="ASSET.TEST",
+        benchmark="BENCH.TEST",
+        research_started_at="2026-01-15T09:00:00Z",
         holding_period_days=2,
         host_local_calendar_at_start="2026-01-15",
         host_utc_offset="+00:00",
@@ -130,8 +132,12 @@ def test_facts_survive_failed_reflection_and_restart_without_refetch(tmp_path, m
     )
     assert saved["reflection"]["reflected_at"] == "2026-03-01T00:00:00Z"
     assert len(store.list_decisions()) == 1
-    assert not store.context_snapshot("ASSET.TEST", "2026-02-15T23:59:59Z")["decisions"]
-    context = store.context_snapshot("ASSET.TEST", "2026-03-02T23:59:59Z")
+    assert not store.context_snapshot(
+        "ASSET.TEST", "2026-02-15T23:59:59Z", selector_version="recent-reflections-v2"
+    )["decisions"]
+    context = store.context_snapshot(
+        "ASSET.TEST", "2026-03-02T23:59:59Z", selector_version="recent-reflections-v2"
+    )
     assert len(context["decisions"]) == 1
     assert "100.12345678912345" in context["context_artifact"]["payload"]
     assert "ENTRY_END" in context["context_artifact"]["payload"]

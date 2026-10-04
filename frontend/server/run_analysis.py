@@ -394,6 +394,11 @@ def update_reports_from_chunk(buffer: MessageBuffer, chunk: Dict[str, Any]) -> N
 
 
 def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
+    from tradingagents.memory.publication import validate_completed_memory
+
+    memory = validate_completed_memory(
+        final_state.get("memory_bundle"), final_state.get("evidence_bundle"), owner=final_state
+    )
     manifest = final_state.get("evidence_bundle", {}).get("manifest", {})
     marker = manifest.get("effective_request_identity_policy_sha256")
     if "effective_request_identity_policy_sha256" in manifest and (
@@ -409,6 +414,13 @@ def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
             key: final_state.get(key) for key in REPORT_SECTION_KEYS
         }:
             raise NumericReviewError()
+        if memory is not None:
+            from tradingagents.memory.schema import utc_timestamp
+
+            if utc_timestamp(snapshot["captured_at"]) < utc_timestamp(
+                memory["decision_snapshot"]["decision"]["recorded_at"]
+            ):
+                raise NumericReviewError()
     assessment = None
     if "effective_request_identity" in final_state:
         assessment = validate_effective_request_identity(
@@ -428,8 +440,8 @@ def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
         compact["output_quality"] = sanitize_output_quality(final_state["output_quality"])
     if final_state.get("evidence_bundle"):
         compact["evidence_bundle"] = validate_evidence_bundle(final_state["evidence_bundle"])
-    if final_state.get("memory_bundle"):
-        compact["memory_bundle"] = validate_memory_bundle(final_state["memory_bundle"])
+    if memory is not None:
+        compact["memory_bundle"] = memory
     if final_state.get("research_readiness"):
         compact["research_readiness"] = final_state["research_readiness"]
     if snapshot is not None:

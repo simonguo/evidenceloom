@@ -9,8 +9,10 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 
-from tradingagents.memory import evaluation
-from tradingagents.memory.evaluation import (
+# Characterize the archived byte-exact evaluator. Production never dispatches
+# legacy pending decisions here; v2/scheduler dispatch has separate regressions.
+from tradingagents.memory import _evaluation_v1 as evaluation
+from tradingagents.memory._evaluation_v1 import (
     EvaluationValidationError,
     bind_evaluation_contract,
     evaluate_decision,

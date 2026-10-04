@@ -53,6 +53,12 @@ jobs:
             tests/test_sidecar_architecture.py \
             tests/test_sidecar_probe.py \
             tests/test_memory_inventory.py \
+            tests/test_memory_contract.py \
+            tests/test_memory_evaluation.py \
+            tests/test_research_memory_pipeline.py \
+            tests/test_memory_target_binding.py \
+            tests/test_memory_target_binding_boundaries.py \
+            tests/test_memory_target_publication.py \
             tests/test_market_data_validator.py \
             tests/test_stockstats_date_column.py \
             tests/test_market_inputs.py \

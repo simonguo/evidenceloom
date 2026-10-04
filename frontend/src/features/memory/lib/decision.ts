@@ -1,6 +1,9 @@
 import type { DecisionSnapshot, EvaluationContract, MemoryArtifact, MemoryBundle, ReviewAttachment } from "../types";
 import { canonicalJson } from "@/features/evidence/lib/validation";
 import { assert, bounded, clone, day, exact, hash, object, offset, parsePayload, stamp, text, timestamp, uuid, verifyHash } from "./guards";
+import { copyTargetBinding } from "./targets";
+import { targetPolicyArtifact } from "./target-policy";
+import { assertTargetSubjects } from "./target-subjects";
 
 const policies = {
   holding_period_unit: "common_complete_provider_daily_rows", policy_version: "common-daily-close-v1",
@@ -16,17 +19,33 @@ export function copyArtifact(value: unknown): MemoryArtifact {
   return clone(value) as MemoryArtifact;
 }
 function contract(value: unknown): EvaluationContract {
-  exact(value, ["schema_version", "analysis_date", "research_calendar_date", "host_utc_offset", "resolved_benchmark", "holding_period_days", "evaluation_mode", "not_evaluable_reason", "evaluator_version", "evaluator_code_sha256", "effective_history_parameters", "decision_text_sha256", "contract_sha256", ...Object.keys(policies)]);
-  assert(value.schema_version === 1 && day(value.analysis_date) && day(value.research_calendar_date) && offset(value.host_utc_offset));
+  assert(object(value));
+  const version = value.schema_version;
+  exact(value, ["schema_version", "analysis_date", "research_calendar_date", "host_utc_offset", "resolved_benchmark", "holding_period_days", "evaluation_mode", "not_evaluable_reason", "evaluator_version", "evaluator_code_sha256", "effective_history_parameters", "decision_text_sha256", "contract_sha256", ...Object.keys(policies), ...(version === 2 ? ["target_binding"] : [])]);
+  assert((version === 1 || version === 2) && day(value.analysis_date) && day(value.research_calendar_date) && offset(value.host_utc_offset));
   assert(text(value.resolved_benchmark) && value.resolved_benchmark && text(value.evaluator_version) && value.evaluator_version && hash(value.evaluator_code_sha256) && hash(value.decision_text_sha256) && hash(value.contract_sha256));
   assert(typeof value.holding_period_days === "number" && Number.isInteger(value.holding_period_days) && value.holding_period_days >= 1 && value.holding_period_days <= 10000);
   assert(Object.entries(policies).every(([key, policy]) => value[key] === policy));
   exact(value.effective_history_parameters, Object.keys(history));
   assert(Object.entries(history).every(([key, expected]) => (value.effective_history_parameters as Record<string, unknown>)[key] === expected));
   assert(value.analysis_date <= value.research_calendar_date);
-  assert(value.analysis_date === value.research_calendar_date
-    ? value.evaluation_mode === "prospective_reference" && value.not_evaluable_reason === null
-    : value.evaluation_mode === "not_evaluable" && value.not_evaluable_reason === "historical_decision_availability_unknown");
+  let unknownTarget = false;
+  if (version === 2) {
+    const binding = copyTargetBinding(value.target_binding);
+    assert(binding.targets[1].request_symbol === value.resolved_benchmark, "reference_mismatch");
+    const sign = value.host_utc_offset.startsWith("-") ? -1 : 1;
+    const [hours, minutes] = value.host_utc_offset.slice(1).split(":").map(Number);
+    const local = new Date(Date.parse(binding.research_started_at) + sign * (hours * 60 + minutes) * 60_000);
+    assert(Number.isFinite(local.getTime()) && local.toISOString().slice(0, 10) === value.research_calendar_date, "temporal_mismatch");
+    unknownTarget = binding.targets.some((target) => target.relation === "unknown");
+  }
+  if (value.analysis_date < value.research_calendar_date) {
+    assert(value.evaluation_mode === "not_evaluable" && value.not_evaluable_reason === "historical_decision_availability_unknown");
+  } else if (unknownTarget) {
+    assert(value.evaluation_mode === "not_evaluable" && value.not_evaluable_reason === "target_resolution_unknown");
+  } else {
+    assert(value.evaluation_mode === "prospective_reference" && value.not_evaluable_reason === null);
+  }
   return value as unknown as EvaluationContract;
 }
 
@@ -48,11 +67,18 @@ export function copyDecisionSnapshot(value: unknown): DecisionSnapshot {
   assert(calendar === decision.analysis_calendar_date && decision.analysis_calendar_date === frozen.research_calendar_date && decision.host_utc_offset === frozen.host_utc_offset, "temporal_mismatch");
   assert(["Buy", "Overweight", "Hold", "Underweight", "Sell", "REVIEW"].includes(String(decision.rating)) && hash(decision.evidence_bundle_sha256) && hash(decision.decision_sha256));
   assert(decision.contract_sha256 === frozen.contract_sha256 && decision.decision_text_sha256 === frozen.decision_text_sha256 && decision.analysis_date === frozen.analysis_date, "reference_mismatch");
+  if (frozen.schema_version === 2) {
+    assert(frozen.target_binding.research_started_at === decision.research_started_at && frozen.target_binding.targets[0].requested_symbol === decision.instrument, "reference_mismatch");
+  }
   assert(object(value.artifacts) && Object.keys(value.artifacts).length <= 16);
   const artifacts = value.artifacts; for (const [sha, artifact] of Object.entries(artifacts)) assert(hash(sha) && copyArtifact(artifact).sha256 === sha);
   const references = new Set<string>();
   const reference = (sha: unknown, kind: string) => { assert(hash(sha) && object(artifacts[sha]) && artifacts[sha].kind === kind, "reference_mismatch"); references.add(sha); return artifacts[sha] as unknown as MemoryArtifact; };
   assert(reference(decision.decision_text_sha256, "text").payload);
+  if (frozen.schema_version === 2) {
+    const policy = reference(frozen.target_binding.policy_artifact_sha256, "canonical_json");
+    assert(canonicalJson(policy) === canonicalJson(targetPolicyArtifact), "reference_mismatch");
+  }
   const outcome = value.outcome; const reflection = value.reflection;
   if (outcome !== null) {
     exact(outcome, ["schema_version", "contract_sha256", "observed_at", "status", "reason", "facts_sha256", "calculation_sha256", "outcome_sha256"]);
@@ -75,12 +101,14 @@ export function copyDecisionSnapshot(value: unknown): DecisionSnapshot {
     reference(reflection.model_context_sha256, "canonical_json"); reference(reflection.prompt_sha256, "text"); assert(reference(reflection.response_sha256, "text").payload);
   }
   assert(references.size === Object.keys(artifacts).length);
+  if (frozen.schema_version === 2) assertTargetSubjects(decision, frozen, outcome, artifacts);
   return clone(value) as unknown as DecisionSnapshot;
 }
 
 export async function verifyDecisionSnapshot(value: unknown): Promise<DecisionSnapshot> {
   const snapshot = copyDecisionSnapshot(value);
   const components: [unknown, string][] = [[snapshot, "snapshot_sha256"], [snapshot.decision, "decision_sha256"], [snapshot.contract, "contract_sha256"], ...Object.values(snapshot.artifacts).map((artifact): [unknown, string] => [artifact, "sha256"])];
+  if (snapshot.contract.schema_version === 2) components.push([snapshot.contract.target_binding, "binding_sha256"]);
   if (snapshot.outcome) components.push([snapshot.outcome, "outcome_sha256"]);
   if (snapshot.reflection) components.push([snapshot.reflection, "reflection_sha256"]);
   await Promise.all(components.map(([component, key]) => verifyHash(component as Record<string, unknown>, key)));

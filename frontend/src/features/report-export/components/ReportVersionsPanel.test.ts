@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFictionalDemoTask } from "../fixtures/fictional-demo";
 import { ReportVersionsPanel } from "./ReportVersionsPanel";
 import { numericFixture } from "@/features/numeric-review/fixtures/fictional-numeric";
+import { proxyTargetMemoryTask, targetMemoryReviewFor } from "@/features/memory/fixtures/target-memory";
 
 const { saveTextExport } = vi.hoisted(() => ({ saveTextExport: vi.fn() }));
 vi.mock("@/lib/runtime", () => ({ getRuntimeAdapter: () => ({ saveTextExport }) }));
@@ -90,5 +91,32 @@ describe("selected immutable report review", () => {
     expect(request.content).not.toContain("Second frozen report.");
     expect(request.content).toContain("Text fallback · format unvalidated");
     expect(container.querySelector('[role="status"]')?.textContent).toContain("Report downloaded");
+  });
+
+  it("isolates selected v2 proxy memory and later facts from a legacy version and its export", async () => {
+    const task = await proxyTargetMemoryTask();
+    const current = { ...task.reportVersions[0], versionNumber: 2, evaluationReviews: [await targetMemoryReviewFor(task)] };
+    const legacy = { ...current, id: "absent-memory-version", runId: "44444444-4444-4444-8444-444444444444", versionNumber: 1,
+      createdAt: "2025-02-13T12:05:00.000000Z", memoryBundle: undefined, evidenceBundle: undefined, evaluationReviews: [], legacy: true };
+    task.reportVersions = [legacy, current];
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task, language: "en" })));
+    await vi.waitFor(async () => { await act(async () => {}); expect(container.textContent).toContain("US500 → ^GSPC"); });
+    expect(container.textContent).toContain("Later evaluation review");
+    const select = container.querySelector<HTMLSelectElement>("#report-version-select")!;
+    await act(async () => { select.value = legacy.id; select.dispatchEvent(new Event("change", { bubbles: true })); });
+    await vi.waitFor(async () => { await act(async () => {}); expect(container.textContent).toContain("No immutable memory attachment was saved for this version"); });
+    expect(container.querySelectorAll('[aria-label="Immutable research memory"]')).toHaveLength(1);
+    expect(container.textContent).not.toContain("US500 → ^GSPC");
+    expect(container.textContent).not.toContain("Later evaluation review");
+    const json = [...container.querySelectorAll("button")].find((button) => button.textContent === "Report JSON")!;
+    await act(async () => json.click());
+    const exported = JSON.parse(saveTextExport.mock.calls[0][0].content);
+    expect(exported.memory_bundle).toBeNull();
+    expect(exported.evaluation_reviews).toEqual([]);
+    expect(exported).not.toHaveProperty("memory_verification_scope");
+    await act(async () => { select.value = current.id; select.dispatchEvent(new Event("change", { bubbles: true })); });
+    await vi.waitFor(async () => { await act(async () => {}); expect(container.textContent).toContain("US500 → ^GSPC"); });
+    expect(container.textContent).toContain("Later evaluation review");
+    expect(container.querySelectorAll('[aria-label="Immutable research memory"]')).toHaveLength(1);
   });
 });

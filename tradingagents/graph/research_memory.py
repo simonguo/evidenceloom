@@ -6,9 +6,12 @@ import logging
 
 from tradingagents.evidence import sanitize_diagnostic
 from tradingagents.memory.evaluation import (
+    admit_research_context,
     bind_evaluation_contract,
     evaluate_decision,
     replay_evaluation,
+    settlement_eligibility,
+    validate_frozen_evaluation_plan,
 )
 from tradingagents.memory.schema import (
     build_decision_snapshot,
@@ -40,15 +43,34 @@ class ResearchMemory:
             if instrument_key(item["decision"]["instrument"]) == instrument_key(instrument)
             and item["reflection"] is None
             and (item["outcome"] is None or item["outcome"]["status"] == "available")
+            and settlement_eligibility(item)["status"] == "eligible"
         ]
-        for snapshot in pending[:5]:
-            try:
-                self._settle(snapshot)
-            except Exception as exc:  # noqa: BLE001 - prior review cannot invent a current result
-                # Error bodies can contain source responses, prompts or private paths.
-                logger.warning("Previous research review deferred (%s)", type(exc).__name__)
+        pending_by_id = {item["run_id"]: item for item in pending}
+        try:
+            with self.store.review_batch(instrument, list(pending_by_id)) as selected:
+                for run_id in selected:
+                    try:
+                        current = self.store.load_decision(run_id)
+                        if (
+                            current is not None
+                            and instrument_key(current["decision"]["instrument"])
+                            == instrument_key(instrument)
+                            and current["reflection"] is None
+                            and (
+                                current["outcome"] is None
+                                or current["outcome"]["status"] == "available"
+                            )
+                            and settlement_eligibility(current)["status"] == "eligible"
+                        ):
+                            self._settle(current)
+                    except Exception as exc:  # noqa: BLE001 - prior review cannot invent a current result
+                        logger.warning("Previous research review deferred (%s)", type(exc).__name__)
+        except Exception as exc:  # noqa: BLE001 - scheduler failure cannot invent an outcome
+            logger.warning("Previous research review deferred (%s)", type(exc).__name__)
 
     def _settle(self, snapshot):
+        if settlement_eligibility(snapshot)["status"] != "eligible":
+            return
         run_id = snapshot["run_id"]
         if snapshot["outcome"] is None:
             result = evaluate_decision(snapshot)
@@ -65,6 +87,18 @@ class ResearchMemory:
         decision_text = artifacts[snapshot["decision"]["decision_text_sha256"]]["payload"]
         calculation = artifacts[snapshot["outcome"]["calculation_sha256"]]["payload"]
         messages = self.reflector.reference_reflection_messages(decision_text, calculation)
+        if snapshot["contract"]["schema_version"] == 1:
+            messages[0] = (
+                messages[0][0],
+                messages[0][1]
+                + " This legacy completed result did not freeze its request target at research start; do not claim request/entity alignment.",
+            )
+        else:
+            messages[0] = (
+                messages[0][0],
+                messages[0][1]
+                + " The calculation names the frozen yfinance/yahoo_finance_ticker request subjects and their relations. A proxy reference is not the requested asset's performance; request notation does not confirm issuer identity.",
+            )
         # Save exactly the sanitized role/content input that is delivered to the model.
         messages = [
             (role, sanitize_diagnostic(content, secrets=self.secrets)) for role, content in messages
@@ -109,12 +143,30 @@ class ResearchMemory:
 
     def record_final(self, final_state, evidence, rating):
         """Freeze completion only after both the decision and its bundle are saved."""
-        frozen = final_state["research_memory"]
+        frozen = final_state.get("research_memory")
+        if not isinstance(frozen, dict) or set(frozen) != {
+            "research_started_at",
+            "evaluation_plan",
+            "input_snapshot",
+        }:
+            raise ValueError("Research memory does not match the frozen evidence manifest")
         run_id = evidence["run_id"]
         decision_text = sanitize_diagnostic(
             str(final_state.get("final_trade_decision") or ""), secrets=self.secrets
         )
         text_artifact = make_artifact("text", decision_text)
+        try:
+            validate_frozen_evaluation_plan(
+                frozen["evaluation_plan"], evidence, frozen["research_started_at"]
+            )
+        except ValueError:
+            raise ValueError(
+                "Research memory does not match the frozen evidence manifest"
+            ) from None
+        admit_research_context(
+            frozen["input_snapshot"],
+            require_target_selector=frozen["evaluation_plan"]["schema_version"] == 2,
+        )
         contract = bind_evaluation_contract(frozen["evaluation_plan"], text_artifact["sha256"])
         manifest = evidence["manifest"]
         if (
@@ -123,6 +175,10 @@ class ResearchMemory:
             or contract["resolved_benchmark"] != manifest.get("benchmark_ticker")
             or contract["analysis_date"] != evidence["analysis_date"]
         ):
+            raise ValueError("Research memory does not match the frozen evidence manifest")
+        if contract["schema_version"] == 2 and contract["target_binding"][
+            "binding_sha256"
+        ] != manifest.get("memory_target_binding_sha256"):
             raise ValueError("Research memory does not match the frozen evidence manifest")
 
         def bound_bundle(value):

@@ -16,6 +16,7 @@ from .schema import (
     MAX_BYTES,
     MemoryValidationError,
     SELECTOR_VERSION,
+    TARGET_SELECTOR_VERSION,
     canonical_json,
     hash_value,
     instrument_key,
@@ -47,7 +48,7 @@ def _run_id(value):
 
 
 @contextmanager
-def _writer_lock(directory):
+def _writer_lock(directory, *, blocking=True):
     descriptor = os.open(directory / ".lock", os.O_CREAT | os.O_RDWR, 0o600)
     locked = False
     try:
@@ -61,17 +62,26 @@ def _writer_lock(directory):
 
             while True:
                 try:
-                    msvcrt.locking(descriptor, msvcrt.LK_LOCK, 1)
+                    msvcrt.locking(descriptor, msvcrt.LK_LOCK if blocking else msvcrt.LK_NBLCK, 1)
                     break
                 except OSError as error:
                     if error.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLOCK):
                         raise
+                    if not blocking:
+                        yield False
+                        return
         else:
             import fcntl
 
-            fcntl.flock(descriptor, fcntl.LOCK_EX)
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+            except OSError as error:
+                if not blocking and error.errno in (errno.EACCES, errno.EAGAIN):
+                    yield False
+                    return
+                raise
         locked = True
-        yield
+        yield True
     finally:
         try:
             if locked:
@@ -167,6 +177,75 @@ class MemoryStore:
         self._records = {}
         self._bundles = {}
         self._mutex = RLock()
+        self._review_cursors = {}
+
+    @contextmanager
+    def review_batch(self, instrument, eligible_run_ids, *, limit=5):
+        """Advance a fair cursor separately from immutable decisions and outcomes.
+
+        One nonblocking group lock covers the bounded batch, avoiding duplicate
+        concurrent provider/model attempts. A crash releases that lock while the
+        already-published cursor lets the next process continue fairly.
+        """
+        if (
+            not isinstance(instrument, str)
+            or not instrument
+            or not isinstance(eligible_run_ids, list)
+            or type(limit) is not int
+            or not 1 <= limit <= 5
+        ):
+            raise MemoryValidationError()
+        ids = sorted({_run_id(value) for value in eligible_run_ids})
+        if len(ids) != len(eligible_run_ids):
+            raise MemoryValidationError()
+        if not ids:
+            yield []
+            return
+        group = hashlib.sha256(instrument_key(instrument).encode("utf-8")).hexdigest()
+
+        def choose(last):
+            start = next(
+                (index for index, run_id in enumerate(ids) if last is None or run_id > last), 0
+            )
+            return (ids[start:] + ids[:start])[:limit]
+
+        if self.storage_dir is None:
+            with self._mutex:
+                selected = choose(self._review_cursors.get(group))
+                self._review_cursors[group] = selected[-1]
+                yield selected
+            return
+        try:
+            directory = self.storage_dir / "scheduler-v1" / group
+            _private_directory(directory)
+            with _writer_lock(directory, blocking=False) as acquired:
+                if not acquired:
+                    yield []
+                    return
+                try:
+                    with (directory / "cursor.json").open("rb") as handle:
+                        payload = handle.read(4097)
+                except FileNotFoundError:
+                    payload = None
+                last = None
+                if payload is not None:
+                    cursor = parse_json(payload)
+                    if (
+                        len(payload) > 4096
+                        or not isinstance(cursor, dict)
+                        or set(cursor) != {"schema_version", "last_run_id"}
+                        or type(cursor["schema_version"]) is not int
+                        or cursor["schema_version"] != 1
+                    ):
+                        raise MemoryValidationError()
+                    last = _run_id(cursor["last_run_id"])
+                selected = choose(last)
+                _atomic_write(
+                    directory, {"schema_version": 1, "last_run_id": selected[-1]}, "cursor.json"
+                )
+                yield selected
+        except OSError:
+            raise MemoryPersistenceError() from None
 
     def record_decision(self, snapshot) -> dict:
         candidate = validate_decision(snapshot)
@@ -263,6 +342,7 @@ class MemoryStore:
         selected_at=None,
         same_ticker_limit=5,
         cross_ticker_limit=3,
+        selector_version=SELECTOR_VERSION,
     ) -> dict:
         selected_at = selected_at if selected_at is not None else now_utc()
         cutoff = min(utc_timestamp(selected_at), utc_timestamp(research_cutoff))
@@ -272,10 +352,19 @@ class MemoryStore:
             else research_cutoff
         )
         eligible = []
+        if selector_version not in (SELECTOR_VERSION, TARGET_SELECTOR_VERSION):
+            raise MemoryValidationError()
         for item in self.list_decisions():
             outcome, reflection = item["outcome"], item["reflection"]
             if outcome is None or reflection is None or outcome["status"] != "available":
                 continue
+            if selector_version == SELECTOR_VERSION and item["contract"]["schema_version"] != 1:
+                continue
+            if selector_version == TARGET_SELECTOR_VERSION:
+                from .evaluation import replay_evaluation
+
+                if replay_evaluation(item)["status"] != "available":
+                    continue
             if all(
                 utc_timestamp(timestamp) <= cutoff
                 for timestamp in (
@@ -314,7 +403,7 @@ class MemoryStore:
             if instrument_key(item["decision"]["instrument"]) != instrument_key(instrument)
         ][:cross_ticker_limit]
         decisions = same + cross
-        text = render_context(instrument, decisions)
+        text = render_context(instrument, decisions, selector_version=selector_version)
         value = make_component(
             {
                 "schema_version": 1,
@@ -322,7 +411,7 @@ class MemoryStore:
                 "selected_at": selected_at,
                 "research_cutoff": research_cutoff,
                 "availability_cutoff": cutoff_text,
-                "selector_version": SELECTOR_VERSION,
+                "selector_version": selector_version,
                 "same_ticker_limit": same_ticker_limit,
                 "cross_ticker_limit": cross_ticker_limit,
                 "decisions": decisions,

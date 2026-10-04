@@ -1,6 +1,6 @@
 export type MemoryArtifact = { kind: "text" | "canonical_json"; payload: string; sha256: string };
-export type EvaluationContract = {
-  schema_version: 1; analysis_date: string; research_calendar_date: string; host_utc_offset: string;
+type EvaluationContractFields = {
+  analysis_date: string; research_calendar_date: string; host_utc_offset: string;
   resolved_benchmark: string; holding_period_days: number; holding_period_unit: string;
   evaluation_mode: "prospective_reference" | "not_evaluable"; not_evaluable_reason: string | null;
   policy_version: string; evaluator_version: string; evaluator_code_sha256: string;
@@ -8,6 +8,31 @@ export type EvaluationContract = {
   completion_policy: string; price_basis: string; return_policy: string;
   effective_history_parameters: Record<string, string | boolean>; decision_text_sha256: string; contract_sha256: string;
 };
+export type EvaluationTarget = {
+  role: "instrument" | "benchmark";
+  requested_symbol: string;
+  request_symbol: string | null;
+  relation: "exact" | "venue_notation" | "pair_notation" | "proxy" | "unknown";
+};
+export type EvaluationTargetBinding = {
+  schema_version: 1;
+  research_started_at: string;
+  provider: "yfinance";
+  request_namespace: "yahoo_finance_ticker";
+  adapter_id: "yfinance-ticker-history-direct-v1";
+  adapter_code_sha256: string;
+  resolver_code_sha256: string;
+  policy_version: "yahoo-evaluation-target-v1";
+  policy_artifact_sha256: string;
+  targets: [EvaluationTarget, EvaluationTarget];
+  binding_sha256: string;
+};
+export type EvaluationContractV1 = EvaluationContractFields & { schema_version: 1 };
+export type EvaluationContractV2 = EvaluationContractFields & {
+  schema_version: 2;
+  target_binding: EvaluationTargetBinding;
+};
+export type EvaluationContract = EvaluationContractV1 | EvaluationContractV2;
 export type MemoryDecision = {
   schema_version: 1; decision_id: string; run_id: string; instrument: string; asset_type: string;
   analysis_date: string; research_started_at: string; research_as_of: string; recorded_at: string;
@@ -29,7 +54,7 @@ export type DecisionSnapshot = {
 };
 export type ContextSnapshot = {
   schema_version: 1; instrument: string; selected_at: string; research_cutoff: string; availability_cutoff: string;
-  selector_version: "recent-reflections-v1"; same_ticker_limit: number; cross_ticker_limit: number;
+  selector_version: "recent-reflections-v1" | "recent-reflections-v2"; same_ticker_limit: number; cross_ticker_limit: number;
   decisions: DecisionSnapshot[]; context_artifact: MemoryArtifact; raw_text_sha256: string;
   context_sha256: string; input_sha256: string;
 };

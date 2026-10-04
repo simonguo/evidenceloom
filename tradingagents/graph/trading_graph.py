@@ -25,7 +25,11 @@ from tradingagents.dataflows.symbol_utils import normalize_symbol
 from tradingagents.dataflows.config import run_config, run_config_context, set_config
 from tradingagents.agents.utils.rating import extract_rating, run_rating
 from tradingagents.agents.utils.settlement import compute_returns
-from tradingagents.memory.evaluation import make_evaluation_plan
+from tradingagents.memory.evaluation import (
+    admit_research_context,
+    make_target_evaluation_plan,
+    validate_frozen_evaluation_plan,
+)
 from tradingagents.research import make_policy, validate_policy, validate_readiness
 from tradingagents.research.numeric_review import (
     REPORT_SECTION_KEYS,
@@ -45,7 +49,6 @@ from tradingagents.research.effective_request_identity_persistence import (
 )
 from tradingagents.memory.schema import (
     utc_timestamp,
-    validate_context_snapshot,
     validate_bundle as validate_memory_bundle,
 )
 from tradingagents.evidence import (
@@ -254,7 +257,7 @@ class TradingAgentsGraph:
         """Bind the executor to the same tools the analyst is offered."""
         return {key: ToolNode(list(spec.tools)) for key, spec in ANALYST_NODE_SPECS.items()}
 
-    def _resolve_benchmark(self, ticker: str) -> str:
+    def _benchmark_request(self, ticker: str) -> str:
         """Resolve the benchmark symbol before freezing the research contract.
 
         ``config["benchmark_ticker"]`` overrides everything when set; otherwise
@@ -267,13 +270,17 @@ class TradingAgentsGraph:
         """
         explicit = self.config.get("benchmark_ticker")
         if explicit:
-            return normalize_symbol(explicit)
+            return explicit
         benchmark_map = self.config.get("benchmark_map", {})
         ticker_upper = ticker.upper()
         for suffix, benchmark in benchmark_map.items():
             if suffix and ticker_upper.endswith(suffix.upper()):
-                return normalize_symbol(benchmark)
-        return normalize_symbol(benchmark_map.get("", "SPY"))
+                return benchmark
+        return benchmark_map.get("", "SPY")
+
+    def _resolve_benchmark(self, ticker: str) -> str:
+        """Compatibility projection; new Memory plans freeze the original selector."""
+        return normalize_symbol(TradingAgentsGraph._benchmark_request(self, ticker))
 
     def _fetch_returns(
         self,
@@ -323,7 +330,7 @@ class TradingAgentsGraph:
             [
                 "analysts=" + ",".join(self.selected_analysts),
                 f"asset={asset_type}",
-                "layout=parallel-v5-evidence-v1-memory-v1-readiness-v1-effective-request-v1",
+                "layout=parallel-v5-evidence-v1-memory-v2-readiness-v1-effective-request-v1",
                 "code=" + _source_code_sha256(Path(tradingagents.__file__).parent)[:16],
                 f"settings={digest}",
             ]
@@ -473,6 +480,8 @@ class TradingAgentsGraph:
         memory = state.get("research_memory")
         if bundle["manifest"].get("research_readiness_policy_sha256") and not memory:
             raise ValueError("Frozen research input checks require their original memory start")
+        if "memory_target_binding_sha256" in bundle["manifest"] and not memory:
+            raise ValueError("Frozen memory target binding requires its original research start")
         policy = state.get("research_readiness_policy")
         if bundle["manifest"].get("research_readiness_policy_sha256"):
             validate_policy(policy, bundle)
@@ -484,9 +493,18 @@ class TradingAgentsGraph:
             frozen = validate_report_text_snapshot(state["report_text_snapshot"], bundle)
             if frozen["report_sections"] != {key: state.get(key) for key in REPORT_SECTION_KEYS}:
                 raise ValueError("Completed report text differs from its immutable snapshot")
+        if memory is not None and (
+            not isinstance(memory, dict)
+            or set(memory) != {"research_started_at", "input_snapshot", "evaluation_plan"}
+        ):
+            raise ValueError("Frozen research memory has an invalid saved envelope")
         if memory:
-            context = validate_context_snapshot(memory["input_snapshot"])
-            plan = memory["evaluation_plan"]
+            plan = validate_frozen_evaluation_plan(
+                memory["evaluation_plan"], bundle, memory["research_started_at"]
+            )
+            context = admit_research_context(
+                memory["input_snapshot"], require_target_selector=plan["schema_version"] == 2
+            )
             if policy and (
                 policy["research_started_at"] != memory["research_started_at"]
                 or policy["research_calendar_date"] != plan["research_calendar_date"]
@@ -565,9 +583,11 @@ class TradingAgentsGraph:
                 host_utc_offset=host_utc_offset,
                 max_tool_rounds=self.config.get("max_tool_rounds", 20),
             )
-            evaluation_plan = make_evaluation_plan(
+            evaluation_plan = make_target_evaluation_plan(
                 analysis_date=trade_date,
-                resolved_benchmark=self._resolve_benchmark(company_name),
+                instrument=company_name,
+                benchmark=self._benchmark_request(company_name),
+                research_started_at=research_started_at,
                 holding_period_days=self.config.get("holding_period_days", 5),
                 host_local_calendar_at_start=local_start.date().isoformat(),
                 host_utc_offset=host_utc_offset,
@@ -575,8 +595,11 @@ class TradingAgentsGraph:
             self.ticker = company_name
             self._resolve_pending_entries(company_name)
             memory_input = self._research_memory().store.context_snapshot(
-                company_name, trade_date + "T23:59:59.999999Z"
+                company_name,
+                trade_date + "T23:59:59.999999Z",
+                selector_version="recent-reflections-v2",
             )
+            memory_input = admit_research_context(memory_input, require_target_selector=True)
             past_context = memory_input["context_artifact"]["payload"]
             identity = resolve_instrument_identity(company_name)
             source_instrument_context = sanitize_diagnostic(
@@ -592,6 +615,7 @@ class TradingAgentsGraph:
                 "code_sha256": _source_code_sha256(package),
                 "prompt_templates_sha256": _source_code_sha256(package / "agents"),
                 "memory_input_sha256": _context_sha256(past_context),
+                "memory_target_binding_sha256": evaluation_plan["target_binding"]["binding_sha256"],
                 "research_readiness_policy_sha256": readiness_policy["policy_sha256"],
                 "effective_request_identity_policy_sha256": EFFECTIVE_REQUEST_POLICY_SHA256,
                 "instrument_identity_context_sha256": _context_sha256(source_instrument_context),

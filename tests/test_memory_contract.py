@@ -158,10 +158,10 @@ def independent_hash(value, own_key):
 
 
 def write_fixture_bundles():
-    """Regenerate cross-language fixtures from the current offline evaluator."""
+    """Regenerate v1 fixtures from the exact archived offline evaluator."""
     import pandas as pd
     from tradingagents.evidence import validate_evidence_bundle
-    from tradingagents.memory.evaluation import evaluate_decision, evaluator_code_sha256
+    from tradingagents.memory._evaluation_v1 import evaluate_decision, evaluator_code_sha256
 
     def actual_snapshot(run_id, analysis_date, evidence_sha="c" * 64):
         value = snapshot(analysis_date=analysis_date)

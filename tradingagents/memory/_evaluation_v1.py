@@ -12,8 +12,9 @@ import re
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pandas as pd
+import yfinance as yf
 
-from . import _evaluation_v1, history_adapter, targets
+from tradingagents.dataflows.symbol_utils import normalize_symbol
 from .schema import (
     CONTRACT_POLICIES,
     HISTORY_PARAMETERS,
@@ -25,13 +26,10 @@ from .schema import (
     parse_json,
     utc_timestamp,
     validate_contract,
-    validate_context_snapshot,
     validate_decision,
-    TARGET_SELECTOR_VERSION,
 )
 
-EVALUATOR_VERSION = "common-daily-target-bound-v2"
-LEGACY_EVALUATOR_SHA256 = "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e"
+EVALUATOR_VERSION = "common-daily-adjusted-close-v1"
 _PRICE_FIELDS = ("Close", "Adj Close", "Dividends", "Stock Splits")
 _SYMBOL = re.compile(r"[A-Za-z0-9._^=+\-]{1,64}\Z")
 _OFFSET = re.compile(r"([+-])([0-9]{2}):([0-9]{2})\Z")
@@ -82,73 +80,30 @@ def make_evaluation_plan(
     host_local_calendar_at_start,
     host_utc_offset,
 ) -> dict:
-    """Explicit legacy builder; it cannot synthesize a target-binding receipt."""
-    return _evaluation_v1.make_evaluation_plan(
-        analysis_date=analysis_date,
-        resolved_benchmark=resolved_benchmark,
-        holding_period_days=holding_period_days,
-        host_local_calendar_at_start=host_local_calendar_at_start,
-        host_utc_offset=host_utc_offset,
-    )
-
-
-def make_target_evaluation_plan(
-    *,
-    analysis_date,
-    instrument,
-    benchmark,
-    research_started_at,
-    holding_period_days,
-    host_local_calendar_at_start,
-    host_utc_offset,
-) -> dict:
-    """Freeze literal request subjects before source access; identity stays unproven."""
+    """Freeze at research start; the host calendar is not an exchange timezone."""
     _day(analysis_date)
     _day(host_local_calendar_at_start)
     _host_offset(host_utc_offset)
-    binding = targets.make_binding(
-        instrument=instrument, benchmark=benchmark, research_started_at=research_started_at
-    )
-    resolved_benchmark = binding["targets"][1]["request_symbol"]
     _symbol(resolved_benchmark)
-    if (
-        utc_timestamp(research_started_at) + _host_offset_delta(host_utc_offset)
-    ).date().isoformat() != host_local_calendar_at_start:
-        raise MemoryValidationError()
     if type(holding_period_days) is not int or not 1 <= holding_period_days <= 10000:
         raise MemoryValidationError()
     if analysis_date > host_local_calendar_at_start:
         raise MemoryValidationError()
     prospective = analysis_date == host_local_calendar_at_start
     return {
-        "schema_version": 2,
+        "schema_version": 1,
         "analysis_date": analysis_date,
         "research_calendar_date": host_local_calendar_at_start,
         "host_utc_offset": host_utc_offset,
         "resolved_benchmark": resolved_benchmark,
         "holding_period_days": holding_period_days,
-        "evaluation_mode": "prospective_reference"
-        if prospective and binding["targets"][0]["relation"] != "unknown"
-        else "not_evaluable",
-        "not_evaluable_reason": (
-            "historical_decision_availability_unknown"
-            if not prospective
-            else "target_resolution_unknown"
-            if binding["targets"][0]["relation"] == "unknown"
-            else None
-        ),
+        "evaluation_mode": "prospective_reference" if prospective else "not_evaluable",
+        "not_evaluable_reason": None if prospective else "historical_decision_availability_unknown",
         "evaluator_version": EVALUATOR_VERSION,
         "evaluator_code_sha256": evaluator_code_sha256(),
         "effective_history_parameters": deepcopy(HISTORY_PARAMETERS),
         **deepcopy(CONTRACT_POLICIES),
-        "target_binding": binding,
     }
-
-
-def _host_offset_delta(value):
-    match = _OFFSET.fullmatch(value)
-    delta = timedelta(hours=int(match[2]), minutes=int(match[3]))
-    return delta if match[1] == "+" else -delta
 
 
 def bind_evaluation_contract(plan, decision_text_sha256) -> dict:
@@ -162,35 +117,6 @@ def bind_evaluation_contract(plan, decision_text_sha256) -> dict:
     )
 
 
-def validate_frozen_evaluation_plan(plan, evidence, research_started_at):
-    """Bind marked runs both ways without creating or upgrading saved targets."""
-    if not isinstance(plan, dict) or any(
-        key in plan for key in ("decision_text_sha256", "contract_sha256")
-    ):
-        raise MemoryValidationError()
-    contract = bind_evaluation_contract(plan, "0" * 64)
-    utc_timestamp(research_started_at)
-    manifest = evidence["manifest"]
-    marked = "memory_target_binding_sha256" in manifest
-    if (contract["schema_version"] == 2) != marked:
-        raise MemoryValidationError()
-    if contract["schema_version"] == 2:
-        binding = contract["target_binding"]
-        if (
-            binding["binding_sha256"] != manifest["memory_target_binding_sha256"]
-            or binding["research_started_at"] != research_started_at
-            or binding["targets"][0]["requested_symbol"] != evidence["instrument"]
-        ):
-            raise MemoryValidationError()
-    if (
-        contract["holding_period_days"] != manifest.get("holding_period_days")
-        or contract["resolved_benchmark"] != manifest.get("benchmark_ticker")
-        or contract["analysis_date"] != evidence["analysis_date"]
-    ):
-        raise MemoryValidationError()
-    return deepcopy(plan)
-
-
 def make_evaluation_contract(*, decision_text, **plan_arguments) -> dict:
     """Convenience for callers that already possess a frozen start context."""
     return bind_evaluation_contract(
@@ -199,64 +125,13 @@ def make_evaluation_contract(*, decision_text, **plan_arguments) -> dict:
 
 
 def _unsupported(contract):
-    identity_error = _unsupported_identity(contract)
-    if identity_error:
-        return identity_error
     if contract["evaluation_mode"] == "not_evaluable":
         return contract["not_evaluable_reason"]
-    return None
-
-
-def _unsupported_identity(contract):
     if contract["evaluator_version"] != EVALUATOR_VERSION:
         return "unsupported_evaluator_version"
     if contract["evaluator_code_sha256"] != evaluator_code_sha256():
         return "evaluator_code_mismatch"
-    return targets.unsupported_binding(contract["target_binding"])
-
-
-def settlement_eligibility(snapshot):
-    """Read-only eligibility is not a fabricated persisted legacy outcome."""
-    snapshot = validate_decision(snapshot)
-    contract = snapshot["contract"]
-    if contract["schema_version"] == 1:
-        if snapshot["outcome"] is None:
-            return {"status": "unknown", "reason": "legacy_target_not_frozen"}
-        if (
-            contract["evaluator_version"] != _evaluation_v1.EVALUATOR_VERSION
-            or contract["evaluator_code_sha256"] != LEGACY_EVALUATOR_SHA256
-            or _evaluation_v1.evaluator_code_sha256() != LEGACY_EVALUATOR_SHA256
-        ):
-            return {"status": "unverified", "reason": "unsupported_legacy_evaluator"}
-    else:
-        unsupported = _unsupported_identity(contract)
-        if unsupported:
-            return {"status": "unverified", "reason": unsupported}
-    return {"status": "eligible", "reason": None}
-
-
-def admit_research_context(value, *, require_target_selector=False):
-    """Verify new context before model/resume use; archives remain structural reads."""
-    context = validate_context_snapshot(value)
-    if require_target_selector and context["selector_version"] != TARGET_SELECTOR_VERSION:
-        raise EvaluationValidationError()
-    for item in context["decisions"]:
-        if (
-            settlement_eligibility(item)["status"] != "eligible"
-            or replay_evaluation(item)["status"] != "available"
-        ):
-            raise EvaluationValidationError()
-    return context
-
-
-def _unverified(snapshot, eligibility):
-    return {
-        "status": eligibility["status"],
-        "reason": eligibility["reason"],
-        "outcome": deepcopy(snapshot["outcome"]),
-        "artifacts": deepcopy(snapshot["artifacts"]),
-        "calculation": None,
-    }
+    return None
 
 
 def _zone(name):
@@ -324,14 +199,12 @@ def _request(decision, contract, observed_at):
     }
 
 
-def _source(role, requested, resolved, parameters, frame, observed_at, *, relation, failed=False):
+def _source(role, requested, resolved, parameters, frame, observed_at, *, failed=False):
     source = {
         "role": role,
         "provider": "yfinance",
         "requested_symbol": requested,
         "resolved_symbol": resolved,
-        "request_namespace": targets.NAMESPACE,
-        "relation": relation,
         "request_parameters": deepcopy(parameters),
         "observed_at": observed_at,
         "timezone": None,
@@ -409,7 +282,7 @@ def _price(row):
     return value if cell["status"] == "finite" and value > 0 else None
 
 
-def _validate_source(source, target, parameters, cutoff):
+def _validate_source(source, role, requested, parameters, cutoff):
     _shape(
         source,
         (
@@ -417,8 +290,6 @@ def _validate_source(source, target, parameters, cutoff):
             "provider",
             "requested_symbol",
             "resolved_symbol",
-            "request_namespace",
-            "relation",
             "request_parameters",
             "observed_at",
             "timezone",
@@ -432,12 +303,10 @@ def _validate_source(source, target, parameters, cutoff):
         ),
     )
     if (
-        source["role"] != target["role"]
+        source["role"] != role
         or source["provider"] != "yfinance"
-        or source["requested_symbol"] != target["requested_symbol"]
-        or source["resolved_symbol"] != target["request_symbol"]
-        or source["request_namespace"] != targets.NAMESPACE
-        or source["relation"] != target["relation"]
+        or source["requested_symbol"] != requested
+        or (role == "benchmark" and source["resolved_symbol"] != requested)
         or canonical_json(source["request_parameters"]) != canonical_json(parameters)
         or source["publication_at"] is not None
         or source["price_vintage"] != "unknown"
@@ -514,17 +383,15 @@ def _calculation(decision, contract, facts):
             "observation_cutoff",
             "sources",
             "limitations",
-            "target_binding_sha256",
         ),
     )
     if (
         type(facts["schema_version"]) is not int
-        or facts["schema_version"] != 2
+        or facts["schema_version"] != 1
         or facts["decision_sha256"] != decision["decision_sha256"]
         or facts["contract_sha256"] != contract["contract_sha256"]
         or len(facts["sources"]) != 2
         or facts["limitations"] != _limitations()
-        or facts["target_binding_sha256"] != contract["target_binding"]["binding_sha256"]
     ):
         raise EvaluationValidationError()
     cutoff = utc_timestamp(facts["observation_cutoff"])
@@ -533,9 +400,8 @@ def _calculation(decision, contract, facts):
         raise EvaluationValidationError()
     parameters = _request(decision, contract, facts["observation_cutoff"])
     sources = facts["sources"]
-    for source, target in zip(sources, contract["target_binding"]["targets"]):
-        _validate_source(source, target, parameters, cutoff)
-    targets.validate_shared_observations(sources)
+    _validate_source(sources[0], "instrument", decision["instrument"], parameters, cutoff)
+    _validate_source(sources[1], "benchmark", contract["resolved_benchmark"], parameters, cutoff)
     issues = [source["issue"] for source in sources if source["issue"] is not None]
     if issues:
         terminal = next(
@@ -587,10 +453,8 @@ def _calculation(decision, contract, facts):
         "available",
         None,
         {
-            "schema_version": 2,
+            "schema_version": 1,
             "contract_sha256": contract["contract_sha256"],
-            "target_binding_sha256": contract["target_binding"]["binding_sha256"],
-            "reference_subjects": deepcopy(contract["target_binding"]["targets"]),
             "entry_after_date": entry_after.isoformat(),
             "entry_date": entry,
             "exit_date": exit_day,
@@ -608,14 +472,7 @@ def _calculation(decision, contract, facts):
             "benchmark_return_formula": "benchmark_exit_adj_close / benchmark_entry_adj_close - 1",
             "difference_formula": "raw_return - benchmark_return",
             "currency_policy": "native_currency_returns_no_fx_conversion",
-            "interpretation": (
-                "provider_proxy_reference_not_requested_asset_performance_or_realized_profit"
-                if any(
-                    target["relation"] == "proxy"
-                    for target in contract["target_binding"]["targets"]
-                )
-                else "provider_request_target_reference_not_entity_confirmation_or_realized_profit"
-            ),
+            "interpretation": "close_to_close_reference_performance_not_realized_execution_or_capm_alpha",
         },
     )
 
@@ -674,11 +531,6 @@ def evaluate_decision(snapshot, *, observed_at=None, history_fetcher=None) -> di
     ``observed_at`` injects a UTC observation clock for deterministic offline tests.
     """
     snapshot = validate_decision(snapshot)
-    eligibility = settlement_eligibility(snapshot)
-    if eligibility["status"] != "eligible":
-        return _unverified(snapshot, eligibility)
-    if snapshot["contract"]["schema_version"] == 1:
-        return replay_evaluation(snapshot)
     contract, decision = snapshot["contract"], snapshot["decision"]
     unsupported = _unsupported(contract)
     if snapshot["outcome"] is not None:
@@ -696,45 +548,36 @@ def evaluate_decision(snapshot, *, observed_at=None, history_fetcher=None) -> di
     parameters = _request(decision, contract, clock)
     if parameters["start"] >= parameters["end"]:
         return _result(contract, clock, "pending", "no_elapsed_entry_window")
-    sources, observations = [], {}
-    for target in contract["target_binding"]["targets"]:
-        role, requested, resolved = (
-            target["role"],
-            target["requested_symbol"],
-            target["request_symbol"],
-        )
+    sources = []
+    for role, requested in (
+        ("instrument", decision["instrument"]),
+        ("benchmark", contract["resolved_benchmark"]),
+    ):
+        _symbol(requested)
+        # The benchmark is already resolved and frozen at research start.
+        # Current alias tables may only resolve the requested instrument.
+        resolved = requested if role == "benchmark" else normalize_symbol(requested)
         _symbol(resolved)
-        key = (targets.PROVIDER, targets.NAMESPACE, resolved, canonical_json(parameters))
-        if key not in observations:
-            failed = False
-            try:
-                frame = history_adapter.history(
-                    resolved, parameters, history_fetcher=history_fetcher
-                )
-            except Exception:
-                frame, failed = None, True
-            source_observed = clock if observed_at is not None else now_utc()
-            observations[key] = _source(
-                role,
-                requested,
-                resolved,
-                parameters,
-                frame,
-                source_observed,
-                relation=target["relation"],
-                failed=failed,
+        failed = False
+        try:
+            frame = (
+                history_fetcher(resolved, **deepcopy(parameters))
+                if history_fetcher
+                else yf.Ticker(resolved).history(**deepcopy(parameters))
             )
-        source = deepcopy(observations[key])
-        source.update(role=role, requested_symbol=requested, relation=target["relation"])
-        sources.append(source)
+        except Exception:
+            frame, failed = None, True
+        source_observed = clock if observed_at is not None else now_utc()
+        sources.append(
+            _source(role, requested, resolved, parameters, frame, source_observed, failed=failed)
+        )
     facts = {
-        "schema_version": 2,
+        "schema_version": 1,
         "decision_sha256": decision["decision_sha256"],
         "contract_sha256": contract["contract_sha256"],
         "observation_cutoff": clock,
         "sources": sources,
         "limitations": _limitations(),
-        "target_binding_sha256": contract["target_binding"]["binding_sha256"],
     }
     status, reason, calculation = _calculation(decision, contract, facts)
     outcome_observed = max((source["observed_at"] for source in sources), key=utc_timestamp)
@@ -745,11 +588,6 @@ def replay_evaluation(snapshot):
     """Verify artifact hashes, exact selection and formula solely from saved facts."""
     try:
         snapshot = validate_decision(snapshot)
-        eligibility = settlement_eligibility(snapshot)
-        if eligibility["status"] != "eligible":
-            return _unverified(snapshot, eligibility)
-        if snapshot["contract"]["schema_version"] == 1:
-            return _evaluation_v1.replay_evaluation(snapshot)
         outcome = snapshot["outcome"]
         if outcome is None:
             raise EvaluationValidationError()

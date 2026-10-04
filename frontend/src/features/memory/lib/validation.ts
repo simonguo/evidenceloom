@@ -13,6 +13,10 @@ function bindEvidence(bundle: MemoryBundle, evidence: EvidenceBundle) {
   const contract = bundle.decision_snapshot.contract;
   assert(bundle.run_id === evidence.run_id && bundle.instrument === evidence.instrument && bundle.analysis_date === evidence.analysis_date && bundle.evidence_bundle_sha256 === evidence.bundle_sha256, "reference_mismatch");
   assert(evidence.manifest.memory_input_sha256 === bundle.input_snapshot.context_sha256 && evidence.manifest.holding_period_days === contract.holding_period_days && evidence.manifest.benchmark_ticker === contract.resolved_benchmark, "reference_mismatch");
+  const targetHash = evidence.manifest.memory_target_binding_sha256;
+  assert(contract.schema_version === 2
+    ? targetHash === contract.target_binding.binding_sha256
+    : targetHash === undefined, "reference_mismatch");
   if (evidence.manifest.asset_type !== undefined) assert(bundle.decision_snapshot.decision.asset_type === evidence.manifest.asset_type, "reference_mismatch");
 }
 export function copyMemoryBundle(value: unknown, evidence: unknown): MemoryBundle {
@@ -49,8 +53,13 @@ function normalized<T extends Partial<MemoryFields> & { evidenceBundle?: Evidenc
   } catch (error) { return { ...value, memoryBundle: undefined, memoryValidation: invalidMemory(error), evaluationReviews: [] }; }
 }
 function matches<T extends AnalysisTask | ReportVersion>(value: T): T {
-  if (!value.memoryBundle) return value;
   const isTask = "status" in value;
+  if (!value.memoryBundle) {
+    if (!value.memoryValidation && value.evidenceBundle?.manifest.memory_target_binding_sha256 !== undefined && (!isTask || "task" in value || (value as AnalysisTask).status === "completed")) {
+      return { ...value, memoryValidation: { status: "invalid", reason: "reference_mismatch" }, evaluationReviews: [] };
+    }
+    return value;
+  }
   const identity: { ticker: string; analysisDate: string; assetType: string } = isTask ? value as AnalysisTask : (value as ReportVersion).task;
   const decision = value.memoryBundle.decision_snapshot;
   if ((isTask && "task" in value) || value.memoryBundle.instrument !== identity.ticker || value.memoryBundle.analysis_date !== identity.analysisDate || decision.decision.asset_type !== identity.assetType || (!isTask && value.memoryBundle.run_id !== (value as ReportVersion).runId) || decision.artifacts[decision.decision.decision_text_sha256].payload !== value.reportSections.final_trade_decision || decision.decision.rating !== value.decision) return { ...value, memoryBundle: undefined, memoryValidation: { status: "invalid", reason: "reference_mismatch" }, evaluationReviews: [] };
@@ -77,8 +86,15 @@ export function normalizeTaskMemory(task: AnalysisTask): AnalysisTask {
   const reject = <T extends AnalysisTask | ReportVersion>(row: T): T => snapshots(row).some((item) => conflicts.has(item.run_id)) ? { ...row, memoryBundle: undefined, memoryValidation: { status: "invalid", reason: "reference_mismatch" }, evaluationReviews: [] } : row;
   return { ...reject(safe), reportVersions: versions.map(reject) };
 }
+/** Preserve individually admissible rows until the complete task-list scan. */
+export function normalizeMemoryTaskFields(task: AnalysisTask): AnalysisTask {
+  const safe = matches(normalized(task));
+  return Array.isArray(task.reportVersions)
+    ? { ...safe, reportVersions: task.reportVersions.map((version) => matches(normalized(version))) }
+    : safe;
+}
 export async function verifySavedMemory<T extends AnalysisTask | ReportVersion>(value: T): Promise<T> {
-    const safe = matches(normalized(value)); if (!safe.memoryBundle || safe.memoryValidation) return safe;
+    const safe = matches(normalized(value.memoryBundle ? clone(value) : value)); if (!safe.memoryBundle || safe.memoryValidation) return safe;
     try {
       const bundle = await verifyMemoryBundle(safe.memoryBundle, clone(safe.evidenceBundle));
       const reviews = await Promise.all(safe.evaluationReviews.map((review) => verifyReviewAttachment(review, bundle)));
@@ -86,15 +102,19 @@ export async function verifySavedMemory<T extends AnalysisTask | ReportVersion>(
     } catch (error) { return { ...safe, memoryBundle: undefined, memoryValidation: invalidMemory(error), evaluationReviews: [] }; }
 }
 export async function verifyTaskMemory(task: AnalysisTask): Promise<AnalysisTask> {
-  const normalized = normalizeTaskMemory(task); const safe = await verifySavedMemory(normalized);
+  const captured = task.memoryBundle || task.reportVersions?.some((version) => version.memoryBundle) ? clone(task) : task;
+  const normalized = normalizeTaskMemory(captured); const safe = await verifySavedMemory(normalized);
   return Array.isArray(normalized.reportVersions) ? { ...safe, reportVersions: await Promise.all(normalized.reportVersions.map(verifySavedMemory)) } : safe;
 }
 export async function memoryFromEvent(event: AnalysisEvent, evidence: EvidenceBundle | undefined): Promise<MemoryFields | undefined> {
   const top = event.memoryBundle; const nested = event.finalState?.memory_bundle;
   if (top === undefined && nested === undefined) return undefined;
   try {
-    const bundle = await verifyMemoryBundle(top ?? nested, evidence);
-    if (top !== undefined && nested !== undefined) assert((await verifyMemoryBundle(nested, evidence)).bundle_sha256 === bundle.bundle_sha256, "reference_mismatch");
+    const capturedEvidence = copyEvidenceBundle(evidence);
+    const capturedTop = top === undefined ? undefined : copyMemoryBundle(top, capturedEvidence);
+    const capturedNested = nested === undefined ? undefined : copyMemoryBundle(nested, capturedEvidence);
+    const bundle = await verifyMemoryBundle(capturedTop ?? capturedNested, capturedEvidence);
+    if (capturedTop && capturedNested) assert((await verifyMemoryBundle(capturedNested, capturedEvidence)).bundle_sha256 === bundle.bundle_sha256, "reference_mismatch");
     return { memoryBundle: bundle, evaluationReviews: [] };
   } catch (error) { return { memoryValidation: invalidMemory(error), evaluationReviews: [] }; }
 }

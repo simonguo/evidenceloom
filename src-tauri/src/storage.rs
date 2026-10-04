@@ -851,6 +851,12 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
             task.memory_validation.as_ref(),
             Some(&task.evaluation_reviews),
         )?;
+        memory::validate_required_target_memory(
+            task.evidence_bundle.as_ref(),
+            task.memory_bundle.as_ref(),
+            task.memory_validation.as_ref(),
+            task.status == "completed",
+        )?;
         if let Some(bundle) = &task.memory_bundle {
             validate_task_memory(
                 bundle,
@@ -1017,6 +1023,13 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
                 .ok_or_else(|| evidence_sql_error(memory::ERROR.into()))?
                 .insert("evaluationReviews".into(), reviews);
         }
+        memory::validate_required_target_memory(
+            version.get("evidenceBundle"),
+            version.get("memoryBundle"),
+            version.get("memoryValidation"),
+            true,
+        )
+        .map_err(evidence_sql_error)?;
         if version.get("researchReadiness").is_some() {
             return Err(evidence_sql_error(readiness::ERROR.into()));
         }
@@ -1595,6 +1608,12 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
         task.memory_validation.as_ref(),
         Some(&task.evaluation_reviews),
     )?;
+    memory::validate_required_target_memory(
+        task.evidence_bundle.as_ref(),
+        task.memory_bundle.as_ref(),
+        task.memory_validation.as_ref(),
+        task.status == "completed",
+    )?;
     if let Some(bundle) = &task.memory_bundle {
         validate_task_memory(
             bundle,
@@ -1634,6 +1653,12 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                 version.get("memoryBundle"),
                 version.get("memoryValidation"),
                 version.get("evaluationReviews"),
+            )?;
+            memory::validate_required_target_memory(
+                version.get("evidenceBundle"),
+                version.get("memoryBundle"),
+                version.get("memoryValidation"),
+                true,
             )?;
             if let Some(bundle) = version.get("memoryBundle") {
                 if version["id"].as_str().is_none_or(|id| id.is_empty())
@@ -2403,6 +2428,131 @@ mod tests {
         upsert_task(&transaction, task)?;
         prune_evidence(&transaction)?;
         transaction.commit().map_err(|_| memory::ERROR.into())
+    }
+
+    fn memory_target_task_fixture() -> (AnalysisTaskRecord, Value) {
+        let fixture = memory::parse_json(include_str!(
+            "../../tests/fixtures/memory_target_binding_v2.json"
+        ))
+        .unwrap();
+        let bundle = fixture["bundle"].clone();
+        let evidence = fixture["evidence"].clone();
+        let snapshot = &bundle["decision_snapshot"];
+        let reports = serde_json::json!({"final_trade_decision":snapshot["artifacts"][snapshot["decision"]["decision_text_sha256"].as_str().unwrap()]["payload"]});
+        let version = serde_json::json!({"id":"memory-version","runId":bundle["run_id"],"versionNumber":1,"createdAt":"2025-02-14T12:06:00Z","legacy":false,"task":{"ticker":bundle["instrument"],"analysisDate":bundle["analysis_date"],"assetType":"stock"},"decision":snapshot["decision"]["rating"],"reportSections":reports,"evidenceBundle":evidence,"memoryBundle":bundle,"evaluationReviews":[]});
+        let mut task = quality_task_fixture(Value::Null, version);
+        task.ticker = bundle["instrument"].as_str().unwrap().into();
+        task.analysis_date = bundle["analysis_date"].as_str().unwrap().into();
+        task.decision = snapshot["decision"]["rating"].as_str().unwrap().into();
+        task.report_sections = reports;
+        task.evidence_bundle = Some(evidence);
+        task.memory_bundle = Some(bundle);
+        (task, fixture)
+    }
+
+    #[test]
+    fn memory_target_roundtrip_and_appended_review_preserve_original_completion() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, fixture) = memory_target_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        let completion = task.memory_bundle.clone();
+        let review = memory::test_support::review(
+            fixture["available_snapshot"].clone(),
+            "2025-02-26T12:00:00.000000Z",
+        );
+        task.evaluation_reviews = serde_json::json!([review]);
+        task.report_versions[0]["evaluationReviews"] = task.evaluation_reviews.clone();
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap().remove(0);
+        assert_eq!(loaded.memory_bundle, completion);
+        assert_eq!(loaded.evaluation_reviews, task.evaluation_reviews);
+        assert_eq!(loaded.report_versions[0]["memoryBundle"], fixture["bundle"]);
+        assert_eq!(
+            loaded.report_versions[0]["evaluationReviews"],
+            task.evaluation_reviews
+        );
+        assert_eq!(loaded.evidence_bundle, task.evidence_bundle);
+    }
+
+    #[test]
+    fn memory_target_missing_null_or_unbound_completed_attachment_rejects_atomically() {
+        for mode in [
+            "task_missing",
+            "task_null",
+            "version_missing",
+            "version_null",
+            "marker_wrong",
+        ] {
+            let mut conn = Connection::open_in_memory().unwrap();
+            initialize_schema(&conn).unwrap();
+            let (original, _) = memory_target_task_fixture();
+            save_test_task(&mut conn, &original).unwrap();
+            let mut task: AnalysisTaskRecord =
+                serde_json::from_value(serde_json::to_value(&original).unwrap()).unwrap();
+            match mode {
+                "task_missing" => task.memory_bundle = None,
+                "task_null" => {
+                    let mut raw = serde_json::to_value(&task).unwrap();
+                    raw["memoryBundle"] = Value::Null;
+                    task = serde_json::from_value(raw).unwrap();
+                }
+                "version_missing" => {
+                    task.report_versions[0]
+                        .as_object_mut()
+                        .unwrap()
+                        .remove("memoryBundle");
+                }
+                "version_null" => task.report_versions[0]["memoryBundle"] = Value::Null,
+                _ => {
+                    task.evidence_bundle.as_mut().unwrap()["manifest"]
+                        ["memory_target_binding_sha256"] = "f".repeat(64).into();
+                }
+            }
+            assert!(save_test_task(&mut conn, &task).is_err(), "{mode}");
+            assert_eq!(
+                load_tasks_from_conn(&conn).unwrap()[0].memory_bundle,
+                original.memory_bundle
+            );
+        }
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, _) = memory_target_task_fixture();
+        task.memory_bundle = None;
+        task.memory_validation =
+            Some(serde_json::json!({"status":"invalid","reason":"reference_mismatch"}));
+        task.report_versions = serde_json::json!([]);
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap().remove(0);
+        assert_eq!(loaded.memory_validation, task.memory_validation);
+        assert!(loaded.memory_bundle.is_none());
+    }
+
+    #[test]
+    fn memory_target_same_retained_uuid_cannot_upgrade_legacy_or_cross_owner() {
+        for same_owner in [true, false] {
+            let mut conn = Connection::open_in_memory().unwrap();
+            initialize_schema(&conn).unwrap();
+            let (legacy, original) = memory_task_fixture();
+            save_test_task(&mut conn, &legacy).unwrap();
+            let (mut next, _) = memory_target_task_fixture();
+            if !same_owner {
+                next.id = "other-task".into();
+                next.report_versions[0]["id"] = "other-version".into();
+            }
+            assert!(save_test_task(&mut conn, &next).is_err());
+            let loaded = load_tasks_from_conn(&conn).unwrap();
+            assert_eq!(loaded.len(), 1);
+            assert_eq!(loaded[0].memory_bundle.as_ref(), Some(&original));
+            // Explicit deletion discards the last retained authority; no tombstones.
+            conn.execute("DELETE FROM tasks", []).unwrap();
+            prune_evidence(&conn).unwrap();
+            save_test_task(&mut conn, &next).unwrap();
+            assert_eq!(
+                load_tasks_from_conn(&conn).unwrap()[0].memory_bundle,
+                next.memory_bundle
+            );
+        }
     }
 
     fn identity_task_fixture() -> AnalysisTaskRecord {

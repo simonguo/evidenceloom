@@ -38,7 +38,8 @@ import {
 import { normalizeSettingsForSave } from "@/features/settings/lib/normalize-settings";
 import { mergeEventOutputQuality, normalizeTaskOutputQuality } from "@/features/output-quality/lib/quality";
 import { evidenceFromEvent, evidenceMatchesSnapshot, normalizeTaskEvidence, verifyTaskEvidence } from "@/features/evidence/lib/validation";
-import { memoryFromEvent, normalizeTaskMemory, verifyTaskMemory, verifyMemoryBundle, verifyReviewAttachment } from "@/features/memory/lib/validation";
+import { memoryFromEvent, normalizeMemoryTaskFields, verifyTaskMemory, verifyMemoryBundle, verifyReviewAttachment } from "@/features/memory/lib/validation";
+import { normalizeMemoryTasks, verifyMemoryTasks } from "@/features/memory/lib/tasks";
 import { normalizeReadinessTasks, normalizeReadinessTaskFields, readinessFromEvent, verifyReadinessTasks, verifyTaskReadiness } from "@/features/research-readiness/lib/validation";
 import { appendEvaluationReviews } from "@/features/memory/lib/reviews";
 import type { ReviewAttachment } from "@/features/memory/types";
@@ -106,7 +107,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       try {
         setSettings(loadGlobalSettings());
         const loaded = loadTasks().map(normalizeTaskRuntimeState);
-        void Promise.all(loaded.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))).then(verifyReadinessTasks).then(verifyNumericTasks).then(verifyIdentityTasks).then(setTasks).catch(() => setNotice("Saved research evidence and memory could not be verified.")).finally(() => setHydrated(true));
+        void Promise.all(loaded.map(verifyTaskEvidence)).then(verifyMemoryTasks).then(verifyReadinessTasks).then(verifyNumericTasks).then(verifyIdentityTasks).then(setTasks).catch(() => setNotice("Saved research evidence and memory could not be verified.")).finally(() => setHydrated(true));
       } catch {
         setNotice("Local storage is unavailable. Reports have not been saved or loaded.");
         setHydrated(true);
@@ -118,7 +119,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     void adapter.loadDesktopData(legacy)
       .then(async (snapshot) => {
         setSettings(normalizeGlobalSettings(snapshot.settings ?? {}));
-        const normalizedTasks = await verifyIdentityTasks(await verifyNumericTasks(await verifyReadinessTasks(await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))))));
+        const normalizedTasks = await verifyIdentityTasks(await verifyNumericTasks(await verifyReadinessTasks(await verifyMemoryTasks(await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(verifyTaskEvidence))))));
         setTasks(normalizedTasks);
         normalizedTasks.forEach((task, index) => {
           const stored = snapshot.tasks[index];
@@ -138,7 +139,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         setSettings(sessionSafeSettings(legacy.settings ?? defaultGlobalSettings()));
-        setTasks(normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState)))));
+        setTasks(normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(normalizeMemoryTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState))))));
         setNotice("Desktop storage could not be loaded. The displayed reports have not been confirmed saved.");
       })
       .finally(() => setHydrated(true));
@@ -189,7 +190,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   const updateTask = useCallback((taskId: string, updater: (task: AnalysisTask) => AnalysisTask) => {
     setTasks((current) => {
-      const next = normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(current.map((task) => task.id === taskId ? updater(task) : task))));
+      const next = normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(normalizeMemoryTasks(current.map((task) => task.id === taskId ? updater(task) : task)))));
       const changed = next.find((task) => task.id === taskId);
       if (changed) persistTask(changed);
       return next;
@@ -204,7 +205,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
     const decision = resolveTaskDecision(task.decision, task.reportSections?.final_trade_decision);
-    const normalizedTask = normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality({
+    const normalizedTask = normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeMemoryTaskFields(normalizeTaskEvidence(normalizeTaskOutputQuality({
       ...task,
       origin: task.origin ?? "analysis",
       reportVersions: task.reportVersions ?? [],
@@ -248,7 +249,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           : event.type === "error"
             ? "error"
             : task.status;
-        const nextTask: AnalysisTask = normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(evidenceMatchesSnapshot({
+        const nextTask: AnalysisTask = normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeMemoryTaskFields(evidenceMatchesSnapshot({
           ...task,
           status,
           updatedAt: new Date().toISOString(),
@@ -478,21 +479,42 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     const version = tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
     if (!version?.memoryBundle || version.memoryValidation) throw new Error("This saved version has no verified memory attachment.");
     const frozen = JSON.parse(JSON.stringify(version)) as typeof version;
+    const capturedReviews = JSON.parse(JSON.stringify(reviews)) as ReviewAttachment[];
     const completion = await verifyMemoryBundle(frozen.memoryBundle, frozen.evidenceBundle);
-    const verified = await Promise.all(reviews.map((review) => verifyReviewAttachment(review, completion)));
-    await new Promise<void>((resolve, reject) => setTasks((current) => {
-      try {
-        const task = current.find((item) => item.id === taskId);
-        if (!task) throw new Error();
-        const next = appendEvaluationReviews(task, versionId, verified);
-        persistTask(next);
-        queueMicrotask(resolve);
-        return current.map((item) => item.id === taskId ? next : item);
-      } catch {
-        queueMicrotask(() => reject(new Error("Saved evaluation attachments conflict with this report history.")));
-        return current;
+    const verified = await Promise.all(capturedReviews.map((review) => verifyReviewAttachment(review, completion)));
+    const write = persistenceQueueRef.current.catch(() => undefined).then(async () => {
+      const latest = tasksRef.current;
+      const owner = latest.find((item) => item.id === taskId);
+      if (!owner) throw new Error("The selected task no longer exists.");
+      const next = appendEvaluationReviews(owner, versionId, verified);
+      const candidate = normalizeMemoryTasks(latest.map((item) => item.id === taskId ? next : item));
+      if (candidate.find((item) => item.id === taskId)?.reportVersions.find((item) => item.id === versionId)?.memoryValidation) {
+        throw new Error("Saved evaluation attachments conflict with this report history.");
       }
-    }));
+      if (isTauriRuntime()) {
+        await (runtimeAdapterRef.current ?? getRuntimeAdapter()).saveDesktopTask(
+          await verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(next))))),
+        );
+      } else await saveVerifiedTasks(candidate);
+      // Keep the original input frozen and preserve unrelated updates made
+      // during the write. Failed durable writes never publish a new review.
+      await new Promise<void>((resolve, reject) => setTasks((current) => {
+        try {
+          const currentOwner = current.find((item) => item.id === taskId);
+          if (!currentOwner) throw new Error();
+          const saved = appendEvaluationReviews(currentOwner, versionId, verified);
+          const result = normalizeMemoryTasks(current.map((item) => item.id === taskId ? saved : item));
+          if (result.find((item) => item.id === taskId)?.reportVersions.find((item) => item.id === versionId)?.memoryValidation) throw new Error();
+          queueMicrotask(resolve);
+          return result;
+        } catch {
+          queueMicrotask(() => reject(new Error("Evaluation review was saved, but its current owner could not be updated.")));
+          return current;
+        }
+      }));
+    });
+    persistenceQueueRef.current = write;
+    await write;
   }
 
   const value: TaskCenterContextValue = {
