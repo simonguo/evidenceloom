@@ -1,0 +1,376 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-10-04T15:08:20.961304+00:00",
+  "base_commit": "0c28a7ff314d7df459616d28ddd964d010a105b7",
+  "source_commit": "c6e15b00d762dc519bf0e93d136cc61f4ec56586",
+  "source_files": [
+    {
+      "path": "tests/test_memory_target_binding_boundaries.py",
+      "bytes": 28865,
+      "sha256": "0706fa451a74cf2127ea24a2f7a00f5eced45035bed6e80257959505aac48813"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 1834,
+      "sha256": "238d7870b6b585538a9857d6f77cdb5fa8015ddebb0c7605ad5334e30238a6c1"
+    }
+  ],
+  "source_snapshot": {
+    "base_tracked_count": 604,
+    "unchanged_existing_files": 602,
+    "changed_existing_paths": [
+      "tests/test_memory_target_binding_boundaries.py",
+      "pyproject.toml"
+    ],
+    "scope": "Source-only Git snapshot; documentation separate."
+  },
+  "configuration": {
+    "only_added_filter": "error::pytest.PytestUnhandledThreadExceptionWarning",
+    "dependency_constraints_equal": true,
+    "lock_bytes_equal": true,
+    "old_pyproject_sha256": "7989b00e747cd89c66656afc6bc938aabf9b85d1c1b0e5eb8e9890ffef21962c",
+    "new_pyproject_sha256": "238d7870b6b585538a9857d6f77cdb5fa8015ddebb0c7605ad5334e30238a6c1",
+    "identity_note": "Entire pyproject is a declared dependency_file; true file SHA and derived evaluation result identity change despite equal constraints."
+  },
+  "observed_original_gap": {
+    "head": "05fea22f92c221d397bf61a33aded2179c16031c",
+    "source_test_pass_count": 1022,
+    "thread_warning": "Delayed list wait(10) failed in second worker before stale-list return; main test did not propagate worker failure.",
+    "unproven_branch": "Second-worker post-lock reload",
+    "not_application_failure_or_ci_cause_proof": true
+  },
+  "worker_behavior": {
+    "future_main_thread_error_propagation": true,
+    "real_stale_list_before_first_settlement": true,
+    "first_saved_reflection_observed_by_actual_second_reload": true,
+    "first_reflector_calls": 1,
+    "second_reflector_calls": 0,
+    "stage_timeout_seconds": 120,
+    "delayed_release_timeout_seconds": 240,
+    "passing_workers_dead": true,
+    "failure_cleanup_limit": "All waits bounded and release attempted; Python cannot forcibly stop an action. Failure paths can leave an owned daemon alive or cleanup assertion can supersede earlier exception; test remains failed."
+  },
+  "author_final_targets": {
+    "passed": 2,
+    "exit_code": 0,
+    "pytest_seconds": 2.32
+  },
+  "author_after_completion_injection": {
+    "failed": 1,
+    "exit_code": 1,
+    "pytest_seconds": 1.52,
+    "worker_exception_rethrown_by_main_future": true,
+    "intentional_negative": true
+  },
+  "root_warning_policy_controls": {
+    "captured_at": "2026-10-04T14:57:19.156873+00:00",
+    "runs": [
+      {
+        "label": "old-policy-warning",
+        "argv": [
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/python312-sdk044-env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "-c",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/old-policy-pyproject.toml",
+          "--rootdir",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/settlement-race-test",
+          "--basetemp",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/old-policy-warning-temp",
+          "--junitxml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/old-policy-warning.xml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/test_owned_unhandled_thread.py"
+        ],
+        "exit_code": 0,
+        "counts": {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "logs": [
+          {
+            "path": "old-policy-warning.stdout.log",
+            "sha256": "fd4d355441b6758105c5df1c4b0002ee62ce204d2915f59007183d93f44e6149"
+          },
+          {
+            "path": "old-policy-warning.stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "junit": {
+          "path": "old-policy-warning.xml",
+          "sha256": "61befe72dbf42c15c16edad7dbc9e5200d59eeb4c5f2cb2a112cb925c05b3227"
+        }
+      },
+      {
+        "label": "new-policy-fails",
+        "argv": [
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/python312-sdk044-env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "-c",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/settlement-race-test/pyproject.toml",
+          "--rootdir",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/settlement-race-test",
+          "--basetemp",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/new-policy-fails-temp",
+          "--junitxml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/new-policy-fails.xml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/test_owned_unhandled_thread.py"
+        ],
+        "exit_code": 1,
+        "counts": {
+          "tests": 1,
+          "failures": 1,
+          "errors": 0,
+          "skipped": 0
+        },
+        "logs": [
+          {
+            "path": "new-policy-fails.stdout.log",
+            "sha256": "a8ede4db3efd47685bbae1779ada590ddf2c23f4b657226968b7b24cdf6582c1"
+          },
+          {
+            "path": "new-policy-fails.stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "junit": {
+          "path": "new-policy-fails.xml",
+          "sha256": "91a0a8c98804db5dd46fdb07a8566a1fc53547d746c51809b2c868a2f539ad2d"
+        }
+      },
+      {
+        "label": "new-policy-targets",
+        "argv": [
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/python312-sdk044-env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "-c",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/settlement-race-test/pyproject.toml",
+          "--rootdir",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/settlement-race-test",
+          "--basetemp",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/new-policy-targets-temp",
+          "--junitxml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/settlement-race-test/new-policy-targets.xml",
+          "tests/test_memory_target_binding_boundaries.py::test_fair_scheduler_race_worker_exception_reaches_main_thread",
+          "tests/test_memory_target_binding_boundaries.py::test_fair_scheduler_reloads_after_delayed_prelock_list_before_reflection"
+        ],
+        "exit_code": 0,
+        "counts": {
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "logs": [
+          {
+            "path": "new-policy-targets.stdout.log",
+            "sha256": "90adf64dd14ce33a6181a26b2bfdf162a2858b641b205384e308ecc0d4f67246"
+          },
+          {
+            "path": "new-policy-targets.stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "junit": {
+          "path": "new-policy-targets.xml",
+          "sha256": "174313283e06990ce63c6ed6efd479bbbd142708d938f93a2ea8725f7ce00fc0"
+        }
+      }
+    ],
+    "scope": "Owned pytest warning-policy witness and actual complete fictional settlement race; no application runtime/dependency constraint change or external provider/model request."
+  },
+  "root_complete_stacked_boundary_file": {
+    "counts": {
+      "tests": 31,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "exit_code": 0,
+    "pytest_seconds": 7.55,
+    "unhandled_thread_warning_in_log": false,
+    "runtime": "CPython3.12 SDK0.4.4-only overlay; not a full fresh combined release installation."
+  },
+  "offline_lock_check": {
+    "package_count": 113,
+    "exit_code": 0,
+    "basis": "Actual exec tool command at stacked sourcec6 with --check --offline --no-build; captured output Resolved113packages."
+  },
+  "contrary": "Initial author observer included pre-release list construction loads, causing1failed/1passed; restricted post-release observation then passes. Original evidence retained.",
+  "scope_limits": [
+    "Pytest warning rule covers this warning category, not all swallowed/background exceptions.",
+    "No application settlement algorithm or dependency constraint change.",
+    "No forced termination guarantee for a stuck Python thread.",
+    "Fictional inputs and offline guards; no external provider/model API or user profile.",
+    "Exact-head native/source/package/real-bridge checks remain required before Ready; clean installs, signing and external analyst/expert acceptance open."
+  ],
+  "artifact_root": "evidenceloom-validation/",
+  "artifacts": [
+    {
+      "path": "settlement-race-test/review-evidence.md",
+      "bytes": 3651,
+      "sha256": "f9ac32c451cc505c61ee6a648f1ba86483df44e9b96b9b4f539e4fd6dcb79478"
+    },
+    {
+      "path": "settlement-race-test/review-evidence.json",
+      "bytes": 202587,
+      "sha256": "39902181b6478e006b370681fdd80d37df41ac7c79558637986487a2ad97fa14"
+    },
+    {
+      "path": "settlement-race-test/targeted.raw.log",
+      "bytes": 98,
+      "sha256": "dc0b957fd0038e32d5adb09981e824ce83e8eaac03450e21599084f995eee9eb"
+    },
+    {
+      "path": "settlement-race-test/targeted.xml",
+      "bytes": 567,
+      "sha256": "67bb7a6c51fed2eb3a8a36cd387b5f918817737a532f55bb27a9ef51963b6bae"
+    },
+    {
+      "path": "settlement-race-test/negative.raw.log",
+      "bytes": 4645,
+      "sha256": "d713c6cc471d3568d9c14caf976d78dcc5184ac551730c437780d1fe40f18037"
+    },
+    {
+      "path": "settlement-race-test/negative.xml",
+      "bytes": 4688,
+      "sha256": "d9f43933985d0e5ad198941e16a8ca2a7fb787b30acd1b44082ae9b95ff1a497"
+    },
+    {
+      "path": "settlement-race-test/owned_worker_exception_probe.py",
+      "bytes": 1155,
+      "sha256": "f27562daa24298c8e79fdbfee0e7b0593db4abe4f9465ce2010be5eeb963bdfe"
+    },
+    {
+      "path": "settlement-race-test/initial-target-source.py",
+      "bytes": 28827,
+      "sha256": "2bba8fda25d4af2cdf564c20012e369f41b3d98af87e0bc130d0992dde46c217"
+    },
+    {
+      "path": "settlement-race-test/initial-targeted.raw.log",
+      "bytes": 4495,
+      "sha256": "82d4a7ed2e271a3deb264a44ee51406f06f0be2eea038c1ca03a76cdff8d7711"
+    },
+    {
+      "path": "settlement-race-test/initial-targeted.xml",
+      "bytes": 5396,
+      "sha256": "ec7028ac9935cce73902d5d73436419ee0ed6f3edee222d0131eab9aa6b74c68"
+    },
+    {
+      "path": "settlement-race-test/initial-target-correction.json",
+      "bytes": 583,
+      "sha256": "753443cb4da2db28bb753ff506bd1378c59dfb57b37f4ad8f70b7626d60c354a"
+    },
+    {
+      "path": "settlement-race-test/root-thread-warning-policy.py",
+      "bytes": 3015,
+      "sha256": "c4c91dde1c707dc36544d1145a2cc6175dcbdcd1bb345904c80b868760cd599b"
+    },
+    {
+      "path": "settlement-race-test/root-thread-warning-policy-execution.json",
+      "bytes": 5105,
+      "sha256": "d530ab73d69489f6b9b1beb21d1061fb650bc92609045d7ae4a1276d6632a1c8"
+    },
+    {
+      "path": "settlement-race-test/test_owned_unhandled_thread.py",
+      "bytes": 370,
+      "sha256": "b097a5cd3108724016657da4ee0f0171d5e7b2c91c964088e4e8bf061fa023a9"
+    },
+    {
+      "path": "settlement-race-test/old-policy-pyproject.toml",
+      "bytes": 1775,
+      "sha256": "7989b00e747cd89c66656afc6bc938aabf9b85d1c1b0e5eb8e9890ffef21962c"
+    },
+    {
+      "path": "settlement-race-test/root-stacked-boundary.raw.log",
+      "bytes": 99,
+      "sha256": "382d1f4514636ede7c0b7c3b6c401ae8d0fdaa60c057667112f0bb4b892c9cc7"
+    },
+    {
+      "path": "settlement-race-test/root-stacked-boundary.xml",
+      "bytes": 5427,
+      "sha256": "dd10fc2487af2233c33e4b510dc79dba2fd3e2d2871daf72427cf77fad5a308e"
+    },
+    {
+      "path": "settlement-race-test/old-policy-warning.stdout.log",
+      "bytes": 1437,
+      "sha256": "fd4d355441b6758105c5df1c4b0002ee62ce204d2915f59007183d93f44e6149"
+    },
+    {
+      "path": "settlement-race-test/old-policy-warning.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "settlement-race-test/old-policy-warning.xml",
+      "bytes": 345,
+      "sha256": "61befe72dbf42c15c16edad7dbc9e5200d59eeb4c5f2cb2a112cb925c05b3227"
+    },
+    {
+      "path": "settlement-race-test/new-policy-fails.stdout.log",
+      "bytes": 4797,
+      "sha256": "a8ede4db3efd47685bbae1779ada590ddf2c23f4b657226968b7b24cdf6582c1"
+    },
+    {
+      "path": "settlement-race-test/new-policy-fails.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "settlement-race-test/new-policy-fails.xml",
+      "bytes": 5080,
+      "sha256": "91a0a8c98804db5dd46fdb07a8566a1fc53547d746c51809b2c868a2f539ad2d"
+    },
+    {
+      "path": "settlement-race-test/new-policy-targets.stdout.log",
+      "bytes": 98,
+      "sha256": "90adf64dd14ce33a6181a26b2bfdf162a2858b641b205384e308ecc0d4f67246"
+    },
+    {
+      "path": "settlement-race-test/new-policy-targets.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "settlement-race-test/new-policy-targets.xml",
+      "bytes": 567,
+      "sha256": "174313283e06990ce63c6ed6efd479bbbd142708d938f93a2ea8725f7ce00fc0"
+    },
+    {
+      "path": "report-version-comparison/pr92-05fea22-intel-attempt1-root-cause-summary.json",
+      "bytes": 10680,
+      "sha256": "f758ab0d4055f91104ea33d9e4f32d86f8ce88d969becd13b5263488348d05b0"
+    },
+    {
+      "path": "report-version-comparison/pr92-05fea22-intel-attempt1-root-cause-pytest-warning.log",
+      "bytes": 4484,
+      "sha256": "8237aadb5a3f26627edb0d9d73c30ec420d39fe01f0650ea98b674ab89bdbf8b"
+    },
+    {
+      "path": "report-version-comparison/pr92-05fea22-intel-terminal-annotations.json",
+      "bytes": 618,
+      "sha256": "c8de73c88d3fda46eb85cbd2733911e60a32275e956b1d35b72632bab9f0bbea"
+    },
+    {
+      "path": "report-version-comparison/pr92-05fea22-intel-terminal-job.log",
+      "bytes": 213512,
+      "sha256": "e562d61f70254fbacf3d2720d940d80a620d37076326c87ca537aef303115be9"
+    }
+  ]
+}

@@ -89,6 +89,8 @@ The [Memory target validation record](validation/2026-10-04-memory-target-bindin
 
 ## Completion audit
 
+The [settlement race validation](validation/2026-10-04-settlement-race-test.md) records a confirmed test gap: an unhandled worker exception could leave the old race test passing with a warning. The candidate propagates worker results/errors, requires actual post-release state reload and makes pytest's unhandled-thread warning fail globally. This changes validation behavior, not the settlement algorithm; bounded failure paths cannot forcibly terminate a stuck Python thread. Native gates and the broader analyst/release objective remain open.
+
 The [PyInstaller security validation](validation/2026-10-04-pyinstaller-security.md) binds a locked development-packager update and official artifacts to bounded, nonprivileged minimal-program checks. Existing binaries require rebuilding; native production packaging and real bridges are separate exact-head CI gates. Privileged application exploitability, signed releases, clean-machine installation and broader security/analyst acceptance are not established by these local checks.
 
 The [diagnostic key performance validation](validation/2026-10-04-diagnostic-key-performance.md) records an uncached reduction in repeated string work, credential-rotation compatibility and bounded local full-pipeline timings. Actual source/dependency identities remain distinct when their bytes change. The local benchmark does not establish Intel CI causality, full-suite performance or analyst acceptance; native and broader product requirements remain open.
