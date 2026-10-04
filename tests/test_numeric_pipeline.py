@@ -34,7 +34,7 @@ def test_saved_snapshot_retries_reuse_first_capture_and_reject_coherent_rewrite(
         )
     assert all(result == first for result in results)
     saved_path = tmp_path / first["run_id"] / "report_text_snapshot.json"
-    assert json.loads(saved_path.read_text()) == first
+    assert json.loads(saved_path.read_text(encoding="utf-8")) == first
     changed = deepcopy(first)
     changed["report_sections"]["market_report"] = changed["report_sections"][
         "market_report"
@@ -47,7 +47,7 @@ def test_saved_snapshot_retries_reuse_first_capture_and_reject_coherent_rewrite(
         freeze_report_text_snapshot(
             tmp_path, evidence, changed["report_sections"], existing=changed
         )
-    assert json.loads(saved_path.read_text()) == first
+    assert json.loads(saved_path.read_text(encoding="utf-8")) == first
 
 
 def test_same_run_changed_final_evidence_is_rejected_and_corruption_not_overwritten(tmp_path):
@@ -62,7 +62,7 @@ def test_same_run_changed_final_evidence_is_rejected_and_corruption_not_overwrit
     saved_path.write_text('{"broken":true}', encoding="utf-8")
     with pytest.raises(NumericReviewError):
         freeze_report_text_snapshot(tmp_path, evidence, snapshot["report_sections"])
-    assert saved_path.read_text() == '{"broken":true}'
+    assert saved_path.read_text(encoding="utf-8") == '{"broken":true}'
 
 
 def test_real_offline_graph_logs_and_cli_export_original_snapshot(tmp_path, monkeypatch, offline):  # noqa: F811
@@ -77,18 +77,23 @@ def test_real_offline_graph_logs_and_cli_export_original_snapshot(tmp_path, monk
         >= state["memory_bundle"]["decision_snapshot"]["decision"]["recorded_at"]
     )
     stored = next((tmp_path / "cache").rglob("report_text_snapshot.json"))
-    assert json.loads(stored.read_text()) == snapshot
-    log = json.loads(next((tmp_path / "results").rglob("full_states_log_*.json")).read_text())
+    assert json.loads(stored.read_text(encoding="utf-8")) == snapshot
+    log = json.loads(
+        next((tmp_path / "results").rglob("full_states_log_*.json")).read_text(encoding="utf-8")
+    )
     assert log["report_text_snapshot"] == snapshot
     graph.record_decision("NVDA", TRADE_DATE, state)
     assert state["report_text_snapshot"] == snapshot
     save_report_to_disk(state, "NVDA", tmp_path / "export")
-    assert json.loads((tmp_path / "export/report_text_snapshot.json").read_text()) == snapshot
+    assert (
+        json.loads((tmp_path / "export/report_text_snapshot.json").read_text(encoding="utf-8"))
+        == snapshot
+    )
     changed = deepcopy(state)
     changed["market_report"] += "\nNew claim after completion"
     with pytest.raises(ValueError, match="immutable snapshot"):
         graph.record_decision("NVDA", TRADE_DATE, changed)
-    assert json.loads(stored.read_text()) == snapshot
+    assert json.loads(stored.read_text(encoding="utf-8")) == snapshot
 
 
 def test_actual_desktop_completed_event_exact_sections_and_snapshot(bridge):  # noqa: F811
@@ -192,14 +197,19 @@ def test_known_configured_secret_redacted_before_snapshot_and_final_edit(
     assert secret not in json.dumps(state["report_text_snapshot"], ensure_ascii=False)
     assert "[redacted]" in state["report_text_snapshot"]["report_sections"]["market_report"]
     log = next((tmp_path / "results").rglob("full_states_log_*.json"))
-    saved = json.loads(log.read_text())
-    assert secret not in log.read_text()
+    saved = json.loads(log.read_text(encoding="utf-8"))
+    assert secret not in log.read_text(encoding="utf-8")
     save_report_to_disk(
         state, "NVDA", tmp_path / "secret-export", secrets=graph._evidence_secrets()
     )
-    assert all(secret not in path.read_text() for path in (tmp_path / "secret-export").rglob("*.*"))
+    assert all(
+        secret not in path.read_text(encoding="utf-8")
+        for path in (tmp_path / "secret-export").rglob("*.*")
+    )
     assert (
-        json.loads((tmp_path / "secret-export/report_text_snapshot.json").read_text())
+        json.loads(
+            (tmp_path / "secret-export/report_text_snapshot.json").read_text(encoding="utf-8")
+        )
         == state["report_text_snapshot"]
     )
     for key, text in state["report_text_snapshot"]["report_sections"].items():
@@ -211,7 +221,10 @@ def test_known_configured_secret_redacted_before_snapshot_and_final_edit(
     with pytest.raises(ValueError):
         graph.record_decision("NVDA", TRADE_DATE, changed)
     assert secret not in changed["final_trade_decision"]
-    assert json.loads(log.read_text())["report_text_snapshot"] == state["report_text_snapshot"]
+    assert (
+        json.loads(log.read_text(encoding="utf-8"))["report_text_snapshot"]
+        == state["report_text_snapshot"]
+    )
 
 
 def test_actual_completed_packet_redacts_configured_report_secret(bridge, monkeypatch):  # noqa: F811

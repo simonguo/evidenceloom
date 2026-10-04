@@ -190,7 +190,7 @@ def scenario(*, payload=TABLE, report=REPORT, status="available", withheld=False
 
 def test_policy_is_exact_normative_json():
     policy = json.loads(
-        (Path(__file__).parents[1] / "docs/contracts/numeric_review_policy_v1.json").read_text()
+        (Path(__file__).parents[1] / "docs/contracts/numeric_review_policy_v1.json").read_bytes()
     )
     assert policy == NUMERIC_REVIEW_POLICY
     assert hash_value(policy) == POLICY_SHA256
@@ -597,7 +597,7 @@ def write_fixture():
 
 
 def test_shared_fixture_rederives_exact_receipts():
-    fixture = json.loads((Path(__file__).parent / "fixtures/numeric_review_v1.json").read_text())
+    fixture = json.loads((Path(__file__).parent / "fixtures/numeric_review_v1.json").read_bytes())
     assert (
         validate_report_text_snapshot(fixture["snapshot"], fixture["evidence"])
         == fixture["snapshot"]

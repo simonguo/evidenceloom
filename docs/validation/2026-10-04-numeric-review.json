@@ -118,6 +118,24 @@
     "synthetic_task_state_cleaned": true
   },
   "fictional_validation_only": true,
+  "initial_ci_observation": {
+    "application_sources_and_packaged_artifact_unchanged_by_fix": true,
+    "frontend_passed": true,
+    "head": "33cfcfb01591f9cfee1cbd5efd68945ffb4138f0",
+    "linux_python_versions_passed": [
+      "3.10",
+      "3.11",
+      "3.12",
+      "3.13"
+    ],
+    "rust_passed": true,
+    "windows_source_diagnostics": {
+      "cause": "New tests used implicit system-default encoding to read UTF-8 fixture and snapshot files; corrected to explicit UTF-8.",
+      "failed": 2,
+      "passed": 312,
+      "skipped": 15
+    }
+  },
   "local_checks": {
     "frontend": {
       "eslint": true,
