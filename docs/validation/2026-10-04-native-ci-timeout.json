@@ -1,0 +1,383 @@
+{
+  "schema_version": 1,
+  "observed_head_sha": "d98eeba0baf601df2acf3791ab85b2d6d5a5b6b6",
+  "pr_url": "https://github.com/simonguo/evidenceloom/pull/90",
+  "acceptance_at_observed_head": "FAILED_INTEL_TIMEOUT",
+  "checks": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:35:38Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862108/job/111417462031",
+      "name": "Private repository availability",
+      "startedAt": "2026-10-04T10:35:39Z",
+      "status": "COMPLETED",
+      "workflowName": "CodeQL"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:35:46Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862088/job/111417461399",
+      "name": "DCO sign-off",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:36:14Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862074/job/111417461232",
+      "name": "frontend-dependency-audit",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "Security"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T11:00:00Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862145/job/111417461660",
+      "name": "Native diagnostics (aarch64-apple-darwin)",
+      "startedAt": "2026-10-04T10:35:46Z",
+      "status": "COMPLETED",
+      "workflowName": "Sidecar Diagnostics"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T11:20:59Z",
+      "conclusion": "CANCELLED",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862145/job/111417461784",
+      "name": "Native diagnostics (x86_64-apple-darwin)",
+      "startedAt": "2026-10-04T10:35:42Z",
+      "status": "COMPLETED",
+      "workflowName": "Sidecar Diagnostics"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:56:37Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862145/job/111417461566",
+      "name": "Native diagnostics (x86_64-pc-windows-msvc)",
+      "startedAt": "2026-10-04T10:35:42Z",
+      "status": "COMPLETED",
+      "workflowName": "Sidecar Diagnostics"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T11:08:04Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862088/job/111417461480",
+      "name": "Python 3.10",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:36:58Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862108/job/111417461351",
+      "name": "analyze (javascript-typescript)",
+      "startedAt": "2026-10-04T10:35:42Z",
+      "status": "COMPLETED",
+      "workflowName": "CodeQL"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:35:53Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862074/job/111417461242",
+      "name": "python-dependency-audit",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "Security"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T11:02:16Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862088/job/111417461517",
+      "name": "Python 3.11",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:37:00Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862108/job/111417461180",
+      "name": "analyze (python)",
+      "startedAt": "2026-10-04T10:35:42Z",
+      "status": "COMPLETED",
+      "workflowName": "CodeQL"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T11:06:14Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862088/job/111417461477",
+      "name": "Python 3.12",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:50:23Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862088/job/111417461499",
+      "name": "Python 3.13",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:37:34Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862088/job/111417461298",
+      "name": "Frontend",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:35:47Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862074/job/111417461269",
+      "name": "dependency-review",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "Security"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:40:01Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862088/job/111417461414",
+      "name": "Rust",
+      "startedAt": "2026-10-04T10:35:43Z",
+      "status": "COMPLETED",
+      "workflowName": "CI"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:35:50Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/actions/runs/37195862074/job/111417461100",
+      "name": "secret-scan",
+      "startedAt": "2026-10-04T10:35:41Z",
+      "status": "COMPLETED",
+      "workflowName": "Security"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-10-04T10:36:51Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/simonguo/evidenceloom/runs/111417649698",
+      "name": "CodeQL",
+      "startedAt": "2026-10-04T10:36:48Z",
+      "status": "COMPLETED",
+      "workflowName": ""
+    }
+  ],
+  "failed_job": {
+    "id": 111417461784,
+    "run_id": 37195862145,
+    "url": "https://github.com/simonguo/evidenceloom/actions/runs/37195862145/job/111417461784",
+    "started_at": "2026-10-04T10:35:42Z",
+    "completed_at": "2026-10-04T11:20:59Z",
+    "conclusion": "cancelled",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-04T10:35:43Z",
+        "completed_at": "2026-10-04T10:35:44Z"
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-04T10:35:44Z",
+        "completed_at": "2026-10-04T10:35:48Z"
+      },
+      {
+        "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-04T10:35:48Z",
+        "completed_at": "2026-10-04T10:35:48Z"
+      },
+      {
+        "name": "Install frozen dependencies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-04T10:35:48Z",
+        "completed_at": "2026-10-04T10:37:59Z"
+      },
+      {
+        "name": "Run native source and process diagnostics",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "number": 5,
+        "started_at": "2026-10-04T10:37:59Z",
+        "completed_at": "2026-10-04T11:20:55Z"
+      },
+      {
+        "name": "Build and validate the native packaged sidecar",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 6,
+        "started_at": "2026-10-04T11:20:55Z",
+        "completed_at": "2026-10-04T11:20:55Z"
+      },
+      {
+        "name": "Run native Rust protocol and process fixtures",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 7,
+        "started_at": "2026-10-04T11:20:55Z",
+        "completed_at": "2026-10-04T11:20:55Z"
+      },
+      {
+        "name": "Seed an owned saved-memory fixture store",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 8,
+        "started_at": "2026-10-04T11:20:55Z",
+        "completed_at": "2026-10-04T11:20:55Z"
+      },
+      {
+        "name": "Exercise the Rust bridge against the real packaged sidecar",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 9,
+        "started_at": "2026-10-04T11:20:55Z",
+        "completed_at": "2026-10-04T11:20:55Z"
+      },
+      {
+        "name": "Clean up the owned fixture store",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-10-04T11:20:55Z",
+        "completed_at": "2026-10-04T11:20:55Z"
+      },
+      {
+        "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 19,
+        "started_at": "2026-10-04T11:20:55Z",
+        "completed_at": "2026-10-04T11:20:55Z"
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-10-04T11:20:55Z",
+        "completed_at": "2026-10-04T11:20:56Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21,
+        "started_at": "2026-10-04T11:20:56Z",
+        "completed_at": "2026-10-04T11:20:58Z"
+      }
+    ]
+  },
+  "annotations": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/simonguo/evidenceloom/blob/d98eeba0baf601df2acf3791ab85b2d6d5a5b6b6/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "failure",
+      "title": "",
+      "message": "The job has exceeded the maximum execution time of 45m0s",
+      "raw_details": ""
+    },
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/simonguo/evidenceloom/blob/d98eeba0baf601df2acf3791ab85b2d6d5a5b6b6/.github",
+      "start_line": 41,
+      "start_column": null,
+      "end_line": 41,
+      "end_column": null,
+      "annotation_level": "failure",
+      "title": "",
+      "message": "The operation was canceled.",
+      "raw_details": ""
+    }
+  ],
+  "source_artifact_identities": [
+    {
+      "filename": "pr90-d98eeba-final-state.json",
+      "bytes": 5587,
+      "sha256": "7186a2dd1f4a7d07373c33bd674cb10f776fe54b9905261932413a98dbe753b3"
+    },
+    {
+      "filename": "pr90-d98eeba-final-check-runs.json",
+      "bytes": 63700,
+      "sha256": "2aa3a04cf16cc8611465f54504e8f37b45305e7b7d465a877a38bf3ab6412e28"
+    },
+    {
+      "filename": "pr90-failed-job-111417461784.json",
+      "bytes": 3375,
+      "sha256": "a86f7b68ecbac953376cd6afd0a152c2cb83651e631f6efea13a7c00c8005074"
+    },
+    {
+      "filename": "pr90-failed-job-111417461784-annotations.json",
+      "bytes": 614,
+      "sha256": "df3a9ccabcf4cd1ac09ecdd00d9f0d024c7944eadb300b840c996dcdc6adf2ea"
+    },
+    {
+      "filename": "pr90-failed-job-111417461784.log",
+      "bytes": 60900,
+      "sha256": "b07a2c36ab4283014b6a2b8cc71671c4c555dc2fb2deec34594ee095a64e734a"
+    },
+    {
+      "filename": "pr90-d98eeba-native-timeout-analysis.json",
+      "bytes": 34226,
+      "sha256": "d232a8520661ef4212824269b9367f1a6b972dac3955f3036fb22cf24fb8b7c1"
+    },
+    {
+      "filename": "pr90-intel-budget-workflow-independent-review.json",
+      "bytes": 43414,
+      "sha256": "42a8fbf11c8f8584f7d628e8695a393f7e369859989cdaff5e6cebffad8afa13"
+    }
+  ],
+  "repair_validation": {
+    "workflow_sha256": "9b8f538eb3b297685e6bd09fc52003c3792c81a7cc872829163f67ce297dbbcb",
+    "all_step_definitions_unchanged": true,
+    "matrix_targets_and_runners_unchanged": true,
+    "timeout_minutes": {
+      "aarch64-apple-darwin": 45,
+      "x86_64-apple-darwin": 90,
+      "x86_64-pc-windows-msvc": 45
+    },
+    "unchanged_python_dependency_fixture_policy_files": 222,
+    "scope": "Local parsed workflow comparison and exact Git blob checks; no test execution or new remote acceptance."
+  },
+  "limits": [
+    "No Intel packaged build, probe, Rust fixture or real bridge acceptance at the observed head.",
+    "Quiet log progress does not identify the active test or an assertion failure.",
+    "A CI budget adjustment does not demonstrate an application performance improvement.",
+    "New head requires all remote checks to complete."
+  ]
+}

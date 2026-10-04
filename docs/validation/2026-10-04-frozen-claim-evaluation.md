@@ -11,6 +11,10 @@ The source commit is `3e60ff26a5defaea9f3a440eca2b6c0ac1099e11`, based on
 can follow it. Remote checks must be inspected against the candidate PR's actual
 final head, rather than copied from the parent PR or this source commit.
 
+The first remote candidate hit the Intel Mac job's 45-minute limit;
+[the timeout record](2026-10-04-native-ci-timeout.md) preserves that failed gate
+and the workflow budget repair. It supplies no Intel packaging acceptance.
+
 ## Frozen inputs and results
 
 The normative policy's parsed-canonical SHA is

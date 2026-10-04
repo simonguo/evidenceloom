@@ -16,17 +16,20 @@ jobs:
   native-diagnostics:
     name: Native diagnostics (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: ${{ matrix.timeout_minutes }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-15
             target: aarch64-apple-darwin
+            timeout_minutes: 45
           - os: macos-15-intel
             target: x86_64-apple-darwin
+            timeout_minutes: 90
           - os: windows-2025
             target: x86_64-pc-windows-msvc
+            timeout_minutes: 45
     defaults:
       run:
         shell: bash
