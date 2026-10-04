@@ -612,6 +612,60 @@ def test_empty_legacy_run_literal_is_malformed_and_cannot_hide_missing_owner():
         evaluate_pack(rehash(pack))
 
 
+@pytest.mark.parametrize("fraction", ["1", "12", "123", "1234", "12345", "123456"])
+@pytest.mark.parametrize("zone", ["Z", "+08:00", "-05:30"])
+def test_full_report_created_at_fractional_seconds_preserve_exact_literal(fraction, zone):
+    envelope = next(
+        case["research_report"]
+        for case in owned_pack()["cases"]
+        if case["case_id"] == "field_baseline"
+    )
+    literal = f"2026-01-09T12:00:00.{fraction}{zone}"
+    envelope["report"]["createdAt"] = literal
+    original = deepcopy(envelope)
+    original_sha256 = hash_value(original)
+
+    captured = validate_research_report(envelope)
+
+    assert captured["report"]["createdAt"] == literal
+    assert captured == original
+    assert envelope == original
+    assert hash_value(captured) == original_sha256
+    assert hash_value(envelope) == original_sha256
+
+
+@pytest.mark.parametrize(
+    "literal",
+    [
+        "2026-01-09T12:00:00.1234567Z",
+        "2026-01-09T12:00:00.1234567+08:00",
+        "2026-01-09T12:00:00.1234567-05:30",
+        "2026-01-09T12:00:00.1",
+        "2026-01-09T12:00:00.12",
+        "2026-01-09T12:00:00.123",
+        "2026-01-09T12:00:00.1234",
+        "2026-01-09T12:00:00.12345",
+        "2026-01-09T12:00:00.123456",
+        "2026-01-09T12:00:00",
+    ],
+)
+def test_full_report_created_at_rejects_excess_precision_and_missing_timezone(literal):
+    envelope = next(
+        case["research_report"]
+        for case in owned_pack()["cases"]
+        if case["case_id"] == "field_baseline"
+    )
+    envelope["report"]["createdAt"] = literal
+    original = deepcopy(envelope)
+    original_sha256 = hash_value(original)
+
+    with pytest.raises(ValueError):
+        validate_research_report(envelope)
+
+    assert envelope == original
+    assert hash_value(envelope) == original_sha256
+
+
 @pytest.mark.parametrize("price", ["0", "-100"])
 def test_nonpositive_saved_price_is_manual_without_losing_denominator(price):
     payload = (

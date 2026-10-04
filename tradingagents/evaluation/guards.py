@@ -113,7 +113,12 @@ def timestamp(value):
         value,
     ):
         fail()
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    # Python 3.10 accepts only three or six fractional digits. Normalize only
+    # the parsing copy so the saved timestamp and its component hash stay exact.
+    parse_value = re.sub(
+        r"\.([0-9]{1,6})(?=Z|[+-])", lambda match: "." + match[1].ljust(6, "0"), value
+    )
+    parsed = datetime.fromisoformat(parse_value.replace("Z", "+00:00"))
     if parsed.utcoffset() is None:
         fail()
     return parsed
