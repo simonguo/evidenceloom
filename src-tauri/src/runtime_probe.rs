@@ -588,58 +588,213 @@ fn main() {
     #[cfg(unix)]
     fn timeout_stops_the_probe_and_its_descendant() {
         assert_tree_cleanup("wait", Err(ProbeFailure::Timeout), false);
-        assert_tree_cleanup("exit 0", Err(ProbeFailure::Timeout), false);
-        assert_tree_cleanup("exit 1", Err(ProbeFailure::RuntimeUnavailable), false);
+        assert_tree_cleanup("exit0", Err(ProbeFailure::Timeout), false);
+        assert_tree_cleanup("exit1", Err(ProbeFailure::RuntimeUnavailable), false);
     }
 
     #[test]
     #[cfg(unix)]
     fn successful_probe_stops_descendants_even_after_the_parent_exits() {
-        assert_tree_cleanup(
-            r#"printf '%s\n' '{"type":"runtime_ready"}'; exit 0"#,
-            Ok(()),
-            true,
-        );
+        assert_tree_cleanup("ready", Ok(()), true);
     }
 
     #[cfg(unix)]
-    fn assert_tree_cleanup(tail: &str, expected: Result<(), ProbeFailure>, detached: bool) {
-        let path = std::env::temp_dir().join(format!(
-            "evidenceloom-probe-pids-{}-{}",
+    fn cleanup_fixture_binary() -> &'static Path {
+        static BINARY: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+        BINARY
+            .get_or_init(|| {
+                let root =
+                    cleanup_fixture_root().join(format!("probe-compiled-{}", std::process::id()));
+                std::fs::create_dir_all(&root).unwrap();
+                let source = root.join("fixture.rs");
+                let binary = root.join("fixture");
+                std::fs::write(&source, include_str!("runtime_probe/cleanup_fixture.rs")).unwrap();
+                let compiled = Command::new("rustc")
+                    .arg("--edition=2021")
+                    .arg(&source)
+                    .arg("-o")
+                    .arg(&binary)
+                    .output()
+                    .unwrap();
+                std::fs::write(root.join("compile.stdout"), &compiled.stdout).unwrap();
+                std::fs::write(root.join("compile.stderr"), &compiled.stderr).unwrap();
+                assert!(
+                    compiled.status.success(),
+                    "probe fixture compilation failed"
+                );
+                binary
+            })
+            .as_path()
+    }
+
+    #[cfg(unix)]
+    fn cleanup_fixture_root() -> std::path::PathBuf {
+        std::env::var_os("EVIDENCELOOM_LIFECYCLE_FIXTURE_ROOT")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| {
+                std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("target/lifecycle-fixtures")
+            })
+    }
+
+    #[cfg(unix)]
+    fn assert_tree_cleanup(mode: &str, expected: Result<(), ProbeFailure>, detached: bool) {
+        let binary = cleanup_fixture_binary();
+        let directory = cleanup_fixture_root().join(format!(
+            "probe-case-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
                 .as_nanos()
         ));
-        let output = if detached { ">/dev/null 2>&1" } else { "" };
-        let script = format!(
-            r#"cat >/dev/null; sleep 30 {output} & printf '%s\n%s\n' "$$" "$!" > "$1"; {tail}"#
-        );
-        let mut command = shell(&script);
-        command.arg("probe-fixture").arg(&path);
+        std::fs::create_dir(&directory).unwrap();
+        let marker = directory.join("pids");
+        let heartbeat = directory.join("heartbeat");
+        let gate = directory.join("gate");
+        assert_eq!(marker.parent(), Some(directory.as_path()));
+        assert_eq!(heartbeat.parent(), Some(directory.as_path()));
+        assert_eq!(gate.parent(), Some(directory.as_path()));
+        assert_eq!(mode == "ready", detached);
+        let mut command = Command::new(binary);
+        command.arg(mode).arg(&marker).arg(&heartbeat).arg(&gate);
+        // This is a fixture budget, not a change to the production probe budget.
+        // Two seconds for acknowledged startup leaves 1.75s work and 1.25s cleanup.
+        let budget = Duration::from_secs(5);
         let started = Instant::now();
-        let budget = if expected.is_ok() {
-            Duration::from_secs(5)
+        let worker = thread::spawn(move || {
+            let mut cleanup = None;
+            let outcome = probe_command_with_cleanup(command, budget, |process, deadline| {
+                let direct_pid = process.child.id();
+                let began = Instant::now();
+                let original = process.stop(deadline);
+                let original_seconds = began.elapsed().as_secs_f64();
+                let original_ok = original.is_ok();
+                let original_error = original.as_ref().err().map(ToString::to_string);
+                let reaped = matches!(process.child.try_wait(), Ok(Some(_)));
+                let retry = if original_ok {
+                    None
+                } else {
+                    let began = Instant::now();
+                    Some((
+                        process
+                            .stop(Instant::now() + Duration::from_secs(2))
+                            .is_ok(),
+                        began.elapsed().as_secs_f64(),
+                    ))
+                };
+                cleanup = Some((
+                    direct_pid,
+                    original_ok,
+                    original_error,
+                    original_seconds,
+                    reaped,
+                    retry,
+                ));
+                original
+            });
+            (outcome, cleanup)
+        });
+        let acknowledgement_deadline = started + Duration::from_secs(2);
+        let mut acknowledged = None;
+        let mut first_counter = None;
+        while Instant::now() < acknowledgement_deadline && !worker.is_finished() {
+            let pids = std::fs::read_to_string(&marker).ok().and_then(|raw| {
+                let ids = raw
+                    .lines()
+                    .map(str::parse::<u32>)
+                    .collect::<Result<Vec<_>, _>>()
+                    .ok()?;
+                (ids.len() == 2 && ids.iter().all(|pid| *pid > 0)).then_some(ids)
+            });
+            let counter = std::fs::read_to_string(&heartbeat)
+                .ok()
+                .and_then(|raw| raw.lines().rev().find_map(|line| line.parse::<u64>().ok()));
+            if let (Some(pids), Some(counter)) = (pids, counter) {
+                if first_counter.is_some_and(|first| counter > first) {
+                    acknowledged = Some(pids);
+                    break;
+                }
+                first_counter.get_or_insert(counter);
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+        let acknowledgement_seconds = started.elapsed().as_secs_f64();
+        // Finally always releases the gate and consumes the bounded worker result,
+        // before any observation assertion can panic. Only owned handles are stopped.
+        let gate_written = std::fs::write(&gate, b"release").is_ok();
+        let join_deadline = started + budget + Duration::from_secs(3);
+        while !worker.is_finished() && Instant::now() < join_deadline {
+            thread::sleep(Duration::from_millis(5));
+        }
+        let joined = if worker.is_finished() {
+            Some(worker.join())
         } else {
-            Duration::from_secs(1)
+            None
         };
-        let result = probe_command(command, budget);
+        let elapsed_seconds = started.elapsed().as_secs_f64();
+        let observation = match &joined {
+            Some(Ok((
+                outcome,
+                Some((pid, original_ok, original_error, seconds, reaped, retry)),
+            ))) => {
+                serde_json::json!({"outcome":format!("{outcome:?}"),"originalCleanupCalled":1,"directPid":pid,
+                    "originalCleanupOk":original_ok,"originalCleanupError":original_error,"originalCleanupSeconds":seconds,
+                    "directChildReaped":reaped,"supervisorRetry":retry})
+            }
+            Some(Ok((outcome, None))) => {
+                serde_json::json!({"outcome":format!("{outcome:?}"),"originalCleanupCalled":0})
+            }
+            Some(Err(_)) => serde_json::json!({"workerPanicked":true}),
+            None => serde_json::json!({"workerJoined":false}),
+        };
+        let _ = std::fs::write(directory.join("observations.json"), serde_json::to_vec_pretty(&serde_json::json!({
+            "mode":mode,"fixtureBudgetSeconds":5,"startupAcknowledgementSeconds":acknowledgement_seconds,
+            "startupAcknowledgementBudgetSeconds":2,"knownOwnedPids":acknowledged,"heartbeatAdvanced":acknowledged.is_some(),
+            "gateWritten":gate_written,"workerJoined":joined.is_some(),"elapsedSeconds":elapsed_seconds,"cleanup":observation,
+            "scope":"Owned fixture activity and known handles; no all-descendants-exited or product/provider acceptance"
+        })).unwrap_or_default());
+        let (result, cleanup) = joined
+            .expect("probe fixture worker did not finish within its supervisor deadline")
+            .expect("probe fixture worker panicked");
+        let pids = acknowledged
+            .expect("probe fixture did not acknowledge an advancing descendant within2s");
+        let (direct_pid, original_ok, original_error, _, reaped, _) =
+            cleanup.expect("original cleanup callback was not called");
+        assert!(gate_written);
+        assert_eq!(
+            pids[0], direct_pid,
+            "PID marker did not identify the owned direct child"
+        );
+        assert!(original_ok, "original cleanup failed: {original_error:?}");
+        assert!(
+            reaped,
+            "original cleanup did not reap the owned direct child"
+        );
         assert_eq!(result, expected);
-        assert!(started.elapsed() < budget + Duration::from_secs(1));
-        let pids = std::fs::read_to_string(&path).unwrap();
-        std::fs::remove_file(path).unwrap();
-        assert_eq!(pids.lines().count(), 2);
-        for pid in pids.lines() {
+        assert!(elapsed_seconds < (budget + Duration::from_secs(1)).as_secs_f64());
+        for pid in pids {
             let deadline = Instant::now() + Duration::from_secs(2);
-            while process_is_running(pid) && Instant::now() < deadline {
+            while process_is_running(&pid.to_string()) && Instant::now() < deadline {
                 thread::sleep(Duration::from_millis(10));
             }
             assert!(
-                !process_is_running(pid),
-                "probe fixture process {pid} survived timeout"
+                !process_is_running(&pid.to_string()),
+                "owned probe fixture process survived cleanup"
             );
         }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn tight_probe_deadline_returns_timeout_without_claiming_descendant_start() {
+        let command = shell("cat >/dev/null; sleep 5");
+        let started = Instant::now();
+        assert_eq!(
+            probe_command(command, Duration::from_millis(150)),
+            Err(ProbeFailure::Timeout)
+        );
+        assert!(started.elapsed() < Duration::from_secs(2));
     }
 
     #[cfg(unix)]

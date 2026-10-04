@@ -1,5 +1,5 @@
 import { streamAnalysis } from "./analysis";
-import { errorMessage } from "./errors";
+import { runDesktopAnalysis, stopDesktopAnalysis } from "./desktop-analysis";
 import { createTranslator } from "./i18n";
 import { stripSecretFields } from "@/features/persistence/local-storage";
 import type { MemoryInventory } from "@/features/memory/types";
@@ -231,51 +231,11 @@ export const tauriRuntimeAdapter: RuntimeAdapter = {
     return await invoke<TextExportResult>("save_text_export", request);
   },
   async runAnalysis(taskId, payload, onEvent, signal) {
-    const { invoke, listen } = await getTauriApi(payload.systemLanguage);
-    let unlisten: (() => void) | undefined;
-    let aborted = false;
-
-    const abort = () => {
-      aborted = true;
-      void invoke("stop_analysis", { taskId });
-    };
-
-    if (signal?.aborted) {
-      throw abortError();
-    }
-
-    signal?.addEventListener("abort", abort, { once: true });
-
-    try {
-      unlisten = await listen<AnalysisEvent | string>(`analysis-event:${taskId}`, (event) => {
-        const eventPayload = event.payload;
-        try {
-          onEvent(typeof eventPayload === "string" ? JSON.parse(eventPayload) as AnalysisEvent : eventPayload);
-        } catch (error) {
-          onEvent({
-            type: "error",
-            error: errorMessage(error, createTranslator(payload.systemLanguage)("analysisRequestFailed")),
-          });
-        }
-      });
-
-      if (aborted || signal?.aborted) throw abortError();
-      await invoke("start_analysis", {
-        taskId,
-        payloadJson: JSON.stringify(stripSecretFields(payload)),
-      });
-      if (aborted || signal?.aborted) throw abortError();
-    } catch (error) {
-      if (aborted || signal?.aborted) throw abortError();
-      throw error;
-    } finally {
-      signal?.removeEventListener("abort", abort);
-      unlisten?.();
-    }
+    const api = await getTauriApi(payload.systemLanguage);
+    await runDesktopAnalysis(api, taskId, payload, onEvent, signal);
   },
-  async stopAnalysis(taskId) {
-    const { invoke } = await getTauriApi();
-    await invoke("stop_analysis", { taskId });
+  stopAnalysis(taskId) {
+    return stopDesktopAnalysis(taskId);
   },
   async resolveInstrument(query, settings) {
     const { invoke } = await getTauriApi(settings.systemLanguage);
@@ -329,8 +289,4 @@ async function getTauriApi(language: SystemLanguage = "zh") {
     import("@tauri-apps/api/event"),
   ]);
   return { invoke, listen };
-}
-
-function abortError() {
-  return new DOMException("Analysis was aborted", "AbortError");
 }

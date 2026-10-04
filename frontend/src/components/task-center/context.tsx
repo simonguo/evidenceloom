@@ -57,6 +57,10 @@ type TaskCenterContextValue = {
   hydrated: boolean;
   runningTask: AnalysisTask | null;
   queuedTasks: AnalysisTask[];
+  cleanupFailedTask: AnalysisTask | null;
+  cleanupRetrying: boolean;
+  stopping: boolean;
+  retryCleanup: () => Promise<void>;
   activeTaskId: string;
   setActiveTaskId: (taskId: string) => void;
   notice: string;
@@ -282,6 +286,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     stopRunningTask,
     getQueuePosition,
     executionActive,
+    cleanupFailedTask,
+    cleanupRetrying,
+    retryCleanup,
+    stopping,
   } = useTaskQueueController({
     hydrated,
     tasks,
@@ -429,7 +437,11 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   function deleteTask(taskId: string) {
     const task = tasks.find((item) => item.id === taskId);
-    if (task?.status === "running") {
+    if (cleanupFailedTask?.id === taskId) {
+      setNotice(t("analysisCleanupFailed"));
+      return;
+    }
+    if (task?.status === "running" || runningTask?.id === taskId) {
       setNotice(t("cannotDeleteRunning"));
       return;
     }
@@ -524,6 +536,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     hydrated,
     runningTask,
     queuedTasks,
+    cleanupFailedTask,
+    cleanupRetrying,
+    retryCleanup,
+    stopping,
     activeTaskId,
     setActiveTaskId,
     notice,

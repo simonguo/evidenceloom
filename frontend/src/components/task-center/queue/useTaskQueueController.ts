@@ -5,11 +5,14 @@ import { buildRunForm, initialStats, validateTaskDraft } from "@/lib/analysis";
 import { createRunContext } from "@/features/report-export/lib/versioning";
 import { saveGlobalSettings } from "@/features/persistence/local-storage";
 import { errorMessage } from "@/lib/errors";
+import { isAnalysisCleanupError } from "@/lib/desktop-analysis";
 import { createTranslator } from "@/lib/i18n";
 import { getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter } from "@/lib/runtime";
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, RunContext } from "@/lib/types";
 import { prependLog } from "../utils";
 import { highestQueueOrder, queuePositionMap, sortQueuedTasks } from "./queue-utils";
+
+type Execution = { taskId: string; controller: AbortController; adapter: RuntimeAdapter; stopPromise?: Promise<void> };
 
 type TaskQueueControllerOptions = {
   hydrated: boolean;
@@ -32,7 +35,12 @@ export function useTaskQueueController({
   onEvent,
   setNotice,
 }: TaskQueueControllerOptions) {
-  const abortRef = useRef<AbortController | null>(null);
+  const activeExecutionRef = useRef<Execution | null>(null);
+  const cleanupBlockedRef = useRef<Execution | null>(null);
+  const [cleanupTaskId, setCleanupTaskId] = useState<string | null>(null);
+  const [cleanupRetrying, setCleanupRetrying] = useState(false);
+  const cleanupRetryingRef = useRef(false);
+  const [stopping, setStopping] = useState(false);
   const activeTaskIdRef = useRef<string | null>(null);
   const stoppingTaskIdRef = useRef<string | null>(null);
   const dispatchingRef = useRef(false);
@@ -46,7 +54,8 @@ export function useTaskQueueController({
 
   const queuedTasks = useMemo(() => sortQueuedTasks(tasks), [tasks]);
   const positions = useMemo(() => queuePositionMap(tasks), [tasks]);
-  const runningTask = tasks.find((task) => task.status === "running") ?? null;
+  const runningTask = cleanupTaskId ? null : tasks.find((task) => task.id === activeExecutionRef.current?.taskId)
+    ?? tasks.find((task) => task.status === "running") ?? null;
 
   const mutateTasks = useCallback((updater: (current: AnalysisTask[]) => AnalysisTask[]) => {
     setTasks((current) => {
@@ -76,7 +85,7 @@ export function useTaskQueueController({
   }, [patchTask]);
 
   const startQueuedTask = useCallback(async (taskId: string) => {
-    if (activeTaskIdRef.current || dispatchingRef.current) return false;
+    if (activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return false;
     const task = tasksRef.current.find((item) => item.id === taskId);
     if (!task || task.status !== "queued") return false;
 
@@ -103,17 +112,24 @@ export function useTaskQueueController({
     }
 
     if (!isTauriRuntime()) saveGlobalSettings(settings);
-    abortRef.current = new AbortController();
+    const execution: Execution = { taskId, controller: new AbortController(), adapter: runtimeAdapterRef.current ?? getRuntimeAdapter() };
+    activeExecutionRef.current = execution;
     patchTask(taskId, (current) => resetTaskForRun(current));
     setNotice("");
 
     try {
-      const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-      await adapter.runAnalysis(taskId, runForm, (event) => {
-        if (stoppingTaskIdRef.current === taskId) return;
+      await execution.adapter.runAnalysis(taskId, runForm, (event) => {
+        if (activeExecutionRef.current !== execution || stoppingTaskIdRef.current === taskId) return;
         if (event.type === "completed" || event.type === "error") terminalEventObserved = true;
         onEvent(taskId, event, runContext);
-      }, abortRef.current.signal);
+      }, execution.controller.signal);
+
+      if (activeExecutionRef.current !== execution) return false;
+      if (execution.controller.signal.aborted) {
+        await execution.stopPromise;
+        patchTask(taskId, (current) => ({ ...current, status: "stopped", updatedAt: new Date().toISOString() }));
+        return false;
+      }
 
       if (!terminalEventObserved) {
         failTask(taskId, t("runnerEndedWithoutTerminalEvent"));
@@ -121,17 +137,41 @@ export function useTaskQueueController({
       }
       return true;
     } catch (error) {
-      if ((error as Error).name !== "AbortError") {
-        failTask(taskId, errorMessage(error, t("analysisRequestFailed")));
+      if (activeExecutionRef.current !== execution) return false;
+      if (isAnalysisCleanupError(error) || cleanupBlockedRef.current === execution) {
+        cleanupBlockedRef.current = execution;
+        setCleanupTaskId(taskId);
+        failTask(taskId, t("analysisCleanupFailed"));
+      } else if (execution.controller.signal.aborted && (error as Error)?.name === "AbortError") {
+        try {
+          await execution.stopPromise;
+          patchTask(taskId, (current) => ({ ...current, status: "stopped", updatedAt: new Date().toISOString() }));
+        } catch {
+          cleanupBlockedRef.current = execution;
+          setCleanupTaskId(taskId);
+          failTask(taskId, t("analysisCleanupFailed"));
+        }
+      } else {
+        try {
+          await execution.stopPromise;
+          failTask(taskId, errorMessage(error, t("analysisRequestFailed")));
+        } catch {
+          cleanupBlockedRef.current = execution;
+          setCleanupTaskId(taskId);
+          failTask(taskId, t("analysisCleanupFailed"));
+        }
       }
       return false;
     } finally {
-      activeTaskIdRef.current = null;
-      stoppingTaskIdRef.current = null;
-      abortRef.current = null;
-      dispatchingRef.current = false;
-      setExecutionActive(false);
-      setSchedulerVersion((version) => version + 1);
+      if (activeExecutionRef.current === execution && cleanupBlockedRef.current !== execution) {
+        activeExecutionRef.current = null;
+        activeTaskIdRef.current = null;
+        stoppingTaskIdRef.current = null;
+        dispatchingRef.current = false;
+        setStopping(false);
+        setExecutionActive(false);
+        setSchedulerVersion((version) => version + 1);
+      }
     }
   }, [failTask, onEvent, patchTask, runtimeAdapterRef, setNotice, settings]);
 
@@ -149,7 +189,7 @@ export function useTaskQueueController({
   }, [hydrated, mutateTasks]);
 
   useEffect(() => {
-    if (!hydrated || activeTaskIdRef.current || dispatchingRef.current) return;
+    if (!hydrated || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
     if (tasks.some((task) => task.status === "running")) return;
     const nextTask = sortQueuedTasks(tasks)[0];
     if (nextTask) void startQueuedTask(nextTask.id);
@@ -157,7 +197,11 @@ export function useTaskQueueController({
 
   const queueTask = useCallback((taskId: string, taskOverride?: AnalysisTask) => {
     const task = taskOverride ?? tasksRef.current.find((item) => item.id === taskId);
-    if (!task || task.status === "running") return false;
+    if (!task || task.status === "running" || activeExecutionRef.current?.taskId === taskId && !cleanupBlockedRef.current) return false;
+    if (cleanupBlockedRef.current?.taskId === taskId) {
+      setNotice(createTranslator(settings.systemLanguage)("analysisCleanupFailed"));
+      return false;
+    }
     if (task.origin === "demo") {
       setNotice(createTranslator(settings.systemLanguage)("demoCannotRun"));
       return false;
@@ -208,17 +252,51 @@ export function useTaskQueueController({
   }, [mutateTasks]);
 
   const stopRunningTask = useCallback(() => {
-    const taskId = activeTaskIdRef.current ?? tasksRef.current.find((task) => task.status === "running")?.id;
-    if (!taskId) return;
-    stoppingTaskIdRef.current = taskId;
-    patchTask(taskId, (task) => ({
-      ...task,
-      status: "stopped",
-      updatedAt: new Date().toISOString(),
-      logs: prependLog(task.logs, createTranslator(settings.systemLanguage)("system"), createTranslator(settings.systemLanguage)("taskStopped")),
-    }));
-    abortRef.current?.abort();
-  }, [patchTask, settings.systemLanguage]);
+    const execution = activeExecutionRef.current;
+    if (!execution || execution.stopPromise) return;
+    stoppingTaskIdRef.current = execution.taskId;
+    setStopping(true);
+    execution.controller.abort();
+    execution.stopPromise = execution.adapter.stopAnalysis(execution.taskId);
+    void execution.stopPromise.catch(() => {
+      if (activeExecutionRef.current !== execution) return;
+      cleanupBlockedRef.current = execution;
+      setCleanupTaskId(execution.taskId);
+      setStopping(false);
+      failTask(execution.taskId, createTranslator(settings.systemLanguage)("analysisCleanupFailed"));
+    });
+  }, [failTask, settings.systemLanguage]);
+
+  const retryCleanup = useCallback(async () => {
+    const execution = cleanupBlockedRef.current;
+    if (!execution || cleanupRetryingRef.current) return;
+    cleanupRetryingRef.current = true;
+    setCleanupRetrying(true);
+    try {
+      await execution.adapter.stopAnalysis(execution.taskId);
+      if (cleanupBlockedRef.current !== execution) return;
+      patchTask(execution.taskId, (task) => ({
+        ...task, status: "stopped", error: "", updatedAt: new Date().toISOString(),
+        logs: prependLog(task.logs, createTranslator(settings.systemLanguage)("system"), createTranslator(settings.systemLanguage)("taskStopped")),
+      }));
+      cleanupBlockedRef.current = null;
+      setCleanupTaskId(null);
+      if (activeExecutionRef.current === execution) {
+        activeExecutionRef.current = null;
+        activeTaskIdRef.current = null;
+        stoppingTaskIdRef.current = null;
+        dispatchingRef.current = false;
+        setStopping(false);
+        setExecutionActive(false);
+      }
+      setSchedulerVersion((version) => version + 1);
+    } catch {
+      setNotice(createTranslator(settings.systemLanguage)("analysisCleanupFailed"));
+    } finally {
+      cleanupRetryingRef.current = false;
+      setCleanupRetrying(false);
+    }
+  }, [patchTask, setNotice, settings.systemLanguage]);
 
   const getQueuePosition = useCallback((taskId: string) => positions.get(taskId) ?? null, [positions]);
 
@@ -231,6 +309,10 @@ export function useTaskQueueController({
     stopRunningTask,
     getQueuePosition,
     executionActive,
+    cleanupFailedTask: tasks.find((task) => task.id === cleanupTaskId) ?? null,
+    cleanupRetrying,
+    retryCleanup,
+    stopping,
   };
 }
 

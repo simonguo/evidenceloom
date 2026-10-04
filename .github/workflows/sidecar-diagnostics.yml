@@ -93,6 +93,7 @@ jobs:
       - name: Run native Rust protocol and process fixtures
         run: |
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked runtime_probe
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_execution
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked memory
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked readiness
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked numeric

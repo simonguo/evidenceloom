@@ -1,9 +1,11 @@
+mod analysis_execution;
 mod effective_request_identity;
 mod effective_request_identity_storage;
 mod evidence;
 mod numeric_review;
 mod numeric_review_storage;
 mod output_quality;
+mod owned_process;
 mod research_memory;
 mod research_memory_inventory;
 mod research_memory_storage;
@@ -16,17 +18,16 @@ mod storage;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
-    collections::{HashMap, HashSet},
     env, fs,
     io::{BufRead, BufReader, Read, Write},
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
@@ -36,11 +37,7 @@ struct AppState {
     runtime: Arc<RuntimeState>,
 }
 
-#[derive(Default)]
-struct RuntimeState {
-    processes: Mutex<HashMap<String, Arc<Mutex<Child>>>>,
-    stopped_tasks: Mutex<HashSet<String>>,
-}
+type RuntimeState = analysis_execution::Registry;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -132,13 +129,18 @@ fn save_desktop_task(app: AppHandle, task: storage::AnalysisTaskRecord) -> Resul
 }
 
 #[tauri::command]
-fn delete_desktop_task(
+async fn delete_desktop_task(
     app: AppHandle,
     state: State<'_, AppState>,
     task_id: String,
-) -> Result<(), String> {
-    stop_process_if_running(&state.runtime, &task_id)?;
-    storage::delete_task(&app, task_id)
+) -> Result<(), AnalysisCommandError> {
+    let runtime = state.runtime.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        runtime.delete_idle_task(&task_id, || storage::delete_task(&app, task_id.clone()))
+    })
+    .await
+    .map_err(|_| AnalysisCommandError::from("Task deletion failed.".to_string()))?
+    .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -635,19 +637,59 @@ fn readable_runner_error(stdout: &str, stderr: &str) -> String {
     "Runner exited without an error message.".to_string()
 }
 
+#[derive(Serialize)]
+struct AnalysisCommandError {
+    code: &'static str,
+    message: String,
+}
+
+impl From<String> for AnalysisCommandError {
+    fn from(message: String) -> Self {
+        Self {
+            code: if message == analysis_execution::CLEANUP_ERROR {
+                "analysis_cleanup_incomplete"
+            } else {
+                "analysis_failed"
+            },
+            message,
+        }
+    }
+}
+
+fn analysis_worker_join_error(
+    owner: &analysis_execution::OwnershipObservation,
+) -> AnalysisCommandError {
+    if owner.retained() {
+        AnalysisCommandError::from(analysis_execution::CLEANUP_ERROR.to_string())
+    } else {
+        AnalysisCommandError::from("Analysis worker failed.".to_string())
+    }
+}
+
+#[tauri::command]
+fn reserve_analysis(
+    state: State<'_, AppState>,
+    task_id: String,
+) -> Result<String, AnalysisCommandError> {
+    state.runtime.reserve(task_id).map_err(Into::into)
+}
+
 #[tauri::command]
 async fn start_analysis(
     app: AppHandle,
     state: State<'_, AppState>,
     task_id: String,
+    run_id: String,
     payload_json: String,
-) -> Result<(), String> {
-    let runtime = state.runtime.clone();
+) -> Result<(), AnalysisCommandError> {
+    let execution = state.runtime.start(&task_id, &run_id)?;
+    let owner = execution.ownership();
     tauri::async_runtime::spawn_blocking(move || {
-        run_analysis_process(app, runtime, task_id, payload_json)
+        run_analysis_process(app, execution, task_id, run_id, payload_json)
     })
     .await
-    .map_err(|error| error.to_string())?
+    .map_err(|_| analysis_worker_join_error(&owner))?
+    .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -856,238 +898,166 @@ fn check_runtime_process(
 }
 
 #[tauri::command]
-fn stop_analysis(state: State<'_, AppState>, task_id: String) -> Result<(), String> {
-    {
-        let mut stopped = state
-            .runtime
-            .stopped_tasks
-            .lock()
-            .map_err(|_| "failed to lock stop state")?;
-        stopped.insert(task_id.clone());
-    }
-
-    stop_process_if_running(&state.runtime, &task_id)
-}
-
-fn stop_process_if_running(runtime: &RuntimeState, task_id: &str) -> Result<(), String> {
-    let process = {
-        let mut processes = runtime
-            .processes
-            .lock()
-            .map_err(|_| "failed to lock process state")?;
-        processes.remove(task_id)
+async fn stop_analysis(
+    state: State<'_, AppState>,
+    task_id: String,
+    run_id: String,
+) -> Result<(), AnalysisCommandError> {
+    let Some(request) = state.runtime.cancel(&task_id, &run_id) else {
+        return Ok(());
     };
-
-    if let Some(process) = process {
-        let mut child = process.lock().map_err(|_| "failed to lock child process")?;
-        match child.try_wait().map_err(|error| error.to_string())? {
-            Some(_) => {}
-            None => child.kill().map_err(|error| error.to_string())?,
-        }
-    }
-
-    Ok(())
+    let deadline = Instant::now() + analysis_execution::CLEANUP_TIMEOUT;
+    tauri::async_runtime::spawn_blocking(move || request.wait(deadline))
+        .await
+        .map_err(|_| AnalysisCommandError::from(analysis_execution::CLEANUP_ERROR.to_string()))?
+        .map_err(Into::into)
 }
 
 fn run_analysis_process(
     app: AppHandle,
-    runtime: Arc<RuntimeState>,
+    mut execution: analysis_execution::RunGuard,
     task_id: String,
+    run_id: String,
     payload_json: String,
 ) -> Result<(), String> {
-    ensure_no_running_process(&runtime)?;
-
-    {
-        let mut stopped = runtime
-            .stopped_tasks
-            .lock()
-            .map_err(|_| "failed to lock stop state")?;
-        stopped.remove(&task_id);
-    }
-
-    let payload =
-        serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
-    let configured_project_root = if allow_external_runner_paths() {
-        payload.get("projectRoot").and_then(Value::as_str)
-    } else {
-        None
-    };
-    let repo_root = effective_repo_root(configured_project_root);
-    let python = resolve_python_path(
-        &repo_root,
-        if allow_external_runner_paths() {
-            payload.get("pythonPath").and_then(Value::as_str)
-        } else {
-            None
-        },
-    );
-    let runner = runner_path(&repo_root);
-    let sidecar = sidecar_path(Some(&app));
-    let safe_payload = sanitize_payload(&payload);
-
-    let runner_command = resolve_runner_command(&python, &runner, sidecar.as_ref());
-
-    emit_event(
-        &app,
-        &task_id,
-        json!({
-            "type": "message",
-            "messageType": "runtime",
-            "message": runner_command.description
-        }),
-    );
-
-    let work_dir = runtime_work_dir(Some(&app), &repo_root);
-    let child_environment = child_env(&app, &repo_root, &payload)?;
-    let mut command = Command::new(&runner_command.executable);
-    command
-        .args(&runner_command.args)
-        .current_dir(&work_dir)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    child_environment.apply(&mut command);
-    let redactions = Arc::new(child_environment.secrets);
-
-    let mut child = command.spawn().map_err(|error| {
-        format!(
-            "failed to start analysis runner at {}: {}",
-            runner_command.executable.to_string_lossy(),
-            error
-        )
-    })?;
-
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(safe_payload.to_string().as_bytes())
-            .map_err(|error| error.to_string())?;
-    }
-
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-    let child = Arc::new(Mutex::new(child));
     let stderr_lines = Arc::new(Mutex::new(Vec::<String>::new()));
     let python_error_emitted = Arc::new(AtomicBool::new(false));
-
-    {
-        let mut processes = runtime
-            .processes
-            .lock()
-            .map_err(|_| "failed to lock process state")?;
-        processes.insert(task_id.clone(), child.clone());
-    }
-
-    if let Some(stdout) = stdout {
-        spawn_stdout_forwarder(
-            app.clone(),
-            task_id.clone(),
-            stdout,
-            python_error_emitted.clone(),
-            redactions.clone(),
-        );
-    }
-    if let Some(stderr) = stderr {
-        spawn_stderr_forwarder(
-            app.clone(),
-            task_id.clone(),
-            stderr,
-            stderr_lines.clone(),
-            redactions,
-        );
-    }
-
-    let exit_code = loop {
-        let status = {
-            let mut child = child.lock().map_err(|_| "failed to lock child process")?;
-            child.try_wait().map_err(|error| error.to_string())?
-        };
-
-        if let Some(status) = status {
-            break status.code();
+    let events = execution.events();
+    let result = (|| {
+        if execution.cancelled() {
+            return Ok(None);
         }
-
-        thread::sleep(Duration::from_millis(250));
-    };
-
+        let payload =
+            serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
+        let configured_project_root = if allow_external_runner_paths() {
+            payload.get("projectRoot").and_then(Value::as_str)
+        } else {
+            None
+        };
+        let repo_root = effective_repo_root(configured_project_root);
+        let python = resolve_python_path(
+            &repo_root,
+            if allow_external_runner_paths() {
+                payload.get("pythonPath").and_then(Value::as_str)
+            } else {
+                None
+            },
+        );
+        let runner = runner_path(&repo_root);
+        let sidecar = sidecar_path(Some(&app));
+        let safe_payload = sanitize_payload(&payload);
+        let runner_command = resolve_runner_command(&python, &runner, sidecar.as_ref());
+        emit_event(
+            &app,
+            &task_id,
+            &run_id,
+            &events,
+            json!({
+                "type": "message", "messageType": "runtime", "message": runner_command.description
+            }),
+        );
+        let work_dir = runtime_work_dir(Some(&app), &repo_root);
+        let child_environment = child_env(&app, &repo_root, &payload)?;
+        if execution.cancelled() {
+            return Ok(None);
+        }
+        let mut command = Command::new(&runner_command.executable);
+        command
+            .args(&runner_command.args)
+            .current_dir(&work_dir)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        child_environment.apply(&mut command);
+        let redactions = Arc::new(child_environment.secrets);
+        let mut process = match owned_process::OwnedProcess::spawn_owned(
+            command,
+            Instant::now() + analysis_execution::CLEANUP_TIMEOUT,
+        ) {
+            Ok(process) => process,
+            Err(failure) => {
+                if let Some(pending) = failure.pending {
+                    execution.attach(pending)?;
+                }
+                return Err("Failed to start analysis runner.".to_string());
+            }
+        };
+        let stdin = process.child.stdin.take();
+        let stdout = process.child.stdout.take();
+        let stderr = process.child.stderr.take();
+        execution.attach(process)?;
+        if let Some(stdout) = stdout {
+            execution.reader(spawn_stdout_forwarder(
+                app.clone(),
+                task_id.clone(),
+                run_id.clone(),
+                events.clone(),
+                stdout,
+                python_error_emitted.clone(),
+                redactions.clone(),
+            ));
+        }
+        if let Some(stderr) = stderr {
+            execution.reader(spawn_stderr_forwarder(
+                app.clone(),
+                task_id.clone(),
+                run_id.clone(),
+                events.clone(),
+                stderr,
+                stderr_lines.clone(),
+                redactions,
+            ));
+        }
+        if execution.cancelled() {
+            return Ok(None);
+        }
+        let mut stdin = stdin.ok_or("Analysis input is unavailable.")?;
+        // The pipe is outside the process mutex: stop can kill a blocked writer.
+        stdin
+            .write_all(safe_payload.to_string().as_bytes())
+            .map_err(|_| "Failed to send analysis input.")?;
+        drop(stdin);
+        loop {
+            if execution.cancelled() {
+                return Ok(None);
+            }
+            if let Some(status) = execution.try_wait()? {
+                return Ok(Some(status));
+            }
+            thread::sleep(Duration::from_millis(25));
+        }
+    })();
+    execution.finish(Instant::now() + analysis_execution::CLEANUP_TIMEOUT)?;
+    let status = result?;
+    if !execution.cancelled()
+        && status.is_some_and(|status| !status.success())
+        && !python_error_emitted.load(Ordering::SeqCst)
     {
-        let mut processes = runtime
-            .processes
-            .lock()
-            .map_err(|_| "failed to lock process state")?;
-        processes.remove(&task_id);
-    }
-
-    let was_stopped = {
-        let mut stopped = runtime
-            .stopped_tasks
-            .lock()
-            .map_err(|_| "failed to lock stop state")?;
-        stopped.remove(&task_id)
-    };
-
-    if !was_stopped && exit_code.unwrap_or(1) != 0 && !python_error_emitted.load(Ordering::SeqCst) {
         let stderr_tail = stderr_lines
             .lock()
             .map(|lines| lines.join("\n"))
             .unwrap_or_default();
-        let error = if stderr_tail.trim().is_empty() {
-            format!("Python runner exited with code {:?}", exit_code)
+        return Err(if stderr_tail.trim().is_empty() {
+            "Analysis runner exited unsuccessfully.".to_string()
         } else {
             format!(
-                "Python runner exited with code {:?}: {}",
-                exit_code,
+                "Analysis runner exited unsuccessfully: {}",
                 tail_text(&stderr_tail, 2000)
             )
-        };
-        emit_event(
-            &app,
-            &task_id,
-            json!({
-                "type": "error",
-                "error": error
-            }),
-        );
+        });
     }
-
     Ok(())
-}
-
-fn ensure_no_running_process(runtime: &RuntimeState) -> Result<(), String> {
-    let mut processes = runtime
-        .processes
-        .lock()
-        .map_err(|_| "failed to lock process state")?;
-    let mut finished_tasks = Vec::new();
-
-    for (task_id, process) in processes.iter() {
-        let mut child = process.lock().map_err(|_| "failed to lock child process")?;
-        if child
-            .try_wait()
-            .map_err(|error| error.to_string())?
-            .is_some()
-        {
-            finished_tasks.push(task_id.clone());
-        }
-    }
-
-    for task_id in finished_tasks {
-        processes.remove(&task_id);
-    }
-
-    if processes.is_empty() {
-        Ok(())
-    } else {
-        Err("已有任务正在运行。第一版桌面端暂时只允许同时运行一个任务。".to_string())
-    }
 }
 
 fn spawn_stdout_forwarder(
     app: AppHandle,
     task_id: String,
+    run_id: String,
+    events: analysis_execution::EventGuard,
     stdout: impl std::io::Read + Send + 'static,
     python_error_emitted: Arc<AtomicBool>,
     redactions: Arc<Vec<String>>,
-) {
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for raw_line in reader.lines().map_while(Result::ok) {
@@ -1101,18 +1071,20 @@ fn spawn_stdout_forwarder(
             if payload.get("type").and_then(Value::as_str) == Some("error") {
                 python_error_emitted.store(true, Ordering::SeqCst);
             }
-            emit_event(&app, &task_id, payload);
+            emit_event(&app, &task_id, &run_id, &events, payload);
         }
-    });
+    })
 }
 
 fn spawn_stderr_forwarder(
     app: AppHandle,
     task_id: String,
+    run_id: String,
+    events: analysis_execution::EventGuard,
     stderr: impl std::io::Read + Send + 'static,
     stderr_lines: Arc<Mutex<Vec<String>>>,
     redactions: Arc<Vec<String>>,
-) {
+) -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let reader = BufReader::new(stderr);
         for raw_line in reader.lines().map_while(Result::ok) {
@@ -1129,6 +1101,8 @@ fn spawn_stderr_forwarder(
             emit_event(
                 &app,
                 &task_id,
+                &run_id,
+                &events,
                 json!({
                     "type": "message",
                     "messageType": "stderr",
@@ -1136,7 +1110,7 @@ fn spawn_stderr_forwarder(
                 }),
             );
         }
-    });
+    })
 }
 
 fn tail_text(text: &str, max_chars: usize) -> String {
@@ -1147,8 +1121,17 @@ fn tail_text(text: &str, max_chars: usize) -> String {
     text.chars().skip(char_count - max_chars).collect()
 }
 
-fn emit_event(app: &AppHandle, task_id: &str, payload: Value) {
-    let _ = app.emit(&format!("analysis-event:{task_id}"), payload);
+fn emit_event(
+    app: &AppHandle,
+    task_id: &str,
+    run_id: &str,
+    events: &analysis_execution::EventGuard,
+    payload: Value,
+) {
+    if !events.allows_events() {
+        return;
+    }
+    let _ = app.emit(&format!("analysis-event:{task_id}:{run_id}"), payload);
 }
 
 fn repo_root() -> PathBuf {
@@ -1576,6 +1559,7 @@ fn main() {
             load_ohlcv_chart_data,
             resolve_instrument,
             test_llm_connection,
+            reserve_analysis,
             start_analysis,
             stop_analysis,
             load_desktop_data,
@@ -1597,6 +1581,90 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn analysis_execution_cleanup_error_uses_machine_code() {
+        assert_eq!(
+            serde_json::to_value(AnalysisCommandError::from(
+                analysis_execution::CLEANUP_ERROR.to_string()
+            ))
+            .unwrap(),
+            json!({"code":"analysis_cleanup_incomplete","message":analysis_execution::CLEANUP_ERROR})
+        );
+        let ordinary = AnalysisCommandError::from(
+            "Analysis cleanup incomplete: an unrelated message".to_string(),
+        );
+        assert_eq!(ordinary.code, "analysis_failed");
+    }
+
+    fn join_analysis_panic(worker: tauri::async_runtime::JoinHandle<()>) {
+        let deadline = Instant::now() + Duration::from_secs(6);
+        while !worker.inner().is_finished() {
+            assert!(
+                Instant::now() < deadline,
+                "owned blocking worker did not finish"
+            );
+            thread::sleep(Duration::from_millis(2));
+        }
+        assert!(tauri::async_runtime::block_on(worker).is_err());
+    }
+
+    #[test]
+    fn analysis_execution_join_error_preserves_failed_cleanup_code() {
+        let runtime = Arc::new(RuntimeState::default());
+        let run_id = runtime.reserve("task".into()).unwrap();
+        let execution = runtime.start("task", &run_id).unwrap();
+        let owner = execution.ownership();
+        let (release, wait) = std::sync::mpsc::channel();
+        execution.reader(thread::spawn(move || {
+            wait.recv_timeout(Duration::from_secs(10)).unwrap()
+        }));
+        let worker = tauri::async_runtime::spawn_blocking(move || -> () {
+            let _execution = execution;
+            panic!("owned Tauri worker with unfinished output");
+        });
+        join_analysis_panic(worker);
+        let error = analysis_worker_join_error(&owner);
+        let retained = owner.retained();
+        let refused = runtime.reserve("other".into()).is_err();
+        release.send(()).unwrap();
+        runtime
+            .cancel("task", &run_id)
+            .unwrap()
+            .wait(Instant::now() + analysis_execution::CLEANUP_TIMEOUT)
+            .unwrap();
+        assert!(retained && refused);
+        assert_eq!(
+            serde_json::to_value(error).unwrap()["code"],
+            "analysis_cleanup_incomplete"
+        );
+        assert!(!owner.retained());
+    }
+
+    #[test]
+    fn analysis_execution_join_error_never_observes_replacement_owner() {
+        let runtime = Arc::new(RuntimeState::default());
+        let run_id = runtime.reserve("task".into()).unwrap();
+        let execution = runtime.start("task", &run_id).unwrap();
+        let owner = execution.ownership();
+        join_analysis_panic(tauri::async_runtime::spawn_blocking(move || -> () {
+            let _execution = execution;
+            panic!("owned Tauri worker after successful cleanup");
+        }));
+        assert_eq!(analysis_worker_join_error(&owner).code, "analysis_failed");
+        let replacement_id = runtime.reserve("task".into()).unwrap();
+        let mut replacement = runtime.start("task", &replacement_id).unwrap();
+        let error = analysis_worker_join_error(&owner);
+        let unaffected = !replacement.cancelled();
+        replacement
+            .finish(Instant::now() + analysis_execution::CLEANUP_TIMEOUT)
+            .unwrap();
+        assert!(unaffected);
+        assert_eq!(
+            serde_json::to_value(error).unwrap()["code"],
+            "analysis_failed"
+        );
+    }
 
     #[test]
     fn child_environment_injects_provider_secret_without_putting_it_in_payload() {

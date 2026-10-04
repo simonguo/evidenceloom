@@ -15,7 +15,7 @@ import { useTaskFilters } from "@/components/task-center/task-list/useTaskFilter
 
 export default function Page() {
   const router = useRouter();
-  const { settings, sortedTasks, runningTask, queuedTasks, getQueuePosition, stopRunningTask, cancelQueuedTask, moveQueuedTask } = useTaskCenter();
+  const { settings, sortedTasks, runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, retryCleanup, stopping, getQueuePosition, stopRunningTask, cancelQueuedTask, moveQueuedTask } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const completed = sortedTasks.filter((task) => task.status === "completed").length;
   const failed = sortedTasks.filter((task) => task.status === "error").length;
@@ -32,10 +32,14 @@ export default function Page() {
         <SummaryTile label={t("failed")} value={failed.toString()} />
       </section>
 
-      {(runningTask || queuedTasks.length > 0) && (
+      {(runningTask || cleanupFailedTask || queuedTasks.length > 0) && (
         <TaskQueuePanel
           runningTask={runningTask}
           queuedTasks={queuedTasks}
+          cleanupFailedTask={cleanupFailedTask}
+          cleanupRetrying={cleanupRetrying}
+          stopping={stopping}
+          onRetryCleanup={() => { void retryCleanup(); }}
           language={settings.systemLanguage}
           onStop={stopRunningTask}
           onCancel={cancelQueuedTask}

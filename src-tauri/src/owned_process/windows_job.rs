@@ -26,6 +26,10 @@ impl Drop for OwnedHandle {
 
 pub struct Job(OwnedHandle);
 
+// The uniquely owned Win32 job has no thread affinity. Moving transfers
+// ownership; Job is not Sync and no shared raw-handle aliases are exposed.
+unsafe impl Send for Job {}
+
 impl Job {
     pub fn new() -> io::Result<Self> {
         let handle = OwnedHandle::new(unsafe { CreateJobObjectW(ptr::null(), ptr::null()) })?;
@@ -102,6 +106,9 @@ impl Job {
     }
 
     pub fn close(&mut self) -> io::Result<()> {
+        if self.0 .0.is_null() {
+            return Ok(());
+        }
         if unsafe { CloseHandle(self.0 .0) } != 0 {
             self.0 .0 = ptr::null_mut();
             Ok(())
