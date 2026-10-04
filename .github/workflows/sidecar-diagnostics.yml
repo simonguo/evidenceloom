@@ -66,6 +66,7 @@ jobs:
             tests/test_public_source_corpus.py \
             tests/test_public_source_report_case.py \
             tests/test_langgraph_sdk_authorization.py \
+            tests/test_diagnostic_key_classification.py \
             tests/test_market_data_validator.py \
             tests/test_stockstats_date_column.py \
             tests/test_market_inputs.py \
