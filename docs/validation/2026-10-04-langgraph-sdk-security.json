@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-10-04T14:16:26.363018+00:00",
+  "base_commit": "67afab6d9b15c62017216c0c4f7f6f7a37695f86",
+  "source_commit": "a2826544b8047232aaf7b5baeea7f6212f5a7467",
+  "source_files": [
+    {
+      "path": "uv.lock",
+      "bytes": 529478,
+      "sha256": "7574a279f791497aa1ea0006a3d17ddcc329214ce7498dc0d6ddf81e396e0f11"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "bytes": 89477,
+      "sha256": "64de08b1b244590e1a9b3de015f18e802f15f53d240ce03ed8d75304991274e9"
+    },
+    {
+      "path": ".github/workflows/sidecar-diagnostics.yml",
+      "bytes": 6828,
+      "sha256": "f59fa6573c657335c7c4022d9e03f71e45df0bffdfaa572ea9bdaf8382964fff"
+    },
+    {
+      "path": "tests/test_langgraph_sdk_authorization.py",
+      "bytes": 1660,
+      "sha256": "dd6d5650371bcbdc39b668b5e51f523754864a730db38a35c5ff20a8181c94fc"
+    }
+  ],
+  "source_snapshot": {
+    "existing_base_files": 596,
+    "unchanged_existing_files": 593,
+    "changed_existing_paths": [
+      ".github/workflows/sidecar-diagnostics.yml",
+      "THIRD_PARTY_NOTICES.md",
+      "uv.lock"
+    ],
+    "added_source_paths": [
+      "tests/test_langgraph_sdk_authorization.py"
+    ],
+    "documentation_binding": "Source snapshot excludes later documentation edits."
+  },
+  "lock": {
+    "package_count": 113,
+    "other_package_records_equal": 112,
+    "all_top_level_metadata_equal": true,
+    "previous_sdk_version": "0.4.2",
+    "candidate_sdk_version": "0.4.4",
+    "before_sha256": "1a6b236ba8ef62b230c1e3d7dc055122334905609a2d11cdaf55c34f3e50075b",
+    "after_sha256": "7574a279f791497aa1ea0006a3d17ddcc329214ce7498dc0d6ddf81e396e0f11",
+    "installation_scope": "Frozen/locked dependency installation; existing environments are not upgraded automatically."
+  },
+  "advisory": {
+    "url": "https://github.com/langchain-ai/langgraph/security/advisories/GHSA-fvww-7h3r-vfhp",
+    "id": "GHSA-fvww-7h3r-vfhp",
+    "cve": "CVE-2026-104873",
+    "severity": "High",
+    "score": 7.6,
+    "affected": ">=0.1.45, <=0.4.3",
+    "patched": "0.4.4",
+    "application_exploitability": "NOT_DEMONSTRATED",
+    "scope": "Resource decorator selected-action registration; no app custom authorization path identified by bounded source search."
+  },
+  "permanent_regression": {
+    "captured_at": "2026-10-04T14:09:32.523515+00:00",
+    "test_source": {
+      "path": "tests/test_langgraph_sdk_authorization.py",
+      "sha256": "dd6d5650371bcbdc39b668b5e51f523754864a730db38a35c5ff20a8181c94fc"
+    },
+    "runs": [
+      {
+        "label": "old-sdk042-py312",
+        "argv": [
+          "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/frozen-claims-evaluation/.venv/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/old-sdk042-py312-permanent-test-temp",
+          "--junitxml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/old-sdk042-py312-permanent-test.xml",
+          "tests/test_langgraph_sdk_authorization.py"
+        ],
+        "exit_code": 1,
+        "elapsed_seconds": 0.7631241669987503,
+        "junit_counts": {
+          "tests": 15,
+          "failures": 9,
+          "errors": 0,
+          "skipped": 0
+        },
+        "logs": [
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/old-sdk042-py312-permanent-test.stdout.log",
+            "sha256": "da894b51ed105b9c2c8b7c55fa4be30e9dea8193ba6d3da483d45cfdaa9339a9"
+          },
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/old-sdk042-py312-permanent-test.stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "passed": 6,
+        "junit": {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/old-sdk042-py312-permanent-test.xml",
+          "sha256": "6942960a865892fa6ece2a75c4d8d57d22ea8eeb8be6e378d3619f7359eb7f3a"
+        }
+      },
+      {
+        "label": "new-sdk044-py312",
+        "argv": [
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/python312-sdk044-env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py312-permanent-test-temp",
+          "--junitxml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py312-permanent-test.xml",
+          "tests/test_langgraph_sdk_authorization.py"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.7184050839969132,
+        "junit_counts": {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "logs": [
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py312-permanent-test.stdout.log",
+            "sha256": "411c365a8cb27f7306011f238cce5f04b665aa0c1a3ed94949c13090361b7d4e"
+          },
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py312-permanent-test.stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "passed": 15,
+        "junit": {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py312-permanent-test.xml",
+          "sha256": "4397e0ed922d7ff526e9f037c86b3af49f75f2182c639aa8937bffe57fd8b7a4"
+        }
+      },
+      {
+        "label": "new-sdk044-py310",
+        "argv": [
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/python310-sdk044-env/bin/python",
+          "-B",
+          "-m",
+          "pytest",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py310-permanent-test-temp",
+          "--junitxml",
+          "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py310-permanent-test.xml",
+          "tests/test_langgraph_sdk_authorization.py"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.8025920420004695,
+        "junit_counts": {
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        "logs": [
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py310-permanent-test.stdout.log",
+            "sha256": "ae5fc2ebac53f9b13f6a743873135bb2f70b109f605c498df5dc27a5ca5f5df0"
+          },
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py310-permanent-test.stderr.log",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "passed": 15,
+        "junit": {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/new-sdk044-py310-permanent-test.xml",
+          "sha256": "6e4755dd6fe4b1f8ae79a35a07dcae2eedf4d8d2f129682643102f102bc2f6f5"
+        }
+      }
+    ],
+    "scope": "Owned handler registration only; existing parent environments read-only; no server or external model/request."
+  },
+  "separate_probe": {
+    "authorization_registration_cases_per_patched_overlay": 73,
+    "application_imports_per_overlay": 4,
+    "local_stategraph_and_sqlite_checkpoint_save_readback_per_overlay": "PASS",
+    "checkpoint_scope": "One graph invocation followed by get_state; no interrupted-run resume.",
+    "runtimes": [
+      "CPython 3.12.10",
+      "CPython 3.10.4"
+    ],
+    "not_additional_pytest_cases": true,
+    "no_external_model_provider_or_server_request": true
+  },
+  "coverage": {
+    "pypi_old_sdk_vulnerabilities": [],
+    "osv_package_version_response": {},
+    "osv_cve_alias": "Git repository mapping, no PyPI package entry",
+    "interpretation": "Specific captured advisory-feed/package-mapping gap; not proof that every advisory was reviewed.",
+    "scanner_exceptions_added": false
+  },
+  "contrary": [
+    "Initial no-build upgrade solver failed on unrelated JSONPath distribution selection, leaving original lock unchanged.",
+    "Initial broader smoke harness imported the wrong application module path; original error retained; corrected local runs passed.",
+    "Old SDK permanent regression intentionally exits 1 with nine selected-action failures and six passing controls.",
+    "Initial notice patch expected an incorrect existing URL and failed atomically; actual existing URL retained."
+  ],
+  "scope_limits": [
+    "SDK-only newly owned overlays, other installed dependencies read-only; not a full fresh candidate installation.",
+    "Python 3.10 inherited cryptography, checkpoint SQLite, NumPy, pandas and urllib3 differ from candidate lock.",
+    "Private handler registry inspection tests registration, not actual server permission enforcement.",
+    "All native frozen-install/package/real-bridge checks must be evaluated for the eventual PR head.",
+    "External analyst/expert approvals remain zero; product objective, clean installs, signing and real provider interoperability remain open."
+  ],
+  "artifact_root": "evidenceloom-validation/dependency-security-next-pass/",
+  "artifacts": [
+    {
+      "path": "root-independent-sdk-lock-proof.json",
+      "bytes": 94270,
+      "sha256": "531f307a66e99dc39b28343e60e2222f019c17a7199c156b4d87bc8054aab8fc"
+    },
+    {
+      "path": "sdk-candidate-final-freeze.json",
+      "bytes": 23577,
+      "sha256": "66a1ea7eed58e1abaad39efbe1be70dbacbdc58ee46057eb85d6f9fa23210bfb"
+    },
+    {
+      "path": "python-primary-metadata/langgraph-sdk-0.4.2.json",
+      "bytes": 5817,
+      "sha256": "12e415005d010e65d8b20b9c6850d89bedcd907db9663a75c3e78a3b416e7454"
+    },
+    {
+      "path": "python-primary-metadata/langgraph-sdk-0.4.4.json",
+      "bytes": 7392,
+      "sha256": "22c16bddbdae0cf476afc464c098beba5f053a7213c4dfb2269a53f1f986acb3"
+    },
+    {
+      "path": "python-primary-metadata/sdk-repository-advisory.json",
+      "bytes": 4755,
+      "sha256": "775172ab4b0c84ab8903f1bc0854c4c19437fd5fde5401ebcfcdf3577277b550"
+    },
+    {
+      "path": "sdk-wheel-provenance.json",
+      "bytes": 947,
+      "sha256": "de3482a14cdd98bd7c3918137a5a994f39f07d2561a97bb8b955f8838b7f17d9"
+    },
+    {
+      "path": "sdk-isolated-overlay-result.json",
+      "bytes": 25947,
+      "sha256": "5e0209a8a7b604590175c86ac5ae97e178520e7098cbd862def645dbafd3bcdf"
+    },
+    {
+      "path": "sdk-lock-upgrade-result.json",
+      "bytes": 3151,
+      "sha256": "450774b00c650ba703c20cd5531a0715ab83a102774547745065374d6b02e625"
+    },
+    {
+      "path": "owned-sdk-regression-corrected-execution.json",
+      "bytes": 2008,
+      "sha256": "d4cfd78f30b2cdad0ad195094553903aabc7aed1009345d31feb93f9362aba13"
+    },
+    {
+      "path": "sdk-probe-harness-correction.json",
+      "bytes": 693,
+      "sha256": "8c4d801475342eb375d018e90d69dc6fa0ef59aec4a927428e214a9b71c68ff2"
+    },
+    {
+      "path": "python312-overlay-sdk044-corrected.evidence.json",
+      "bytes": 16050,
+      "sha256": "e161d102508fc41349b7b8fd376d8b3496c3c6e9100369671f71fb1062403674"
+    },
+    {
+      "path": "python310-overlay-sdk044-corrected.evidence.json",
+      "bytes": 16049,
+      "sha256": "fac688d8203129ae1d440ff3c95f4df3b14560e7a45e691d817c1cfd0895cc01"
+    },
+    {
+      "path": "root-permanent-sdk-regression-execution.json",
+      "bytes": 5418,
+      "sha256": "7366b2f4abe6b4efff6425de73dd58b78c83d8152349dcd1195e834397b989d6"
+    },
+    {
+      "path": "root-sdk-0.4.2-auth-baseline-execution.json",
+      "bytes": 692,
+      "sha256": "12c6781a02102884be4e780bd96e17c68b3d9c26603bb139e134b8cfb0708533"
+    },
+    {
+      "path": "root-sdk-0.4.4-auth-execution.json",
+      "bytes": 1923,
+      "sha256": "e06a64713461c60ca9f7afb85aa5f9fb63fcc7a0b22a5709e1eced7d2be354e8"
+    },
+    {
+      "path": "read-only-audit-conclusion.json",
+      "bytes": 13189,
+      "sha256": "e2763bdc9e3a9f3f4504e1933e982af8516baeddc3bce6f0d73e2636f225a237"
+    },
+    {
+      "path": "old-sdk042-py312-permanent-test.stdout.log",
+      "bytes": 11370,
+      "sha256": "da894b51ed105b9c2c8b7c55fa4be30e9dea8193ba6d3da483d45cfdaa9339a9"
+    },
+    {
+      "path": "old-sdk042-py312-permanent-test.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "old-sdk042-py312-permanent-test.xml",
+      "bytes": 14284,
+      "sha256": "6942960a865892fa6ece2a75c4d8d57d22ea8eeb8be6e378d3619f7359eb7f3a"
+    },
+    {
+      "path": "new-sdk044-py312-permanent-test.stdout.log",
+      "bytes": 99,
+      "sha256": "411c365a8cb27f7306011f238cce5f04b665aa0c1a3ed94949c13090361b7d4e"
+    },
+    {
+      "path": "new-sdk044-py312-permanent-test.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "new-sdk044-py312-permanent-test.xml",
+      "bytes": 2626,
+      "sha256": "4397e0ed922d7ff526e9f037c86b3af49f75f2182c639aa8937bffe57fd8b7a4"
+    },
+    {
+      "path": "new-sdk044-py310-permanent-test.stdout.log",
+      "bytes": 99,
+      "sha256": "ae5fc2ebac53f9b13f6a743873135bb2f70b109f605c498df5dc27a5ca5f5df0"
+    },
+    {
+      "path": "new-sdk044-py310-permanent-test.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "new-sdk044-py310-permanent-test.xml",
+      "bytes": 2626,
+      "sha256": "6e4755dd6fe4b1f8ae79a35a07dcae2eedf4d8d2f129682643102f102bc2f6f5"
+    }
+  ]
+}

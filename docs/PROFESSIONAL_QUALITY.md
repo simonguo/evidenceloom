@@ -89,6 +89,8 @@ The [Memory target validation record](validation/2026-10-04-memory-target-bindin
 
 ## Completion audit
 
+The [LangGraph SDK security validation](validation/2026-10-04-langgraph-sdk-security.md) records a locked 0.4.2-to-0.4.4 update, official release provenance, an advisory-feed coverage gap and permanent action-registration regression checks. No application custom-authorization request path was demonstrated. Local dependency overlays establish bounded Python compatibility rather than a complete fresh installation; native packaging checks and broader security, analyst and release acceptance remain separate requirements.
+
 The [sidecar startup validation record](validation/2026-10-04-sidecar-startup.md) separates bootstrap, source inventory and actual research imports. The current packaged research-import observations remain approximately 43–63 seconds on Apple Silicon through Rosetta. Architecture and protocol guards improve the truthfulness of health/release checks; they do not complete clean-install, signing, process-control or performance acceptance across supported platforms.
 
 Before declaring the objective achieved, inspect every requirement against current source, runtime behavior, rendered UI and exports, release artifacts, evaluation results, and external analyst assessment. Record contrary or missing evidence as incomplete. Preserve this full scope across implementation iterations. Do not replace research evaluation with test counts or describe schema validation as financial confidence.
