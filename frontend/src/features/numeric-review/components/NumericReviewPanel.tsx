@@ -7,13 +7,14 @@ import { NumericReviewForm } from "./NumericReviewForm";
 import { NumericResultView } from "./NumericResultView";
 import { requestedIdentifierScope } from "../lib/presentation";
 const buttonClass = "rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-300 disabled:opacity-40";
-export function NumericReviewPanel({ taskId, version, language, onSave }: {
+export function NumericReviewPanel({ taskId, version, language, onSave, beginReview }: {
     taskId: string;
     version: ReportVersion;
     language: SystemLanguage;
-    onSave?: (taskId: string, versionId: string, reviews: NumericReview[]) => Promise<void>;
+    onSave?: (taskId: string, versionId: string, reviews: NumericReview[], action?: unknown) => Promise<void>;
+  beginReview?: () => unknown;
 }) {
-    const zh = language === "zh", review = useNumericReview(taskId, version, language, onSave);
+    const zh = language === "zh", review = useNumericReview(taskId, version, language, onSave, beginReview);
     const snapshot = review.verified?.reportTextSnapshot, evidence = review.verified?.evidenceBundle;
     const [open, setOpen] = useState(false);
     return <section className="rounded-lg border border-zinc-800 p-4">

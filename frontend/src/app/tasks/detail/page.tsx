@@ -59,7 +59,7 @@ function TaskDetailRouteContent() {
 
 function TaskDetailPage({ taskId }: { taskId: string }) {
   const router = useRouter();
-  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews } = useTaskCenter();
+  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews, beginReview, getTaskIdentity } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const task = getTask(taskId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -72,9 +72,10 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
   const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const pageMountedRef = useRef(false);
-  const selectionRef = useRef({ taskId });
-  const deletionAttemptRef = useRef<{ selection: { taskId: string } } | null>(null);
-  if (selectionRef.current.taskId !== taskId) selectionRef.current = { taskId };
+  const identity = task && getTaskIdentity ? getTaskIdentity(task) : taskId;
+  const selectionRef = useRef({ taskId, identity });
+  const deletionAttemptRef = useRef<{ selection: { taskId: string; identity: object | string | undefined } } | null>(null);
+  if (selectionRef.current.taskId !== taskId || selectionRef.current.identity !== identity) selectionRef.current = { taskId, identity };
   const activeReports = Object.entries(task?.reportSections ?? {}).filter(([, content]) => Boolean(content));
 
   useEffect(() => {
@@ -220,11 +221,11 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                 <Square className="size-4" /> {t("stopTask")}
               </button>
             ) : task.status === "queued" ? (
-              <button type="button" onClick={() => cancelQueuedTask(task.id)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-amber-200 transition hover:border-zinc-600 hover:bg-amber-950/30">
+              <button type="button" onClick={() => cancelQueuedTask(task.id, task)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-amber-200 transition hover:border-zinc-600 hover:bg-amber-950/30">
                 <X className="size-4" /> {t("cancelQueue")}
               </button>
             ) : (
-              <button type="button" onClick={() => queueTask(task.id)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-900">
+              <button type="button" onClick={() => queueTask(task.id, task)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-900">
                 <Play className="size-4" /> {t("addToQueue")}
               </button>
             )}
@@ -240,7 +241,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                     const attempt = { selection: selected };
                     deletionAttemptRef.current = attempt;
                     try {
-                      if (await deleteTask(task.id) && pageMountedRef.current && selectionRef.current === selected) {
+                      if (await deleteTask(task.id, task) && pageMountedRef.current && selectionRef.current === selected) {
                         setMenuOpen(false);
                         router.push("/");
                       }
@@ -305,7 +306,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
         </div>
       </section>
 
-      <ReportVersionsPanel task={task} language={settings.systemLanguage} settings={settings} onReviews={saveEvaluationReviews} onNumericReviews={saveNumericReviews} />
+      <ReportVersionsPanel task={task} language={settings.systemLanguage} settings={settings} onReviews={saveEvaluationReviews} onNumericReviews={saveNumericReviews} beginReview={beginReview} />
 
       <section className="space-y-6">
         <Panel title={t("agentProgressReports")} sticky>

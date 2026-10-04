@@ -11,8 +11,9 @@ import { getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter } from "@/lib/ru
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, RunContext } from "@/lib/types";
 import { prependLog } from "../utils";
 import { highestQueueOrder, queuePositionMap, sortQueuedTasks } from "./queue-utils";
+import type { RunOwner, TaskAction } from "@/features/desktop-task-store/types";
 
-type Execution = { taskId: string; controller: AbortController; adapter: RuntimeAdapter; stopPromise?: Promise<void> };
+type Execution = { taskId: string; controller: AbortController; adapter: RuntimeAdapter; stopPromise?: Promise<void>; owner?: RunOwner };
 
 type TaskQueueControllerOptions = {
   hydrated: boolean;
@@ -21,7 +22,12 @@ type TaskQueueControllerOptions = {
   settings: GlobalSettings;
   runtimeAdapterRef: MutableRefObject<RuntimeAdapter | null>;
   persistTask: (task: AnalysisTask) => void;
-  onEvent: (taskId: string, event: AnalysisEvent, runContext?: RunContext) => void;
+  onEvent: (taskId: string, event: AnalysisEvent, runContext?: RunContext, owner?: RunOwner) => void;
+  storageReady?: boolean;
+  mutateDesktopTask?: (task: AnalysisTask, updater: (task: AnalysisTask) => AnalysisTask, owner?: RunOwner) => TaskAction | undefined;
+  beginDesktopRun?: (task: AnalysisTask) => Promise<RunOwner | undefined>;
+  confirmDesktopAction?: (action: TaskAction) => Promise<unknown>;
+  retireDesktopRun?: (owner: RunOwner) => void;
   setNotice: (notice: string) => void;
 };
 
@@ -34,6 +40,11 @@ export function useTaskQueueController({
   persistTask,
   onEvent,
   setNotice,
+  storageReady = true,
+  mutateDesktopTask,
+  beginDesktopRun,
+  confirmDesktopAction,
+  retireDesktopRun,
 }: TaskQueueControllerOptions) {
   const activeExecutionRef = useRef<Execution | null>(null);
   const cleanupBlockedRef = useRef<Execution | null>(null);
@@ -58,20 +69,24 @@ export function useTaskQueueController({
     ?? tasks.find((task) => task.status === "running") ?? null;
 
   const mutateTasks = useCallback((updater: (current: AnalysisTask[]) => AnalysisTask[]) => {
-    setTasks((current) => {
-      const next = updater(current);
-      tasksRef.current = next;
-      const previousById = new Map(current.map((task) => [task.id, task]));
-      next.forEach((task) => {
-        if (previousById.get(task.id) !== task) persistTask(task);
-      });
-      return next;
-    });
-  }, [persistTask, setTasks]);
+    const current = tasksRef.current, next = updater(current);
+    const previousById = new Map(current.map((task) => [task.id, task]));
+    if (isTauriRuntime() && mutateDesktopTask) {
+      next.forEach((task) => { const previous = previousById.get(task.id); if (previous && previous !== task) { const captured = structuredClone(task); mutateDesktopTask(previous, () => captured, activeExecutionRef.current?.taskId === task.id ? activeExecutionRef.current.owner : undefined); } });
+      return;
+    }
+    tasksRef.current = next; setTasks(next);
+    next.forEach((task) => { if (previousById.get(task.id) !== task) persistTask(task); });
+  }, [mutateDesktopTask, persistTask, setTasks]);
 
   const patchTask = useCallback((taskId: string, updater: (task: AnalysisTask) => AnalysisTask) => {
+    if (isTauriRuntime() && mutateDesktopTask) {
+      const task = tasksRef.current.find((item) => item.id === taskId);
+      if (task) mutateDesktopTask(task, updater, activeExecutionRef.current?.taskId === taskId ? activeExecutionRef.current.owner : undefined);
+      return;
+    }
     mutateTasks((current) => current.map((task) => task.id === taskId ? updater(task) : task));
-  }, [mutateTasks]);
+  }, [mutateDesktopTask, mutateTasks]);
 
   const failTask = useCallback((taskId: string, message: string) => {
     patchTask(taskId, (task) => ({
@@ -85,7 +100,7 @@ export function useTaskQueueController({
   }, [patchTask]);
 
   const startQueuedTask = useCallback(async (taskId: string) => {
-    if (activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return false;
+    if (!storageReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return false;
     const task = tasksRef.current.find((item) => item.id === taskId);
     if (!task || task.status !== "queued") return false;
 
@@ -114,14 +129,22 @@ export function useTaskQueueController({
     if (!isTauriRuntime()) saveGlobalSettings(settings);
     const execution: Execution = { taskId, controller: new AbortController(), adapter: runtimeAdapterRef.current ?? getRuntimeAdapter() };
     activeExecutionRef.current = execution;
-    patchTask(taskId, (current) => resetTaskForRun(current));
+    if (!isTauriRuntime() || !beginDesktopRun) patchTask(taskId, (current) => resetTaskForRun(current));
     setNotice("");
 
     try {
+      if (isTauriRuntime() && beginDesktopRun) {
+        execution.owner = await beginDesktopRun(task);
+        if (!execution.owner || execution.controller.signal.aborted || activeExecutionRef.current !== execution) return false;
+        const action = mutateDesktopTask?.(task, (current) => resetTaskForRun(current), execution.owner);
+        if (!action || !confirmDesktopAction) return false;
+        await confirmDesktopAction(action);
+        if (execution.controller.signal.aborted || activeExecutionRef.current !== execution) return false;
+      }
       await execution.adapter.runAnalysis(taskId, runForm, (event) => {
         if (activeExecutionRef.current !== execution || stoppingTaskIdRef.current === taskId) return;
         if (event.type === "completed" || event.type === "error") terminalEventObserved = true;
-        onEvent(taskId, event, runContext);
+        onEvent(taskId, event, runContext, execution.owner);
       }, execution.controller.signal);
 
       if (activeExecutionRef.current !== execution) return false;
@@ -164,6 +187,7 @@ export function useTaskQueueController({
       return false;
     } finally {
       if (activeExecutionRef.current === execution && cleanupBlockedRef.current !== execution) {
+        if (execution.owner) retireDesktopRun?.(execution.owner);
         activeExecutionRef.current = null;
         activeTaskIdRef.current = null;
         stoppingTaskIdRef.current = null;
@@ -173,10 +197,10 @@ export function useTaskQueueController({
         setSchedulerVersion((version) => version + 1);
       }
     }
-  }, [failTask, onEvent, patchTask, runtimeAdapterRef, setNotice, settings]);
+  }, [beginDesktopRun, confirmDesktopAction, failTask, mutateDesktopTask, onEvent, patchTask, retireDesktopRun, runtimeAdapterRef, setNotice, settings, storageReady]);
 
   useEffect(() => {
-    if (!hydrated || queueInitializedRef.current) return;
+    if (!hydrated || !storageReady || queueInitializedRef.current) return;
     queueInitializedRef.current = true;
     const ordered = sortQueuedTasks(tasksRef.current);
     queueSequenceRef.current = ordered.length;
@@ -186,16 +210,17 @@ export function useTaskQueueController({
       const queueOrder = orderById.get(task.id);
       return queueOrder === undefined || task.queueOrder === queueOrder ? task : { ...task, queueOrder };
     }));
-  }, [hydrated, mutateTasks]);
+  }, [hydrated, mutateTasks, storageReady]);
 
   useEffect(() => {
-    if (!hydrated || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
+    if (!hydrated || !storageReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
     if (tasks.some((task) => task.status === "running")) return;
     const nextTask = sortQueuedTasks(tasks)[0];
     if (nextTask) void startQueuedTask(nextTask.id);
-  }, [hydrated, schedulerVersion, startQueuedTask, tasks]);
+  }, [hydrated, schedulerVersion, startQueuedTask, storageReady, tasks]);
 
   const queueTask = useCallback((taskId: string, taskOverride?: AnalysisTask) => {
+    if (!storageReady) return false;
     const task = taskOverride ?? tasksRef.current.find((item) => item.id === taskId);
     if (!task || task.status === "running" || activeExecutionRef.current?.taskId === taskId && !cleanupBlockedRef.current) return false;
     if (cleanupBlockedRef.current?.taskId === taskId) {
@@ -222,11 +247,17 @@ export function useTaskQueueController({
     queueSequenceRef.current += 1;
     const queueOrder = queueSequenceRef.current;
     const queuedAt = new Date().toISOString();
+    if (isTauriRuntime() && mutateDesktopTask) return !!mutateDesktopTask(task, (current) => resetTaskForQueue(current, queuedAt, queueOrder));
     patchTask(taskId, (current) => resetTaskForQueue(current, queuedAt, queueOrder));
     return true;
-  }, [patchTask, setNotice, settings]);
+  }, [mutateDesktopTask, patchTask, setNotice, settings, storageReady]);
 
-  const cancelQueuedTask = useCallback((taskId: string) => {
+  const cancelQueuedTask = useCallback((taskId: string, selectedTask?: AnalysisTask) => {
+    if (isTauriRuntime() && mutateDesktopTask) {
+      const task = selectedTask ?? tasksRef.current.find((item) => item.id === taskId);
+      if (task && task.id === taskId) mutateDesktopTask(task, (original) => ({ ...original, status: "idle", queuedAt: "", queueOrder: null, updatedAt: new Date().toISOString() }));
+      return;
+    }
     patchTask(taskId, (task) => task.status !== "queued" ? task : {
       ...task,
       status: "idle",
@@ -234,9 +265,10 @@ export function useTaskQueueController({
       queueOrder: null,
       updatedAt: new Date().toISOString(),
     });
-  }, [patchTask]);
+  }, [mutateDesktopTask, patchTask]);
 
-  const moveQueuedTask = useCallback((taskId: string, direction: "up" | "down") => {
+  const moveQueuedTask = useCallback((taskId: string, direction: "up" | "down", selectedTask?: AnalysisTask) => {
+    if (selectedTask && tasksRef.current.find((task) => task.id === taskId) !== selectedTask) return;
     const ordered = sortQueuedTasks(tasksRef.current);
     const currentIndex = ordered.findIndex((task) => task.id === taskId);
     const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
@@ -282,6 +314,7 @@ export function useTaskQueueController({
       cleanupBlockedRef.current = null;
       setCleanupTaskId(null);
       if (activeExecutionRef.current === execution) {
+        if (execution.owner) retireDesktopRun?.(execution.owner);
         activeExecutionRef.current = null;
         activeTaskIdRef.current = null;
         stoppingTaskIdRef.current = null;
@@ -296,7 +329,7 @@ export function useTaskQueueController({
       cleanupRetryingRef.current = false;
       setCleanupRetrying(false);
     }
-  }, [patchTask, setNotice, settings.systemLanguage]);
+  }, [patchTask, retireDesktopRun, setNotice, settings.systemLanguage]);
 
   const getQueuePosition = useCallback((taskId: string) => positions.get(taskId) ?? null, [positions]);
 

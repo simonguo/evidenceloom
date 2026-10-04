@@ -12,14 +12,16 @@ vi.mock("@/lib/runtime", () => ({ getRuntimeAdapter: () => ({ getResearchMemoryI
 describe("read-only selected-version evaluation refresh", () => {
   let root: Root; let container: HTMLDivElement; let refresh: () => Promise<void>;
   const save = vi.fn();
+  let begin: (() => unknown) | undefined;
   const settings = { ...defaultGlobalSettings(), apiKey: "session-model-secret", alphaVantageApiKey: "session-data-secret", pythonPath: "configured-interpreter", projectRoot: "configured-project" };
   function Session({ version }: { version: ReportVersion }) {
-    const hook = useEvaluationReview(version, "en", settings, save); refresh = hook.refresh;
+    const hook = (useEvaluationReview as (...args: unknown[]) => ReturnType<typeof useEvaluationReview>)(version, "en", settings, save, begin); refresh = hook.refresh;
     return createElement("p", { role: "status", "data-loading": hook.loading }, hook.message);
   }
   beforeEach(() => {
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     getResearchMemoryInventory.mockReset(); save.mockReset().mockResolvedValue(undefined);
+    begin = undefined;
     container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); });
@@ -74,5 +76,21 @@ describe("read-only selected-version evaluation refresh", () => {
     expect(save).toHaveBeenCalledExactlyOnceWith(first.id, [review]);
     expect(container.textContent).not.toContain("Loaded saved evaluation");
     expect(container.querySelector("p")?.dataset.loading).toBe("false");
+  });
+  it("captures its original task action before inventory and carries it through later verification", async () => {
+    const version = memoryTask().reportVersions[0], review = await reviewFor(version.memoryBundle!.decision_snapshot);
+    const binding = Object.freeze({ ownedCapture: "original-generation" as string, originalVersion: version.id });
+    const capture = vi.fn(() => binding); begin = capture;
+    let resolve!: (value: unknown) => void, entered!: () => void;
+    const reached = new Promise<void>((done) => { entered = done; });
+    getResearchMemoryInventory.mockImplementation(() => new Promise((done) => { resolve = done; entered(); }));
+    await act(async () => root.render(createElement(Session, { version })));
+    let work!: Promise<void>;
+    await act(async () => { work = refresh(); await reached; });
+    expect.soft(capture).toHaveBeenCalledTimes(1);
+    capture.mockImplementation(() => Object.freeze({ ownedCapture: "new-generation", originalVersion: version.id }));
+    await act(async () => { resolve({ reviews: [review], missing_ids: [] }); await work; });
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(save).toHaveBeenCalledExactlyOnceWith(version.id, [review], binding);
   });
 });

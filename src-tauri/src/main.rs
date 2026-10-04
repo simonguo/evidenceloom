@@ -92,13 +92,21 @@ struct TextExportResult {
 }
 
 #[tauri::command]
-fn load_desktop_data(app: AppHandle) -> Result<storage::DesktopSnapshot, String> {
-    storage::load_snapshot(&app)
+async fn load_desktop_data(
+    app: AppHandle,
+) -> Result<storage::DesktopSnapshot, storage::StorageError> {
+    storage_blocking(move || storage::load_snapshot(&app)).await
 }
 
 #[tauri::command]
-fn save_desktop_settings(app: AppHandle, settings: storage::StoredSettings) -> Result<(), String> {
-    storage::save_settings(&app, settings)
+async fn save_desktop_settings(
+    app: AppHandle,
+    settings: storage::StoredSettings,
+) -> Result<(), storage::StorageError> {
+    storage_blocking(move || {
+        storage::save_settings(&app, settings).map_err(storage::StorageError::unavailable)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -123,34 +131,114 @@ fn delete_alpha_vantage_secret(provider: String) -> Result<(), String> {
     secrets::delete_alpha_vantage_secret()
 }
 
+async fn storage_blocking<T, F>(work: F) -> Result<T, storage::StorageError>
+where
+    T: Send + 'static,
+    F: FnOnce() -> Result<T, storage::StorageError> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|_| {
+            storage::StorageError::new(
+                "storage_unknown_outcome",
+                "Native task-store operation did not return a confirmed outcome.",
+            )
+        })?
+}
+
 #[tauri::command]
-fn save_desktop_task(app: AppHandle, task: storage::AnalysisTaskRecord) -> Result<(), String> {
-    storage::save_task(&app, task)
+async fn save_desktop_task(
+    app: AppHandle,
+    request: Value,
+) -> Result<storage::MutationReply, storage::StorageError> {
+    storage_blocking(move || storage::save_task(&app, request)).await
+}
+
+fn guarded_task_removal(
+    app: &AppHandle,
+    runtime: &RuntimeState,
+    request: Value,
+    clear: bool,
+) -> Result<storage::MutationReply, storage::StorageError> {
+    let packet = storage::parse_request(request, if clear { &["clear"] } else { &["delete"] })?;
+    // A historical reply never needs runtime admission, and this read probe releases SQL first.
+    if let Some(reply) = storage::replay_task_mutation(app, &packet)? {
+        return Ok(reply);
+    }
+    guard_task_sql(
+        runtime,
+        if clear {
+            None
+        } else {
+            Some(
+                packet.task_id().ok_or_else(|| {
+                    storage::StorageError::invalid("Missing deletion task identity.")
+                })?,
+            )
+        },
+        || {
+            if clear {
+                storage::clear_data(app, &packet)
+            } else {
+                storage::delete_task(app, &packet)
+            }
+        },
+        |message| storage::reject_owned_task_mutation(app, &packet, message),
+    )
+}
+
+fn guard_task_sql<T>(
+    runtime: &RuntimeState,
+    task_id: Option<&str>,
+    effect: impl FnOnce() -> Result<T, storage::StorageError>,
+    rejected: impl FnOnce(String) -> Result<T, storage::StorageError>,
+) -> Result<T, storage::StorageError> {
+    // Nest the typed storage result: only the Registry's admission refusal enters the binder.
+    let admitted = if let Some(task_id) = task_id {
+        runtime.delete_idle_task(task_id, || Ok(effect()))
+    } else {
+        runtime.clear_idle_data(|| Ok(effect()))
+    };
+    match admitted {
+        Ok(result) => result,
+        Err(message) => rejected(message),
+    }
 }
 
 #[tauri::command]
 async fn delete_desktop_task(
     app: AppHandle,
     state: State<'_, AppState>,
-    task_id: String,
-) -> Result<(), AnalysisCommandError> {
+    request: Value,
+) -> Result<storage::MutationReply, storage::StorageError> {
     let runtime = state.runtime.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        runtime.delete_idle_task(&task_id, || storage::delete_task(&app, task_id.clone()))
-    })
-    .await
-    .map_err(|_| AnalysisCommandError::from("Task deletion failed.".to_string()))?
-    .map_err(Into::into)
+    storage_blocking(move || guarded_task_removal(&app, &runtime, request, false)).await
 }
 
 #[tauri::command]
-async fn clear_desktop_data(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+async fn clear_desktop_data(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request: Value,
+) -> Result<storage::MutationReply, storage::StorageError> {
     let runtime = state.runtime.clone();
-    tauri::async_runtime::spawn_blocking(move || {
-        runtime.clear_idle_data(|| storage::clear_data(&app))
-    })
-    .await
-    .map_err(|_| "Saved data clearing failed.".to_string())?
+    storage_blocking(move || guarded_task_removal(&app, &runtime, request, true)).await
+}
+
+#[tauri::command]
+async fn import_legacy_desktop_tasks(
+    app: AppHandle,
+    request: Value,
+) -> Result<storage::MutationReply, storage::StorageError> {
+    storage_blocking(move || storage::import_tasks(&app, request)).await
+}
+
+#[tauri::command]
+async fn query_desktop_task_mutation(
+    app: AppHandle,
+    request: Value,
+) -> Result<storage::QueryReply, storage::StorageError> {
+    storage_blocking(move || storage::query_task_mutation(&app, request)).await
 }
 
 #[tauri::command]
@@ -239,11 +327,11 @@ fn write_text_export_file(path: &Path, content: &str) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn import_legacy_desktop_data(
+async fn import_legacy_desktop_data(
     app: AppHandle,
-    legacy: storage::LegacyDesktopData,
-) -> Result<storage::DesktopSnapshot, String> {
-    storage::import_legacy(&app, legacy)
+    legacy: Value,
+) -> Result<storage::DesktopSnapshot, storage::StorageError> {
+    storage_blocking(move || storage::import_legacy(&app, legacy)).await
 }
 
 #[tauri::command]
@@ -1587,7 +1675,9 @@ fn main() {
             delete_desktop_task,
             clear_desktop_data,
             save_text_export,
-            import_legacy_desktop_data
+            import_legacy_desktop_data,
+            import_legacy_desktop_tasks,
+            query_desktop_task_mutation
         ])
         .run(tauri::generate_context!())
         .expect("error while running Evidence Loom desktop app");
@@ -1596,6 +1686,34 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn task_mutation_storage_future_yields_while_native_coordinator_is_locked() {
+        use std::{future::Future, sync::mpsc, task::Poll};
+        let coordinator = storage::task_mutation::coordinator();
+        let (witness, observed) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            let mut future = std::pin::pin!(storage_blocking(|| {
+                let _coordinator = storage::task_mutation::coordinator();
+                Ok(())
+            }));
+            let mut first = true;
+            tauri::async_runtime::block_on(std::future::poll_fn(|context| {
+                let result = future.as_mut().poll(context);
+                if first {
+                    first = false;
+                    let _ = witness.send(matches!(result, Poll::Pending));
+                }
+                result
+            }))
+        });
+        // Release on every observed outcome before consuming the worker.
+        let pending = observed.recv_timeout(Duration::from_secs(3));
+        drop(coordinator);
+        let joined = worker.join();
+        assert!(pending.unwrap());
+        assert!(joined.unwrap().is_ok());
+    }
 
     #[test]
     fn analysis_execution_reservation_yields_while_clear_callback_holds_admission() {

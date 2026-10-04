@@ -44,11 +44,14 @@ import { normalizeReadinessTasks, normalizeReadinessTaskFields, readinessFromEve
 import { appendEvaluationReviews } from "@/features/memory/lib/reviews";
 import type { ReviewAttachment } from "@/features/memory/types";
 import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, NewTaskDraft, RunContext, TaskStatus } from "@/lib/types";
-import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
+import { defaultRuntimeInfo, getRuntimeAdapter, isTauriRuntime, type DesktopSnapshot, type RuntimeAdapter, type RuntimeCheck, type RuntimeInfo } from "@/lib/runtime";
 import { createTranslator } from "@/lib/i18n";
 import { prependLog } from "./utils";
 import { resolveTaskDecision } from "./decisions";
 import { useTaskQueueController } from "./queue/useTaskQueueController";
+import { DesktopTaskMutations } from "@/features/desktop-task-store/lib/mutations";
+import { detached } from "@/features/desktop-task-store/lib/protocol";
+import type { RunOwner, TaskAction, TaskStoreState } from "@/features/desktop-task-store/types";
 
 type TaskCenterContextValue = {
   settings: GlobalSettings;
@@ -69,20 +72,24 @@ type TaskCenterContextValue = {
   deleteProviderSecret: () => Promise<void>;
   deleteAlphaVantageSecret: () => Promise<void>;
   clearAllLocalData: () => Promise<boolean>;
-  createTask: (draft: NewTaskDraft) => { task?: AnalysisTask; errors: string[] };
+  createTask: (draft: NewTaskDraft) => Promise<{ task?: AnalysisTask; errors: string[] }>;
   createAndQueueTask: (draft: NewTaskDraft) => Promise<{ task?: AnalysisTask; errors: string[] }>;
-  createDemoTask: () => AnalysisTask;
-  deleteTask: (taskId: string) => Promise<boolean>;
-  queueTask: (taskId: string) => boolean;
-  cancelQueuedTask: (taskId: string) => void;
-  moveQueuedTask: (taskId: string, direction: "up" | "down") => void;
+  createDemoTask: () => Promise<AnalysisTask | undefined>;
+  deleteTask: (taskId: string, selectedTask?: AnalysisTask) => Promise<boolean>;
+  queueTask: (taskId: string, selectedTask?: AnalysisTask) => boolean;
+  cancelQueuedTask: (taskId: string, selectedTask?: AnalysisTask) => void;
+  moveQueuedTask: (taskId: string, direction: "up" | "down", selectedTask?: AnalysisTask) => void;
   getQueuePosition: (taskId: string) => number | null;
   stopRunningTask: () => void;
   getTask: (taskId: string) => AnalysisTask | undefined;
+  getTaskIdentity: (task: AnalysisTask) => object | string | undefined;
   runtimeInfo: RuntimeInfo;
   checkRuntime: (settingsOverride?: GlobalSettings) => Promise<RuntimeCheck>;
-  saveNumericReviews: (taskId: string, versionId: string, reviews: NumericReview[]) => Promise<void>;
-  saveEvaluationReviews: (taskId: string, versionId: string, reviews: ReviewAttachment[]) => Promise<void>;
+  beginReview: (task: AnalysisTask, versionId: string) => unknown;
+  saveNumericReviews: (taskId: string, versionId: string, reviews: NumericReview[], action?: unknown) => Promise<void>;
+  saveEvaluationReviews: (taskId: string, versionId: string, reviews: ReviewAttachment[], action?: unknown) => Promise<void>;
+  storageState: TaskStoreState;
+  retryTaskStorage: () => Promise<void>;
 };
 
 const TaskCenterContext = createContext<TaskCenterContextValue | null>(null);
@@ -99,7 +106,11 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const runtimeAdapterRef = useRef<RuntimeAdapter | null>(null);
   const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
   const eventQueueRef = useRef<Promise<void>>(Promise.resolve());
-  const deletionInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
+  const deletionInFlightRef = useRef<Map<object | string, Promise<boolean>>>(new Map());
+  const mutationsRef = useRef<DesktopTaskMutations | null>(null);
+  const unknownActionsRef = useRef<Set<TaskAction>>(new Set());
+  const bootstrapRetryRef = useRef<(() => Promise<void>) | null>(null);
+  const [storageState, setStorageState] = useState<TaskStoreState>("unavailable");
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>(() => defaultRuntimeInfo());
   const t = createTranslator(settings.systemLanguage);
 
@@ -121,33 +132,80 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     }
 
     const legacy = loadLegacyDesktopData();
-    void adapter.loadDesktopData(legacy)
-      .then(async (snapshot) => {
+    const mutations = new DesktopTaskMutations({
+      execute: (request, beforeInvoke) => request.operation === "delete" ? adapter.deleteDesktopTask(request, beforeInvoke)
+        : request.operation === "clear" ? adapter.clearDesktopData(request, beforeInvoke)
+          : request.operation === "import" ? adapter.importLegacyDesktopTasks(request, beforeInvoke)
+            : adapter.saveDesktopTask(request, beforeInvoke),
+      query: (request) => adapter.queryDesktopTaskMutation(request),
+    }, setStorageState);
+    mutationsRef.current = mutations;
+    let pendingBootstrap: { action: TaskAction; continuation: () => Promise<void> } | undefined;
+    let bootstrapInFlight: Promise<void> | undefined, legacyImported = false;
+    const live = () => mutationsRef.current === mutations && mutations.initialized;
+    async function confirmBootstrap(action: TaskAction, continuation: () => Promise<void>) {
+      const outcome = await mutations.commit(action);
+      if (outcome.kind !== "committed" || !outcome.publishable) {
+        if (outcome.kind === "unknown" || outcome.kind === "committed") pendingBootstrap = { action, continuation };
+        throw new Error("Task bootstrap mutation could not be confirmed.");
+      }
+      if (!live()) return;
+      await continuation();
+    }
+    async function hydrateSnapshot(snapshot: DesktopSnapshot) {
+        mutations.initialize(snapshot.storage, snapshot.tasks);
+        if (snapshot.storage?.legacyTaskImportAllowed && legacy.tasks?.length) {
+          const action = mutations.prepareImport(legacy.tasks);
+          await confirmBootstrap(action, async () => { legacyImported = true; await hydrateSnapshot(await adapter.loadDesktopData()); });
+          return;
+        }
+        const repairs = snapshot.tasks.map((stored) => mutations.capture(stored));
         setSettings(normalizeGlobalSettings(snapshot.settings ?? {}));
         const normalizedTasks = await verifyIdentityTasks(await verifyNumericTasks(await verifyReadinessTasks(await verifyMemoryTasks(await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(verifyTaskEvidence))))));
+        if (mutationsRef.current !== mutations || !mutations.initialized) return;
+        normalizedTasks.forEach((task, index) => mutations.bind(task, repairs[index]));
         setTasks(normalizedTasks);
-        normalizedTasks.forEach((task, index) => {
-          const stored = snapshot.tasks[index];
-          if (
-            task.decision !== stored?.decision
-            || task.origin !== stored?.origin
-            || task.reportVersions.length !== (stored?.reportVersions?.length ?? 0)
-          ) {
-            void adapter.saveDesktopTask(task).catch(() => setNotice("Failed to save report history. The displayed report may not be available after restart."));
+        tasksRef.current = normalizedTasks;
+        async function repairFrom(start: number): Promise<void> {
+          if (!live()) return;
+          for (let index = start; index < normalizedTasks.length; index += 1) {
+            const task = normalizedTasks[index], stored = snapshot.tasks[index];
+            if (task.decision !== stored?.decision || task.origin !== stored?.origin || task.reportVersions.length !== (stored?.reportVersions?.length ?? 0)) {
+              const action = mutations.prepareUpdate(repairs[index], () => task);
+              mutations.markProjected(task, action);
+              await confirmBootstrap(action, () => repairFrom(index + 1));
+              return;
+            }
           }
-        });
-        if (snapshot.secretMigrationError) {
-          setNotice(snapshot.secretMigrationError);
-        } else {
-          clearLegacyDesktopData();
+          tasksRef.current = normalizedTasks; setTasks(normalizedTasks); mutations.seal();
+          if (snapshot.secretMigrationError) setNotice(snapshot.secretMigrationError);
+          else if (!legacy.tasks?.length || legacyImported || snapshot.storage?.legacyTaskImportAllowed) clearLegacyDesktopData();
         }
-      })
-      .catch(() => {
+        await repairFrom(0);
+    }
+    function bootstrap() {
+      if (bootstrapInFlight) return bootstrapInFlight;
+      bootstrapInFlight = (async () => {
+        if (pendingBootstrap) {
+          const pending = pendingBootstrap, outcome = await mutations.retry(pending.action);
+          if (outcome.kind === "unknown") throw new Error("Task bootstrap mutation remains unknown.");
+          pendingBootstrap = undefined;
+          if (outcome.kind === "committed" && outcome.publishable) { await pending.continuation(); return; }
+          // A known historical outcome cannot authorize its stale projection.
+          // Explicit retry reads canonical native bodies before any new intent.
+        }
+        await hydrateSnapshot(await adapter.loadDesktopData(legacy));
+      })().catch(() => {
+        if (mutationsRef.current !== mutations) return;
         setSettings(sessionSafeSettings(legacy.settings ?? defaultGlobalSettings()));
         setTasks(normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(normalizeMemoryTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState))))));
         setNotice("Desktop storage could not be loaded. The displayed reports have not been confirmed saved.");
-      })
-      .finally(() => setHydrated(true));
+      }).finally(() => { bootstrapInFlight = undefined; if (mutationsRef.current === mutations) setHydrated(true); });
+      return bootstrapInFlight;
+    }
+    bootstrapRetryRef.current = bootstrap;
+    void bootstrap();
+    return () => { mutations.dispose(); if (mutationsRef.current === mutations) mutationsRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -183,24 +241,41 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     () => [...tasks].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt)),
     [tasks],
   );
-  const persistTask = useCallback((task: AnalysisTask) => {
-    if (!isTauriRuntime()) return;
-    persistenceQueueRef.current = persistenceQueueRef.current.catch(() => undefined)
-      .then(async () => {
-        const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-        await adapter.saveDesktopTask(await verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(task))))));
-      })
-      .catch(() => setNotice("Failed to save report and evidence. The displayed report may not be available after restart."));
+  const confirmTaskAction = useCallback(async (action: TaskAction) => {
+    const mutations = mutationsRef.current;
+    if (!mutations) throw new Error("Desktop task storage is unavailable.");
+    const outcome = await mutations.confirm(action);
+    unknownActionsRef.current.forEach((pending) => { if (!mutations.needsConfirmation(pending)) unknownActionsRef.current.delete(pending); });
+    if (outcome.kind !== "committed" || !mutations.publishable(action, outcome)) {
+      if (mutations.needsConfirmation(action)) unknownActionsRef.current.add(action);
+      throw new Error("Task storage could not be confirmed. Retry confirmation before continuing.");
+    }
+    unknownActionsRef.current.delete(action);
+    return outcome;
   }, []);
 
+  const mutateDesktopTask = useCallback((task: AnalysisTask, updater: (task: AnalysisTask) => AnalysisTask | Promise<AnalysisTask>, runOwner?: RunOwner) => {
+    const mutations = mutationsRef.current;
+    if (!mutations) return undefined;
+    try {
+      const transform = async (original: AnalysisTask) => verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(await updater(original))))));
+      const action = runOwner ? mutations.prepareRunUpdate(runOwner, transform) : mutations.prepareUpdate(mutations.capture(task), transform);
+      void confirmTaskAction(action).then(() => mutations.projection(action)).then((projection) => {
+        if (!mutations.markProjected(projection, action)) return;
+        tasksRef.current = tasksRef.current.map((item) => item.id === task.id ? projection : item);
+        setTasks(tasksRef.current);
+      }).catch(() => { if (mutations.relevant(action)) setNotice(createTranslator(settings.systemLanguage)("taskStorageUnconfirmed")); });
+      return action;
+    } catch { setNotice(createTranslator(settings.systemLanguage)("taskStorageChanged")); return undefined; }
+  }, [confirmTaskAction, settings.systemLanguage]);
+
+  const persistTask = useCallback(() => {}, []);
+
   const updateTask = useCallback((taskId: string, updater: (task: AnalysisTask) => AnalysisTask) => {
-    setTasks((current) => {
-      const next = normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(normalizeMemoryTasks(current.map((task) => task.id === taskId ? updater(task) : task)))));
-      const changed = next.find((task) => task.id === taskId);
-      if (changed) persistTask(changed);
-      return next;
-    });
-  }, [persistTask]);
+    const task = tasksRef.current.find((item) => item.id === taskId);
+    if (isTauriRuntime()) { if (task) mutateDesktopTask(task, updater); return; }
+    setTasks((current) => normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(normalizeMemoryTasks(current.map((item) => item.id === taskId ? updater(item) : item))))));
+  }, [mutateDesktopTask]);
 
   function finalizeAgentStatuses(agentStatuses: Record<string, AgentStatus>) {
     return Object.fromEntries(
@@ -235,15 +310,15 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     return ensureLegacyReportVersion(normalizedTask);
   }
 
-  const handleTaskEvent = useCallback((taskId: string, event: AnalysisEvent, runContext?: RunContext) => {
-    eventQueueRef.current = eventQueueRef.current.catch(() => undefined).then(async () => {
+  const handleTaskEvent = useCallback((taskId: string, input: AnalysisEvent, runContext?: RunContext, runOwner?: RunOwner) => {
+    const event = detached(input), context = runContext ? detached(runContext) : undefined;
+    const transform = async (task: AnalysisTask) => {
       const empty = { evidenceBundle: undefined, evidenceValidation: undefined, reportSections: {} } as AnalysisTask;
       const evidence = await evidenceFromEvent(empty, event);
       const memory = await memoryFromEvent(event, evidence.evidenceBundle);
       const readiness = await readinessFromEvent(event, evidence.evidenceBundle);
       const numeric = await reportSnapshotFromEvent(event, evidence.evidenceBundle);
       const identity = await identityFromEvent(event, evidence.evidenceBundle, numeric?.reportTextSnapshot);
-      updateTask(taskId, (task) => {
         const logs = event.message || event.error
           ? prependLog(task.logs, event.messageType ?? event.type, event.error ?? event.message ?? "", event.timestamp, event.agent)
           : task.logs;
@@ -271,12 +346,23 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           logs,
           error: event.error ?? (status === "running" ? "" : task.error),
         })))));
-        return runContext
-          ? appendCompletedReportVersion(nextTask, event, runContext)
+        return context
+          ? appendCompletedReportVersion(nextTask, event, context)
           : nextTask;
-      });
+    };
+    if (isTauriRuntime()) {
+      if (!runOwner) return;
+      const task = tasksRef.current.find((item) => item.id === taskId);
+      if (task) mutateDesktopTask(task, transform, runOwner);
+      return;
+    }
+    eventQueueRef.current = eventQueueRef.current.catch(() => undefined).then(async () => {
+      const task = tasksRef.current.find((item) => item.id === taskId);
+      if (!task) return;
+      const next = await transform(task);
+      updateTask(taskId, () => next);
     }).catch(() => setNotice("A research update could not be processed. Report and evidence state may be incomplete."));
-  }, [updateTask]);
+  }, [mutateDesktopTask, updateTask]);
 
   const {
     runningTask,
@@ -298,6 +384,17 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     settings,
     runtimeAdapterRef,
     persistTask,
+    storageReady: !isTauriRuntime() || storageState === "ready" || storageState === "pending",
+    mutateDesktopTask,
+    beginDesktopRun: async (task) => {
+      const mutations = mutationsRef.current;
+      if (!mutations) return undefined;
+      const action = mutations.capture(task);
+      if (!await mutations.awaitAdmission(action)) return undefined;
+      return mutations.captureRun(action);
+    },
+    confirmDesktopAction: confirmTaskAction,
+    retireDesktopRun: (owner) => mutationsRef.current?.retireRun(owner),
     onEvent: handleTaskEvent,
     setNotice,
   });
@@ -383,13 +480,17 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     }
     try {
       if (isTauriRuntime()) {
-        const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-        await adapter.clearDesktopData();
+        const mutations = mutationsRef.current;
+        if (!mutations) throw new Error("Desktop task storage is unavailable.");
+        const action = mutations.prepareClear();
+        const outcome = await confirmTaskAction(action);
+        if (!mutations.publishable(action, outcome)) throw new Error("Local-data deletion is not confirmed for the current session.");
       } else {
         clearGlobalSettings();
         clearTasks();
       }
       setSettings(defaultGlobalSettings());
+      tasksRef.current = [];
       setTasks([]);
       setNotice(t("localDataCleared"));
       return true;
@@ -400,7 +501,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function createTaskAction(draft: NewTaskDraft) {
+  async function createTaskAction(draft: NewTaskDraft) {
     const assetType = detectAssetType(draft.ticker, draft.assetType);
     const normalizedDraft: NewTaskDraft = {
       ...draft,
@@ -413,7 +514,16 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     const errors = validateTaskDraft(normalizedDraft, assetType, settings.systemLanguage);
     if (errors.length > 0) return { errors };
     const task = createEmptyTask(normalizedDraft);
-    setTasks((current) => [task, ...current]);
+    if (isTauriRuntime()) {
+      try {
+        const mutations = mutationsRef.current;
+        if (!mutations) throw new Error();
+        const action = mutations.prepareCreate(task);
+        tasksRef.current = [task, ...tasksRef.current]; setTasks(tasksRef.current);
+        const outcome = await confirmTaskAction(action);
+        if (!mutations.publishable(action, outcome)) throw new Error();
+      } catch { setNotice(t("taskCreationUnconfirmed")); return { errors: [t("taskCreationUnconfirmed")] }; }
+    } else { tasksRef.current = [task, ...tasksRef.current]; setTasks(tasksRef.current); }
     queueTask(task.id, task);
     setNotice(t("taskCreated", { ticker: task.ticker }));
     return { task, errors: [] };
@@ -423,23 +533,37 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     return createTaskAction(draft);
   }
 
-  function createDemoTaskAction() {
-    const demo = getOrCreateFictionalDemoTask(tasks, settings.systemLanguage);
-    if (tasks.some((task) => task.id === FICTIONAL_DEMO_TASK_ID)) return demo;
-    setTasks((current) => (
-      current.some((task) => task.id === FICTIONAL_DEMO_TASK_ID)
-        ? current
-        : [demo, ...current]
-    ));
-    persistTask(demo);
+  async function createDemoTaskAction() {
+    const demo = getOrCreateFictionalDemoTask(tasksRef.current, settings.systemLanguage);
+    const existing = tasksRef.current.find((task) => task.id === FICTIONAL_DEMO_TASK_ID);
+    if (existing) {
+      if (!isTauriRuntime()) return demo;
+      try {
+        const mutations = mutationsRef.current;
+        if (!mutations || !await mutations.awaitAdmission(mutations.capture(existing)) || !mutations.identity(existing)) throw new Error();
+        return existing;
+      } catch { setNotice(t("demoCreationUnconfirmed")); return undefined; }
+    }
+    if (isTauriRuntime()) {
+      try {
+        const mutations = mutationsRef.current;
+        if (!mutations) throw new Error();
+        const action = mutations.prepareCreate(demo);
+        tasksRef.current = [demo, ...tasksRef.current]; setTasks(tasksRef.current);
+        const outcome = await confirmTaskAction(action);
+        if (!mutations.publishable(action, outcome)) throw new Error();
+      } catch { setNotice(t("demoCreationUnconfirmed")); return undefined; }
+    } else { tasksRef.current = [demo, ...tasksRef.current]; setTasks(tasksRef.current); }
     setNotice(t("demoTaskCreated"));
     return demo;
   }
 
-  function deleteTask(taskId: string): Promise<boolean> {
-    const pending = deletionInFlightRef.current.get(taskId);
+  function deleteTask(taskId: string, selectedTask?: AnalysisTask): Promise<boolean> {
+    const task = selectedTask ?? tasksRef.current.find((item) => item.id === taskId);
+    const deletionKey = isTauriRuntime() ? task && mutationsRef.current?.identity(task) : taskId;
+    if (isTauriRuntime() && !deletionKey) { setNotice(t("taskDeleteFailed")); return Promise.resolve(false); }
+    const pending = deletionInFlightRef.current.get(deletionKey!);
     if (pending) return pending;
-    const task = tasksRef.current.find((item) => item.id === taskId);
     if (cleanupFailedTask?.id === taskId) {
       setNotice(t("analysisCleanupFailed"));
       return Promise.resolve(false);
@@ -453,11 +577,17 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       setNotice(t("taskDeleted"));
       return Promise.resolve(true);
     }
-    const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
+    let action: TaskAction;
+    try {
+      if (!task || task.id !== taskId || !mutationsRef.current) throw new Error();
+      action = mutationsRef.current.prepareDelete(task);
+    } catch { setNotice(t("taskDeleteFailed")); return Promise.resolve(false); }
     const deletion = Promise.resolve().then(async () => {
       try {
-        await adapter.deleteDesktopTask(taskId);
-        setTasks((current) => current.filter((item) => item.id !== taskId));
+        const outcome = await confirmTaskAction(action);
+        if (!mutationsRef.current?.publishable(action, outcome)) return false;
+        tasksRef.current = tasksRef.current.filter((item) => item.id !== taskId);
+        setTasks(tasksRef.current);
         setNotice(t("taskDeleted"));
         return true;
       } catch {
@@ -465,9 +595,9 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         return false;
       }
     }).finally(() => {
-      if (deletionInFlightRef.current.get(taskId) === deletion) deletionInFlightRef.current.delete(taskId);
+      if (deletionInFlightRef.current.get(deletionKey!) === deletion) deletionInFlightRef.current.delete(deletionKey!);
     });
-    deletionInFlightRef.current.set(taskId, deletion);
+    deletionInFlightRef.current.set(deletionKey!, deletion);
     return deletion;
   }
 
@@ -476,11 +606,35 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     return adapter.checkRuntime(settingsOverride ?? settings);
   }
 
-  async function saveNumericReviews(taskId: string, versionId: string, reviews: NumericReview[]) {
-    const version = tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
+  function beginReview(task: AnalysisTask, versionId: string) {
+    if (!isTauriRuntime()) return undefined;
+    if (!mutationsRef.current) throw new Error("Desktop task storage is unavailable.");
+    return mutationsRef.current.captureReview(task, versionId);
+  }
+
+  async function saveNumericReviews(taskId: string, versionId: string, reviews: NumericReview[], capturedAction?: unknown) {
+    const mutations = isTauriRuntime() ? mutationsRef.current : null;
+    const action = capturedAction as TaskAction;
+    const version = isTauriRuntime() ? mutations?.reviewVersion(capturedAction) : tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
+    if (isTauriRuntime() && (!mutations || !action || version?.id !== versionId)) throw new Error("This review's task storage identity is no longer available.");
     if (!version?.reportTextSnapshot || !version.evidenceBundle || version.numericValidation) throw new Error("This version has no verified original report snapshot.");
     const frozen = JSON.parse(JSON.stringify(version)) as typeof version;
-    const verified = await Promise.all(reviews.map((review) => verifyNumericReview(review, frozen.reportTextSnapshot, frozen.evidenceBundle, { taskId, versionId })));
+    const capturedReviews = detached(reviews);
+    if (mutations) {
+      const update = mutations.prepareUpdate(action, async (original) => {
+        if (original.id !== taskId) throw new Error("Review task mismatch.");
+        const verified = await Promise.all(capturedReviews.map((review) => verifyNumericReview(review, frozen.reportTextSnapshot, frozen.evidenceBundle, { taskId, versionId })));
+        const next = appendNumericReviews(original, versionId, verified);
+        const validated = await verifyIdentityTask(await verifyNumericTask(next));
+        if (validated.reportVersions.find((item) => item.id === versionId)?.numericValidation) throw new Error("Numeric reviews conflict with this saved report history.");
+        return validated;
+      });
+      await confirmTaskAction(update);
+      const projection = await mutations.projection(update);
+      if (!mutations.markProjected(projection, update)) throw new Error("This task changed while the review was saved.");
+      tasksRef.current = tasksRef.current.map((task) => task.id === taskId ? projection : task); setTasks(tasksRef.current); return;
+    }
+    const verified = await Promise.all(capturedReviews.map((review) => verifyNumericReview(review, frozen.reportTextSnapshot, frozen.evidenceBundle, { taskId, versionId })));
     const write = persistenceQueueRef.current.catch(() => undefined).then(async () => {
       const latest = tasksRef.current;
       const owner = latest.find((item) => item.id === taskId);
@@ -488,9 +642,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       const next = appendNumericReviews(owner, versionId, verified);
       const candidate = normalizeNumericTasks(latest.map((item) => item.id === taskId ? next : item));
       if (candidate.find((item) => item.id === taskId)?.reportVersions.find((item) => item.id === versionId)?.numericValidation) throw new Error("Numeric reviews conflict with this saved report history.");
-      if (isTauriRuntime()) {
-        await (runtimeAdapterRef.current ?? getRuntimeAdapter()).saveDesktopTask(await verifyIdentityTask(await verifyNumericTask(next)));
-      } else await saveVerifiedTasks(candidate);
+      await saveVerifiedTasks(candidate);
       // Publish only after durable success. Re-append to the latest owner rather
       // than replacing unrelated updates made during the asynchronous write.
       await new Promise<void>((resolve, reject) => setTasks((current) => {
@@ -508,11 +660,29 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     await write;
   }
 
-  async function saveEvaluationReviews(taskId: string, versionId: string, reviews: ReviewAttachment[]) {
-    const version = tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
+  async function saveEvaluationReviews(taskId: string, versionId: string, reviews: ReviewAttachment[], capturedAction?: unknown) {
+    const mutations = isTauriRuntime() ? mutationsRef.current : null;
+    const action = capturedAction as TaskAction;
+    const version = isTauriRuntime() ? mutations?.reviewVersion(capturedAction) : tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
+    if (isTauriRuntime() && (!mutations || !action || version?.id !== versionId)) throw new Error("This review's task storage identity is no longer available.");
     if (!version?.memoryBundle || version.memoryValidation) throw new Error("This saved version has no verified memory attachment.");
     const frozen = JSON.parse(JSON.stringify(version)) as typeof version;
     const capturedReviews = JSON.parse(JSON.stringify(reviews)) as ReviewAttachment[];
+    if (mutations) {
+      const update = mutations.prepareUpdate(action, async (original) => {
+        if (original.id !== taskId) throw new Error("Review task mismatch.");
+        const completion = await verifyMemoryBundle(frozen.memoryBundle, frozen.evidenceBundle);
+        const verified = await Promise.all(capturedReviews.map((review) => verifyReviewAttachment(review, completion)));
+        const next = appendEvaluationReviews(original, versionId, verified);
+        const validated = await verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(next)))));
+        if (validated.reportVersions.find((item) => item.id === versionId)?.memoryValidation) throw new Error("Saved evaluation attachments conflict with this report history.");
+        return validated;
+      });
+      await confirmTaskAction(update);
+      const projection = await mutations.projection(update);
+      if (!mutations.markProjected(projection, update)) throw new Error("This task changed while the review was saved.");
+      tasksRef.current = tasksRef.current.map((task) => task.id === taskId ? projection : task); setTasks(tasksRef.current); return;
+    }
     const completion = await verifyMemoryBundle(frozen.memoryBundle, frozen.evidenceBundle);
     const verified = await Promise.all(capturedReviews.map((review) => verifyReviewAttachment(review, completion)));
     const write = persistenceQueueRef.current.catch(() => undefined).then(async () => {
@@ -524,11 +694,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       if (candidate.find((item) => item.id === taskId)?.reportVersions.find((item) => item.id === versionId)?.memoryValidation) {
         throw new Error("Saved evaluation attachments conflict with this report history.");
       }
-      if (isTauriRuntime()) {
-        await (runtimeAdapterRef.current ?? getRuntimeAdapter()).saveDesktopTask(
-          await verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(next))))),
-        );
-      } else await saveVerifiedTasks(candidate);
+      await saveVerifiedTasks(candidate);
       // Keep the original input frozen and preserve unrelated updates made
       // during the write. Failed durable writes never publish a new review.
       await new Promise<void>((resolve, reject) => setTasks((current) => {
@@ -579,13 +745,32 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     getQueuePosition,
     stopRunningTask,
     getTask: (taskId) => tasks.find((task) => task.id === taskId),
+    getTaskIdentity: (task) => isTauriRuntime() ? mutationsRef.current?.identity(task) : task.id,
     runtimeInfo,
     checkRuntime: checkRuntimeAction,
     saveEvaluationReviews,
     saveNumericReviews,
+    beginReview,
+    storageState,
+    retryTaskStorage: async () => {
+      if (!unknownActionsRef.current.size && storageState !== "ready" && storageState !== "pending") { await bootstrapRetryRef.current?.(); return; }
+      for (const action of [...unknownActionsRef.current]) {
+        try {
+          const outcome = await confirmTaskAction(action);
+          const mutations = mutationsRef.current!;
+          if (!mutations.publishable(action, outcome)) throw new Error();
+          const intent = mutations.intent(action);
+          if (intent.operation === "delete") { tasksRef.current = tasksRef.current.filter((task) => task.id !== intent.taskId); setTasks(tasksRef.current); }
+          else if (intent.operation !== "clear" && intent.operation !== "import") {
+            const projection = await mutations.projection(action);
+            if (mutations.markProjected(projection, action)) { tasksRef.current = tasksRef.current.map((task) => task.id === intent.taskId ? projection : task); setTasks(tasksRef.current); }
+          }
+        } catch { if (mutationsRef.current?.relevant(action)) setNotice(t(mutationsRef.current.intent(action).operation === "clear" ? "localDataClearUnconfirmed" : "taskStorageUnconfirmed")); }
+      }
+    },
   };
 
-  return <TaskCenterContext.Provider value={value}>{children}</TaskCenterContext.Provider>;
+  return <TaskCenterContext.Provider value={value}>{children}{hydrated && isTauriRuntime() && (storageState === "unavailable" || storageState === "unknown" || storageState === "conflict") && <div role="alert" className="fixed bottom-5 right-5 z-50 max-w-sm rounded-lg border border-amber-800 bg-zinc-950 p-4 text-sm text-amber-100"><p>{t("taskStorageUnconfirmed")}</p><button type="button" className="mt-3 rounded border border-amber-700 px-3 py-1" onClick={() => void value.retryTaskStorage()}>{t("taskStorageRetry")}</button></div>}</TaskCenterContext.Provider>;
 }
 
 export function useTaskCenter() {

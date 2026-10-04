@@ -29,14 +29,16 @@ describe("actual task detail deletion navigation", () => {
     ...createEmptyTask({ ...defaultTaskDraft(), ticker: "FICT", instrumentName: "Owned fictional page fixture", analysisDate: "2026-08-01" }, id),
     origin: "demo" as const, status: "completed" as const,
   }));
+  const visible = new Map<string, typeof tasks[number]>(), identities = new WeakMap<object, object>();
   function deleteButton() { return [...container.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Delete Task"); }
   async function render() { await act(async () => root.render(createElement(Page))); }
   async function openMenu() { await act(async () => container.querySelector<HTMLButtonElement>("button")!.click()); expect(deleteButton()).toBeDefined(); }
   async function clickDelete() { await act(async () => deleteButton()!.click()); }
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); control.taskId = "owned-page-a"; control.push.mockReset(); requests.length = 0;
+    visible.clear(); tasks.forEach((task) => { visible.set(task.id, task); identities.set(task, {}); });
     deleteTask = vi.fn(() => { const request = acknowledgement(); requests.push(request); return request.promise; });
-    control.center.mockReturnValue({ getTask: (id: string) => tasks.find((task) => task.id === id), settings: { ...defaultGlobalSettings(), systemLanguage: "en" },
+    control.center.mockReturnValue({ getTask: (id: string) => visible.get(id), getTaskIdentity: (task: object) => identities.get(task), settings: { ...defaultGlobalSettings(), systemLanguage: "en" },
       hydrated: true, deleteTask, queueTask: vi.fn(), cancelQueuedTask: vi.fn(), getQueuePosition: vi.fn(), stopRunningTask: vi.fn(),
       setActiveTaskId: vi.fn(), saveEvaluationReviews: vi.fn(), saveNumericReviews: vi.fn() });
     container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container); unmounted = false;
@@ -47,7 +49,7 @@ describe("actual task detail deletion navigation", () => {
   });
   it("keeps the menu and page while the deletion acknowledgement is pending", async () => {
     await render(); await openMenu(); await clickDelete();
-    expect(deleteTask).toHaveBeenCalledWith("owned-page-a"); expect(control.push).not.toHaveBeenCalled(); expect(deleteButton()).toBeDefined();
+    expect(deleteTask).toHaveBeenCalledWith("owned-page-a", tasks[0]); expect(control.push).not.toHaveBeenCalled(); expect(deleteButton()).toBeDefined();
   });
   it("keeps refusal on the same page with an explicit usable retry", async () => {
     await render(); await openMenu(); await clickDelete(); await act(async () => requests[0].resolve(false));
@@ -60,7 +62,7 @@ describe("actual task detail deletion navigation", () => {
   });
   it("shares a page deletion attempt across duplicate clicks and navigates once", async () => {
     await render(); await openMenu(); await act(async () => { deleteButton()!.click(); deleteButton()!.click(); });
-    expect(deleteTask).toHaveBeenCalledExactlyOnceWith("owned-page-a"); expect(control.push).not.toHaveBeenCalled();
+    expect(deleteTask).toHaveBeenCalledExactlyOnceWith("owned-page-a", tasks[0]); expect(control.push).not.toHaveBeenCalled();
     await act(async () => requests[0].resolve(true)); expect(control.push).toHaveBeenCalledExactlyOnceWith("/");
   });
   it("does not navigate or close the newly selected task menu for an old acknowledgement", async () => {
@@ -71,5 +73,10 @@ describe("actual task detail deletion navigation", () => {
   it("does not navigate after the detail page unmounts while acknowledgement is pending", async () => {
     await render(); await openMenu(); await clickDelete(); await act(async () => root.unmount()); unmounted = true;
     await act(async () => requests[0].resolve(true)); expect(control.push).not.toHaveBeenCalled();
+  });
+  it("does not navigate a recreated task with the same ID for an old acknowledgement", async () => {
+    await render(); await openMenu(); await clickDelete();
+    const recreated = { ...tasks[0], ticker: "FRESH" }; visible.set(recreated.id, recreated); identities.set(recreated, {}); await render();
+    await act(async () => requests[0].resolve(true)); expect(control.push).not.toHaveBeenCalled(); expect(container.textContent).toContain("FRESH"); expect(deleteButton()).toBeDefined();
   });
 });

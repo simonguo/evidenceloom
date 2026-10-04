@@ -21,12 +21,14 @@ export function ReportVersionsPanel({
   settings,
   onReviews,
   onNumericReviews,
+  beginReview,
 }: {
   task: AnalysisTask;
   language: SystemLanguage;
   settings?: GlobalSettings;
-  onNumericReviews?: (taskId: string, versionId: string, reviews: NumericReview[]) => Promise<void>;
-  onReviews?: (taskId: string, versionId: string, reviews: ReviewAttachment[]) => Promise<void>;
+  onNumericReviews?: (taskId: string, versionId: string, reviews: NumericReview[], action?: unknown) => Promise<void>;
+  onReviews?: (taskId: string, versionId: string, reviews: ReviewAttachment[], action?: unknown) => Promise<void>;
+  beginReview?: (task: AnalysisTask, versionId: string) => unknown;
 }) {
   const {
     versions,
@@ -38,7 +40,10 @@ export function ReportVersionsPanel({
     exportVersion,
   } = useReportExport(task, language);
   const zh = language === "zh";
-  const review = useEvaluationReview(selectedVersion, language, settings, onReviews ? (versionId, attachments) => onReviews(task.id, versionId, attachments) : undefined);
+  const captureReview = beginReview && selectedVersion ? () => beginReview(task, selectedVersion.id) : undefined;
+  const saveReviews = onReviews ? captureReview ? (versionId: string, attachments: ReviewAttachment[], action?: unknown) => onReviews(task.id, versionId, attachments, action)
+    : (versionId: string, attachments: ReviewAttachment[]) => onReviews(task.id, versionId, attachments) : undefined;
+  const review = useEvaluationReview(selectedVersion, language, settings, saveReviews, captureReview);
 
   return (
     <section className="rounded-xl border border-zinc-900 bg-black p-5">
@@ -115,7 +120,7 @@ export function ReportVersionsPanel({
           <IdentityInspector key={`identity:${selectedVersion.id}`} snapshot={selectedVersion} language={language} />
           <ReadinessInspector snapshot={selectedVersion} language={language} />
           <MemoryInspector snapshot={selectedVersion} language={language} />
-          <NumericReviewPanel key={`numeric:${selectedVersion.id}`} taskId={task.id} version={selectedVersion} language={language} onSave={onNumericReviews} />
+          <NumericReviewPanel key={`numeric:${selectedVersion.id}`} taskId={task.id} version={selectedVersion} language={language} onSave={onNumericReviews} beginReview={captureReview} />
           <details key={`preview:${selectedVersion.id}`} className="rounded-lg border border-zinc-800 p-4">
             <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">
               {zh ? `审阅选中的报告 v${selectedVersion.versionNumber}` : `Review selected report v${selectedVersion.versionNumber}`}

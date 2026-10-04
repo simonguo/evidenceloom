@@ -20,6 +20,8 @@ function deferred() {
 describe("acknowledged desktop task deletion through the actual provider", () => {
   let container: HTMLDivElement, root: Root, center: ReturnType<typeof useTaskCenter>;
   let initial: AnalysisTask[], language: SystemLanguage;
+  const nativeHeads = new Map<string, { taskId: string; generation: string; revision: string; state: "live" | "tombstone" }>();
+  const collection = { collectionId: "owned-deletion-collection", epoch: "1" };
   const writes = new Map<string, ReturnType<typeof deferred>>();
   const actions: Promise<boolean | void>[] = [];
   function Consumer() {
@@ -46,15 +48,23 @@ describe("acknowledged desktop task deletion through the actual provider", () =>
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: { invoke: (command: string, args?: Record<string, unknown>) => transport.invoke(command, args) }, configurable: true }); localStorage.clear();
     transport.invoke.mockReset().mockImplementation(async (command, args) => {
-      if (command === "delete_desktop_task") { const pending = writes.get(args.taskId); if (!pending) throw new Error("Owned fixture missing deletion acknowledgement"); return pending.promise; }
-      if (command === "save_desktop_task") return;
+      if (command === "delete_desktop_task" || command === "save_desktop_task") {
+        const request = args.request;
+        if (command === "delete_desktop_task") { const pending = writes.get(request.expectedHead.taskId); if (!pending) throw new Error("Owned fixture missing deletion acknowledgement"); await pending.promise; }
+        const head = { ...request.expectedHead, revision: String(BigInt(request.expectedHead.revision) + BigInt(1)), state: command === "delete_desktop_task" ? "tombstone" as const : "live" as const };
+        nativeHeads.set(head.taskId, head);
+        return { scope: "sql", receipt: { protocolVersion: 1, requestId: request.requestId, digest: "b".repeat(64), operation: request.operation, collection, heads: [head], sqlCommitted: true }, rejection: null, current: { collection, heads: [...nativeHeads.values()] } };
+      }
       throw new Error(`Unexpected owned command: ${command}`);
     });
     transport.listen.mockReset().mockResolvedValue(vi.fn());
     vi.spyOn(runtime, "getRuntimeAdapter").mockReturnValue({ ...runtime.tauriRuntimeAdapter,
       getRuntimeInfo: async () => ({ kind: "tauri", label: "Owned desktop fixture" }),
-      loadDesktopData: async () => ({ settings: { ...defaultGlobalSettings(), systemLanguage: language,
-        apiKey: "owned-fictional-session-value", alphaVantageApiKey: "owned-fictional-secondary-value" }, tasks: structuredClone(initial) }),
+      loadDesktopData: async () => {
+        nativeHeads.clear(); initial.forEach((task) => nativeHeads.set(task.id, { taskId: task.id, generation: "1", revision: "1", state: "live" }));
+        return { settings: { ...defaultGlobalSettings(), systemLanguage: language,
+          apiKey: "owned-fictional-session-value", alphaVantageApiKey: "owned-fictional-secondary-value" }, tasks: structuredClone(initial), storage: { collection, heads: [...nativeHeads.values()], legacyTaskImportAllowed: false } };
+      },
     });
     container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
   });
@@ -76,7 +86,7 @@ describe("acknowledged desktop task deletion through the actual provider", () =>
     language = chosen; const id = initial[0].id, pending = deferred(); writes.set(id, pending); await mount();
     const before = snapshot(id), settings = JSON.stringify(center.settings);
     await act(async () => click(id)); await deleting();
-    await act(async () => pending.reject({ code: "analysis_failed", message: "Owned retained backend owner rejects deletion" }));
+    await act(async () => pending.reject({ code: "storage_owned", message: "Owned retained backend owner rejects deletion" }));
     expect(await actions[0]).toBe(false); expect(snapshot(id)).toBe(before); expect(JSON.stringify(center.settings)).toBe(settings);
     expect(container.querySelector(`[data-task="${id}"]`)).not.toBeNull();
     expect(center.notice).toBe(chosen === "en" ? "Deletion could not be confirmed. The task remains in the list; retry deleting it." : "未能确认删除完成。任务暂留在列表中，请重试。");
@@ -84,12 +94,12 @@ describe("acknowledged desktop task deletion through the actual provider", () =>
   it("shares one actual native deletion across two clicks before acknowledgement", async () => {
     const id = initial[0].id, pending = deferred(); writes.set(id, pending); await mount();
     await act(async () => { click(id); click(id); }); await deleting();
-    expect(deletes()).toEqual([["delete_desktop_task", { taskId: id }]]);
+    expect(deletes()).toHaveLength(1); expect(deletes()[0][1].request.expectedHead.taskId).toBe(id); expect(deletes()[0][1].request.operation).toBe("delete");
     await act(async () => pending.resolve()); expect(await Promise.all(actions)).toEqual([true, true]);
   });
   it("allows explicit retry after refusal and removes only after successful retry acknowledgement", async () => {
     const id = initial[0].id, refused = deferred(); writes.set(id, refused); await mount();
-    await act(async () => click(id)); await deleting(); await act(async () => refused.reject(new Error("Owned refusal")));
+    await act(async () => click(id)); await deleting(); await act(async () => refused.reject({ code: "storage_owned", message: "Owned refusal" }));
     expect(await actions[0]).toBe(false); expect(center.tasks.find((task) => task.id === id)).toBeDefined();
     const retry = deferred(); writes.set(id, retry); await act(async () => click(id)); await deleting(2);
     expect(center.tasks.find((task) => task.id === id)).toBeDefined(); await act(async () => retry.resolve());

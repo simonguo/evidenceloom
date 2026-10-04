@@ -17,7 +17,7 @@ export type NumericReviewDraft = {
     contexts: ContextBindings;
     places: number;
 };
-export function useNumericReview(taskId: string, version: ReportVersion, language: SystemLanguage, onSave?: (taskId: string, versionId: string, reviews: NumericReview[]) => Promise<void>) {
+export function useNumericReview(taskId: string, version: ReportVersion, language: SystemLanguage, onSave?: (taskId: string, versionId: string, reviews: NumericReview[], action?: unknown) => Promise<void>, beginReview?: () => unknown) {
     const [state, setState] = useState<{
         version: ReportVersion;
         verified?: ReportVersion;
@@ -27,10 +27,12 @@ export function useNumericReview(taskId: string, version: ReportVersion, languag
     const current = useRef(version);
     current.current = version;
     const generation = useRef(0), zh = language === "zh";
+    const previewAction = useRef<unknown>(undefined);
     useEffect(() => {
         let active = true;
         generation.current++;
         setPreview(null);
+        previewAction.current = undefined;
         setPending(false);
         setMessage("");
         void verifiedNumericExport(taskId, version).then((verified) => { if (active)
@@ -47,6 +49,7 @@ export function useNumericReview(taskId: string, version: ReportVersion, languag
         setMessage("");
         setPreview(null);
         try {
+            const action = beginReview?.();
             const snapshot = frozen.reportTextSnapshot!, section = snapshot.report_sections[draft.sectionKey]!;
             const review = await createNumericReview(snapshot, frozen.evidenceBundle!, {
                 review_id: crypto.randomUUID(), reviewed_at: new Date().toISOString().replace(/([0-9]{3})Z$/, "$1000Z"), previous_review_sha256: frozen.numericReviews?.at(-1)?.review_sha256 ?? null,
@@ -54,8 +57,10 @@ export function useNumericReview(taskId: string, version: ReportVersion, languag
                 numeric_span: structuredClone(draft.numericSpan), operand: { evidence_id: draft.operand.evidenceId, source_index: draft.operand.sourceIndex, selector: structuredClone(draft.operand.selector) },
                 rounding: { mode: "saved_decimal_half_up", places: draft.places }, context_bindings: structuredClone(draft.contexts),
             });
-            if (current.current === version && generation.current === requestGeneration)
+            if (current.current === version && generation.current === requestGeneration) {
+                previewAction.current = action;
                 setPreview(review);
+            }
         }
         catch (error) {
             if (current.current === version && generation.current === requestGeneration)
@@ -73,7 +78,8 @@ export function useNumericReview(taskId: string, version: ReportVersion, languag
         setPending(true);
         setMessage("");
         try {
-            await onSave(taskId, owner.id, [frozen]);
+            if (beginReview) await onSave(taskId, owner.id, [frozen], previewAction.current);
+            else await onSave(taskId, owner.id, [frozen]);
             if (current.current.id === owner.id && generation.current === requestGeneration) {
                 setPreview(null);
                 setMessage(zh ? "数值字段审阅已保存。" : "Saved numeric field review.");
@@ -88,5 +94,5 @@ export function useNumericReview(taskId: string, version: ReportVersion, languag
                 setPending(false);
         }
     }
-    return { verified, reason: state.version === version ? state.reason : undefined, preview, pending, message, compare, save, clearPreview: () => { generation.current++; setPreview(null); } };
+    return { verified, reason: state.version === version ? state.reason : undefined, preview, pending, message, compare, save, clearPreview: () => { generation.current++; previewAction.current = undefined; setPreview(null); } };
 }

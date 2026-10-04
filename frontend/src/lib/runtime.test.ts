@@ -3,6 +3,8 @@ import { defaultAnalysisForm } from "./analysis";
 import { isAnalysisCleanupError } from "./desktop-analysis";
 import { tauriRuntimeAdapter } from "./runtime";
 import type { AnalysisEvent } from "./types";
+import corpus from "../../../tests/fixtures/desktop_task_store_wire_v1.json";
+import { validateRequest } from "@/features/desktop-task-store/lib/protocol";
 
 const tauri = vi.hoisted(() => ({
   invoke: vi.fn<(command: string, args?: Record<string, unknown>) => Promise<unknown>>(),
@@ -214,5 +216,35 @@ describe("Tauri owned analysis lifecycle", () => {
     await tauriRuntimeAdapter.stopAnalysis(taskId); expect(calls("stop_analysis")).toHaveLength(1);
     runId = "owned-after-listener-retry"; tauri.listen.mockResolvedValue(vi.fn()); await tauriRuntimeAdapter.runAnalysis(taskId, payload, vi.fn());
     expect(calls("start_analysis").at(-1)?.[1]).toMatchObject({ runId });
+  });
+});
+
+// Wire transport tests use actual adapter methods and native serialized fixture
+// packets; invoke/listen are fictional and no native application is launched.
+describe("Tauri immutable task mutation transport", () => {
+  beforeEach(() => { Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true }); tauri.invoke.mockReset().mockResolvedValue(undefined); });
+  afterEach(() => { Reflect.deleteProperty(window, "__TAURI_INTERNALS__"); });
+  it.each([
+    ["saveDesktopTask", "save_desktop_task", "create_sql"],
+    ["deleteDesktopTask", "delete_desktop_task", "delete_never_seen_sql"],
+    ["clearDesktopData", "clear_desktop_data", "clear_direct_ack"],
+  ] as const)("passes the exact frozen packet and checks at actual invoke for %s", async (method, command, name) => {
+    const request = validateRequest(JSON.parse(corpus.cases.find((entry) => entry.name === name)!.requestJson));
+    const before = vi.fn(() => { expect(tauri.invoke).not.toHaveBeenCalled(); });
+    await tauriRuntimeAdapter[method](request, before); expect(before).toHaveBeenCalledTimes(1); expect(tauri.invoke).toHaveBeenCalledExactlyOnceWith(command, { request }); expect(tauri.invoke.mock.calls[0][1]?.request).toBe(request);
+  });
+  it("does no mutation command if the final post-import guard rejects ownership", async () => {
+    const request = validateRequest(JSON.parse(corpus.cases[0].requestJson));
+    await expect(tauriRuntimeAdapter.saveDesktopTask(request, () => { throw new Error("owned stale lifetime"); })).rejects.toThrow("owned stale lifetime"); expect(tauri.invoke).not.toHaveBeenCalled();
+  });
+  it("queries the original packet without any write or normalization", async () => {
+    const request = validateRequest(JSON.parse(corpus.cases[0].requestJson)); await tauriRuntimeAdapter.queryDesktopTaskMutation(request);
+    expect(tauri.invoke).toHaveBeenCalledExactlyOnceWith("query_desktop_task_mutation", { request }); expect(tauri.invoke.mock.calls[0][1]?.request).toBe(request);
+  });
+  it("separates settings-only legacy import from task import and does not send a tasks field", async () => {
+    const settings = { ...defaultAnalysisForm(), systemLanguage: "en" as const };
+    await tauriRuntimeAdapter.loadDesktopData({ settings, tasks: [] });
+    expect(tauri.invoke).toHaveBeenCalledExactlyOnceWith("import_legacy_desktop_data", { legacy: { settings } });
+    tauri.invoke.mockClear(); await tauriRuntimeAdapter.loadDesktopData({ tasks: [] }); expect(tauri.invoke).toHaveBeenCalledExactlyOnceWith("load_desktop_data");
   });
 });

@@ -13,8 +13,8 @@ type TaskQueuePanelProps = {
   onRetryCleanup: () => void;
   language: SystemLanguage;
   onStop: () => void;
-  onCancel: (taskId: string) => void;
-  onMove: (taskId: string, direction: "up" | "down") => void;
+  onCancel: (taskId: string, task?: AnalysisTask) => void;
+  onMove: (taskId: string, direction: "up" | "down", task?: AnalysisTask) => void;
 };
 
 export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, stopping, onRetryCleanup, language, onStop, onCancel, onMove }: TaskQueuePanelProps) {
@@ -68,9 +68,9 @@ export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cl
               {task.instrumentName && <div className="mt-0.5 truncate text-xs text-zinc-500">{task.instrumentName}</div>}
             </Link>
             <div className="flex shrink-0 items-center gap-1">
-              <QueueIconButton label={t("moveUp")} disabled={index === 0} onClick={() => onMove(task.id, "up")} icon={<ArrowUp className="size-3.5" />} />
-              <QueueIconButton label={t("moveDown")} disabled={index === queuedTasks.length - 1} onClick={() => onMove(task.id, "down")} icon={<ArrowDown className="size-3.5" />} />
-              <QueueIconButton label={t("cancelQueue")} onClick={() => onCancel(task.id)} icon={<X className="size-3.5" />} danger />
+              <QueueIconButton label={t("moveUp")} disabled={index === 0} onClick={() => onMove(task.id, "up", task)} icon={<ArrowUp className="size-3.5" />} />
+              <QueueIconButton label={t("moveDown")} disabled={index === queuedTasks.length - 1} onClick={() => onMove(task.id, "down", task)} icon={<ArrowDown className="size-3.5" />} />
+              <QueueIconButton label={t("cancelQueue")} onClick={() => onCancel(task.id, task)} icon={<X className="size-3.5" />} danger />
             </div>
           </div>
         ))}

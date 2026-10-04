@@ -4,7 +4,7 @@ import { createTranslator } from "./i18n";
 import { stripSecretFields } from "@/features/persistence/local-storage";
 import type { MemoryInventory } from "@/features/memory/types";
 import { verifyMemoryInventory } from "@/features/memory/lib/validation";
-import { verifyTaskReadiness } from "@/features/research-readiness/lib/validation";
+import type { SnapshotStorage, TaskMutationRequest } from "@/features/desktop-task-store/types";
 import type { AnalysisEvent, AnalysisForm, AnalysisTask, GlobalSettings, OhlcvBar, ResolvedInstrument, SystemLanguage } from "./types";
 
 export type RuntimeKind = "web" | "tauri";
@@ -59,9 +59,10 @@ export type TextExportResult = {
 };
 
 export type DesktopSnapshot = {
-  settings?: GlobalSettings;
+  settings?: GlobalSettings | null;
   tasks: AnalysisTask[];
-  secretMigrationError?: string;
+  secretMigrationError?: string | null;
+  storage?: SnapshotStorage;
 };
 
 export type LegacyDesktopData = {
@@ -77,9 +78,11 @@ export type RuntimeAdapter = {
   deleteProviderSecret: (provider: string) => Promise<void>;
   setAlphaVantageSecret: (provider: string, value: string) => Promise<void>;
   deleteAlphaVantageSecret: (provider: string) => Promise<void>;
-  saveDesktopTask: (task: AnalysisTask) => Promise<void>;
-  deleteDesktopTask: (taskId: string) => Promise<void>;
-  clearDesktopData: () => Promise<void>;
+  saveDesktopTask: (request: TaskMutationRequest, beforeInvoke?: () => void) => Promise<unknown>;
+  deleteDesktopTask: (request: TaskMutationRequest, beforeInvoke?: () => void) => Promise<unknown>;
+  clearDesktopData: (request: TaskMutationRequest, beforeInvoke?: () => void) => Promise<unknown>;
+  importLegacyDesktopTasks: (request: TaskMutationRequest, beforeInvoke?: () => void) => Promise<unknown>;
+  queryDesktopTaskMutation: (request: TaskMutationRequest) => Promise<unknown>;
   saveTextExport: (request: TextExportRequest) => Promise<TextExportResult>;
   runAnalysis: (
     taskId: string,
@@ -119,6 +122,10 @@ export const webRuntimeAdapter: RuntimeAdapter = {
   async deleteDesktopTask() {
   },
   async clearDesktopData() {
+  },
+  async importLegacyDesktopTasks() {
+  },
+  async queryDesktopTaskMutation() {
   },
   async saveTextExport(request) {
     const mimeType = request.format === "html" ? "text/html;charset=utf-8" : request.format === "json" ? "application/json;charset=utf-8" : "text/markdown;charset=utf-8";
@@ -189,8 +196,8 @@ export const tauriRuntimeAdapter: RuntimeAdapter = {
   },
   async loadDesktopData(legacy) {
     const { invoke } = await getTauriApi();
-    if (legacy?.settings || legacy?.tasks?.length) {
-      return await invoke<DesktopSnapshot>("import_legacy_desktop_data", { legacy });
+    if (legacy?.settings) {
+      return await invoke<DesktopSnapshot>("import_legacy_desktop_data", { legacy: { settings: legacy.settings } });
     }
     return await invoke<DesktopSnapshot>("load_desktop_data");
   },
@@ -214,17 +221,29 @@ export const tauriRuntimeAdapter: RuntimeAdapter = {
     const { invoke } = await getTauriApi();
     await invoke("delete_alpha_vantage_secret", { provider });
   },
-  async saveDesktopTask(task) {
+  async saveDesktopTask(request, beforeInvoke) {
     const { invoke } = await getTauriApi();
-    await invoke("save_desktop_task", { task: await verifyTaskReadiness(JSON.parse(JSON.stringify(task)) as AnalysisTask) });
+    beforeInvoke?.();
+    return await invoke("save_desktop_task", { request });
   },
-  async deleteDesktopTask(taskId) {
+  async deleteDesktopTask(request, beforeInvoke) {
     const { invoke } = await getTauriApi();
-    await invoke("delete_desktop_task", { taskId });
+    beforeInvoke?.();
+    return await invoke("delete_desktop_task", { request });
   },
-  async clearDesktopData() {
+  async clearDesktopData(request, beforeInvoke) {
     const { invoke } = await getTauriApi();
-    await invoke("clear_desktop_data");
+    beforeInvoke?.();
+    return await invoke("clear_desktop_data", { request });
+  },
+  async importLegacyDesktopTasks(request, beforeInvoke) {
+    const { invoke } = await getTauriApi();
+    beforeInvoke?.();
+    return await invoke("import_legacy_desktop_tasks", { request });
+  },
+  async queryDesktopTaskMutation(request) {
+    const { invoke } = await getTauriApi();
+    return await invoke("query_desktop_task_mutation", { request });
   },
   async saveTextExport(request) {
     const { invoke } = await getTauriApi();

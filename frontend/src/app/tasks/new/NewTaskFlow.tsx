@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, FileText, Loader2, Search } from "lucide-react";
 import { createTranslator } from "@/lib/i18n";
 import { errorMessage } from "@/lib/errors";
@@ -27,6 +27,8 @@ export function NewTaskFlow() {
   const [draft, setDraft] = useState<NewTaskDraft>(() => defaultTaskDraft());
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false), mountedRef = useRef(true);
+  useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
   const [tickerEdited, setTickerEdited] = useState(false);
   const assetType = detectAssetType(draft.ticker, draft.assetType);
   const runtime = useMemo(() => getRuntimeAdapter(), []);
@@ -72,11 +74,13 @@ export function NewTaskFlow() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
     setErrors([]);
     try {
       const result = await createAndQueueTask(draft);
+      if (!mountedRef.current) return;
       setErrors(result.errors);
       if (result.task) {
         router.push(taskDetailHref(result.task.id));
@@ -85,13 +89,17 @@ export function NewTaskFlow() {
     } catch (error) {
       setErrors([errorMessage(error, t("analysisRequestFailed"))]);
     } finally {
-      setSubmitting(false);
+      submittingRef.current = false;
+      if (mountedRef.current) setSubmitting(false);
     }
   }
 
-  function openFictionalDemo() {
-    const task = createDemoTask();
-    router.push(taskDetailHref(task.id));
+  async function openFictionalDemo() {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    try { const task = await createDemoTask(); if (task && mountedRef.current) router.push(taskDetailHref(task.id)); }
+    finally { submittingRef.current = false; if (mountedRef.current) setSubmitting(false); }
   }
 
   if (step === "search" || step === "resolving" || step === "error") {

@@ -98,6 +98,7 @@ jobs:
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked readiness
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked numeric
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked identity
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked task_mutation
       - name: Seed an owned saved-memory fixture store
         run: |
           uv run --frozen python - <<'PY'

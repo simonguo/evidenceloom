@@ -19,8 +19,13 @@ use crate::{numeric_review as numeric, numeric_review_storage as numeric_store};
 use crate::{research_memory as memory, research_memory_storage as memory_store};
 use crate::{research_readiness as readiness, research_readiness_storage as readiness_store};
 
-const SCHEMA_VERSION: i64 = 10;
+pub mod task_mutation;
+pub use task_mutation::{MutationReply, Packet, QueryReply, StorageError};
+
+const SCHEMA_VERSION: i64 = 11;
 const SECRET_PREFIX: &str = "enc:v1:";
+static DATABASE_OPEN: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static COPY_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -181,23 +186,37 @@ fn non_null_identity_attachment<'de, D: serde::Deserializer<'de>>(
 #[serde(rename_all = "camelCase")]
 pub struct LegacyDesktopData {
     pub settings: Option<Value>,
-    pub tasks: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DesktopSnapshot {
+    pub storage: task_mutation::SnapshotStorage,
     pub settings: Option<PublicSettings>,
     pub tasks: Vec<AnalysisTaskRecord>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub secret_migration_error: Option<String>,
 }
 
-pub fn load_snapshot(app: &AppHandle) -> Result<DesktopSnapshot, String> {
-    let conn = open_database(app)?;
-    let (settings, secret_migration_error) = load_settings_from_conn(app, &conn)?;
-    let tasks = load_tasks_from_conn(&conn)?;
+pub fn load_snapshot(app: &AppHandle) -> Result<DesktopSnapshot, StorageError> {
+    let conn = open_database(app).map_err(StorageError::unavailable)?;
+    let (settings, secret_migration_error) =
+        load_settings_from_conn(app, &conn).map_err(StorageError::unavailable)?;
+    snapshot_from_conn(&conn, settings, secret_migration_error)
+}
+
+fn snapshot_from_conn(
+    conn: &Connection,
+    settings: Option<StoredSettings>,
+    secret_migration_error: Option<String>,
+) -> Result<DesktopSnapshot, StorageError> {
+    let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Deferred)
+        .map_err(StorageError::unavailable)?;
+    let tasks = load_tasks_from_conn(&tx).map_err(StorageError::unavailable)?;
+    let storage = task_mutation::snapshot_storage(&tx, &tasks)?;
+    tx.commit().map_err(StorageError::unavailable)?;
     Ok(DesktopSnapshot {
+        storage,
         settings: settings.map(public_settings),
         tasks,
         secret_migration_error,
@@ -216,96 +235,152 @@ pub fn save_settings(app: &AppHandle, settings: StoredSettings) -> Result<(), St
     Ok(())
 }
 
-pub fn save_task(app: &AppHandle, task: AnalysisTaskRecord) -> Result<(), String> {
-    let mut conn = open_database(app)?;
-    let transaction = conn.transaction().map_err(|error| error.to_string())?;
-    upsert_task(&transaction, &normalize_task(task))?;
-    prune_evidence(&transaction)?;
-    transaction.commit().map_err(|error| error.to_string())
+pub fn parse_request(request: Value, operations: &[&str]) -> Result<Packet, StorageError> {
+    task_mutation::parse(request, operations)
 }
 
-pub fn delete_task(app: &AppHandle, task_id: String) -> Result<(), String> {
-    let conn = open_database(app)?;
-    conn.execute("DELETE FROM tasks WHERE id = ?1", params![task_id])
-        .map_err(|error| error.to_string())?;
-    prune_evidence(&conn)?;
-    Ok(())
+pub fn save_task(app: &AppHandle, request: Value) -> Result<MutationReply, StorageError> {
+    let packet = parse_request(request, &["create", "recreate", "update"])?;
+    mutate_task(app, &packet)
 }
 
-pub fn clear_data(app: &AppHandle) -> Result<(), String> {
-    let conn = open_database(app)?;
-    let current_provider = load_settings_from_conn(app, &conn)?
-        .0
-        .map(|settings| settings.llm_provider);
-    secrets::delete_all_secrets(current_provider.as_deref())?;
-    memory_store::clear(&conn)?;
-    readiness_store::clear(&conn)?;
-    identity_store::clear(&conn)?;
-    numeric_store::clear(&conn)?;
-    conn.execute_batch(
-        "DELETE FROM task_report_versions;
-         DELETE FROM task_reports;
-         DELETE FROM task_logs;
-         DELETE FROM tasks;
-         DELETE FROM evidence_bundle_artifacts;
-         DELETE FROM evidence_bundles;
-         DELETE FROM evidence_artifacts;
-         DELETE FROM settings;",
-    )
-    .map_err(|error| error.to_string())?;
-    Ok(())
+pub fn import_tasks(app: &AppHandle, request: Value) -> Result<MutationReply, StorageError> {
+    let packet = parse_request(request, &["import"])?;
+    mutate_task(app, &packet)
 }
 
-pub fn import_legacy(
+fn mutate_task(app: &AppHandle, packet: &Packet) -> Result<MutationReply, StorageError> {
+    let _coordinator = task_mutation::coordinator();
+    let conn = open_database(app).map_err(StorageError::unavailable)?;
+    task_mutation::execute(&conn, packet)
+}
+
+pub fn replay_task_mutation(
     app: &AppHandle,
-    legacy: LegacyDesktopData,
-) -> Result<DesktopSnapshot, String> {
-    let conn = open_database(app)?;
-    let (current_settings, current_migration_error) = load_settings_from_conn(app, &conn)?;
-    let mut secret_migration_error = current_migration_error;
-    if current_settings.is_none() {
-        if let Some(settings) = legacy.settings {
-            let mut parsed = serde_json::from_value::<StoredSettings>(settings.clone())
-                .map_err(|error| error.to_string())?;
-            match migrate_legacy_secrets(app, &settings, &parsed.llm_provider) {
-                Ok(()) => {
-                    mark_legacy_secret_status(&mut parsed, &settings);
-                    save_settings_to_conn(&conn, &parsed)?;
+    packet: &Packet,
+) -> Result<Option<MutationReply>, StorageError> {
+    let conn = open_database(app).map_err(StorageError::unavailable)?;
+    task_mutation::replay(&conn, packet)
+}
+
+pub fn query_task_mutation(app: &AppHandle, request: Value) -> Result<QueryReply, StorageError> {
+    let packet = parse_request(
+        request,
+        &["create", "recreate", "update", "delete", "import", "clear"],
+    )?;
+    let conn = open_database(app).map_err(StorageError::unavailable)?;
+    task_mutation::query(&conn, &packet)
+}
+
+pub fn reject_owned_task_mutation(
+    app: &AppHandle,
+    packet: &Packet,
+    message: String,
+) -> Result<MutationReply, StorageError> {
+    let _coordinator = task_mutation::coordinator();
+    let conn = open_database(app).map_err(StorageError::unavailable)?;
+    task_mutation::reject_owned(&conn, packet, message)
+}
+
+pub fn delete_task(app: &AppHandle, packet: &Packet) -> Result<MutationReply, StorageError> {
+    mutate_task(app, packet)
+}
+
+pub fn clear_data(app: &AppHandle, packet: &Packet) -> Result<MutationReply, StorageError> {
+    let _coordinator = task_mutation::coordinator();
+    let conn = open_database(app).map_err(StorageError::unavailable)?;
+    task_mutation::clear(&conn, packet, || {
+        // Read only: settings loading can migrate secrets and must not precede the fence.
+        let raw: Option<String> = conn
+            .query_row("SELECT value FROM settings WHERE id='global'", [], |row| {
+                row.get(0)
+            })
+            .optional()
+            .map_err(|e| e.to_string())?;
+        let provider = raw
+            .map(|raw| serde_json::from_str::<StoredSettings>(&raw))
+            .transpose()
+            .map_err(|e| e.to_string())?
+            .map(|s| s.llm_provider);
+        secrets::delete_all_secrets(provider.as_deref())
+    })
+}
+
+fn clear_sql(conn: &Connection) -> Result<(), String> {
+    memory_store::clear(conn)?;
+    readiness_store::clear(conn)?;
+    identity_store::clear(conn)?;
+    numeric_store::clear(conn)?;
+    conn.execute_batch(
+        "DELETE FROM task_report_versions; DELETE FROM task_reports; DELETE FROM task_logs;
+        DELETE FROM tasks; DELETE FROM evidence_bundle_artifacts; DELETE FROM evidence_bundles;
+        DELETE FROM evidence_artifacts; DELETE FROM settings;",
+    )
+    .map_err(|e| e.to_string())
+}
+
+fn settings_only_legacy(legacy: Value) -> Result<LegacyDesktopData, StorageError> {
+    let object = legacy
+        .as_object()
+        .ok_or_else(|| StorageError::invalid("Invalid settings import packet."))?;
+    if object.keys().any(|key| key != "settings") {
+        return Err(StorageError::invalid(
+            "Task import requires a fenced task-only request.",
+        ));
+    }
+    serde_json::from_value(legacy)
+        .map_err(|_| StorageError::invalid("Invalid settings import packet."))
+}
+
+fn with_settings_only_legacy<T>(
+    legacy: Value,
+    apply: impl FnOnce(LegacyDesktopData) -> Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    // Presence, rather than Option decoding, rejects even tasks:null and tasks:[].
+    apply(settings_only_legacy(legacy)?)
+}
+
+pub fn import_legacy(app: &AppHandle, legacy: Value) -> Result<DesktopSnapshot, StorageError> {
+    with_settings_only_legacy(legacy, |legacy| {
+        let conn = open_database(app).map_err(StorageError::unavailable)?;
+        let (current_settings, mut secret_migration_error) =
+            load_settings_from_conn(app, &conn).map_err(StorageError::unavailable)?;
+        if current_settings.is_none() {
+            if let Some(settings) = legacy.settings {
+                let mut parsed = serde_json::from_value::<StoredSettings>(settings.clone())
+                    .map_err(|_| StorageError::invalid("Invalid legacy settings."))?;
+                match migrate_legacy_secrets(app, &settings, &parsed.llm_provider) {
+                    Ok(()) => {
+                        mark_legacy_secret_status(&mut parsed, &settings);
+                        save_settings_to_conn(&conn, &parsed).map_err(StorageError::unavailable)?;
+                    }
+                    Err(error) => secret_migration_error = Some(error),
                 }
-                Err(error) => secret_migration_error = Some(error),
             }
         }
-    }
-
-    if load_tasks_from_conn(&conn)?.is_empty() {
-        if let Some(Value::Array(tasks)) = legacy.tasks {
-            for task_value in tasks {
-                let task = serde_json::from_value::<AnalysisTaskRecord>(task_value)
-                    .map(normalize_task)
-                    .map_err(|error| error.to_string())?;
-                upsert_task(&conn, &task)?;
-            }
+        let (settings, error) =
+            load_settings_from_conn(app, &conn).map_err(StorageError::unavailable)?;
+        if secret_migration_error.is_none() {
+            secret_migration_error = error;
         }
-    }
-
-    let (settings, database_migration_error) = load_settings_from_conn(app, &conn)?;
-    if secret_migration_error.is_none() {
-        secret_migration_error = database_migration_error;
-    }
-    Ok(DesktopSnapshot {
-        settings: settings.map(public_settings),
-        tasks: load_tasks_from_conn(&conn)?,
-        secret_migration_error,
+        snapshot_from_conn(&conn, settings, secret_migration_error)
     })
 }
 
 fn open_database(app: &AppHandle) -> Result<Connection, String> {
+    let _opening = DATABASE_OPEN
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
     let path = database_path(app)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
+    // database_path performs any supported legacy copy before this observation.
+    let pristine = !path.exists();
     let conn = Connection::open(path).map_err(|error| error.to_string())?;
-    initialize_schema(&conn)?;
+    conn.busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|error| error.to_string())?;
+    initialize_schema_with_origin(&conn, pristine)?;
     Ok(conn)
 }
 
@@ -322,16 +397,79 @@ fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
     for legacy in database_migration_candidates(&app_data) {
         if legacy.is_file() {
             fs::create_dir_all(&app_data).map_err(|error| error.to_string())?;
-            fs::copy(&legacy, &database).map_err(|error| {
-                format!(
-                    "Failed to copy the legacy desktop database from {}: {error}",
-                    legacy.to_string_lossy()
-                )
-            })?;
+            copy_legacy_database(&legacy, &database)?;
             break;
         }
     }
     Ok(database)
+}
+
+fn copy_legacy_database(
+    source: &std::path::Path,
+    destination: &std::path::Path,
+) -> Result<(), String> {
+    let parent = destination
+        .parent()
+        .ok_or("Invalid task database destination.")?;
+    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    let mut temporary = None;
+    for _ in 0..128 {
+        let sequence = COPY_SEQUENCE
+            .fetch_update(
+                std::sync::atomic::Ordering::Relaxed,
+                std::sync::atomic::Ordering::Relaxed,
+                |value| value.checked_add(1),
+            )
+            .map_err(|_| "Database copy identity exhausted.")?;
+        let path = parent.join(format!(
+            ".evidenceloom-copy-{}-{sequence}.db",
+            std::process::id()
+        ));
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(file) => {
+                drop(file);
+                temporary = Some(path);
+                break;
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error.to_string()),
+        }
+    }
+    let temporary = temporary.ok_or("Could not reserve a database copy file.")?;
+    struct OwnedCopy(PathBuf);
+    impl Drop for OwnedCopy {
+        fn drop(&mut self) {
+            let _ = fs::remove_file(&self.0);
+        }
+    }
+    let owned = OwnedCopy(temporary);
+    let source = Connection::open_with_flags(source, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .map_err(|e| e.to_string())?;
+    source
+        .busy_timeout(std::time::Duration::from_secs(5))
+        .map_err(|e| e.to_string())?;
+    // SQLite provides a consistent copy, including committed WAL content; do not copy a live main file.
+    source
+        .execute(
+            "VACUUM INTO ?1",
+            [owned.0.to_str().ok_or("Unsupported database copy path.")?],
+        )
+        .map_err(|e| e.to_string())?;
+    // Publish an already migrated/import-closed copy. Another opener must never observe a copied open marker.
+    let copied = Connection::open(&owned.0).map_err(|e| e.to_string())?;
+    initialize_schema_with_origin_kind(&copied, false, true)?;
+    drop(copied);
+    match fs::hard_link(&owned.0, destination) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => Ok(()),
+        Err(error) => Err(format!(
+            "Could not publish the legacy task database: {error}"
+        )),
+    }
 }
 
 fn database_migration_candidates(app_data: &std::path::Path) -> Vec<PathBuf> {
@@ -362,7 +500,68 @@ fn legacy_data_candidates(app_data: &std::path::Path, filename: &str) -> Vec<Pat
     candidates
 }
 
+#[cfg(test)]
 fn initialize_schema(conn: &Connection) -> Result<(), String> {
+    initialize_schema_with_origin(conn, false)
+}
+
+fn initialize_schema_with_origin(conn: &Connection, pristine: bool) -> Result<(), String> {
+    initialize_schema_with_origin_kind(conn, pristine, false)
+}
+
+fn initialize_schema_with_origin_kind(
+    conn: &Connection,
+    pristine: bool,
+    copied: bool,
+) -> Result<(), String> {
+    conn.execute_batch("PRAGMA foreign_keys=ON")
+        .map_err(|e| e.to_string())?;
+    let tx = rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)
+        .map_err(|e| e.to_string())?;
+    let has_migrations: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='schema_migrations')", [], |row|row.get(0)).map_err(|e|e.to_string())?;
+    let previous: Option<i64> = if has_migrations {
+        tx.query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+            row.get(0)
+        })
+        .map_err(|e| e.to_string())?
+    } else {
+        None
+    };
+    if previous.is_some_and(|version| version > SCHEMA_VERSION) {
+        return Err("Task database is newer than this application.".into());
+    }
+    let existing_tables: i64 = tx
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    initialize_tables(&tx)?;
+    let has_metadata: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='task_store_metadata')", [], |row|row.get(0)).map_err(|e|e.to_string())?;
+    if !has_metadata {
+        if previous == Some(SCHEMA_VERSION) {
+            return Err("Task-store authority is missing.".into());
+        }
+        backfill_legacy_report_versions(&tx)?;
+        task_mutation::initialize(&tx, pristine && previous.is_none() && existing_tables == 0)?;
+    }
+    if copied {
+        tx.execute(
+            "UPDATE task_store_metadata SET legacy_import_closed=1 WHERE id=1",
+            [],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    tx.execute(
+        "INSERT OR IGNORE INTO schema_migrations(version) VALUES(?1)",
+        params![SCHEMA_VERSION],
+    )
+    .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())
+}
+
+fn initialize_tables(conn: &Connection) -> Result<(), String> {
     conn.execute_batch(
         "PRAGMA foreign_keys = ON;
          CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -485,12 +684,6 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
         "TEXT",
     )?;
     ensure_column(conn, "task_logs", "agent", "TEXT")?;
-    backfill_legacy_report_versions(conn)?;
-    conn.execute(
-        "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?1)",
-        params![SCHEMA_VERSION],
-    )
-    .map_err(|error| error.to_string())?;
     Ok(())
 }
 
@@ -1599,7 +1792,7 @@ fn validate_numeric_memory_chronology(
     Ok(())
 }
 
-fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+fn validate_task_input(task: &AnalysisTaskRecord) -> Result<(), String> {
     validate_task_identity(task)?;
     validate_task_numeric(task)?;
     validate_task_readiness(task)?;
@@ -1707,6 +1900,11 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             }
         }
     }
+    Ok(())
+}
+
+fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+    validate_task_input(task)?;
     let evidence_hash = task
         .evidence_bundle
         .as_ref()
@@ -2390,7 +2588,7 @@ mod tests {
         .unwrap()
     }
 
-    fn evidence_task_fixture() -> (AnalysisTaskRecord, Value) {
+    pub(super) fn evidence_task_fixture() -> (AnalysisTaskRecord, Value) {
         let bundle: Value =
             serde_json::from_str(include_str!("../../tests/fixtures/evidence_bundle_v1.json"))
                 .unwrap();
@@ -2408,7 +2606,7 @@ mod tests {
         (task, bundle)
     }
 
-    fn memory_task_fixture() -> (AnalysisTaskRecord, Value) {
+    pub(super) fn memory_task_fixture() -> (AnalysisTaskRecord, Value) {
         let bundle = memory::test_support::bundle();
         let evidence = memory::test_support::evidence();
         let snapshot = &bundle["decision_snapshot"];
@@ -2783,7 +2981,7 @@ mod tests {
         }
     }
 
-    fn numeric_task_fixture() -> (AnalysisTaskRecord, Value) {
+    pub(super) fn numeric_task_fixture() -> (AnalysisTaskRecord, Value) {
         let fixture = numeric::test_support::fixture();
         let snapshot = fixture["snapshot"].clone();
         let evidence = fixture["evidence"].clone();
@@ -3126,7 +3324,7 @@ mod tests {
         assert_eq!(links, fixture["reviews"].as_array().unwrap().len() as i64);
     }
 
-    fn readiness_task_fixture() -> AnalysisTaskRecord {
+    pub(super) fn readiness_task_fixture() -> AnalysisTaskRecord {
         let receipt = readiness::test_support::receipt();
         let evidence = readiness::test_support::evidence();
         let reports =
