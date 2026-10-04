@@ -6,3 +6,4 @@
 /pyproject.toml text eol=lf
 /uv.lock text eol=lf
 /tests/fixtures/public_sources/**/raw.json -text
+/tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json -text whitespace=cr-at-eol
