@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-10-04T00:55:15.806400+00:00",
+  "observed_at": "2026-10-04T01:16:38.710094+00:00",
   "base_revision": "acba825011373c82828cc785d15a3559a0423cdf",
   "components": {
     "uv.lock": "1a6b236ba8ef62b230c1e3d7dc055122334905609a2d11cdaf55c34f3e50075b",
     "frontend/package.json": "5b901a7a5f3f254bb64385f784dc2bd0d9983421a5ebe3a2e1317f442267b356",
     "frontend/package-lock.json": "49ebbdecb64fa39974a1946a66b2d93b2a0d4a751b45a6b69bf5994c3b0cf9e4",
-    ".github/workflows/security.yml": "833ac4103954e26abc81a9625e25eb7dfcd99ce08988dda2535db154d628b8c3",
-    "scripts/check_frontend_audit.py": "b7240779ebc8f16c59007d3a386925851becf4e0b8e838e037882045e2fdbc2f",
-    "tests/test_frontend_audit.py": "b31db01ab6237ebbfcefc2a7864370b8cde204d7428360689d954de29e422ea0",
+    ".github/workflows/security.yml": "0ff5885475f602872ddef6674d346a057e3d15a040e696136ea2daa432681d2d",
+    "scripts/check_frontend_audit.py": "27a4b6a79ebe67bf8135ecc1b801f42b042f912c4295f17dd2ac98af20b8b1d3",
+    "tests/test_frontend_audit.py": "8ae976c6bb66dc87d1cd0cd394416ea58472b27414c3956c03ab7f6f24cfa065",
     "THIRD_PARTY_NOTICES.md": "509e8c148c4fdf77695d88c49e943f9d6c9448f238c05bff8b8cbb2aef5805bf"
   },
   "python": {
@@ -20,7 +20,7 @@
       "warnings": 8,
       "seconds": 144.05
     },
-    "audit_gate_tests_passed": 35,
+    "audit_gate_tests_passed": 48,
     "frozen_install": true,
     "ruff_check": true,
     "ruff_format": true,
@@ -154,6 +154,67 @@
       "report_sha256": "b7cc54e20beef5ecd540d3fc30e8a69c8b5b6db13670473fadc35057542ae569"
     },
     "final_full_audit": {
+      "observed_at": "2026-10-04T01:10:02.414062Z",
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 8,
+          "critical": 0,
+          "total": 8
+        },
+        "dependencies": {
+          "prod": 155,
+          "dev": 475,
+          "optional": 104,
+          "peer": 19,
+          "peerOptional": 0,
+          "total": 668
+        }
+      },
+      "affected_entries": [
+        "@next/eslint-plugin-next",
+        "@tailwindcss/typography",
+        "braces",
+        "chokidar",
+        "eslint-config-next",
+        "fast-glob",
+        "micromatch",
+        "tailwindcss"
+      ],
+      "unique_advisories": [
+        "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+      ],
+      "report_sha256": "152d5bc24e35cd5f476e68c8f144bf7d299c241a181a1ab3aa207d451cbc57fb"
+    },
+    "final_production_audit": {
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 155,
+          "dev": 475,
+          "optional": 104,
+          "peer": 19,
+          "peerOptional": 0,
+          "total": 668
+        }
+      },
+      "affected_entries": [],
+      "unique_advisories": [],
+      "report_sha256": "2c53040a555afa20a336ed66956ce3e4405536bb74a7e95be1c1a6acbfcb3ccc"
+    },
+    "known_unresolved_advisory": "GHSA-vfj7-8cjw-p6xm",
+    "gate_baseline_rejected": true,
+    "gate_final_explicit_exception": true,
+    "initial_final_full_audit": {
       "metadata": {
         "vulnerabilities": {
           "info": 0,
@@ -186,32 +247,39 @@
       ],
       "report_sha256": "72b1f79d2784898b4775d36c6a2bede7db1eb4958f1ac1dfa54a3262d584455f"
     },
-    "final_production_audit": {
-      "metadata": {
-        "vulnerabilities": {
-          "info": 0,
-          "low": 0,
-          "moderate": 0,
-          "high": 0,
-          "critical": 0,
-          "total": 0
-        },
-        "dependencies": {
-          "prod": 155,
-          "dev": 475,
-          "optional": 104,
-          "peer": 19,
-          "peerOptional": 0,
-          "total": 668
-        }
+    "audit_scope": {
+      "required_command": "npm audit --include=dev --include=optional --include=peer --json",
+      "dependency_metadata_attests_scope": false,
+      "adverse_environment": {
+        "NODE_ENV": "production",
+        "npm_config_omit": "dev"
       },
-      "affected_entries": [],
-      "unique_advisories": [],
-      "report_sha256": "2c53040a555afa20a336ed66956ce3e4405536bb74a7e95be1c1a6acbfcb3ccc"
+      "npm_version": "11.6.2",
+      "local_node_version": "v24.12.0",
+      "npm_exit_code": 1,
+      "default_full_control_report_sha256": "152d5bc24e35cd5f476e68c8f144bf7d299c241a181a1ab3aa207d451cbc57fb",
+      "byte_identical_to_default_full_control": true,
+      "same_dependency_metadata_as_omit_dev": true,
+      "pre_review_gate_rejected_eighth_entry": true,
+      "reviewed_typography_instance": "node_modules/@tailwindcss/typography@0.5.20",
+      "reviewed_typography_edge": "peerDependencies.tailwindcss",
+      "scope_proof_sha256": "1368221b2c8e8908ef3c5fd6b111f0b9cf231d8aecb4abc635f22830ff058c48",
+      "official_documentation": "https://docs.npmjs.com/cli/v11/commands/npm-audit/#include",
+      "pinned_npm_source_confirms_include_wins": true,
+      "independent_post_review_sha256": "0cfbef5547eff29aa08d7fdade70080b120d3e3723d6539839defce42ca51485",
+      "independent_mutation_rejections": 11,
+      "post_review_complete_audit_gate_passed": true
     },
-    "known_unresolved_advisory": "GHSA-vfj7-8cjw-p6xm",
-    "gate_baseline_rejected": true,
-    "gate_final_explicit_exception": true
+    "reviewed_exception_graphs": [
+      {
+        "vulnerable_packages": 7,
+        "reviewed_lock_instances": 8
+      },
+      {
+        "vulnerable_packages": 8,
+        "reviewed_lock_instances": 9
+      }
+    ]
   },
   "sidecar": {
     "observed_at": "2026-10-04T00:53:00.067379+00:00",
@@ -372,7 +440,8 @@
     "Next 15.5.27 and 16.3.8 retain separately vendored legacy Browserslist behaviors; no production HTTP path demonstrated.",
     "macOS Intel cryptography source-build success does not restore upstream support removed in49.",
     "Source-build OpenSSL3.6.1 differs from official wheel OpenSSL4.0.3.",
-    "Complete web research backend clean-install, real proxy/provider interoperability, signing and OS dependency auditing remain open."
+    "Complete web research backend clean-install, real proxy/provider interoperability, signing and OS dependency auditing remain open.",
+    "Audit JSON dependency counts do not attest full inclusion scope; the trusted explicit command is required."
   ],
   "native_candidate_ci": "required PR checks pending when this local record was written",
   "provider_requests": 0,

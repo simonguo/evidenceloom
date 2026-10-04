@@ -1,4 +1,4 @@
-"""Offline npm v2 cases based on the observed seven-package braces exception."""
+"""Offline npm v2 cases for the observed seven/eight-package braces exception variants."""
 
 import copy
 import json
@@ -123,6 +123,7 @@ def test_reviewed_exception_is_explicitly_unresolved(inputs):
     assert result == {
         "status": "unresolved_development_exception",
         "vulnerable_packages": 7,
+        "reviewed_lock_instances": 8,
         "unresolved_advisory": "GHSA-vfj7-8cjw-p6xm",
     }
 
@@ -195,6 +196,97 @@ def test_incomplete_and_unreviewed_reports_fail_closed(inputs, change):
         report["auditReportVersion"] = 3
     else:
         report = {"error": {"code": "ECONNREFUSED", "summary": "private endpoint"}}
+    with pytest.raises(FrontendAuditError):
+        validate_audit(report, lock)
+
+
+@pytest.fixture
+def inputs_eight(inputs):
+    report, lock = inputs
+    name = "@tailwindcss/typography"
+    lock["packages"][""]["devDependencies"][name] = "^0.5.16"
+    lock["packages"]["node_modules/@tailwindcss/typography"] = {
+        "version": "0.5.20",
+        "dev": True,
+        "peerDependencies": {"tailwindcss": ">=3.0.0 || >=4.0.0 || insiders"},
+    }
+    report["vulnerabilities"][name] = {
+        "name": name,
+        "severity": "high",
+        "isDirect": True,
+        "via": ["tailwindcss"],
+        "effects": [],
+        "range": "<=0.0.0-insiders.fda8ce5 || >=0.5.0-alpha.1",
+        "nodes": ["node_modules/@tailwindcss/typography"],
+        "fixAvailable": {"name": name, "version": "0.4.1", "isSemVerMajor": True},
+    }
+    report["vulnerabilities"]["tailwindcss"]["effects"] = [name]
+    report["metadata"]["vulnerabilities"].update(high=8, total=8)
+    report["metadata"]["dependencies"].update(dev=9, total=9)
+    return report, lock
+
+
+def test_eighth_name_requires_exact_reviewed_peer_instance(inputs_eight):
+    report, lock = inputs_eight
+    result = validate_audit(report, lock)
+    assert result["status"] == "unresolved_development_exception"
+    assert result["vulnerable_packages"] == 8
+    assert result["reviewed_lock_instances"] == 9
+    assert result["unresolved_advisory"] == "GHSA-vfj7-8cjw-p6xm"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "missing_peer",
+        "ordinary_dependency",
+        "changed_peer",
+        "changed_version",
+        "runtime",
+        "not_direct",
+        "unknown_leaf",
+        "missing_effect",
+        "extra_effect",
+        "different_via",
+        "different_range",
+        "mixed_seven",
+    ],
+)
+def test_typography_does_not_become_a_blanket_exception(inputs_eight, change):
+    report, lock = inputs_eight
+    name = "@tailwindcss/typography"
+    package = lock["packages"]["node_modules/@tailwindcss/typography"]
+    finding = report["vulnerabilities"][name]
+    if change == "missing_peer":
+        package.pop("peerDependencies")
+    elif change == "ordinary_dependency":
+        package["dependencies"] = package.pop("peerDependencies")
+    elif change == "changed_peer":
+        package["peerDependencies"]["tailwindcss"] = "*"
+    elif change == "changed_version":
+        package["version"] = "0.5.21"
+    elif change == "runtime":
+        package["dev"] = False
+        report["metadata"]["dependencies"].update(prod=2, dev=8)
+    elif change == "not_direct":
+        del lock["packages"][""]["devDependencies"][name]
+        finding["isDirect"] = False
+    elif change == "unknown_leaf":
+        leaf = copy.deepcopy(report["vulnerabilities"]["braces"]["via"][0])
+        leaf["url"] = "https://github.com/advisories/GHSA-xxxx-yyyy-zzzz"
+        finding["via"].append(leaf)
+    elif change == "missing_effect":
+        report["vulnerabilities"]["tailwindcss"]["effects"] = []
+    elif change == "extra_effect":
+        finding["effects"] = ["tailwindcss"]
+    elif change == "different_via":
+        finding["via"] = ["braces"]
+    elif change == "different_range":
+        finding["range"] = "*"
+    else:
+        del report["vulnerabilities"][name]
+        report["metadata"]["vulnerabilities"].update(high=7, total=7)
+        # The eighth-name effects attribution must not be accepted without it.
     with pytest.raises(FrontendAuditError):
         validate_audit(report, lock)
 

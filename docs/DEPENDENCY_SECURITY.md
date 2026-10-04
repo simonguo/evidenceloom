@@ -18,7 +18,7 @@ Reviewed on 2026-10-04. This record distinguishes registry audits, bundled code,
 
 Browserslist also requires the supporting data updates `caniuse-lite` 1.0.30001806, `electron-to-chromium` 1.5.393 and `node-releases` 2.0.51. The first is shared with production dependencies. Other Python package records and unrelated npm package versions remain unchanged. Next.js and Tailwind remain at their existing versions.
 
-The fresh Python runtime requirements audit found five unique advisory IDs across three packages before the updates and none afterward. Its raw baseline output contains six findings because one cryptography advisory appears twice. The fresh full npm audit changed from 14 affected package entries to seven, and from 27 unique advisory URLs to one. Earlier observations reported 15 entries for the same original lockfile: npm also attributed the Tailwind chain to `@tailwindcss/typography` at that time. That changing attribution was not a package update. Both fresh npm production-only audits reported zero findings.
+The fresh Python runtime requirements audit found five unique advisory IDs across three packages before the updates and none afterward. Its raw baseline output contains six findings because one cryptography advisory appears twice. The initial full npm measurements changed from 14 affected package entries to seven, and from 27 unique advisory URLs to one. A later explicit complete audit reported eight entries for the same patched lockfile because npm again attributed the Tailwind chain to `@tailwindcss/typography`; an ordinary full audit produced a byte-identical report. Earlier observations likewise reported 15 entries for the original lockfile. These attribution changes were not package updates or additional advisories. Both fresh npm production-only audits reported zero findings.
 
 ## Open exceptions
 
@@ -26,9 +26,11 @@ The fresh Python runtime requirements audit found five unique advisory IDs acros
 
 `braces` 3.0.3 still has the [deep-recursion denial-of-service advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm). No patched release was available at review time; the [upstream issue](https://github.com/micromatch/braces/issues/70) remains the reference for a fix.
 
-The seven npm entries are `braces`, `chokidar`, `micromatch`, `fast-glob`, `@next/eslint-plugin-next`, `eslint-config-next`, and `tailwindcss`. All affected locked instances are development dependencies. Ordinary tests use `vitest run`; no test API/UI listener is enabled. Project lint/build patterns come from repository configuration. This exception does not establish that untrusted patterns are safe.
+The seven core npm entries are `braces`, `chokidar`, `micromatch`, `fast-glob`, `@next/eslint-plugin-next`, `eslint-config-next`, and `tailwindcss`. The reviewed eighth-entry variant adds only `@tailwindcss/typography` 0.5.20 through its locked Tailwind peer dependency. All affected locked instances are development dependencies. Ordinary tests use `vitest run`; no test API/UI listener is enabled. Project lint/build patterns come from repository configuration. This exception does not establish that untrusted patterns are safe.
 
-The full-audit checker permits only this exact reviewed advisory and locked development chain. New advisories, runtime nodes, altered versions or graph edges, malformed reports, and incomplete dependency references fail the check. A future attribution or dependency change requires renewed review. The independent production audit keeps its existing threshold. The exception remains an unresolved finding.
+The full-audit checker permits only this exact reviewed advisory and the two observed development-chain shapes. The eighth-entry variant requires the exact typography version, its locked peer edge and the matching Tailwind effect; these cannot be mixed with the seven-entry shape. New advisories, runtime nodes, altered versions or graph edges, malformed reports, and incomplete dependency references fail the check. Any other attribution or dependency change requires renewed review. The independent production audit keeps its existing threshold. The exception remains an unresolved finding.
+
+The JSON report does not attest which dependency types npm audited. In particular, full and production-only reports can contain identical dependency counts. A coherent zero-findings report is accepted to support a future complete audit after fixes; its shape and lockfile consistency alone do not establish complete audit coverage. The trusted workflow invocation explicitly includes development, optional and peer dependencies, overriding omission settings such as `NODE_ENV=production` or `npm_config_omit=dev`.
 
 ### Next.js vendored Browserslist
 
@@ -50,9 +52,11 @@ uvx --from pip-audit==2.10.1 pip-audit \
   --requirement /tmp/evidenceloom-runtime-requirements.txt
 ```
 
-For the full frontend report, preserve npm's exit status and JSON as shown in the Security workflow, then run:
+For the full frontend report, explicitly include all dependency types. Preserve npm's exit status as shown in the Security workflow; exit 1 means findings and still requires the checker, while other nonzero statuses are errors:
 
 ```bash
+npm --prefix frontend audit --include=dev --include=optional --include=peer --json \
+  > /tmp/evidenceloom-frontend-audit.json
 python3 scripts/check_frontend_audit.py \
   --report /tmp/evidenceloom-frontend-audit.json \
   --lock frontend/package-lock.json

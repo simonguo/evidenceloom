@@ -1,8 +1,12 @@
 """Fail-closed npm audit gate with one reviewed, unresolved development exception.
 
-Run after npm ci and a fresh npm audit --json. This checks the report's consistency
-with package-lock.json, not registry authenticity or the absence of unreported bugs.
-The independent npm audit --omit-dev gate remains required.
+After npm ci, require a fresh report from this exact trusted full-audit invocation:
+npm audit --include=dev --include=optional --include=peer --json
+
+This checks report/lock/count consistency, not included dependency scope: an
+omit-dev report can have the same metadata counts as a full report. The trusted
+invocation supplies the scope guarantee. Registry authenticity and unreported
+bugs are outside this check. The independent npm audit --omit=dev gate is required.
 """
 
 from __future__ import annotations
@@ -20,6 +24,10 @@ ADVISORY = "GHSA-vfj7-8cjw-p6xm"
 ADVISORY_URL = f"https://github.com/advisories/{ADVISORY}"
 SEVERITIES = ("info", "low", "moderate", "high", "critical")
 MAX_BYTES = 16 * 1024 * 1024
+TYPOGRAPHY = "@tailwindcss/typography"
+TYPOGRAPHY_NODE = "node_modules/@tailwindcss/typography"
+TYPOGRAPHY_RANGE = "<=0.0.0-insiders.fda8ce5 || >=0.5.0-alpha.1"
+TYPOGRAPHY_PEER = ">=3.0.0 || >=4.0.0 || insiders"
 
 # Exact reviewed instances, not blanket package-name or semver exemptions.
 INSTANCES = {
@@ -228,7 +236,16 @@ def _resolved_dependency(packages: dict[str, Any], parent: str, name: str) -> st
         parent = parent.rsplit("/node_modules/", 1)[0] if "/node_modules/" in parent else ""
 
 
-def _fix(value: Any) -> None:
+def _fix(value: Any, name: str) -> None:
+    if name == TYPOGRAPHY:
+        _keys(value, {"name", "version", "isSemVerMajor"})
+        _require(
+            value["name"] == TYPOGRAPHY
+            and value["version"] == "0.4.1"
+            and value["isSemVerMajor"] is True,
+            "Unreviewed typography fix metadata.",
+        )
+        return
     if type(value) is bool:
         return
     _keys(value, {"name", "version", "isSemVerMajor"})
@@ -256,10 +273,29 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
     _metadata(report, packages)
     findings = report["vulnerabilities"]
     if not findings:
-        return {"status": "clear", "vulnerable_packages": 0, "unresolved_advisory": None}
-    _require(set(findings) == set(VIA), "Findings differ from the reviewed exception chain.")
-    observed = {node for node in packages if node and node.rsplit("node_modules/", 1)[-1] in VIA}
-    _require(observed == set(INSTANCES), "Lock instances differ from the reviewed exception.")
+        return {
+            "status": "clear",
+            "vulnerable_packages": 0,
+            "reviewed_lock_instances": 0,
+            "unresolved_advisory": None,
+        }
+    # Registry metavulnerability attribution has produced exactly these two
+    # reviewed shapes. Select a whole graph, never optional names/effects/edges.
+    _require(
+        set(findings) in (set(VIA), set(VIA) | {TYPOGRAPHY}),
+        "Findings differ from the reviewed exception chain.",
+    )
+    via_graph, effects, instances, ranges = dict(VIA), dict(EFFECTS), dict(INSTANCES), dict(RANGES)
+    if TYPOGRAPHY in findings:
+        via_graph[TYPOGRAPHY] = {"tailwindcss"}
+        effects[TYPOGRAPHY] = set()
+        effects["tailwindcss"] = {TYPOGRAPHY}
+        instances[TYPOGRAPHY_NODE] = (TYPOGRAPHY, "0.5.20")
+        ranges[TYPOGRAPHY] = TYPOGRAPHY_RANGE
+    observed = {
+        node for node in packages if node and node.rsplit("node_modules/", 1)[-1] in via_graph
+    }
+    _require(observed == set(instances), "Lock instances differ from the reviewed exception.")
     root = packages[""]
     # Validate referenced node lists before following edges. JSON object order
     # must not turn a malformed downstream finding into a raw exception.
@@ -270,22 +306,23 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
         )
         _require(_strings(finding["nodes"]), "Unsupported vulnerability nodes.")
     for name, finding in findings.items():
-        nodes = {node for node, instance in INSTANCES.items() if instance[0] == name}
+        nodes = {node for node, instance in instances.items() if instance[0] == name}
         direct = name in root.get("devDependencies", {})
         _require(
             finding["name"] == name
             and finding["severity"] == "high"
             and type(finding["isDirect"]) is bool
             and finding["isDirect"] == direct
+            and (name != TYPOGRAPHY or direct)
             and name not in root.get("dependencies", {})
             and name not in root.get("optionalDependencies", {})
             and name not in root.get("peerDependencies", {})
-            and finding["range"] == RANGES[name]
+            and finding["range"] == ranges[name]
             and set(finding["nodes"]) == nodes,
             "Unreviewed vulnerability or runtime instance.",
         )
         _require(
-            _strings(finding["effects"]) and set(finding["effects"]) == EFFECTS[name],
+            _strings(finding["effects"]) and set(finding["effects"]) == effects[name],
             "Incomplete vulnerability effects graph.",
         )
         via = finding["via"]
@@ -295,23 +332,25 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
             _advisory(via[0])
         else:
             _require(
-                _strings(via) and set(via) == VIA[name],
+                _strings(via) and set(via) == via_graph[name],
                 "Incomplete or unreviewed vulnerability references.",
             )
-        _fix(finding["fixAvailable"])
+        _fix(finding["fixAvailable"], name)
         for node in nodes:
             package = packages[node]
             _require(
-                package.get("version") == INSTANCES[node][1]
+                package.get("version") == instances[node][1]
                 and package.get("name", name) == name
                 and package.get("dev") is True
                 and package.get("devOptional") is not True,
                 "Unreviewed lock version or runtime instance.",
             )
-            for dependency in VIA[name]:
+            for dependency in via_graph[name]:
+                group = "peerDependencies" if name == TYPOGRAPHY else "dependencies"
                 _require(
-                    type(package.get("dependencies")) is dict
-                    and type(package["dependencies"].get(dependency)) is str
+                    type(package.get(group)) is dict
+                    and type(package[group].get(dependency)) is str
+                    and (name != TYPOGRAPHY or package[group][dependency] == TYPOGRAPHY_PEER)
                     and _resolved_dependency(packages, node, dependency)
                     in findings[dependency]["nodes"],
                     "Vulnerability references do not match locked dependency edges.",
@@ -319,13 +358,22 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
     return {
         "status": "unresolved_development_exception",
         "vulnerable_packages": len(findings),
+        "reviewed_lock_instances": len(instances),
         "unresolved_advisory": ADVISORY,
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--report", required=True, type=Path)
+    parser.add_argument(
+        "--report",
+        required=True,
+        type=Path,
+        help=(
+            "Fresh JSON from trusted npm audit --include=dev --include=optional "
+            "--include=peer --json; report metadata cannot attest included scope."
+        ),
+    )
     parser.add_argument("--lock", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
@@ -338,7 +386,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(
             f"Frontend audit accepted with UNRESOLVED development exception {ADVISORY}: "
-            "7 vulnerable package names, 8 reviewed dev-only lock instances. "
+            f"{result['vulnerable_packages']} vulnerable package names, "
+            f"{result['reviewed_lock_instances']} reviewed dev-only lock instances. "
             "This is not zero vulnerabilities; the separate production audit is still required."
         )
     return 0

@@ -6,20 +6,22 @@ This candidate is based on `acba825011373c82828cc785d15a3559a0423cdf`. It update
 | --- | --- |
 | Independent frozen Python 3.10 install | Passed; cryptography 50.0.2 built from source on x86_64 macOS |
 | Existing complete offline Python suite | 1,043 passed, 75 subtests passed, 1 integration case deselected; eight existing model-name warnings; 144.05 seconds |
-| New frontend audit gate cases | 35 passed; new advisories, runtime nodes, broken references, altered counts, malformed JSON and registry errors rejected |
+| New frontend audit gate cases | 48 passed; new advisories, runtime nodes, broken references, altered counts, malformed JSON and registry errors rejected |
 | Python lint, formatting and lock check | Passed |
 | Offline dependency compatibility | RSA/EC google-auth PEM signing and verification, valid chunk reading, oversized chunk-line rejection, SQLite sibling/literal-percent namespace isolation passed |
 | Runtime requirements audit | Three affected packages and five unique advisory IDs before updates; zero reported afterward |
 | Fresh independent npm install | Passed; node_modules is a real directory, separate from existing worktrees |
 | Frontend tests and checks | 288 tests across 24 files, typecheck and full ESLint passed |
 | Frontend builds | Normal standalone and Tauri static modes passed |
-| npm full audit | 14 affected entries / 27 unique advisory URLs before patches; seven entries / one unresolved advisory afterward |
+| npm full audit | Initial measurements: 14 affected entries / 27 unique advisory URLs before patches, seven entries / one advisory afterward. Later explicit complete audit: eight entries / the same one advisory through a reviewed typography peer attribution |
 | npm production-only audit | Zero findings before and after |
-| Full-audit gate against actual reports | Original baseline rejected; final report accepted only with an explicit unresolved braces exception; zero report accepted |
+| Full-audit gate against actual reports | Original baseline rejected; explicit complete audit accepted only with an unresolved braces exception; zero report accepted, with audit scope supplied by the trusted command |
 | Third-party notices | Regenerated for the 20 changed package versions; second generation unchanged |
 | Actual local packaged sidecar | Architecture, bootstrap and research-runtime gates passed; embedded versions and compiled/readable sources checked |
 | Local server listeners | `dev` and `start` bound only to 127.0.0.1; both 127.0.0.1 and localhost HTTP requests passed |
 | Relocated standalone JavaScript output | Home page and 13 referenced assets returned 200; two empty-input API requests returned the expected 400 before Python work |
+
+The later complete npm audit explicitly included development, optional and peer dependencies under `NODE_ENV=production` and `npm_config_omit=dev`. It found the same single unresolved braces advisory with an eighth propagated package, `@tailwindcss/typography` 0.5.20. A control ordinary full audit returned a byte-identical report, confirming registry attribution drift rather than an inclusion-flag difference. The original seven-entry gate rejected the new shape before review. Both exact observed shapes are now reviewed; arbitrary extra findings remain errors. Full and production-only JSON dependency counts are identical, so report metadata does not attest audit scope. The trusted invocation supplies that scope, including for a future zero-findings report.
 
 The full-suite tool output was observed but was not saved as a complete standalone log. The machine record retains the command/results and final component hashes. Additional audit-gate tests were run after that complete suite; final required CI supplies the combined suite and platform results. Neither validation sequence used market providers or model APIs.
 
