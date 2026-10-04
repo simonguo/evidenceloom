@@ -259,6 +259,7 @@ export const tauriRuntimeAdapter: RuntimeAdapter = {
         }
       });
 
+      if (aborted || signal?.aborted) throw abortError();
       await invoke("start_analysis", {
         taskId,
         payloadJson: JSON.stringify(stripSecretFields(payload)),
