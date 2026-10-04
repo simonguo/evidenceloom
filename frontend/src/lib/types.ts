@@ -1,3 +1,4 @@
+import type { EffectiveRequestIdentity, IdentityValidation } from "@/features/source-identity/types";
 import type { NumericReview, NumericValidation, ReportTextSnapshot } from "@/features/numeric-review/types";
 import type { OutputQuality } from "@/features/output-quality/types";
 import type { EvidenceBundle, EvidenceValidation } from "@/features/evidence/types";
@@ -154,6 +155,8 @@ export type ReportVersion = {
   readinessValidation?: ReadinessValidation;
   reportTextSnapshot?: ReportTextSnapshot;
   numericValidation?: NumericValidation;
+  effectiveRequestIdentity?: EffectiveRequestIdentity;
+  identityValidation?: IdentityValidation;
   evaluationReviews: ReviewAttachment[];
 };
 
@@ -190,6 +193,8 @@ export type AnalysisTask = {
   readinessValidation?: ReadinessValidation;
   reportTextSnapshot?: ReportTextSnapshot;
   numericValidation?: NumericValidation;
+  effectiveRequestIdentity?: EffectiveRequestIdentity;
+  identityValidation?: IdentityValidation;
   evaluationReviews: ReviewAttachment[];
   reportVersions: ReportVersion[];
   logs: LogEntry[];
@@ -239,6 +244,7 @@ export type AnalysisEvent = {
   error?: string;
   researchReadiness?: ResearchReadiness;
   reportTextSnapshot?: ReportTextSnapshot;
+  effectiveRequestIdentity?: EffectiveRequestIdentity;
   agent?: string;
 };
 

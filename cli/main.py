@@ -674,6 +674,7 @@ def get_analysis_date():
 
 def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()):
     """Save complete analysis report to disk with organized subfolders."""
+    from tradingagents.agents.utils.rating import normalize_rating
     from tradingagents.research.numeric_review import (
         REPORT_SECTION_KEYS,
         NumericReviewError,
@@ -681,12 +682,18 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()
         validate_report_text_snapshot,
     )
 
+    from tradingagents.research.effective_request_identity import (
+        POLICY_SHA256,
+        EffectiveRequestIdentityError,
+        validate_effective_request_identity,
+    )
+
     snapshot = None
     if final_state.get("report_text_snapshot"):
         snapshot = validate_report_text_snapshot(
             final_state["report_text_snapshot"], final_state["evidence_bundle"]
         )
-        if snapshot["report_sections"] != {
+        if ticker != snapshot["instrument"] or snapshot["report_sections"] != {
             key: final_state.get(key) for key in REPORT_SECTION_KEYS
         }:
             raise NumericReviewError()
@@ -703,6 +710,26 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()
                 < utc_timestamp(memory["decision_snapshot"]["decision"]["recorded_at"])
             ):
                 raise NumericReviewError()
+    assessment = None
+    manifest = final_state.get("evidence_bundle", {}).get("manifest", {})
+    marker = manifest.get("effective_request_identity_policy_sha256")
+    if "effective_request_identity_policy_sha256" in manifest and (
+        marker != POLICY_SHA256 or "effective_request_identity" not in final_state
+    ):
+        raise EffectiveRequestIdentityError()
+    if "effective_request_identity" in final_state:
+        assessment = validate_effective_request_identity(
+            final_state["effective_request_identity"],
+            final_state["evidence_bundle"],
+            final_state.get("report_text_snapshot"),
+        )
+        if (
+            marker is not None
+            and assessment["summary"]["unsafe_record_ids"]
+            and "final_rating" in final_state
+            and normalize_rating(final_state["final_rating"]) != "REVIEW"
+        ):
+            raise EffectiveRequestIdentityError()
     final_state = public_report_copy(final_state, secrets=secrets)
     if snapshot is not None and snapshot["report_sections"] != {
         key: final_state.get(key) for key in REPORT_SECTION_KEYS
@@ -814,6 +841,19 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()
         write_utf8(
             save_path / "report_text_snapshot.json",
             json.dumps(snapshot, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+    if assessment is not None:
+        import json
+
+        # This dated request assessment preserves the original report and prior receipts.
+        write_utf8(
+            save_path / "effective_request_identity.json",
+            json.dumps(assessment, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+        header += (
+            "Saved effective outer-request alignment (provider request/entity remain unknown):\n\n```json\n"
+            + json.dumps(assessment, ensure_ascii=False, sort_keys=True, indent=2)
+            + "\n```\n\n"
         )
     write_utf8(save_path / "complete_report.md", header + "\n\n".join(sections))
     return save_path / "complete_report.md"

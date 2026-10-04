@@ -130,6 +130,7 @@ def test_relocated_memory_store_cannot_publish_retry_before_new_recorded_decisio
     # report sections and research input, but neither completion attachment.
     retry.pop("memory_bundle")
     retry.pop("report_text_snapshot")
+    retry.pop("effective_request_identity")
     later = (
         (utc_timestamp(first["captured_at"]) + timedelta(seconds=1))
         .isoformat(timespec="microseconds")

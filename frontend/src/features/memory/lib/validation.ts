@@ -50,9 +50,10 @@ function normalized<T extends Partial<MemoryFields> & { evidenceBundle?: Evidenc
 }
 function matches<T extends AnalysisTask | ReportVersion>(value: T): T {
   if (!value.memoryBundle) return value;
-  const identity: { ticker: string; analysisDate: string; assetType: string } = "task" in value ? (value as ReportVersion).task : value as AnalysisTask;
+  const isTask = "status" in value;
+  const identity: { ticker: string; analysisDate: string; assetType: string } = isTask ? value as AnalysisTask : (value as ReportVersion).task;
   const decision = value.memoryBundle.decision_snapshot;
-  if (value.memoryBundle.instrument !== identity.ticker || value.memoryBundle.analysis_date !== identity.analysisDate || decision.decision.asset_type !== identity.assetType || ("task" in value && value.memoryBundle.run_id !== value.runId) || decision.artifacts[decision.decision.decision_text_sha256].payload !== value.reportSections.final_trade_decision || decision.decision.rating !== value.decision) return { ...value, memoryBundle: undefined, memoryValidation: { status: "invalid", reason: "reference_mismatch" }, evaluationReviews: [] };
+  if ((isTask && "task" in value) || value.memoryBundle.instrument !== identity.ticker || value.memoryBundle.analysis_date !== identity.analysisDate || decision.decision.asset_type !== identity.assetType || (!isTask && value.memoryBundle.run_id !== (value as ReportVersion).runId) || decision.artifacts[decision.decision.decision_text_sha256].payload !== value.reportSections.final_trade_decision || decision.decision.rating !== value.decision) return { ...value, memoryBundle: undefined, memoryValidation: { status: "invalid", reason: "reference_mismatch" }, evaluationReviews: [] };
   return value;
 }
 export function normalizeTaskMemory(task: AnalysisTask): AnalysisTask {

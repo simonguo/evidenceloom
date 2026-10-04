@@ -1,3 +1,4 @@
+import { normalizeIdentityTasks, verifyIdentityTasks, assertRetainedIdentityAuthority } from "@/features/source-identity/lib/tasks";
 import { normalizeNumericTasks, verifyNumericTasks } from "@/features/numeric-review/lib/tasks";
 import { assertRetainedNumericAuthority } from "@/features/numeric-review/lib/history";
 import {
@@ -55,7 +56,7 @@ export function loadTasks(): AnalysisTask[] {
     ?? firstJson<AnalysisTask[]>(legacyTasksKeys)
     ?? [];
   const normalized = normalizeTasks(tasks);
-  if (!normalized.some((task) => task.numericValidation || task.reportVersions.some((version) => version.numericValidation))) saveTasks(normalized);
+  if (!normalized.some((task) => task.numericValidation || task.identityValidation || task.reportVersions.some((version) => version.numericValidation || version.identityValidation))) saveTasks(normalized);
   removeKeys(legacyTasksKeys);
   return normalized;
 }
@@ -63,14 +64,18 @@ export function loadTasks(): AnalysisTask[] {
 export function saveTasks(tasks: AnalysisTask[]) {
   if (typeof window === "undefined") return;
   assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
-  const safe = normalizeNumericTasks(normalizeReadinessTasks(tasks.map(normalizeTaskOutputQuality).map(normalizeTaskEvidence).map(normalizeTaskMemory)));
+  assertRetainedIdentityAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  const safe = normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(tasks.map(normalizeTaskOutputQuality).map(normalizeTaskEvidence).map(normalizeTaskMemory))));
   assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], safe);
+  assertRetainedIdentityAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], safe);
   window.localStorage.setItem(tasksStorageKey, JSON.stringify(safe));
 }
 
 export async function saveVerifiedTasks(tasks: AnalysisTask[]) {
   if (typeof window !== "undefined") assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
-  const safe = await verifyNumericTasks(await verifyReadinessTasks(await Promise.all(tasks.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task))))));
+  if (typeof window !== "undefined") assertRetainedIdentityAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  const captured = JSON.parse(JSON.stringify(tasks)) as AnalysisTask[];
+  const safe = await verifyIdentityTasks(await verifyNumericTasks(await verifyReadinessTasks(await Promise.all(captured.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))))));
   saveTasks(safe);
 }
 
@@ -128,7 +133,7 @@ export function stripSecretFields<T extends { apiKey?: string; alphaVantageApiKe
 }
 
 function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
-  return normalizeNumericTasks(normalizeReadinessTasks(tasks.map((task) => {
+  return normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(tasks.map((task) => {
     const status = task.status === "running" ? "stopped" : task.status;
     const normalized: AnalysisTask = {
       ...createEmptyTask({
@@ -156,7 +161,7 @@ function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
       reportVersions: task.reportVersions ?? [],
     };
     return normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality(ensureLegacyReportVersion(normalized))));
-  })));
+  }))));
 }
 
 function firstJson<T>(keys: string[]): T | undefined {

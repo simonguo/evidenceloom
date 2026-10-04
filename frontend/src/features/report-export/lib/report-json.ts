@@ -1,3 +1,4 @@
+import { copyExportIdentity } from "@/features/source-identity/lib/export";
 import { copyNumericExport } from "@/features/numeric-review/lib/export";
 import type { AnalysisTask, ReportVersion } from "@/lib/types";
 import { normalizeOutputQuality } from "@/features/output-quality/lib/quality";
@@ -24,5 +25,5 @@ export function reportJson(taskId: string, origin: AnalysisTask["origin"], versi
     outputQuality: normalizeOutputQuality(version.outputQuality),
   };
   return { ...copyNumericExport(taskId, version), schema_version: 1, kind: "research_report", report, evidence_bundle: version.evidenceBundle ?? null,
-    memory_bundle: version.memoryBundle ?? null, evaluation_reviews: version.evaluationReviews ?? [], research_readiness: copyExportReadiness(version) ?? null };
+    memory_bundle: version.memoryBundle ?? null, evaluation_reviews: version.evaluationReviews ?? [], research_readiness: copyExportReadiness(version) ?? null, effective_request_identity: copyExportIdentity(version) };
 }

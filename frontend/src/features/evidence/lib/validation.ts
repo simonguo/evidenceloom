@@ -7,7 +7,7 @@ const providers = ["yfinance", "eastmoney", "tencent", "alpha_vantage", "akshare
 const statuses = ["available", "partial", "empty", "unavailable", "withheld"];
 const tools = ["get_stock_data", "get_indicators", "get_fundamentals", "get_balance_sheet", "get_cashflow", "get_income_statement", "get_news", "get_global_news", "get_insider_transactions", "get_market_data_snapshot", "get_verified_market_snapshot", "fetch_stocktwits_messages", "fetch_reddit_posts", "fetch_china_sentiment_sources", "resolve_instrument_context"];
 const parameters = ["ticker", "symbol", "instrument", "trade_date", "curr_date", "start_date", "end_date", "indicator", "look_back_days", "lookback_days", "limit", "limit_per_sub", "subreddits", "queries", "freq", "interval", "time_period", "series_type"];
-const manifestKeys = ["core_version", "upstream_revision", "app_version", "llm_provider", "quick_think_llm", "deep_think_llm", "analysts", "max_debate_rounds", "max_risk_discuss_rounds", "max_tool_rounds", "analyst_concurrency_limit", "output_language", "temperature", "max_tokens", "data_vendors", "tool_vendors", "trade_date", "asset_type", "holding_period_days", "benchmark_ticker", "code_revision", "code_dirty", "code_sha256", "prompt_templates_sha256", "memory_input_sha256", "instrument_identity_context_sha256", "model_context_sha256", "research_readiness_policy_sha256"];
+const manifestKeys = ["core_version", "upstream_revision", "app_version", "llm_provider", "quick_think_llm", "deep_think_llm", "analysts", "max_debate_rounds", "max_risk_discuss_rounds", "max_tool_rounds", "analyst_concurrency_limit", "output_language", "temperature", "max_tokens", "data_vendors", "tool_vendors", "trade_date", "asset_type", "holding_period_days", "benchmark_ticker", "code_revision", "code_dirty", "code_sha256", "prompt_templates_sha256", "memory_input_sha256", "instrument_identity_context_sha256", "model_context_sha256", "research_readiness_policy_sha256", "effective_request_identity_policy_sha256"];
 const reportKeys = ["market_report", "sentiment_report", "news_report", "fundamentals_report", "investment_plan", "trader_investment_plan", "final_trade_decision", "investment_debate_state.bull_history", "investment_debate_state.bear_history", "investment_debate_state.judge_decision", "risk_debate_state.aggressive_history", "risk_debate_state.conservative_history", "risk_debate_state.neutral_history", "risk_debate_state.judge_decision"];
 const citationPattern = /^[A-Za-z0-9_-]{1,100}$/;
 const bundleKeys = ["schema_version", "run_id", "instrument", "analysis_date", "research_as_of", "as_of_policy", "market_timezone", "created_at", "manifest", "manifest_sha256", "records", "artifacts", "citation_audit", "bundle_sha256"];
@@ -188,9 +188,10 @@ export function normalizeTaskEvidence(task: AnalysisTask): AnalysisTask {
 }
 export function evidenceMatchesSnapshot<T extends AnalysisTask | ReportVersion>(snapshot: T): T {
   if (!snapshot.evidenceBundle) return snapshot;
-  const identity = "task" in snapshot ? (snapshot as ReportVersion).task : snapshot as AnalysisTask;
+  const isTask = "status" in snapshot;
+  const identity = isTask ? snapshot as AnalysisTask : (snapshot as ReportVersion).task;
   const bundle = snapshot.evidenceBundle;
-  if (bundle.instrument !== identity?.ticker || bundle.analysis_date !== identity?.analysisDate || ("task" in snapshot && bundle.run_id !== (snapshot as ReportVersion).runId)) {
+  if ((isTask && "task" in snapshot) || bundle.instrument !== identity?.ticker || bundle.analysis_date !== identity?.analysisDate || (!isTask && bundle.run_id !== (snapshot as ReportVersion).runId)) {
     return { ...snapshot, evidenceBundle: undefined, evidenceValidation: { status: "invalid", reason: "malformed" } };
   }
   return snapshot;
@@ -200,11 +201,13 @@ export async function verifyTaskEvidence(task: AnalysisTask): Promise<AnalysisTa
     if (snapshot.evidenceBundle !== undefined && snapshot.evidenceValidation !== undefined) return safeSnapshot(snapshot);
     if (snapshot.evidenceBundle === undefined) return safeSnapshot(snapshot);
     try {
-      const reports = !("task" in snapshot) && (snapshot as AnalysisTask).status !== "completed" ? undefined : snapshot.reportSections;
+      const isTask = "status" in snapshot;
+      assert(!(isTask && "task" in snapshot));
+      const reports = isTask && snapshot.status !== "completed" ? undefined : snapshot.reportSections;
       const bundle = await verifyEvidenceBundle(snapshot.evidenceBundle, reports);
-      const identity = "task" in snapshot ? (snapshot as ReportVersion).task : snapshot as AnalysisTask;
+      const identity = isTask ? snapshot as AnalysisTask : (snapshot as ReportVersion).task;
       assert(bundle.instrument === identity.ticker && bundle.analysis_date === identity.analysisDate);
-      if ("task" in snapshot) assert(bundle.run_id === (snapshot as ReportVersion).runId);
+      if (!isTask) assert(bundle.run_id === (snapshot as ReportVersion).runId);
       return { ...snapshot, evidenceBundle: bundle, evidenceValidation: undefined };
     }
     catch (error) { return { ...snapshot, evidenceBundle: undefined, evidenceValidation: invalidEvidence(error) }; }

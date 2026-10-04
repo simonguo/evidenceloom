@@ -12,11 +12,14 @@ use tauri::{AppHandle, Manager};
 use crate::evidence::{validate_bundle, validate_invalid};
 use crate::output_quality::{normalize_output_quality, normalize_report_version_quality};
 use crate::secrets;
+use crate::{
+    effective_request_identity as identity, effective_request_identity_storage as identity_store,
+};
 use crate::{numeric_review as numeric, numeric_review_storage as numeric_store};
 use crate::{research_memory as memory, research_memory_storage as memory_store};
 use crate::{research_readiness as readiness, research_readiness_storage as readiness_store};
 
-const SCHEMA_VERSION: i64 = 9;
+const SCHEMA_VERSION: i64 = 10;
 const SECRET_PREFIX: &str = "enc:v1:";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -148,8 +151,30 @@ pub struct AnalysisTaskRecord {
     pub report_text_snapshot: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub numeric_validation: Option<Value>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null_identity_attachment"
+    )]
+    pub effective_request_identity: Option<Value>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "non_null_identity_attachment"
+    )]
+    pub identity_validation: Option<Value>,
     pub logs: Value,
     pub error: String,
+}
+
+fn non_null_identity_attachment<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Value>, D::Error> {
+    let value = Value::deserialize(deserializer)?;
+    if value.is_null() {
+        return Err(serde::de::Error::custom(identity::ERROR));
+    }
+    Ok(Some(value))
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -215,6 +240,7 @@ pub fn clear_data(app: &AppHandle) -> Result<(), String> {
     secrets::delete_all_secrets(current_provider.as_deref())?;
     memory_store::clear(&conn)?;
     readiness_store::clear(&conn)?;
+    identity_store::clear(&conn)?;
     numeric_store::clear(&conn)?;
     conn.execute_batch(
         "DELETE FROM task_report_versions;
@@ -417,6 +443,15 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     memory_store::initialize(conn)?;
     readiness_store::initialize(conn)?;
     numeric_store::initialize(conn)?;
+    identity_store::initialize(conn)?;
+    ensure_column(conn, "tasks", "identity_assessment_sha256", "TEXT")?;
+    ensure_column(conn, "tasks", "identity_validation", "TEXT")?;
+    ensure_column(
+        conn,
+        "task_report_versions",
+        "identity_assessment_sha256",
+        "TEXT",
+    )?;
     ensure_column(conn, "tasks", "instrument_name", "TEXT NOT NULL DEFAULT ''")?;
     ensure_column(conn, "tasks", "origin", "TEXT NOT NULL DEFAULT 'analysis'")?;
     ensure_column(conn, "tasks", "queued_at", "TEXT NOT NULL DEFAULT ''")?;
@@ -651,7 +686,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
     let mut stmt = conn
         .prepare(
             "SELECT id, ticker, analysis_date, asset_type, research_depth, analysts, output_language, status,
-                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation, numeric_snapshot_sha256, numeric_validation
+                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation, numeric_snapshot_sha256, numeric_validation, identity_assessment_sha256, identity_validation
              FROM tasks ORDER BY updated_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -733,6 +768,30 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                     Ok::<Value, rusqlite::Error>(marker)
                 })
                 .transpose()?;
+            let effective_request_identity = row
+                .get::<_, Option<String>>(28)?
+                .map(|hash| {
+                    identity_store::load(
+                        conn,
+                        &hash,
+                        evidence_bundle
+                            .as_ref()
+                            .ok_or_else(|| evidence_sql_error(identity::ERROR.into()))?,
+                        report_text_snapshot
+                            .as_ref()
+                            .ok_or_else(|| evidence_sql_error(identity::ERROR.into()))?,
+                    )
+                    .map_err(evidence_sql_error)
+                })
+                .transpose()?;
+            let identity_validation = row
+                .get::<_, Option<String>>(29)?
+                .map(|raw| {
+                    let marker = memory::parse_json(&raw).map_err(evidence_sql_error)?;
+                    identity::validate_fields(None, Some(&marker)).map_err(evidence_sql_error)?;
+                    Ok::<Value, rusqlite::Error>(marker)
+                })
+                .transpose()?;
             Ok(AnalysisTaskRecord {
                 id: task_id,
                 origin: row.get(18)?,
@@ -771,6 +830,8 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                 readiness_validation,
                 report_text_snapshot,
                 numeric_validation,
+                effective_request_identity,
+                identity_validation,
                 evaluation_reviews,
                 logs,
                 error: row.get(17)?,
@@ -782,6 +843,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     for task in &tasks {
+        validate_task_identity(task)?;
         validate_task_numeric(task)?;
         validate_task_readiness(task)?;
         validate_memory_fields(
@@ -864,7 +926,7 @@ fn load_report_sections(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
 
 fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Value> {
     let mut stmt = conn.prepare(
-        "SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,id,run_id,version_number,created_at,readiness_assessment_sha256,numeric_snapshot_sha256 FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
+        "SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,id,run_id,version_number,created_at,readiness_assessment_sha256,numeric_snapshot_sha256,identity_assessment_sha256 FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
     )?;
     let rows = stmt.query_map(params![task_id], |row| {
         let raw = row.get::<_, String>(0)?;
@@ -1007,6 +1069,34 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
                 .ok_or_else(|| evidence_sql_error(numeric::ERROR.into()))?
                 .insert("reportTextSnapshot".into(), snapshot);
         }
+        if version.get("effectiveRequestIdentity").is_some() {
+            return Err(evidence_sql_error(identity::ERROR.into()));
+        }
+        if let Some(hash) = row.get::<_, Option<String>>(9)? {
+            if version["id"] != row.get::<_, String>(3)?
+                || version["runId"] != row.get::<_, String>(4)?
+                || version["versionNumber"] != row.get::<_, i64>(5)?
+                || version["createdAt"] != row.get::<_, String>(6)?
+            {
+                return Err(evidence_sql_error(identity::ERROR.into()));
+            }
+            let receipt = identity_store::load(
+                conn,
+                &hash,
+                version
+                    .get("evidenceBundle")
+                    .ok_or_else(|| evidence_sql_error(identity::ERROR.into()))?,
+                version
+                    .get("reportTextSnapshot")
+                    .ok_or_else(|| evidence_sql_error(identity::ERROR.into()))?,
+            )
+            .map_err(evidence_sql_error)?;
+            version
+                .as_object_mut()
+                .ok_or_else(|| evidence_sql_error(identity::ERROR.into()))?
+                .insert("effectiveRequestIdentity".into(), receipt);
+        }
+        validate_version_identity(&version).map_err(evidence_sql_error)?;
         let reviews = numeric_store::load_reviews(
             conn,
             task_id,
@@ -1046,6 +1136,7 @@ fn evidence_sql_error(message: String) -> rusqlite::Error {
 }
 
 fn prune_evidence(conn: &Connection) -> Result<(), String> {
+    identity_store::prune(conn)?;
     numeric_store::prune(conn)?;
     readiness_store::prune(conn)?;
     memory_store::prune(conn)?;
@@ -1290,6 +1381,128 @@ fn load_evidence_bundle(conn: &Connection, hash: &str) -> rusqlite::Result<Value
     Ok(bundle)
 }
 
+fn validate_task_identity(task: &AnalysisTaskRecord) -> Result<(), String> {
+    identity::validate_fields(
+        task.effective_request_identity.as_ref(),
+        task.identity_validation.as_ref(),
+    )?;
+    if task.status == "completed"
+        && task.evidence_bundle.as_ref().is_some_and(|bundle| {
+            bundle["manifest"]
+                .get("effective_request_identity_policy_sha256")
+                .is_some()
+        })
+        && task.effective_request_identity.is_none()
+        && task.identity_validation.is_none()
+    {
+        return Err(identity::ERROR.into());
+    }
+    let mut hashes = std::collections::BTreeMap::new();
+    if let Some(receipt) = &task.effective_request_identity {
+        if task.status != "completed"
+            || task.id.is_empty()
+            || task.id.len() > 256
+            || receipt["instrument"] != task.ticker
+            || receipt["analysis_date"] != task.analysis_date
+        {
+            return Err(identity::ERROR.into());
+        }
+        identity::validate_receipt(
+            receipt,
+            task.evidence_bundle.as_ref().ok_or(identity::ERROR)?,
+            task.report_text_snapshot.as_ref().ok_or(identity::ERROR)?,
+        )?;
+        if task.evidence_bundle.as_ref().ok_or(identity::ERROR)?["manifest"]
+            .get("effective_request_identity_policy_sha256")
+            .is_some()
+            && !receipt["summary"]["unsafe_record_ids"]
+                .as_array()
+                .ok_or(identity::ERROR)?
+                .is_empty()
+            && (task.decision != "REVIEW"
+                || task.memory_bundle.as_ref().is_some_and(|bundle| {
+                    bundle["decision_snapshot"]["decision"]["rating"] != "REVIEW"
+                }))
+        {
+            return Err(identity::ERROR.into());
+        }
+        hashes.insert(
+            receipt["run_id"].as_str().ok_or(identity::ERROR)?,
+            receipt["assessment_sha256"]
+                .as_str()
+                .ok_or(identity::ERROR)?,
+        );
+    }
+    for version in task.report_versions.as_array().ok_or(identity::ERROR)? {
+        validate_version_identity(version)?;
+        if let Some(receipt) = version.get("effectiveRequestIdentity") {
+            if hashes
+                .insert(
+                    receipt["run_id"].as_str().ok_or(identity::ERROR)?,
+                    receipt["assessment_sha256"]
+                        .as_str()
+                        .ok_or(identity::ERROR)?,
+                )
+                .is_some_and(|prior| {
+                    prior != receipt["assessment_sha256"].as_str().unwrap_or_default()
+                })
+            {
+                return Err(identity::ERROR.into());
+            }
+        }
+    }
+    Ok(())
+}
+fn validate_version_identity(version: &Value) -> Result<(), String> {
+    identity::validate_fields(
+        version.get("effectiveRequestIdentity"),
+        version.get("identityValidation"),
+    )?;
+    if version["evidenceBundle"]["manifest"]
+        .get("effective_request_identity_policy_sha256")
+        .is_some()
+        && version.get("effectiveRequestIdentity").is_none()
+        && version.get("identityValidation").is_none()
+    {
+        return Err(identity::ERROR.into());
+    }
+    if let Some(receipt) = version.get("effectiveRequestIdentity") {
+        if version["id"]
+            .as_str()
+            .is_none_or(|id| id.is_empty() || id.len() > 256)
+            || !version["versionNumber"]
+                .as_u64()
+                .is_some_and(|number| (1..=9_007_199_254_740_991).contains(&number))
+            || version["runId"] != receipt["run_id"]
+            || version["task"]["ticker"] != receipt["instrument"]
+            || version["task"]["analysisDate"] != receipt["analysis_date"]
+        {
+            return Err(identity::ERROR.into());
+        }
+        memory::timestamp(&version["createdAt"]).map_err(|_| identity::ERROR)?;
+        identity::validate_receipt(
+            receipt,
+            version.get("evidenceBundle").ok_or(identity::ERROR)?,
+            version.get("reportTextSnapshot").ok_or(identity::ERROR)?,
+        )?;
+        if version["evidenceBundle"]["manifest"]
+            .get("effective_request_identity_policy_sha256")
+            .is_some()
+            && !receipt["summary"]["unsafe_record_ids"]
+                .as_array()
+                .ok_or(identity::ERROR)?
+                .is_empty()
+            && (version["decision"] != "REVIEW"
+                || version.get("memoryBundle").is_some_and(|bundle| {
+                    bundle["decision_snapshot"]["decision"]["rating"] != "REVIEW"
+                }))
+        {
+            return Err(identity::ERROR.into());
+        }
+    }
+    Ok(())
+}
+
 fn validate_task_numeric(task: &AnalysisTaskRecord) -> Result<(), String> {
     numeric::validate_fields(
         task.report_text_snapshot.as_ref(),
@@ -1374,6 +1587,7 @@ fn validate_numeric_memory_chronology(
 }
 
 fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+    validate_task_identity(task)?;
     validate_task_numeric(task)?;
     validate_task_readiness(task)?;
     validate_memory_fields(
@@ -1500,6 +1714,18 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             )
         })
         .transpose()?;
+    let identity_hash = task
+        .effective_request_identity
+        .as_ref()
+        .map(|receipt| {
+            identity_store::store(
+                conn,
+                receipt,
+                task.evidence_bundle.as_ref().ok_or(identity::ERROR)?,
+                task.report_text_snapshot.as_ref().ok_or(identity::ERROR)?,
+            )
+        })
+        .transpose()?;
     let previous_memory_hash: Option<Option<String>> = conn
         .query_row(
             "SELECT memory_bundle_sha256 FROM tasks WHERE id=?1",
@@ -1518,8 +1744,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     conn.execute(
         "INSERT INTO tasks (
             id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
-            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation, numeric_snapshot_sha256, numeric_validation
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28)
+            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation, numeric_snapshot_sha256, numeric_validation, identity_assessment_sha256, identity_validation
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30)
          ON CONFLICT(id) DO UPDATE SET
             origin = excluded.origin,
             ticker = excluded.ticker,
@@ -1546,7 +1772,9 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             readiness_assessment_sha256 = excluded.readiness_assessment_sha256,
             readiness_validation = excluded.readiness_validation,
             numeric_snapshot_sha256 = excluded.numeric_snapshot_sha256,
-            numeric_validation = excluded.numeric_validation",
+            numeric_validation = excluded.numeric_validation,
+            identity_assessment_sha256 = excluded.identity_assessment_sha256,
+            identity_validation = excluded.identity_validation",
         params![
             task.id,
             task.origin,
@@ -1576,6 +1804,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             task.readiness_validation.as_ref().map(json_string).transpose()?,
             numeric_hash,
             task.numeric_validation.as_ref().map(json_string).transpose()?,
+            identity_hash,
+            task.identity_validation.as_ref().map(json_string).transpose()?,
         ],
     )
     .map_err(|error| error.to_string())?;
@@ -1635,6 +1865,20 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     if let Value::Array(versions) = &task.report_versions {
         for version in versions {
             let mut version = normalize_report_version_quality(version.clone());
+            let identity_receipt = version
+                .as_object_mut()
+                .and_then(|map| map.remove("effectiveRequestIdentity"));
+            let identity_hash = identity_receipt
+                .as_ref()
+                .map(|receipt| {
+                    identity_store::store(
+                        conn,
+                        receipt,
+                        version.get("evidenceBundle").ok_or(identity::ERROR)?,
+                        version.get("reportTextSnapshot").ok_or(identity::ERROR)?,
+                    )
+                })
+                .transpose()?;
             let numeric_snapshot = version
                 .as_object_mut()
                 .and_then(|map| map.remove("reportTextSnapshot"));
@@ -1713,8 +1957,9 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                 String,
                 Option<String>,
                 Option<String>,
+                Option<String>,
             );
-            let existing: Option<FrozenVersionRow> = conn.query_row("SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,task_id,readiness_assessment_sha256,numeric_snapshot_sha256 FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?))).optional().map_err(|error| error.to_string())?;
+            let existing: Option<FrozenVersionRow> = conn.query_row("SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,task_id,readiness_assessment_sha256,numeric_snapshot_sha256,identity_assessment_sha256 FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?,row.get(6)?))).optional().map_err(|error| error.to_string())?;
             if let Some((
                 snapshot,
                 hash,
@@ -1722,6 +1967,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                 saved_task,
                 saved_readiness_hash,
                 saved_numeric_hash,
+                saved_identity_hash,
             )) = existing
             {
                 let mut saved = normalize_report_version_quality(
@@ -1750,6 +1996,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     || saved_memory_hash != memory_hash
                     || saved_readiness_hash != readiness_hash
                     || saved_numeric_hash != numeric_hash
+                    || saved_identity_hash != identity_hash
                     || saved_task != task.id
                 {
                     return Err("A frozen report version cannot be changed".into());
@@ -1757,8 +2004,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             }
             conn.execute(
                 "INSERT OR IGNORE INTO task_report_versions
-                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256, memory_bundle_sha256, readiness_assessment_sha256, numeric_snapshot_sha256)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256, memory_bundle_sha256, readiness_assessment_sha256, numeric_snapshot_sha256, identity_assessment_sha256)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
                 params![
                     id,
                     task.id,
@@ -1770,6 +2017,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     memory_hash,
                     readiness_hash,
                     numeric_hash,
+                    identity_hash,
                 ],
             )
             .map_err(|error| error.to_string())?;
@@ -2157,6 +2405,234 @@ mod tests {
         transaction.commit().map_err(|_| memory::ERROR.into())
     }
 
+    fn identity_task_fixture() -> AnalysisTaskRecord {
+        let fixture = memory::parse_json(include_str!(
+            "../../tests/fixtures/effective_request_identity_v1.json"
+        ))
+        .unwrap();
+        let version = serde_json::json!({
+            "id":"identity-version", "runId":fixture["evidence"]["run_id"],"versionNumber":1,
+            "createdAt":"2026-01-09T12:01:00.000000Z","task":{"ticker":"FICT","analysisDate":"2026-01-09"},
+            "decision":"REVIEW","reportSections":fixture["snapshot"]["report_sections"],
+            "evidenceBundle":fixture["evidence"],"reportTextSnapshot":fixture["snapshot"],
+            "effectiveRequestIdentity":fixture["assessment"]
+        });
+        let mut task = quality_task_fixture(Value::Null, version);
+        task.ticker = "FICT".into();
+        task.analysis_date = "2026-01-09".into();
+        task.report_sections = fixture["snapshot"]["report_sections"].clone();
+        task.evidence_bundle = Some(fixture["evidence"].clone());
+        task.report_text_snapshot = Some(fixture["snapshot"].clone());
+        task.effective_request_identity = Some(fixture["assessment"].clone());
+        task
+    }
+    #[test]
+    fn request_identity_roundtrip_retry_and_rerun_preserve_original_version() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let mut task = identity_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(
+            loaded[0].effective_request_identity,
+            task.effective_request_identity
+        );
+        assert_eq!(
+            loaded[0].report_versions[0]["effectiveRequestIdentity"],
+            task.report_versions[0]["effectiveRequestIdentity"]
+        );
+        task.status = "queued".into();
+        task.evidence_bundle = None;
+        task.report_text_snapshot = None;
+        task.effective_request_identity = None;
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert!(loaded[0].effective_request_identity.is_none());
+        assert_eq!(
+            loaded[0].report_versions[0]["effectiveRequestIdentity"],
+            task.report_versions[0]["effectiveRequestIdentity"]
+        );
+        conn.execute("DELETE FROM tasks WHERE id=?1", params![task.id])
+            .unwrap();
+        prune_evidence(&conn).unwrap();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM effective_request_identity_receipts",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+    #[test]
+    fn request_identity_replacement_and_late_insertion_roll_back() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let task = identity_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        let mut changed = task.report_versions.clone();
+        changed[0]["effectiveRequestIdentity"]["reviewed_at"] =
+            serde_json::json!("2026-01-09T12:02:00.000000Z");
+        readiness::test_support::rehash(
+            &mut changed[0]["effectiveRequestIdentity"],
+            "assessment_sha256",
+        );
+        let mut changed_task = identity_task_fixture();
+        changed_task.report_versions = changed;
+        changed_task.effective_request_identity =
+            Some(changed_task.report_versions[0]["effectiveRequestIdentity"].clone());
+        assert!(save_test_task(&mut conn, &changed_task).is_err());
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].effective_request_identity,
+            task.effective_request_identity
+        );
+        let mut legacy = identity_task_fixture();
+        legacy.id = "legacy-identity-task".into();
+        legacy.report_versions[0]["id"] = serde_json::json!("legacy-identity-version");
+        legacy.report_versions[0]
+            .as_object_mut()
+            .unwrap()
+            .remove("effectiveRequestIdentity");
+        legacy.effective_request_identity = None;
+        save_test_task(&mut conn, &legacy).unwrap();
+        legacy.report_versions[0]["effectiveRequestIdentity"] =
+            task.effective_request_identity.clone().unwrap();
+        assert!(save_test_task(&mut conn, &legacy).is_err());
+    }
+    fn marked_identity_task_fixture() -> AnalysisTaskRecord {
+        let fixture = memory::parse_json(include_str!(
+            "../../tests/fixtures/effective_request_identity_marked_v1.json"
+        ))
+        .unwrap();
+        let mut task = identity_task_fixture();
+        task.report_sections = fixture["snapshot"]["report_sections"].clone();
+        task.evidence_bundle = Some(fixture["evidence"].clone());
+        task.report_text_snapshot = Some(fixture["snapshot"].clone());
+        task.effective_request_identity = Some(fixture["assessment"].clone());
+        task.report_versions[0]["reportSections"] = task.report_sections.clone();
+        task.report_versions[0]["evidenceBundle"] = fixture["evidence"].clone();
+        task.report_versions[0]["reportTextSnapshot"] = fixture["snapshot"].clone();
+        task.report_versions[0]["effectiveRequestIdentity"] = fixture["assessment"].clone();
+        task
+    }
+    #[test]
+    fn request_identity_marked_missing_or_false_typed_decision_cannot_be_saved() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let original = marked_identity_task_fixture();
+        save_test_task(&mut conn, &original).unwrap();
+        for attack in 0..4 {
+            let mut task = marked_identity_task_fixture();
+            match attack {
+                0 => task.decision = "Buy".into(),
+                1 => task.report_versions[0]["decision"] = serde_json::json!("Buy"),
+                2 => task.effective_request_identity = None,
+                _ => {
+                    task.report_versions[0]
+                        .as_object_mut()
+                        .unwrap()
+                        .remove("effectiveRequestIdentity");
+                }
+            }
+            assert!(save_test_task(&mut conn, &task).is_err(), "attack {attack}");
+            assert_eq!(
+                serde_json::to_value(&load_tasks_from_conn(&conn).unwrap()[0]).unwrap(),
+                serde_json::to_value(&original).unwrap()
+            );
+        }
+    }
+    #[test]
+    fn request_identity_unknown_policy_retains_explicit_invalid_diagnostic() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let mut task = marked_identity_task_fixture();
+        let mut evidence = task.evidence_bundle.clone().unwrap();
+        evidence["manifest"]["effective_request_identity_policy_sha256"] =
+            serde_json::json!("0".repeat(64));
+        evidence["manifest_sha256"] =
+            serde_json::json!(memory::hash_value(&evidence["manifest"]).unwrap());
+        readiness::test_support::rehash(&mut evidence, "bundle_sha256");
+        let mut snapshot = task.report_text_snapshot.clone().unwrap();
+        snapshot["evidence_bundle_sha256"] = evidence["bundle_sha256"].clone();
+        readiness::test_support::rehash(&mut snapshot, "snapshot_sha256");
+        task.evidence_bundle = Some(evidence.clone());
+        task.report_text_snapshot = Some(snapshot.clone());
+        task.effective_request_identity = None;
+        task.identity_validation =
+            Some(serde_json::json!({"status":"invalid","reason":"reference_mismatch"}));
+        task.report_versions[0]["evidenceBundle"] = evidence;
+        task.report_versions[0]["reportTextSnapshot"] = snapshot;
+        task.report_versions[0]
+            .as_object_mut()
+            .unwrap()
+            .remove("effectiveRequestIdentity");
+        task.report_versions[0]["identityValidation"] = task.identity_validation.clone().unwrap();
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(loaded[0].identity_validation, task.identity_validation);
+        assert_eq!(
+            loaded[0].report_versions[0]["identityValidation"],
+            task.identity_validation.unwrap()
+        );
+        assert!(loaded[0].effective_request_identity.is_none());
+    }
+
+    #[test]
+    fn request_identity_v9_upgrade_keeps_legacy_absence_and_original_saved_payloads() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let mut legacy = identity_task_fixture();
+        legacy.effective_request_identity = None;
+        legacy.report_versions[0]
+            .as_object_mut()
+            .unwrap()
+            .remove("effectiveRequestIdentity");
+        save_test_task(&mut conn, &legacy).unwrap();
+        let before = serde_json::to_value(&load_tasks_from_conn(&conn).unwrap()[0]).unwrap();
+        conn.execute_batch(
+            "DROP TABLE effective_request_identity_receipts;
+            ALTER TABLE tasks DROP COLUMN identity_assessment_sha256;
+            ALTER TABLE tasks DROP COLUMN identity_validation;
+            ALTER TABLE task_report_versions DROP COLUMN identity_assessment_sha256;
+            DELETE FROM schema_migrations WHERE version>=10;
+            INSERT OR IGNORE INTO schema_migrations(version) VALUES(9);",
+        )
+        .unwrap();
+        initialize_schema(&conn).unwrap();
+        let after = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(serde_json::to_value(&after[0]).unwrap(), before);
+        assert!(after[0].effective_request_identity.is_none());
+        assert!(after[0].report_versions[0]
+            .get("effectiveRequestIdentity")
+            .is_none());
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM effective_request_identity_receipts",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn request_identity_corrupt_rows_broken_links_and_null_inputs_remain_visible() {
+        for sql in ["UPDATE effective_request_identity_receipts SET payload='{}'",
+            "UPDATE effective_request_identity_receipts SET run_id='33333333-3333-4333-8333-333333333333'",
+            "UPDATE effective_request_identity_receipts SET snapshot_sha256='broken'",
+            "DELETE FROM effective_request_identity_receipts"] {
+            let mut conn = Connection::open_in_memory().unwrap(); initialize_schema(&conn).unwrap();
+            save_test_task(&mut conn,&identity_task_fixture()).unwrap(); conn.execute(sql,[]).unwrap();
+            assert!(load_tasks_from_conn(&conn).is_err(),"{sql}");
+        }
+        for key in ["effectiveRequestIdentity", "identityValidation"] {
+            let mut input = serde_json::to_value(identity_task_fixture()).unwrap();
+            input[key] = Value::Null;
+            assert!(serde_json::from_value::<AnalysisTaskRecord>(input).is_err());
+        }
+    }
+
     fn numeric_task_fixture() -> (AnalysisTaskRecord, Value) {
         let fixture = numeric::test_support::fixture();
         let snapshot = fixture["snapshot"].clone();
@@ -2176,15 +2652,18 @@ mod tests {
     fn numeric_migration_reload_preserves_complete_snapshot_review_and_payloads() {
         let mut conn = Connection::open_in_memory().unwrap();
         initialize_schema(&conn).unwrap();
-        conn.execute("DELETE FROM schema_migrations WHERE version=9", [])
-            .unwrap();
+        conn.execute(
+            "DELETE FROM schema_migrations WHERE version=?1",
+            params![SCHEMA_VERSION],
+        )
+        .unwrap();
         initialize_schema(&conn).unwrap();
         let version: i64 = conn
             .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
                 row.get(0)
             })
             .unwrap();
-        assert_eq!(version, 9);
+        assert_eq!(version, SCHEMA_VERSION);
         let (mut task, fixture) = numeric_task_fixture();
         save_test_task(&mut conn, &task).unwrap();
         assert_eq!(

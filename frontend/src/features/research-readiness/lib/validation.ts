@@ -72,11 +72,13 @@ export async function verifyResearchReadiness(value: unknown, evidence: unknown)
 function bindSnapshot<T extends AnalysisTask | ReportVersion>(snapshot: T): T {
   const readiness = snapshot.researchReadiness;
   if (!readiness) return snapshot;
-  const identity = "task" in snapshot ? (snapshot as ReportVersion).task : snapshot as AnalysisTask;
+  const isTask = "status" in snapshot;
+  assert(!(isTask && "task" in snapshot), "reference_mismatch");
+  const identity = isTask ? snapshot as AnalysisTask : (snapshot as ReportVersion).task;
   assert(readiness.instrument === identity.ticker && readiness.analysis_date === identity.analysisDate && same(readiness.policy.selected_analysts, identity.analysts), "reference_mismatch");
-  if ("task" in snapshot) {
-    assert(readiness.run_id === snapshot.runId, "reference_mismatch");
-    const settings = snapshot.run?.runtimeRunSettings;
+  if (!isTask) {
+    assert(readiness.run_id === (snapshot as ReportVersion).runId, "reference_mismatch");
+    const settings = (snapshot as ReportVersion).run?.runtimeRunSettings;
     if (settings?.research_readiness_policy_sha256 !== undefined) assert(settings.research_readiness_policy_sha256 === readiness.policy.policy_sha256, "reference_mismatch");
     if (settings?.max_tool_rounds !== undefined) assert(settings.max_tool_rounds === readiness.policy.max_tool_rounds, "reference_mismatch");
     if (settings?.analysts !== undefined) assert(same(settings.analysts, readiness.policy.selected_analysts), "reference_mismatch");
@@ -86,7 +88,7 @@ function bindSnapshot<T extends AnalysisTask | ReportVersion>(snapshot: T): T {
     assert(readiness.run_id === snapshot.memoryBundle.run_id && stamp(readiness.policy.research_started_at) === stamp(decision.research_started_at) && readiness.policy.research_calendar_date === decision.analysis_calendar_date && readiness.policy.host_utc_offset === decision.host_utc_offset, "reference_mismatch");
     if (!readiness.recommendation_allowed) assert(decision.rating === "REVIEW", "reference_mismatch");
   }
-  if ("task" in snapshot || snapshot.status === "completed") {
+  if (!isTask || snapshot.status === "completed") {
     if (!readiness.recommendation_allowed) assert(snapshot.decision === "REVIEW" && normalizeRating(extractDecisionFromReport(snapshot.reportSections.final_trade_decision)) === "REVIEW", "reference_mismatch");
   }
   return snapshot;

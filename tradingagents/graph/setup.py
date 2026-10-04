@@ -27,6 +27,7 @@ from tradingagents.agents.utils.agent_states import AgentState
 from tradingagents.agents.utils.output_quality import sanitize_output_quality
 from tradingagents.evidence import analyst_evidence, current_ledger
 from tradingagents.research.readiness import assess_readiness, validate_readiness, withheld_decision
+from tradingagents.research.effective_request_identity import unsafe_effective_request_ids
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
@@ -198,10 +199,20 @@ class GraphSetup:
                 validate_readiness(state["research_readiness"], evidence)
                 if state["research_readiness"] != assessment:
                     raise ValueError("Research readiness changed after it was frozen")
-            if assessment["recommendation_allowed"]:
+            unsafe_requests = unsafe_effective_request_ids(evidence)
+            if assessment["recommendation_allowed"] and not unsafe_requests:
                 result = portfolio_manager_node(state)
             else:
-                text = withheld_decision(assessment)
+                text = (
+                    "Rating: REVIEW\n\n"
+                    "Saved effective tool requests require human review before a directional recommendation.\n"
+                    "Provider requests and returned entity identity remain unverified.\n"
+                    "Earlier reports and debate remain exploratory research.\n"
+                    "Saved request references: "
+                    + " ".join(f"[E:{item}]" for item in unsafe_requests)
+                    if unsafe_requests
+                    else withheld_decision(assessment)
+                )
                 result = {
                     "final_rating": "REVIEW",
                     "final_trade_decision": text,

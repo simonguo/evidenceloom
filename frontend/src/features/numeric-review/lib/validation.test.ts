@@ -10,8 +10,33 @@ import { verifyNumericHistory } from "./history";
 import { selectionSpan } from "./spans";
 import { memoryTask, component } from "@/features/memory/fixtures/test-data";
 import { sectionKeys } from "./policy";
+import { verifyNumericTask } from "./tasks";
+import { loadTasks, saveVerifiedTasks } from "@/features/persistence/local-storage";
 beforeAll(() => Object.defineProperty(globalThis, "crypto", { value: webcrypto, configurable: true }));
 describe("saved numeric receipt verification", () => {
+    it("rejects top task identity spoofing through version-like metadata without identity attachments", async () => {
+        window.localStorage.clear();
+        const task = numericFixture(false);
+        const spoofed = { ...task, ticker: "OTHER", task: structuredClone(task.reportVersions[0].task), runId: task.evidenceBundle!.run_id, numericReviews: [] };
+        const direct = await verifyNumericTask(spoofed);
+        expect(direct.reportTextSnapshot).toBeUndefined();
+        expect(direct.numericValidation?.reason).toBe("reference_mismatch");
+        await saveVerifiedTasks([spoofed]);
+        expect(loadTasks()[0].numericValidation?.status).toBe("invalid");
+        expect(loadTasks()[0].reportTextSnapshot).toBeUndefined();
+    });
+    it("rejects reverse version owner spoofing without identity attachments on direct validation and reload", async () => {
+        window.localStorage.clear();
+        const task = numericFixture(false);
+        const original = task.reportVersions[0];
+        const version = { ...original, task: { ...original.task, ticker: "OTHER" }, runId: "00000000-0000-4000-8000-000000000001", status: "completed", ticker: task.ticker, analysisDate: task.analysisDate };
+        expect(() => bindReportSnapshot(version, task.reportTextSnapshot!)).toThrow("reference_mismatch");
+        const direct = await verifyNumericTask({ ...task, reportVersions: [version] });
+        expect(direct.reportVersions[0].numericValidation?.reason).toBe("reference_mismatch");
+        await saveVerifiedTasks([{ ...task, reportVersions: [version] }]);
+        expect(loadTasks()[0].reportVersions[0].numericValidation?.status).toBe("invalid");
+        expect(loadTasks()[0].reportVersions[0].reportTextSnapshot).toBeUndefined();
+    });
     it("requires original report capture at or after frozen Memory completion when present", async () => {
         const version = memoryTask().reportVersions[0], evidence = version.evidenceBundle!;
         const snapshot = await component({ schema_version: 1 as const, run_id: evidence.run_id, instrument: evidence.instrument, analysis_date: evidence.analysis_date, captured_at: evidence.created_at.replace(/Z$/, ".000000Z"), evidence_bundle_sha256: evidence.bundle_sha256, report_sections: Object.fromEntries(sectionKeys.map((key) => [key, version.reportSections[key] ?? null])) }, "snapshot_sha256");

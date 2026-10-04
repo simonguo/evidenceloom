@@ -1,5 +1,7 @@
 "use client";
 
+import { normalizeIdentityTasks, normalizeIdentityTaskFields, verifyIdentityTask, verifyIdentityTasks } from "@/features/source-identity/lib/tasks";
+import { identityFromEvent } from "@/features/source-identity/lib/validation";
 import { normalizeNumericTasks, normalizeNumericTaskFields, verifyNumericTask, verifyNumericTasks } from "@/features/numeric-review/lib/tasks";
 import { reportSnapshotFromEvent } from "@/features/numeric-review/lib/snapshot";
 import { appendNumericReviews } from "@/features/numeric-review/lib/history";
@@ -104,7 +106,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       try {
         setSettings(loadGlobalSettings());
         const loaded = loadTasks().map(normalizeTaskRuntimeState);
-        void Promise.all(loaded.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))).then(verifyReadinessTasks).then(verifyNumericTasks).then(setTasks).catch(() => setNotice("Saved research evidence and memory could not be verified.")).finally(() => setHydrated(true));
+        void Promise.all(loaded.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))).then(verifyReadinessTasks).then(verifyNumericTasks).then(verifyIdentityTasks).then(setTasks).catch(() => setNotice("Saved research evidence and memory could not be verified.")).finally(() => setHydrated(true));
       } catch {
         setNotice("Local storage is unavailable. Reports have not been saved or loaded.");
         setHydrated(true);
@@ -116,7 +118,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     void adapter.loadDesktopData(legacy)
       .then(async (snapshot) => {
         setSettings(normalizeGlobalSettings(snapshot.settings ?? {}));
-        const normalizedTasks = await verifyNumericTasks(await verifyReadinessTasks(await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task))))));
+        const normalizedTasks = await verifyIdentityTasks(await verifyNumericTasks(await verifyReadinessTasks(await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))))));
         setTasks(normalizedTasks);
         normalizedTasks.forEach((task, index) => {
           const stored = snapshot.tasks[index];
@@ -136,7 +138,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         setSettings(sessionSafeSettings(legacy.settings ?? defaultGlobalSettings()));
-        setTasks(normalizeNumericTasks(normalizeReadinessTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState))));
+        setTasks(normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState)))));
         setNotice("Desktop storage could not be loaded. The displayed reports have not been confirmed saved.");
       })
       .finally(() => setHydrated(true));
@@ -180,14 +182,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     persistenceQueueRef.current = persistenceQueueRef.current.catch(() => undefined)
       .then(async () => {
         const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-        await adapter.saveDesktopTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(task)))));
+        await adapter.saveDesktopTask(await verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(task))))));
       })
       .catch(() => setNotice("Failed to save report and evidence. The displayed report may not be available after restart."));
   }, []);
 
   const updateTask = useCallback((taskId: string, updater: (task: AnalysisTask) => AnalysisTask) => {
     setTasks((current) => {
-      const next = normalizeNumericTasks(normalizeReadinessTasks(current.map((task) => task.id === taskId ? updater(task) : task)));
+      const next = normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(current.map((task) => task.id === taskId ? updater(task) : task))));
       const changed = next.find((task) => task.id === taskId);
       if (changed) persistTask(changed);
       return next;
@@ -202,14 +204,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
     const decision = resolveTaskDecision(task.decision, task.reportSections?.final_trade_decision);
-    const normalizedTask = normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality({
+    const normalizedTask = normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality({
       ...task,
       origin: task.origin ?? "analysis",
       reportVersions: task.reportVersions ?? [],
       queuedAt: task.queuedAt ?? "",
       queueOrder: Number.isFinite(task.queueOrder) ? task.queueOrder : null,
       decision,
-    })))));
+    }))))));
     if (normalizedTask.status === "running") {
       return ensureLegacyReportVersion({
         ...normalizedTask,
@@ -234,6 +236,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       const memory = await memoryFromEvent(event, evidence.evidenceBundle);
       const readiness = await readinessFromEvent(event, evidence.evidenceBundle);
       const numeric = await reportSnapshotFromEvent(event, evidence.evidenceBundle);
+      const identity = await identityFromEvent(event, evidence.evidenceBundle, numeric?.reportTextSnapshot);
       updateTask(taskId, (task) => {
         const logs = event.message || event.error
           ? prependLog(task.logs, event.messageType ?? event.type, event.error ?? event.message ?? "", event.timestamp, event.agent)
@@ -245,7 +248,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           : event.type === "error"
             ? "error"
             : task.status;
-        const nextTask: AnalysisTask = normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(evidenceMatchesSnapshot({
+        const nextTask: AnalysisTask = normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(evidenceMatchesSnapshot({
           ...task,
           status,
           updatedAt: new Date().toISOString(),
@@ -258,9 +261,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           ...(memory ?? {}),
           ...(readiness ?? {}),
           ...(numeric ?? {}),
+          ...(identity ?? {}),
           logs,
           error: event.error ?? (status === "running" ? "" : task.error),
-        }))));
+        })))));
         return runContext
           ? appendCompletedReportVersion(nextTask, event, runContext)
           : nextTask;
@@ -451,7 +455,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       const candidate = normalizeNumericTasks(latest.map((item) => item.id === taskId ? next : item));
       if (candidate.find((item) => item.id === taskId)?.reportVersions.find((item) => item.id === versionId)?.numericValidation) throw new Error("Numeric reviews conflict with this saved report history.");
       if (isTauriRuntime()) {
-        await (runtimeAdapterRef.current ?? getRuntimeAdapter()).saveDesktopTask(await verifyNumericTask(next));
+        await (runtimeAdapterRef.current ?? getRuntimeAdapter()).saveDesktopTask(await verifyIdentityTask(await verifyNumericTask(next)));
       } else await saveVerifiedTasks(candidate);
       // Publish only after durable success. Re-append to the latest owner rather
       // than replacing unrelated updates made during the asynchronous write.

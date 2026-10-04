@@ -1,4 +1,5 @@
 "use client";
+import { IdentityInspector } from "@/features/source-identity/components/IdentityInspector";
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -258,7 +259,8 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                 onOpen={() => openAgentDrawer("Portfolio Manager")}
               />
               <OutputQualityPanel quality={task.outputQuality} language={settings.systemLanguage} />
-              <ReadinessInspector snapshot={task} language={settings.systemLanguage} />
+              <IdentityInspector snapshot={task} language={settings.systemLanguage} />
+      <ReadinessInspector snapshot={task} language={settings.systemLanguage} />
               <EvidenceInspector bundle={task.evidenceBundle} invalid={task.evidenceValidation} reports={task.reportSections} checkReportCitations={task.status === "completed"} language={settings.systemLanguage} />
               <MemoryInspector snapshot={task} language={settings.systemLanguage} />
             </div>

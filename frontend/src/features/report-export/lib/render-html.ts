@@ -1,3 +1,4 @@
+import { identityHtml } from "@/features/source-identity/lib/render-appendix";
 import { numericHtml } from "@/features/numeric-review/lib/render-appendix";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createElement } from "react";
@@ -81,6 +82,7 @@ export function renderReportHtml(document: ReportDocument) {
     ${renderMemoryHtml(document.version, document.language)}
 ${renderReadinessHtml(document.version, document.language)}
 ${numericHtml(document.taskId, document.version, document.language, escapeHtml)}
+    ${identityHtml(document.version, document.language, escapeHtml)}
   </main>
 </body>
 </html>`;

@@ -23,7 +23,7 @@ from tradingagents.agents.utils.memory import TradingMemoryLog
 from tradingagents.dataflows.utils import safe_ticker_component
 from tradingagents.dataflows.symbol_utils import normalize_symbol
 from tradingagents.dataflows.config import run_config, run_config_context, set_config
-from tradingagents.agents.utils.rating import run_rating
+from tradingagents.agents.utils.rating import extract_rating, run_rating
 from tradingagents.agents.utils.settlement import compute_returns
 from tradingagents.memory.evaluation import make_evaluation_plan
 from tradingagents.research import make_policy, validate_policy, validate_readiness
@@ -34,6 +34,15 @@ from tradingagents.research.numeric_review import (
     validate_report_text_snapshot,
 )
 from tradingagents.research.numeric_persistence import freeze_report_text_snapshot
+from tradingagents.research.effective_request_identity import (
+    POLICY_SHA256 as EFFECTIVE_REQUEST_POLICY_SHA256,
+    EffectiveRequestIdentityError,
+    unsafe_effective_request_ids,
+    validate_effective_request_identity,
+)
+from tradingagents.research.effective_request_identity_persistence import (
+    freeze_effective_request_identity,
+)
 from tradingagents.memory.schema import (
     utc_timestamp,
     validate_context_snapshot,
@@ -314,7 +323,7 @@ class TradingAgentsGraph:
             [
                 "analysts=" + ",".join(self.selected_analysts),
                 f"asset={asset_type}",
-                "layout=parallel-v5-evidence-v1-memory-v1-readiness-v1",
+                "layout=parallel-v5-evidence-v1-memory-v1-readiness-v1-effective-request-v1",
                 "code=" + _source_code_sha256(Path(tradingagents.__file__).parent)[:16],
                 f"settings={digest}",
             ]
@@ -454,6 +463,13 @@ class TradingAgentsGraph:
             != _context_sha256(state.get("past_context", ""))
         ):
             raise ValueError("research evidence does not match the frozen run context")
+        request_policy = bundle["manifest"].get("effective_request_identity_policy_sha256")
+        if request_policy is not None and request_policy != EFFECTIVE_REQUEST_POLICY_SHA256:
+            raise EffectiveRequestIdentityError()
+        if "effective_request_identity" in state:
+            validate_effective_request_identity(
+                state["effective_request_identity"], bundle, state.get("report_text_snapshot")
+            )
         memory = state.get("research_memory")
         if bundle["manifest"].get("research_readiness_policy_sha256") and not memory:
             raise ValueError("Frozen research input checks require their original memory start")
@@ -577,6 +593,7 @@ class TradingAgentsGraph:
                 "prompt_templates_sha256": _source_code_sha256(package / "agents"),
                 "memory_input_sha256": _context_sha256(past_context),
                 "research_readiness_policy_sha256": readiness_policy["policy_sha256"],
+                "effective_request_identity_policy_sha256": EFFECTIVE_REQUEST_POLICY_SHA256,
                 "instrument_identity_context_sha256": _context_sha256(source_instrument_context),
                 "model_context_sha256": _context_sha256(
                     {
@@ -663,6 +680,15 @@ class TradingAgentsGraph:
         elif final_state.get("research_readiness_policy") and decision:
             raise ValueError("Completed research has no frozen input assessment")
         if decision and final_state.get("evidence_bundle"):
+            request_policy = final_state["evidence_bundle"]["manifest"].get(
+                "effective_request_identity_policy_sha256"
+            )
+            if request_policy is not None and (
+                request_policy != EFFECTIVE_REQUEST_POLICY_SHA256
+                or unsafe_effective_request_ids(final_state["evidence_bundle"])
+                and (run_rating(final_state) != "REVIEW" or extract_rating(decision) != "REVIEW")
+            ):
+                raise EffectiveRequestIdentityError()
             final_state["memory_bundle"] = self._research_memory().record_final(
                 final_state, final_state["evidence_bundle"], run_rating(final_state)
             )
@@ -682,6 +708,19 @@ class TradingAgentsGraph:
             ):
                 raise NumericReviewError()
             final_state["report_text_snapshot"] = snapshot
+            if request_policy is not None:
+                final_state["effective_request_identity"] = freeze_effective_request_identity(
+                    self._evidence_storage(),
+                    final_state["evidence_bundle"],
+                    snapshot,
+                    existing=final_state.get("effective_request_identity"),
+                )
+            elif "effective_request_identity" in final_state:
+                final_state["effective_request_identity"] = validate_effective_request_identity(
+                    final_state["effective_request_identity"],
+                    final_state["evidence_bundle"],
+                    snapshot,
+                )
         self.curr_state = final_state
         if persist_state:
             self._log_state(trade_date, final_state)
@@ -810,6 +849,11 @@ class TradingAgentsGraph:
             **(
                 {"report_text_snapshot": final_state["report_text_snapshot"]}
                 if final_state.get("report_text_snapshot")
+                else {}
+            ),
+            **(
+                {"effective_request_identity": final_state["effective_request_identity"]}
+                if "effective_request_identity" in final_state
                 else {}
             ),
             **(

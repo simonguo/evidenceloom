@@ -47,8 +47,14 @@ try:
     from tradingagents.agents.utils.rating import run_rating
     from tradingagents.memory.schema import validate_bundle as validate_memory_bundle
     from tradingagents.research.numeric_review import (
+        NumericReviewError,
         public_report_copy,
         validate_report_text_snapshot,
+    )
+    from tradingagents.research.effective_request_identity import (
+        POLICY_SHA256 as EFFECTIVE_REQUEST_POLICY_SHA256,
+        EffectiveRequestIdentityError,
+        validate_effective_request_identity,
     )
     from tradingagents.llm_clients.factory import build_llm_kwargs
     from tradingagents.llm_clients.base_client import normalize_utf8_text
@@ -388,6 +394,34 @@ def update_reports_from_chunk(buffer: MessageBuffer, chunk: Dict[str, Any]) -> N
 
 
 def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
+    manifest = final_state.get("evidence_bundle", {}).get("manifest", {})
+    marker = manifest.get("effective_request_identity_policy_sha256")
+    if "effective_request_identity_policy_sha256" in manifest and (
+        marker != EFFECTIVE_REQUEST_POLICY_SHA256 or "effective_request_identity" not in final_state
+    ):
+        raise EffectiveRequestIdentityError()
+    snapshot = None
+    if final_state.get("report_text_snapshot"):
+        snapshot = validate_report_text_snapshot(
+            final_state["report_text_snapshot"], final_state["evidence_bundle"]
+        )
+        if snapshot["report_sections"] != {
+            key: final_state.get(key) for key in REPORT_SECTION_KEYS
+        }:
+            raise NumericReviewError()
+    assessment = None
+    if "effective_request_identity" in final_state:
+        assessment = validate_effective_request_identity(
+            final_state["effective_request_identity"],
+            final_state["evidence_bundle"],
+            final_state.get("report_text_snapshot"),
+        )
+        if (
+            marker is not None
+            and assessment["summary"]["unsafe_record_ids"]
+            and run_rating(final_state) != "REVIEW"
+        ):
+            raise EffectiveRequestIdentityError()
     keys = [*REPORT_SECTION_KEYS, "final_rating", "run_settings"]
     compact = {key: final_state.get(key) for key in keys if key in final_state}
     if "output_quality" in final_state:
@@ -398,10 +432,10 @@ def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
         compact["memory_bundle"] = validate_memory_bundle(final_state["memory_bundle"])
     if final_state.get("research_readiness"):
         compact["research_readiness"] = final_state["research_readiness"]
-    if final_state.get("report_text_snapshot"):
-        compact["report_text_snapshot"] = validate_report_text_snapshot(
-            final_state["report_text_snapshot"], final_state["evidence_bundle"]
-        )
+    if snapshot is not None:
+        compact["report_text_snapshot"] = snapshot
+    if assessment is not None:
+        compact["effective_request_identity"] = assessment
     return compact
 
 
@@ -645,6 +679,17 @@ def run(payload: Dict[str, Any]) -> None:
                         )
                     }
                     if final_state.get("report_text_snapshot")
+                    else {}
+                ),
+                **(
+                    {
+                        "effectiveRequestIdentity": validate_effective_request_identity(
+                            final_state["effective_request_identity"],
+                            final_state["evidence_bundle"],
+                            final_state["report_text_snapshot"],
+                        )
+                    }
+                    if "effective_request_identity" in final_state
                     else {}
                 ),
                 "finalState": compact_final_state(final_state),

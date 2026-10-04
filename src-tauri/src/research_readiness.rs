@@ -13,6 +13,9 @@ mod rating;
 use derive::derive_checks;
 
 pub const ERROR: &str = "Invalid or conflicting research readiness";
+pub(crate) fn extract_rating(text: &str) -> Option<&'static str> {
+    rating::extract(text)
+}
 type Result<T> = std::result::Result<T, String>;
 const ANALYSTS: &[&str] = &["market", "social", "news", "fundamentals"];
 pub(crate) const INDICATORS: &[&str] = &[

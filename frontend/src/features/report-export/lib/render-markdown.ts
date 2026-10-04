@@ -1,3 +1,4 @@
+import { identityMarkdown } from "@/features/source-identity/lib/render-appendix";
 import { numericMarkdown } from "@/features/numeric-review/lib/render-appendix";
 import type { ReportDocument } from "../types";
 import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
@@ -46,6 +47,7 @@ export function renderReportMarkdown(document: ReportDocument) {
     renderMemoryMarkdown(document.version, document.language),
     renderReadinessMarkdown(document.version, document.language),
     numericMarkdown(document.taskId, document.version, document.language),
+    identityMarkdown(document.version, document.language),
     "",
   ].filter((line, index, lines) => line || lines[index - 1] !== "").join("\n");
 }

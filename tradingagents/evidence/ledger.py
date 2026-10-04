@@ -109,6 +109,7 @@ MANIFEST_KEYS = frozenset(
         "instrument_identity_context_sha256",
         "model_context_sha256",
         "research_readiness_policy_sha256",
+        "effective_request_identity_policy_sha256",
     }
 )
 REPORT_KEYS = frozenset(
@@ -790,11 +791,19 @@ class EvidenceLedger:
             self._secrets,
             numbers_as_strings=True,
         )
+        # Compare the saved, effective outer selector before either replay or
+        # provider delivery. Provider/entity identity is not inferred here.
+        from tradingagents.research.effective_request_identity import assess_selector
+
+        request_conflict = (
+            assess_selector(self._bundle["instrument"], tool, parameters)["canonical_alignment"]
+            == "conflict"
+        )
         analyst = _analyst_context.get()
         key = self._call_key(analyst, tool, parameters)
         with self._lock:
             replay = self._replay.get(key)
-            if replay:
+            if replay and not request_conflict:
                 evidence_id = replay.pop(0)
                 record = next(r for r in self._bundle["records"] if r["id"] == evidence_id)
                 return self._bundle["artifacts"][record["output_sha256"]]["payload"]
@@ -802,7 +811,12 @@ class EvidenceLedger:
         token = _capture_context.set(capture)
         error = None
         try:
-            raw = operation()
+            raw = (
+                "REQUEST_WITHHELD: effective outer request conflicts with this research run; "
+                "no source values were supplied."
+                if request_conflict
+                else operation()
+            )
         except Exception as exc:
             raw, error = "DATA_UNAVAILABLE: source operation failed; no values were supplied.", exc
         finally:
@@ -837,7 +851,9 @@ class EvidenceLedger:
             or re.search(r"(?:^|<)no [^>\n]*(?:messages|posts|articles)", lower) is not None
             or (capture["attempts"] and capture["attempts"][-1]["status"] == "empty")
         )
-        if (
+        if request_conflict:
+            status = "withheld"
+        elif (
             capture["future"]
             or "historical_withheld" in lower
             or (
@@ -881,6 +897,10 @@ class EvidenceLedger:
             candidate["artifacts"].update(capture["artifacts"])
             _rehash(candidate)
             self._bundle = self._persist(candidate)
+        if request_conflict:
+            raise EvidenceSourceError(
+                "Effective outer request conflicts with this research run; no source values were supplied"
+            ) from None
         if error is not None:
             if isinstance(error, EvidencePersistenceError):
                 raise error from None

@@ -1,4 +1,5 @@
 "use client";
+import { verifiedIdentityExport } from "@/features/source-identity/lib/export";
 
 import { useEffect, useMemo, useState } from "react";
 import { getRuntimeAdapter } from "@/lib/runtime";
@@ -44,6 +45,7 @@ export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
       frozenVersion = await verifiedExportVersion(frozenVersion);
       frozenVersion = await verifiedReadinessExport(frozenVersion);
       frozenVersion = await verifiedNumericExport(taskId, frozenVersion);
+      frozenVersion = await verifiedIdentityExport(frozenVersion);
       const document = buildReportDocument(taskId, origin, frozenVersion, language);
       const content = format === "json" ? JSON.stringify(reportJson(taskId, origin, frozenVersion), null, 2) : format === "html"
         ? renderReportHtml(document)

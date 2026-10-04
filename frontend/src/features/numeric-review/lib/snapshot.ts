@@ -42,8 +42,10 @@ export async function verifyReportTextSnapshot(value: unknown, evidenceValue: un
     }
 }
 export function bindReportSnapshot<T extends AnalysisTask | ReportVersion>(value: T, snapshot: ReportTextSnapshot): T {
-    const identity = "task" in value ? (value as ReportVersion).task : value as AnalysisTask;
-    requireNumeric(snapshot.instrument === identity.ticker && snapshot.analysis_date === identity.analysisDate && (!("task" in value) || value.runId === snapshot.run_id), "reference_mismatch");
+    const isTask = "status" in value;
+    requireNumeric(!(isTask && "task" in value), "reference_mismatch");
+    const identity = isTask ? value as AnalysisTask : (value as ReportVersion).task;
+    requireNumeric(snapshot.instrument === identity.ticker && snapshot.analysis_date === identity.analysisDate && (isTask || (value as ReportVersion).runId === snapshot.run_id), "reference_mismatch");
     const sections = Object.fromEntries(sectionKeys.map((key) => [key, value.reportSections[key] ?? null]));
     requireNumeric(same(sections, snapshot.report_sections), "reference_mismatch");
     if (value.memoryBundle)

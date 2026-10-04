@@ -1,3 +1,5 @@
+import { normalizeIdentityTaskFields } from "@/features/source-identity/lib/tasks";
+import { copyIdentityFromEvent } from "@/features/source-identity/lib/validation";
 import { normalizeNumericTaskFields } from "@/features/numeric-review/lib/tasks";
 import { copySnapshotFromEvent } from "@/features/numeric-review/lib/snapshot";
 import { resolveTaskDecision } from "@/components/task-center/decisions";
@@ -50,6 +52,8 @@ export function appendCompletedReportVersion(
   if (!hasReportContent(reportSections)) return task;
   const numeric = task.numericValidation ? { reportTextSnapshot: undefined, numericValidation: task.numericValidation } : copySnapshotFromEvent(event, evidenceTask.evidenceBundle) ?? { reportTextSnapshot: task.reportTextSnapshot, numericValidation: undefined };
 
+  const identity = task.identityValidation ? { effectiveRequestIdentity: undefined, identityValidation: task.identityValidation } : copyIdentityFromEvent(event, evidenceTask.evidenceBundle, numeric.reportTextSnapshot) ?? { effectiveRequestIdentity: task.effectiveRequestIdentity, identityValidation: undefined };
+
   const nextVersionNumber = task.reportVersions.reduce(
     (maximum, version) => Math.max(maximum, version.versionNumber),
     0,
@@ -63,6 +67,7 @@ export function appendCompletedReportVersion(
     reportTextSnapshot: numeric.reportTextSnapshot,
     numericValidation: numeric.numericValidation,
     numericReviews: [],
+    ...identity,
     task: taskSnapshot(task),
     run: mergeRuntimeManifest(runContext.manifest, event.runSettings),
     decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
@@ -78,7 +83,7 @@ export function appendCompletedReportVersion(
     evaluationReviews: [],
   };
 
-  return normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, ...numeric, reportVersions: [...task.reportVersions, version] }))));
+  return normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, ...numeric, ...identity, reportVersions: [...task.reportVersions, version] })))));
 }
 
 export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {

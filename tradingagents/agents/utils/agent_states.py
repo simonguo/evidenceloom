@@ -72,6 +72,9 @@ class AgentState(MessagesState):
     research_readiness: Annotated[dict, "Saved research input checks before recommendation"]
     memory_bundle: Annotated[dict, "Immutable completion memory and outcome contract"]
     report_text_snapshot: Annotated[dict, "Immutable original report strings after final Evidence"]
+    effective_request_identity: Annotated[
+        dict, "Saved outer-selector review; provider identity unknown"
+    ]
     output_quality: Annotated[dict, merge_output_quality]
     past_context: Annotated[
         str,

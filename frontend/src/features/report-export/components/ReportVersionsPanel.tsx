@@ -1,5 +1,6 @@
 "use client";
 
+import { IdentityInspector } from "@/features/source-identity/components/IdentityInspector";
 import { Download, FileCode2, FileText, Loader2 } from "lucide-react";
 import type { AnalysisTask, GlobalSettings, SystemLanguage } from "@/lib/types";
 import { NumericReviewPanel } from "@/features/numeric-review/components/NumericReviewPanel";
@@ -110,6 +111,7 @@ export function ReportVersionsPanel({
         <div className="mt-4 space-y-3">
           <OutputQualityPanel quality={selectedVersion.outputQuality} language={language} />
           <EvidenceInspector bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
+          <IdentityInspector key={`identity:${selectedVersion.id}`} snapshot={selectedVersion} language={language} />
           <ReadinessInspector snapshot={selectedVersion} language={language} />
           <MemoryInspector snapshot={selectedVersion} language={language} />
           <NumericReviewPanel key={`numeric:${selectedVersion.id}`} taskId={task.id} version={selectedVersion} language={language} onSave={onNumericReviews} />
