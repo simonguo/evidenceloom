@@ -1,0 +1,1029 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-10-04T14:36:17.645003+00:00",
+  "base_commit": "f629728f377487df04654d5373d56a2a59df869e",
+  "source_commit": "c2b486d4ea85d2ba4fc7cc46a791ef71c87bc5b8",
+  "source_files": [
+    {
+      "path": "tradingagents/evidence/ledger.py",
+      "bytes": 37635,
+      "sha256": "acbbd8454653d1d98d98df00ca354e1063e4ed00a731ffbd1f8952bb3a6e62f3"
+    },
+    {
+      "path": "tests/test_diagnostic_key_classification.py",
+      "bytes": 7968,
+      "sha256": "9de75cc82b3a274691c669c77a73c2fd162c3bd74e92697be9cc2ecdc3d7447a"
+    },
+    {
+      "path": ".github/workflows/sidecar-diagnostics.yml",
+      "bytes": 6886,
+      "sha256": "70113961740d6dc3651f644fd28976559fbf3136016ef67fca1bb42573834886"
+    }
+  ],
+  "source_snapshot": {
+    "base_existing_files": 599,
+    "unchanged_existing_files": 597,
+    "changed_existing_paths": [
+      "tradingagents/evidence/ledger.py",
+      ".github/workflows/sidecar-diagnostics.yml"
+    ],
+    "added_source_paths": [
+      "tests/test_diagnostic_key_classification.py"
+    ],
+    "scope": "Immutable source commits; later validation documentation separate."
+  },
+  "original_measurement_base": "67afab6d9b15c62017216c0c4f7f6f7a37695f86",
+  "benchmark": {
+    "instrumentation": "AST original collector and candidate collector sequentially substituted into the same frozen candidate source; recorded source identity remains candidate bytes, not two installed implementations.",
+    "timed_operation": "For each sample, both complete owned packs execute validate_pack, evaluate_pack, validate_evaluation_result; immutable input/equality assertions and source manifest hashing are included.",
+    "packs": [
+      {
+        "cases": 11,
+        "claims": 16,
+        "pack": "owned11",
+        "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac"
+      },
+      {
+        "cases": 3,
+        "claims": 3,
+        "pack": "both_history3",
+        "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6"
+      }
+    ],
+    "samples": [
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.964661625,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 0,
+        "repeat": 0,
+        "variant": "original"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.530807125,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 1,
+        "repeat": 0,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.52062525,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 0,
+        "repeat": 1,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.98461875,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 1,
+        "repeat": 1,
+        "variant": "original"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.962865584,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 0,
+        "repeat": 2,
+        "variant": "original"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.5285585,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 1,
+        "repeat": 2,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.553105458,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 0,
+        "repeat": 3,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.959854708,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 1,
+        "repeat": 3,
+        "variant": "original"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.998655375,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 0,
+        "repeat": 4,
+        "variant": "original"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.531113583,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 1,
+        "repeat": 4,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.519768,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 0,
+        "repeat": 5,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "minimal",
+        "elapsed_seconds": 2.965635625,
+        "environment_key_count": 5,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 1,
+        "repeat": 5,
+        "variant": "original"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 12.5136355,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 0,
+        "repeat": 0,
+        "variant": "original"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 9.007599833,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 1,
+        "repeat": 0,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 8.990610833,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 0,
+        "repeat": 1,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 12.53139275,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 1,
+        "repeat": 1,
+        "variant": "original"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 12.573199125,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 0,
+        "repeat": 2,
+        "variant": "original"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 9.039238583,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 1,
+        "repeat": 2,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 9.019310125,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 0,
+        "repeat": 3,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 12.489422709,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 1,
+        "repeat": 3,
+        "variant": "original"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 12.510375625,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 0,
+        "repeat": 4,
+        "variant": "original"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 9.096883,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "original",
+          "candidate"
+        ],
+        "position": 1,
+        "repeat": 4,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 9.079296333,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 0,
+        "repeat": 5,
+        "variant": "candidate"
+      },
+      {
+        "cohort": "metadata36",
+        "elapsed_seconds": 12.520109208,
+        "environment_key_count": 41,
+        "event": "timed_sample_complete",
+        "full_result_and_hash_equality": true,
+        "hashes": [
+          {
+            "pack": "owned11",
+            "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+            "result_sha256": "ead204efaddc09da9d4c54ce497278ef71ea2444a3708076ef26db5f8fcd1407"
+          },
+          {
+            "pack": "both_history3",
+            "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+            "result_sha256": "1c091a02459b891d633c6c7cfc6480c80a8aa4617fc8b9d68d25f576f17cdd74"
+          }
+        ],
+        "order": [
+          "candidate",
+          "original"
+        ],
+        "position": 1,
+        "repeat": 5,
+        "variant": "original"
+      }
+    ],
+    "summaries": [
+      {
+        "candidate": {
+          "count": 6,
+          "max_seconds": 2.553105458,
+          "median_seconds": 2.5296828125,
+          "min_seconds": 2.519768,
+          "p10_seconds": 2.520196625,
+          "p90_seconds": 2.5421095205,
+          "stdev_seconds": 0.012064610134178423
+        },
+        "candidate_faster_pair_count": 6,
+        "cohort": "minimal",
+        "environment_key_count": 5,
+        "median_paired_ratio": 0.8515359163198584,
+        "original": {
+          "count": 6,
+          "max_seconds": 2.998655375,
+          "median_seconds": 2.9651486250000003,
+          "min_seconds": 2.959854708,
+          "p10_seconds": 2.961360146,
+          "p90_seconds": 2.9916370624999997,
+          "stdev_seconds": 0.01544004419609952
+        },
+        "paired_candidate_over_original_ratios": [
+          0.8536580038877117,
+          0.8445384356042125,
+          0.8534165416260071,
+          0.8625779674588001,
+          0.8440828526352415,
+          0.8496552910137097
+        ]
+      },
+      {
+        "candidate": {
+          "count": 6,
+          "max_seconds": 9.096883,
+          "median_seconds": 9.029274354,
+          "min_seconds": 8.990610833,
+          "p10_seconds": 8.999105333,
+          "p90_seconds": 9.0880896665,
+          "stdev_seconds": 0.041687596448792455
+        },
+        "candidate_faster_pair_count": 6,
+        "cohort": "metadata36",
+        "environment_key_count": 41,
+        "median_paired_ratio": 0.7209893307002135,
+        "original": {
+          "count": 6,
+          "max_seconds": 12.573199125,
+          "median_seconds": 12.516872354,
+          "min_seconds": 12.489422709,
+          "p10_seconds": 12.499899166999999,
+          "p90_seconds": 12.5522959375,
+          "stdev_seconds": 0.028189527215753876
+        },
+        "paired_candidate_over_original_ratios": [
+          0.7198227751639402,
+          0.7174470557552352,
+          0.718929088224394,
+          0.722155886236487,
+          0.7271470715732407,
+          0.725177087688547
+        ]
+      }
+    ],
+    "all_24_result_and_hash_comparisons_equal": true,
+    "environment_values_not_recorded": true,
+    "runtime": "macOS / CPython3.12.10 / interpreter-visible x86_64",
+    "not_rerun_after_sdk_stack": true,
+    "limitations": [
+      "Single local macOS host and CPython 3.12.10; no multi-platform or complete-suite benchmark.",
+      "Only two owned workloads and two fake environment sizes, six pairs per cohort; warmups discarded.",
+      "Alternating AB/BA order reduces ordering bias but does not control CPU load, thermal state or scheduling.",
+      "No claimed statistical significance, Intel CI timeout causality or full-suite speedup.",
+      "No external model/provider API or network; pure benchmark imports blocked research modules. Earlier runtime regression separately uses offline ScriptedModel."
+    ]
+  },
+  "root_independent_collector_probe": {
+    "captured_at": "2026-10-04T14:26:22.828303+00:00",
+    "immutable_base": "67afab6d9b15c62017216c0c4f7f6f7a37695f86",
+    "original_ledger_sha256": "a613671ae2316efaf7e48c6d16c4f379c1ca1a1dc358b501470d7322bfcd287e",
+    "candidate_source_files": [
+      {
+        "path": "tradingagents/evidence/ledger.py",
+        "sha256": "acbbd8454653d1d98d98df00ca354e1063e4ed00a731ffbd1f8952bb3a6e62f3"
+      },
+      {
+        "path": "tests/test_diagnostic_key_classification.py",
+        "sha256": "9de75cc82b3a274691c669c77a73c2fd162c3bd74e92697be9cc2ecdc3d7447a"
+      }
+    ],
+    "random_unicode_key_cases": 50000,
+    "unicode_observation_sha256": "af064f889ea1dc88dc1aabf402449b081279115e8274ff0d407ab8ed956c10b3",
+    "invalid_mapping_key_cases": 4,
+    "stateful_custom_method_value_exception_trace_cases": 60,
+    "rotation_and_delete": "PASS",
+    "explicit_generator_environment_mutation_order": "PASS",
+    "explicit_exception_precedes_items": "PASS",
+    "source_unchanged": true,
+    "scope": "Root-owned AST collector extraction from immutable original versus live candidate; no application/model invocation, real environment values, provider, or network. Not a runtime/CI speed benchmark."
+  },
+  "root_sdk044_targeted_integration": {
+    "captured_at": "2026-10-04T14:28:41.618791+00:00",
+    "argv": [
+      "/Users/apple/workspace/TradingAgents/evidenceloom-validation/dependency-security-next-pass/python312-sdk044-env/bin/python",
+      "-B",
+      "-m",
+      "pytest",
+      "-q",
+      "-p",
+      "no:cacheprovider",
+      "--basetemp",
+      "/Users/apple/workspace/TradingAgents/evidenceloom-validation/claims-performance/uncached-key-predicate-67afab6/root-sdk044-integration-temp",
+      "--junitxml",
+      "/Users/apple/workspace/TradingAgents/evidenceloom-validation/claims-performance/uncached-key-predicate-67afab6/root-sdk044-integration.xml",
+      "tests/test_diagnostic_key_classification.py",
+      "tests/test_langgraph_sdk_authorization.py",
+      "tests/test_evidence_ledger.py::test_secrets_private_endpoints_paths_and_raw_envelopes_are_excluded",
+      "tests/test_evidence_ledger.py::test_resume_redacts_current_environment_credentials",
+      "tests/test_evidence_runtime.py::test_sanitized_identity_context_hash_stays_valid_on_fresh_run_and_resume"
+    ],
+    "source_commit": "f449cc75978ae09b2a9b8dda1d2fb4da0117483c",
+    "uncommitted_native_invocation": true,
+    "sdk_scope": "3.12 SDK0.4.4-only overlay; not a fresh full candidate installation",
+    "exit_code": 0,
+    "elapsed_seconds": 4.241952125001262,
+    "junit_counts": {
+      "tests": 60,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "logs": [
+      {
+        "path": "root-sdk044-integration.stdout.log",
+        "sha256": "bb8aeb008d2cf8e31446373e92f3859a196a0ba74ffedcaf98cc0b8a7f779702"
+      },
+      {
+        "path": "root-sdk044-integration.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "junit": {
+      "path": "root-sdk044-integration.xml",
+      "sha256": "70f42fdd851dc47727f54abab3542f0c7a6071188cb60d0519441942da2890a3"
+    },
+    "source_files": [
+      {
+        "path": "tradingagents/evidence/ledger.py",
+        "sha256": "acbbd8454653d1d98d98df00ca354e1063e4ed00a731ffbd1f8952bb3a6e62f3"
+      },
+      {
+        "path": "tests/test_diagnostic_key_classification.py",
+        "sha256": "9de75cc82b3a274691c669c77a73c2fd162c3bd74e92697be9cc2ecdc3d7447a"
+      },
+      {
+        "path": ".github/workflows/sidecar-diagnostics.yml",
+        "sha256": "70113961740d6dc3651f644fd28976559fbf3136016ef67fca1bb42573834886"
+      }
+    ],
+    "source_unchanged": true,
+    "scope": "42 new compatibility tests, 15 SDK tests, 3 existing credential regressions. One existing test executes offline ScriptedModel graph fresh/resume. No external model/provider call; owned fake credentials and shared offline fixtures."
+  },
+  "root_restacked_pipeline": {
+    "captured_at": "2026-10-04T14:32:08.585221+00:00",
+    "source_files": [
+      {
+        "path": "tradingagents/evidence/ledger.py",
+        "sha256": "acbbd8454653d1d98d98df00ca354e1063e4ed00a731ffbd1f8952bb3a6e62f3"
+      },
+      {
+        "path": "tests/test_diagnostic_key_classification.py",
+        "sha256": "9de75cc82b3a274691c669c77a73c2fd162c3bd74e92697be9cc2ecdc3d7447a"
+      },
+      {
+        "path": ".github/workflows/sidecar-diagnostics.yml",
+        "sha256": "70113961740d6dc3651f644fd28976559fbf3136016ef67fca1bb42573834886"
+      },
+      {
+        "path": "uv.lock",
+        "sha256": "7574a279f791497aa1ea0006a3d17ddcc329214ce7498dc0d6ddf81e396e0f11"
+      }
+    ],
+    "packs": [
+      {
+        "pack": "owned11",
+        "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac",
+        "result_sha256": "e8257ceca6e62040c44eeeaac992ab1277e48acb21701d98a3e6e4d29c6980eb"
+      },
+      {
+        "pack": "both_history3",
+        "pack_sha256": "5315ffa2ffccb29eb24116bfd744c963eac272ef4a629ba6122792b788e3fef6",
+        "result_sha256": "915a53e1568fa5d3e181d040e60649d3855025d9741c624c4e231f6a02d2a89d"
+      }
+    ],
+    "full_public_operations": 6,
+    "reject_boundaries": 8,
+    "precise_changes_from_pre_restack_candidate": [
+      {
+        "pack": "owned11",
+        "changed_paths": [
+          [
+            "implementation",
+            "dependency_files",
+            1,
+            "sha256"
+          ],
+          [
+            "result_sha256"
+          ]
+        ],
+        "old_dependency_file": {
+          "path": "uv.lock",
+          "sha256": "1a6b236ba8ef62b230c1e3d7dc055122334905609a2d11cdaf55c34f3e50075b"
+        },
+        "new_dependency_file": {
+          "path": "uv.lock",
+          "sha256": "7574a279f791497aa1ea0006a3d17ddcc329214ce7498dc0d6ddf81e396e0f11"
+        }
+      },
+      {
+        "pack": "both_history3",
+        "changed_paths": [
+          [
+            "implementation",
+            "dependency_files",
+            1,
+            "sha256"
+          ],
+          [
+            "result_sha256"
+          ]
+        ],
+        "old_dependency_file": {
+          "path": "uv.lock",
+          "sha256": "1a6b236ba8ef62b230c1e3d7dc055122334905609a2d11cdaf55c34f3e50075b"
+        },
+        "new_dependency_file": {
+          "path": "uv.lock",
+          "sha256": "7574a279f791497aa1ea0006a3d17ddcc329214ce7498dc0d6ddf81e396e0f11"
+        }
+      }
+    ],
+    "all_other_fields_and_rejections_equal": true,
+    "source_unchanged": true,
+    "scope": "Retained author harness inspected and invoked by root on restacked source. Pure offline public evaluation APIs; blocked research/model/network imports. SDK not imported by this check; SDK graph compatibility is separately tested.",
+    "contrary": "First root harness incorrectly required entire result equality after changing declared uv.lock; original assertion failure and script retained. Corrected check allows only actual uv.lock file SHA and its directly derived result SHA, without rewriting results."
+  },
+  "scope_limits": [
+    "Fresh environment scan and explicit-generator ordering retained; no caches.",
+    "Actual original/candidate source identities legitimately differ; no normalized hashes.",
+    "Value and exception behavior only; allocation timing and trace-frame equivalence excluded.",
+    "Original benchmark predates SDK stack; source collector/test bytes unchanged but dependency identity differs.",
+    "No full-suite speedup, statistical significance, physical-host architecture attestation or Intel CI cause established.",
+    "Native exact-head CI, clean-machine install/upgrade, signing and external analyst/expert acceptance remain open."
+  ],
+  "artifact_root": "evidenceloom-validation/claims-performance/uncached-key-predicate-67afab6/",
+  "artifacts": [
+    {
+      "path": "review-evidence.json",
+      "bytes": 206288,
+      "sha256": "c9472d25339071930a069402de6779f265f4c6edf48e4d20ba0f3899859a6a23"
+    },
+    {
+      "path": "review-evidence.md",
+      "bytes": 5380,
+      "sha256": "22ff2b99b9d8bfb5e9d95b52f05b89290e45f8831e8fdcfbcdf128a9fe3d1c61"
+    },
+    {
+      "path": "initial-source-freeze.json",
+      "bytes": 98315,
+      "sha256": "0a5195459e79cb031ae3f9c674a70718ee9aacca49130d71443beb6f0f06ff2a"
+    },
+    {
+      "path": "actual-source-comparison.json",
+      "bytes": 1645,
+      "sha256": "3b820ab8a41f9dd8220064a710eaa1720e3cbe88b687975bace524c6306076ce"
+    },
+    {
+      "path": "actual-baseline.json",
+      "bytes": 351499,
+      "sha256": "4f546c878fd96b7ffc9d7d337317b293934b09192f1acaba3fa44ad1be930547"
+    },
+    {
+      "path": "actual-candidate.json",
+      "bytes": 351830,
+      "sha256": "2df499963963efd144277bee4ce32c791bc4d89278c7f70471afc1014723c57d"
+    },
+    {
+      "path": "interleaved-full-pipeline.json",
+      "bytes": 219635,
+      "sha256": "4e99be35e20d0a932587c741fe178b0e6175acaf711b5c86c433dc5cf83b5eda"
+    },
+    {
+      "path": "interleaved-full-pipeline.raw.log",
+      "bytes": 17554,
+      "sha256": "c692fc952006c18ed54efe032a89d3146a635cfbbab384b35b7f49511f2a0024"
+    },
+    {
+      "path": "root-independent-predicate-probe.json",
+      "bytes": 1162,
+      "sha256": "14d6891fd8eab51199cd79116be17f2dd3bd69ce62278c6635c05afe571e6846"
+    },
+    {
+      "path": "root-sdk044-integration-execution.json",
+      "bytes": 2569,
+      "sha256": "8d3b53cec42a5a9ddf588e0f00294a9368f1f365dbf1f90c5c3f11f6455a7966"
+    },
+    {
+      "path": "root-sdk044-integration.xml",
+      "bytes": 10270,
+      "sha256": "70f42fdd851dc47727f54abab3542f0c7a6071188cb60d0519441942da2890a3"
+    },
+    {
+      "path": "root-sdk044-integration.stdout.log",
+      "bytes": 99,
+      "sha256": "bb8aeb008d2cf8e31446373e92f3859a196a0ba74ffedcaf98cc0b8a7f779702"
+    },
+    {
+      "path": "root-sdk044-integration.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "root-restacked-pack-check.py",
+      "bytes": 1737,
+      "sha256": "c8852f3093d83372c54d69066d1fa30294a2665a2a12bb8c34fa36ffde7267df"
+    },
+    {
+      "path": "root-restacked-pack-check-first-failure.json",
+      "bytes": 383,
+      "sha256": "ab85b185a22b8eaef1cbad33f2197c07e046c315e607d1da506a3f41a000a988"
+    },
+    {
+      "path": "root-restacked-pack-check-first-captured-stderr.log",
+      "bytes": 387,
+      "sha256": "26941a6c38af48af64ca67fc76721f2678e84f60a9cfe9f0edf8a79762dccfe0"
+    },
+    {
+      "path": "root-restacked-pack-check-v2.py",
+      "bytes": 2798,
+      "sha256": "ad3c2b57479002fbe994809020758761e79bb6a905711c479210c92f7cd6b936"
+    },
+    {
+      "path": "root-restacked-pack-check-v2.json",
+      "bytes": 2895,
+      "sha256": "63453071579614312b718d5312237f904d4d4017aae5b1934197f2ca3698da25"
+    }
+  ]
+}

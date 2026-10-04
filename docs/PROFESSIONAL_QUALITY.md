@@ -89,6 +89,8 @@ The [Memory target validation record](validation/2026-10-04-memory-target-bindin
 
 ## Completion audit
 
+The [diagnostic key performance validation](validation/2026-10-04-diagnostic-key-performance.md) records an uncached reduction in repeated string work, credential-rotation compatibility and bounded local full-pipeline timings. Actual source/dependency identities remain distinct when their bytes change. The local benchmark does not establish Intel CI causality, full-suite performance or analyst acceptance; native and broader product requirements remain open.
+
 The [LangGraph SDK security validation](validation/2026-10-04-langgraph-sdk-security.md) records a locked 0.4.2-to-0.4.4 update, official release provenance, an advisory-feed coverage gap and permanent action-registration regression checks. No application custom-authorization request path was demonstrated. Local dependency overlays establish bounded Python compatibility rather than a complete fresh installation; native packaging checks and broader security, analyst and release acceptance remain separate requirements.
 
 The [sidecar startup validation record](validation/2026-10-04-sidecar-startup.md) separates bootstrap, source inventory and actual research imports. The current packaged research-import observations remain approximately 43–63 seconds on Apple Silicon through Rosetta. Architecture and protocol guards improve the truthfulness of health/release checks; they do not complete clean-install, signing, process-control or performance acceptance across supported platforms.
