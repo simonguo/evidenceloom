@@ -46,6 +46,10 @@ try:
     from tradingagents.graph.trading_graph import TradingAgentsGraph
     from tradingagents.agents.utils.rating import run_rating
     from tradingagents.memory.schema import validate_bundle as validate_memory_bundle
+    from tradingagents.research.numeric_review import (
+        public_report_copy,
+        validate_report_text_snapshot,
+    )
     from tradingagents.llm_clients.factory import build_llm_kwargs
     from tradingagents.llm_clients.base_client import normalize_utf8_text
     from cli.research_manifest import research_manifest
@@ -394,6 +398,10 @@ def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
         compact["memory_bundle"] = validate_memory_bundle(final_state["memory_bundle"])
     if final_state.get("research_readiness"):
         compact["research_readiness"] = final_state["research_readiness"]
+    if final_state.get("report_text_snapshot"):
+        compact["report_text_snapshot"] = validate_report_text_snapshot(
+            final_state["report_text_snapshot"], final_state["evidence_bundle"]
+        )
     return compact
 
 
@@ -448,14 +456,6 @@ def run(payload: Dict[str, Any]) -> None:
     selected_analysts = normalize_analysts(payload.get("analysts") or ANALYST_ORDER, asset_type)
     config = build_config(payload)
 
-    emit(
-        {
-            "type": "message",
-            "messageType": "runtime",
-            "message": describe_llm_config(config),
-        }
-    )
-
     stats_handler = StatsCallbackHandler()
     analyst_execution_plan = build_analyst_execution_plan(
         selected_analysts,
@@ -469,6 +469,14 @@ def run(payload: Dict[str, Any]) -> None:
         debug=False,
         callbacks=[stats_handler],
     )
+    secrets = graph._evidence_secrets()
+    emit(
+        {
+            "type": "message",
+            "messageType": "runtime",
+            "message": sanitize_diagnostic(describe_llm_config(config), secrets=secrets),
+        }
+    )
 
     buffer = MessageBuffer()
     buffer.init_for_analysis(selected_analysts)
@@ -477,7 +485,9 @@ def run(payload: Dict[str, Any]) -> None:
     emit(
         {
             "type": "started",
-            "message": f"Started analysis for {ticker} on {analysis_date}",
+            "message": sanitize_diagnostic(
+                f"Started analysis for {ticker} on {analysis_date}", secrets=secrets
+            ),
             "messageType": "System",
             "agentStatuses": status_snapshot(buffer),
             "reportSections": report_snapshot(buffer),
@@ -531,7 +541,7 @@ def run(payload: Dict[str, Any]) -> None:
                         {
                             "type": "message",
                             "messageType": message_type,
-                            "message": content.strip(),
+                            "message": sanitize_diagnostic(content.strip(), secrets=secrets),
                             "agent": chunk_agent,
                         }
                     )
@@ -546,13 +556,18 @@ def run(payload: Dict[str, Any]) -> None:
                             {
                                 "type": "message",
                                 "messageType": "Tool",
-                                "message": f"{tool_name} called",
+                                "message": sanitize_diagnostic(
+                                    f"{tool_name} called", secrets=secrets
+                                ),
                                 "agent": chunk_agent,
                             }
                         )
 
-            update_analyst_statuses(buffer, changes, wall_time_tracker=analyst_wall_time_tracker)
-            update_reports_from_chunk(buffer, changes)
+            published_changes = public_report_copy(changes, secrets=secrets)
+            update_analyst_statuses(
+                buffer, published_changes, wall_time_tracker=analyst_wall_time_tracker
+            )
+            update_reports_from_chunk(buffer, published_changes)
             quality = merge_output_quality(
                 final_state.get("output_quality"), chunk.get("output_quality")
             )
@@ -571,13 +586,13 @@ def run(payload: Dict[str, Any]) -> None:
             if evidence:
                 final_state["evidence_bundle"] = evidence
 
-        graph.curr_state = final_state
         decision = run_rating(final_state)
         for agent in list(buffer.agent_status.keys()):
             buffer.update_agent_status(agent, "completed")
+        published_final = public_report_copy(final_state, secrets=secrets)
         for section in list(buffer.report_sections.keys()):
-            if section in final_state:
-                buffer.update_report_section(section, final_state[section])
+            if section in published_final:
+                buffer.update_report_section(section, published_final[section])
         if final_state.get("evidence_bundle"):
             ledger = getattr(graph, "_evidence_ledger", None)
             if ledger is not None:
@@ -589,9 +604,9 @@ def run(payload: Dict[str, Any]) -> None:
             # Persist the frozen decision/contract before publishing completion.
             # Optional state-log/checkpoint cleanup remains in post-completion work.
             graph.record_decision(ticker, analysis_date, final_state, persist_state=False)
-            buffer.update_report_section(
-                "final_trade_decision", final_state["final_trade_decision"]
-            )
+            for section in list(buffer.report_sections.keys()):
+                if section in final_state:
+                    buffer.update_report_section(section, final_state[section])
 
         emit(
             {
@@ -599,7 +614,11 @@ def run(payload: Dict[str, Any]) -> None:
                 "message": analyst_wall_time_tracker.format_summary(),
                 "messageType": "System",
                 "agentStatuses": status_snapshot(buffer),
-                "reportSections": report_snapshot(buffer),
+                "reportSections": (
+                    final_state["report_text_snapshot"]["report_sections"]
+                    if final_state.get("report_text_snapshot")
+                    else report_snapshot(buffer)
+                ),
                 "stats": current_stats(stats_handler, started_at),
                 "decision": decision,
                 "runSettings": final_state.get("run_settings", graph.run_settings()),
@@ -617,6 +636,15 @@ def run(payload: Dict[str, Any]) -> None:
                 **(
                     {"researchReadiness": final_state["research_readiness"]}
                     if final_state.get("research_readiness")
+                    else {}
+                ),
+                **(
+                    {
+                        "reportTextSnapshot": validate_report_text_snapshot(
+                            final_state["report_text_snapshot"], final_state["evidence_bundle"]
+                        )
+                    }
+                    if final_state.get("report_text_snapshot")
                     else {}
                 ),
                 "finalState": compact_final_state(final_state),
@@ -678,7 +706,14 @@ def main() -> int:
         run(payload)
         return 0
     except Exception as exc:  # noqa: BLE001 - bridge must surface any backend failure to UI
-        error = sanitize_diagnostic(str(exc))
+        secrets = tuple(
+            value
+            for key, value in DEFAULT_CONFIG.items()
+            if isinstance(value, str)
+            and value
+            and any(marker in key.lower() for marker in ("api_key", "token", "secret", "password"))
+        )
+        error = sanitize_diagnostic(str(exc), secrets=secrets)
         print(
             f"Evidence Loom runner error ({type(exc).__name__}): {error}",
             file=sys.stderr,

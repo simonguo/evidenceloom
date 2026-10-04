@@ -63,7 +63,7 @@ describe("local settings persistence", () => {
     expect(raw).not.toMatch(/sensitive-body|private.invalid|unknown_agent/);
     expect(stored.outputQuality).toEqual(safe);
     expect(stored.reportVersions[0].outputQuality).toEqual(safe);
-    expect(stored).toEqual(JSON.parse(JSON.stringify({ ...input, outputQuality: safe, reportVersions: [{ ...input.reportVersions[0], outputQuality: safe }] })));
+    expect(stored).toEqual(JSON.parse(JSON.stringify({ ...input, outputQuality: safe, reportVersions: [{ ...input.reportVersions[0], outputQuality: safe, numericReviews: [] }] })));
     expect(input.outputQuality).toBe(dirty);
   });
 

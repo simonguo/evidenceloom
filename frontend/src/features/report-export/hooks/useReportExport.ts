@@ -11,6 +11,7 @@ import { renderReportMarkdown } from "../lib/render-markdown";
 import { verifyEvidenceBundle } from "@/features/evidence/lib/validation";
 import { verifiedExportVersion } from "@/features/memory/lib/export";
 import { verifiedReadinessExport } from "@/features/research-readiness/lib/export";
+import { verifiedNumericExport } from "@/features/numeric-review/lib/export";
 import { reportJson } from "../lib/report-json";
 
 export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
@@ -42,6 +43,7 @@ export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
       if (frozenVersion.evidenceBundle) frozenVersion.evidenceBundle = await verifyEvidenceBundle(frozenVersion.evidenceBundle, frozenVersion.reportSections);
       frozenVersion = await verifiedExportVersion(frozenVersion);
       frozenVersion = await verifiedReadinessExport(frozenVersion);
+      frozenVersion = await verifiedNumericExport(taskId, frozenVersion);
       const document = buildReportDocument(taskId, origin, frozenVersion, language);
       const content = format === "json" ? JSON.stringify(reportJson(taskId, origin, frozenVersion), null, 2) : format === "html"
         ? renderReportHtml(document)

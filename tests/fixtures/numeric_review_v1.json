@@ -1,0 +1,2686 @@
+{
+  "schema_version": 1,
+  "fictional": true,
+  "policy": {
+    "policy_version": "saved-numeric-field-v1",
+    "scope": "selected_saved_numeric_field",
+    "operation": "field_value",
+    "rounding_mode": "saved_decimal_half_up",
+    "rounded_zero_sign": "positive",
+    "max_decimal_places": 18,
+    "max_number_bytes": 256,
+    "max_coefficient_digits": 128,
+    "max_abs_exponent": 1024,
+    "max_section_bytes": 1048576,
+    "max_table_rows": 100000,
+    "max_table_columns": 256,
+    "max_reviews_per_version": 1000,
+    "span_encoding": "utf8_half_open",
+    "context_comparison": "exact_bound_literal_only",
+    "table_paths": [
+      [],
+      [
+        "latest_ohlcv"
+      ],
+      [
+        "recent_closes"
+      ]
+    ],
+    "unreviewed_dimensions": [
+      "surrounding_prose",
+      "source_reliability",
+      "historical_vintage",
+      "indicator_method",
+      "prediction",
+      "causality"
+    ]
+  },
+  "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+  "evidence": {
+    "schema_version": 1,
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "research_as_of": "2026-01-09T23:59:59.999999Z",
+    "as_of_policy": "analysis_date_end_utc",
+    "market_timezone": null,
+    "created_at": "2026-01-09T10:00:00.000000Z",
+    "manifest": {
+      "analysts": [
+        "market"
+      ]
+    },
+    "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+    "records": [
+      {
+        "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "analyst": "market",
+        "tool": "get_stock_data",
+        "instrument": "FICT",
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "status": "available",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+        "sources": [
+          {
+            "provider": "yfinance",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "unknown",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+          }
+        ],
+        "attempts": []
+      }
+    ],
+    "artifacts": {
+      "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+        "kind": "tool_text",
+        "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+      },
+      "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+        "kind": "normalized_data",
+        "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+      }
+    },
+    "citation_audit": {
+      "market_report": {
+        "referenced_ids": [
+          "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "unresolved_ids": [],
+        "status": "resolved"
+      },
+      "sentiment_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "news_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "fundamentals_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "investment_plan": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "trader_investment_plan": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "final_trade_decision": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      }
+    },
+    "bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725"
+  },
+  "snapshot": {
+    "schema_version": 1,
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "captured_at": "2026-01-09T11:00:00.000000Z",
+    "evidence_bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725",
+    "report_sections": {
+      "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+      "sentiment_report": null,
+      "news_report": null,
+      "fundamentals_report": null,
+      "investment_plan": null,
+      "trader_investment_plan": null,
+      "final_trade_decision": null
+    },
+    "snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279"
+  },
+  "reviews": [
+    {
+      "schema_version": 1,
+      "review_id": "b1304f57-8e18-5498-885c-07fc4c0d894b",
+      "reviewed_at": "2026-01-09T12:00:00.000000Z",
+      "previous_review_sha256": null,
+      "target": {
+        "task_id": "task-fictional",
+        "version_id": "version-fictional",
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+        "section_key": "market_report",
+        "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+      },
+      "numeric_span": {
+        "start_byte": 34,
+        "end_byte": 40,
+        "text": "125.02"
+      },
+      "operand": {
+        "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_index": 0,
+        "selector": {
+          "kind": "table_cell",
+          "table_path": [],
+          "row_date": "2026-01-08",
+          "field": "Close"
+        },
+        "provider": "yfinance",
+        "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+        "raw_number_lexeme": "125.02345678901236"
+      },
+      "rounding": {
+        "mode": "saved_decimal_half_up",
+        "places": 2
+      },
+      "context_bindings": {
+        "instrument": null,
+        "row_date": null,
+        "units": null
+      },
+      "policy_version": "saved-numeric-field-v1",
+      "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+      "scope": "selected_saved_numeric_field",
+      "result": {
+        "status": "match",
+        "reason": "value_match",
+        "rounded_decimal": "125.02",
+        "context_results": {
+          "instrument": "unreviewed",
+          "row_date": "unreviewed",
+          "units": "unreviewed"
+        },
+        "unreviewed_dimensions": [
+          "surrounding_prose",
+          "source_reliability",
+          "historical_vintage",
+          "indicator_method",
+          "prediction",
+          "causality",
+          "instrument",
+          "row_date",
+          "units"
+        ],
+        "source_context": {
+          "instrument": "FICT",
+          "row_date": "2026-01-08",
+          "units": null,
+          "provider": "yfinance",
+          "historical_availability": "unknown",
+          "adjustments": null,
+          "transformations": [
+            "Fictional offline table"
+          ]
+        }
+      },
+      "review_sha256": "fe87c07ab2f5669f68807dfc502614d59086f239597b6f1dbdf582df7c312016"
+    },
+    {
+      "schema_version": 1,
+      "review_id": "79a79ae6-894c-52b3-b30a-204c077fa7a4",
+      "reviewed_at": "2026-01-09T12:00:00.000000Z",
+      "previous_review_sha256": "fe87c07ab2f5669f68807dfc502614d59086f239597b6f1dbdf582df7c312016",
+      "target": {
+        "task_id": "task-fictional",
+        "version_id": "version-fictional",
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+        "section_key": "market_report",
+        "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+      },
+      "numeric_span": {
+        "start_byte": 62,
+        "end_byte": 68,
+        "text": "999.00"
+      },
+      "operand": {
+        "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_index": 0,
+        "selector": {
+          "kind": "table_cell",
+          "table_path": [],
+          "row_date": "2026-01-08",
+          "field": "Close"
+        },
+        "provider": "yfinance",
+        "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+        "raw_number_lexeme": "125.02345678901236"
+      },
+      "rounding": {
+        "mode": "saved_decimal_half_up",
+        "places": 2
+      },
+      "context_bindings": {
+        "instrument": null,
+        "row_date": null,
+        "units": null
+      },
+      "policy_version": "saved-numeric-field-v1",
+      "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+      "scope": "selected_saved_numeric_field",
+      "result": {
+        "status": "mismatch",
+        "reason": "value_mismatch",
+        "rounded_decimal": "125.02",
+        "context_results": {
+          "instrument": "unreviewed",
+          "row_date": "unreviewed",
+          "units": "unreviewed"
+        },
+        "unreviewed_dimensions": [
+          "surrounding_prose",
+          "source_reliability",
+          "historical_vintage",
+          "indicator_method",
+          "prediction",
+          "causality",
+          "instrument",
+          "row_date",
+          "units"
+        ],
+        "source_context": {
+          "instrument": "FICT",
+          "row_date": "2026-01-08",
+          "units": null,
+          "provider": "yfinance",
+          "historical_availability": "unknown",
+          "adjustments": null,
+          "transformations": [
+            "Fictional offline table"
+          ]
+        }
+      },
+      "review_sha256": "26fa952035ed03f913c6c971875dbde2ae6d1cb87caf6697c62fd916f8b51e28"
+    },
+    {
+      "schema_version": 1,
+      "review_id": "64375d36-3cb1-5988-962d-e4d2ff7a4e2d",
+      "reviewed_at": "2026-01-09T12:00:00.000000Z",
+      "previous_review_sha256": "26fa952035ed03f913c6c971875dbde2ae6d1cb87caf6697c62fd916f8b51e28",
+      "target": {
+        "task_id": "task-fictional",
+        "version_id": "version-fictional",
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+        "section_key": "market_report",
+        "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+      },
+      "numeric_span": {
+        "start_byte": 74,
+        "end_byte": 78,
+        "text": "1.01"
+      },
+      "operand": {
+        "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_index": 0,
+        "selector": {
+          "kind": "table_cell",
+          "table_path": [],
+          "row_date": "2026-01-08",
+          "field": "TieOne"
+        },
+        "provider": "yfinance",
+        "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+        "raw_number_lexeme": "1.005"
+      },
+      "rounding": {
+        "mode": "saved_decimal_half_up",
+        "places": 2
+      },
+      "context_bindings": {
+        "instrument": null,
+        "row_date": null,
+        "units": null
+      },
+      "policy_version": "saved-numeric-field-v1",
+      "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+      "scope": "selected_saved_numeric_field",
+      "result": {
+        "status": "match",
+        "reason": "value_match",
+        "rounded_decimal": "1.01",
+        "context_results": {
+          "instrument": "unreviewed",
+          "row_date": "unreviewed",
+          "units": "unreviewed"
+        },
+        "unreviewed_dimensions": [
+          "surrounding_prose",
+          "source_reliability",
+          "historical_vintage",
+          "indicator_method",
+          "prediction",
+          "causality",
+          "instrument",
+          "row_date",
+          "units"
+        ],
+        "source_context": {
+          "instrument": "FICT",
+          "row_date": "2026-01-08",
+          "units": null,
+          "provider": "yfinance",
+          "historical_availability": "unknown",
+          "adjustments": null,
+          "transformations": [
+            "Fictional offline table"
+          ]
+        }
+      },
+      "review_sha256": "747b1b3d6917b7c8e1e027914baa60d23cf7ca7b1e3a7b6d6d1a91a886968718"
+    },
+    {
+      "schema_version": 1,
+      "review_id": "f9a93adc-0859-50e5-846d-f1c6d759edda",
+      "reviewed_at": "2026-01-09T12:00:00.000000Z",
+      "previous_review_sha256": "747b1b3d6917b7c8e1e027914baa60d23cf7ca7b1e3a7b6d6d1a91a886968718",
+      "target": {
+        "task_id": "task-fictional",
+        "version_id": "version-fictional",
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+        "section_key": "market_report",
+        "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+      },
+      "numeric_span": {
+        "start_byte": 90,
+        "end_byte": 95,
+        "text": "-2.68"
+      },
+      "operand": {
+        "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_index": 0,
+        "selector": {
+          "kind": "table_cell",
+          "table_path": [],
+          "row_date": "2026-01-08",
+          "field": "NegativeTwo"
+        },
+        "provider": "yfinance",
+        "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+        "raw_number_lexeme": "-2.675"
+      },
+      "rounding": {
+        "mode": "saved_decimal_half_up",
+        "places": 2
+      },
+      "context_bindings": {
+        "instrument": null,
+        "row_date": null,
+        "units": null
+      },
+      "policy_version": "saved-numeric-field-v1",
+      "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+      "scope": "selected_saved_numeric_field",
+      "result": {
+        "status": "match",
+        "reason": "value_match",
+        "rounded_decimal": "-2.68",
+        "context_results": {
+          "instrument": "unreviewed",
+          "row_date": "unreviewed",
+          "units": "unreviewed"
+        },
+        "unreviewed_dimensions": [
+          "surrounding_prose",
+          "source_reliability",
+          "historical_vintage",
+          "indicator_method",
+          "prediction",
+          "causality",
+          "instrument",
+          "row_date",
+          "units"
+        ],
+        "source_context": {
+          "instrument": "FICT",
+          "row_date": "2026-01-08",
+          "units": null,
+          "provider": "yfinance",
+          "historical_availability": "unknown",
+          "adjustments": null,
+          "transformations": [
+            "Fictional offline table"
+          ]
+        }
+      },
+      "review_sha256": "eac0e919114d2b2058d7da24a6af185bd9ccb853768c75b59695f7ca2476e4ff"
+    }
+  ],
+  "decimal_vectors": [
+    {
+      "source": "1.005",
+      "places": 2,
+      "expected": "1.01"
+    },
+    {
+      "source": "2.675",
+      "places": 2,
+      "expected": "2.68"
+    },
+    {
+      "source": "-1.005",
+      "places": 2,
+      "expected": "-1.01"
+    },
+    {
+      "source": "-2.675",
+      "places": 2,
+      "expected": "-2.68"
+    },
+    {
+      "source": "9.995",
+      "places": 2,
+      "expected": "10.00"
+    },
+    {
+      "source": "-0.004",
+      "places": 2,
+      "expected": "0.00"
+    },
+    {
+      "source": "-0",
+      "places": 0,
+      "expected": "0"
+    },
+    {
+      "source": "1e2",
+      "places": 2,
+      "expected": "100.00"
+    },
+    {
+      "source": "1e-1024",
+      "places": 18,
+      "expected": "0.000000000000000000"
+    },
+    {
+      "source": "1e127",
+      "places": 18,
+      "expected": "10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000.000000000000000000"
+    },
+    {
+      "source": "1e128",
+      "places": 0,
+      "expected": "100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ],
+  "span_vectors": [
+    {
+      "section": "Close125.02",
+      "span": {
+        "start_byte": 5,
+        "end_byte": 11,
+        "text": "125.02"
+      },
+      "supported": true
+    },
+    {
+      "section": "收盘价125.02元",
+      "span": {
+        "start_byte": 9,
+        "end_byte": 15,
+        "text": "125.02"
+      },
+      "supported": true
+    },
+    {
+      "section": "125.02USD",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 6,
+        "text": "125.02"
+      },
+      "supported": true
+    },
+    {
+      "section": "+125.02",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 7,
+        "text": "+125.02"
+      },
+      "supported": true
+    },
+    {
+      "section": "1125.02",
+      "span": {
+        "start_byte": 1,
+        "end_byte": 7,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "-125.02",
+      "span": {
+        "start_byte": 1,
+        "end_byte": 7,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "125.02e2",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 6,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "1,125.02",
+      "span": {
+        "start_byte": 2,
+        "end_byte": 8,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "125.02M",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 6,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "125.02%",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 6,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "−125.02",
+      "span": {
+        "start_byte": 3,
+        "end_byte": 9,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "Ⅻ,125.02",
+      "span": {
+        "start_byte": 4,
+        "end_byte": 10,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "1 125.02",
+      "span": {
+        "start_byte": 4,
+        "end_byte": 10,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "1 Million",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 1,
+        "text": "1"
+      },
+      "supported": false
+    },
+    {
+      "section": "1 MILLION",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 1,
+        "text": "1"
+      },
+      "supported": false
+    },
+    {
+      "section": "1万",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 1,
+        "text": "1"
+      },
+      "supported": false
+    },
+    {
+      "section": ".5",
+      "span": {
+        "start_byte": 1,
+        "end_byte": 2,
+        "text": "5"
+      },
+      "supported": false
+    },
+    {
+      "section": "٫5",
+      "span": {
+        "start_byte": 2,
+        "end_byte": 3,
+        "text": "5"
+      },
+      "supported": false
+    },
+    {
+      "section": "．5",
+      "span": {
+        "start_byte": 3,
+        "end_byte": 4,
+        "text": "5"
+      },
+      "supported": false
+    },
+    {
+      "section": "1，125.02",
+      "span": {
+        "start_byte": 4,
+        "end_byte": 10,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "100％",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 3,
+        "text": "100"
+      },
+      "supported": false
+    },
+    {
+      "section": "100٪",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 3,
+        "text": "100"
+      },
+      "supported": false
+    },
+    {
+      "section": "100‱",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 3,
+        "text": "100"
+      },
+      "supported": false
+    },
+    {
+      "section": "﹢125.02",
+      "span": {
+        "start_byte": 3,
+        "end_byte": 9,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "±125.02",
+      "span": {
+        "start_byte": 2,
+        "end_byte": 8,
+        "text": "125.02"
+      },
+      "supported": false
+    },
+    {
+      "section": "1萬",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 1,
+        "text": "1"
+      },
+      "supported": false
+    },
+    {
+      "section": "1億",
+      "span": {
+        "start_byte": 0,
+        "end_byte": 1,
+        "text": "1"
+      },
+      "supported": false
+    },
+    {
+      "section": "收盘价，125.02元",
+      "span": {
+        "start_byte": 12,
+        "end_byte": 18,
+        "text": "125.02"
+      },
+      "supported": true
+    }
+  ],
+  "cases": [
+    {
+      "name": "context_mismatch",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "available",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "unknown",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          },
+          "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+            "kind": "normalized_data",
+            "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279"
+      },
+      "request": {
+        "review_id": "cfa4059d-c984-5731-be8d-cfdef128fc23",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": {
+            "start_byte": 41,
+            "end_byte": 46,
+            "text": "OTHER"
+          },
+          "row_date": {
+            "start_byte": 47,
+            "end_byte": 57,
+            "text": "2026-01-09"
+          },
+          "units": {
+            "start_byte": 58,
+            "end_byte": 61,
+            "text": "USD"
+          }
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "cfa4059d-c984-5731-be8d-cfdef128fc23",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          },
+          "provider": "yfinance",
+          "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+          "raw_number_lexeme": "125.02345678901236"
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": {
+            "start_byte": 41,
+            "end_byte": 46,
+            "text": "OTHER"
+          },
+          "row_date": {
+            "start_byte": 47,
+            "end_byte": 57,
+            "text": "2026-01-09"
+          },
+          "units": {
+            "start_byte": 58,
+            "end_byte": 61,
+            "text": "USD"
+          }
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "mismatch",
+          "reason": "context_mismatch",
+          "rounded_decimal": "125.02",
+          "context_results": {
+            "instrument": "mismatch",
+            "row_date": "mismatch",
+            "units": "missing"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": "2026-01-08",
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "unknown",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "6d145893c2facac8d5d15d501c9abf1f56d009f4d7d2aae7073802b4be62cb53"
+      }
+    },
+    {
+      "name": "unknown_units",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "available",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "unknown",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          },
+          "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+            "kind": "normalized_data",
+            "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279"
+      },
+      "request": {
+        "review_id": "2c4b45ee-0468-5f34-89e6-578659ec246c",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": {
+            "start_byte": 58,
+            "end_byte": 61,
+            "text": "USD"
+          }
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "2c4b45ee-0468-5f34-89e6-578659ec246c",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          },
+          "provider": "yfinance",
+          "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+          "raw_number_lexeme": "125.02345678901236"
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": {
+            "start_byte": 58,
+            "end_byte": 61,
+            "text": "USD"
+          }
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "missing",
+          "reason": "context_missing",
+          "rounded_decimal": "125.02",
+          "context_results": {
+            "instrument": "unreviewed",
+            "row_date": "unreviewed",
+            "units": "missing"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "instrument",
+            "row_date",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": "2026-01-08",
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "unknown",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "303791680ad060f6fcb32a2e684cbe30d2c85be9ac45879de5e07b2e2e94ea5e"
+      }
+    },
+    {
+      "name": "partial_numeric",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "available",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "unknown",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          },
+          "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+            "kind": "normalized_data",
+            "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279"
+      },
+      "request": {
+        "review_id": "77b75f05-bdee-5919-93cc-e1c69680374d",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 194,
+          "end_byte": 200,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "77b75f05-bdee-5919-93cc-e1c69680374d",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 194,
+          "end_byte": 200,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          },
+          "provider": "yfinance",
+          "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+          "raw_number_lexeme": "125.02345678901236"
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "manual_inference",
+          "reason": "selection_unsupported",
+          "rounded_decimal": "125.02",
+          "context_results": {
+            "instrument": "unreviewed",
+            "row_date": "unreviewed",
+            "units": "unreviewed"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "instrument",
+            "row_date",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": "2026-01-08",
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "unknown",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "6419ee4b447a786b2496e1dd79ed9f66e3b1007f29e57bfc9b3751e2f8e5a3da"
+      }
+    },
+    {
+      "name": "null_cell",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "available",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "unknown",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          },
+          "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+            "kind": "normalized_data",
+            "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279"
+      },
+      "request": {
+        "review_id": "53d1c2cf-028e-5246-84a2-73046fe6703e",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Null"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "53d1c2cf-028e-5246-84a2-73046fe6703e",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Null"
+          },
+          "provider": "yfinance",
+          "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+          "raw_number_lexeme": null
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "missing",
+          "reason": "field_not_numeric",
+          "rounded_decimal": null,
+          "context_results": {
+            "instrument": "unreviewed",
+            "row_date": "unreviewed",
+            "units": "unreviewed"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "instrument",
+            "row_date",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": "2026-01-08",
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "unknown",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "ccf8bf8a047aeb36d90c3961e8ede79bfe799e6ca8acb957c247356f42c5c46b"
+      }
+    },
+    {
+      "name": "withheld",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "withheld",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "withheld",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": null
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "84a109571efac453d719d78cc03dd9043c5cc04370f605a077da350578784ecf"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "84a109571efac453d719d78cc03dd9043c5cc04370f605a077da350578784ecf",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "7b9b28e9b8c9f6c4302ba18f027c90f95eb0f72672928536074efafd761369cf"
+      },
+      "request": {
+        "review_id": "53142c1c-156c-5e73-aeff-576589c71738",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "7b9b28e9b8c9f6c4302ba18f027c90f95eb0f72672928536074efafd761369cf",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "53142c1c-156c-5e73-aeff-576589c71738",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "7b9b28e9b8c9f6c4302ba18f027c90f95eb0f72672928536074efafd761369cf",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          },
+          "provider": "yfinance",
+          "data_sha256": null,
+          "raw_number_lexeme": null
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "missing",
+          "reason": "source_withheld",
+          "rounded_decimal": null,
+          "context_results": {
+            "instrument": "unreviewed",
+            "row_date": "unreviewed",
+            "units": "unreviewed"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "instrument",
+            "row_date",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": null,
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "withheld",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "0f6777499f6382eee3efc10c9ae3456af4107d5b4f0cd4be4f246da033d30d33"
+      }
+    },
+    {
+      "name": "unavailable",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "unavailable",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "unknown",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          },
+          "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+            "kind": "normalized_data",
+            "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "2601640971ca84905f9a5b49d4d11a267c4ce0d59c721150cf54abea3afb5fdd"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "2601640971ca84905f9a5b49d4d11a267c4ce0d59c721150cf54abea3afb5fdd",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "391bc0d1353d40657533ce54ca08dd300fba953b1bdc50c8f58e8c789b092283"
+      },
+      "request": {
+        "review_id": "ee9c3e48-57b3-54a2-99ad-97140d57900b",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "391bc0d1353d40657533ce54ca08dd300fba953b1bdc50c8f58e8c789b092283",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "ee9c3e48-57b3-54a2-99ad-97140d57900b",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "391bc0d1353d40657533ce54ca08dd300fba953b1bdc50c8f58e8c789b092283",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          },
+          "provider": "yfinance",
+          "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+          "raw_number_lexeme": null
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "missing",
+          "reason": "source_unavailable",
+          "rounded_decimal": null,
+          "context_results": {
+            "instrument": "unreviewed",
+            "row_date": "unreviewed",
+            "units": "unreviewed"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "instrument",
+            "row_date",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": null,
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "unknown",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "90cb90c808d27683074f3896d1304642f7c27a8c99090c3cb1de0bfcb86baa4d"
+      }
+    },
+    {
+      "name": "duplicate_rows",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "available",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "unknown",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": "007d6887fa91a2afa43ae658b31102759ec3c6ae2ffe45f1158cb2d4304d8ff2"
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          },
+          "007d6887fa91a2afa43ae658b31102759ec3c6ae2ffe45f1158cb2d4304d8ff2": {
+            "kind": "normalized_data",
+            "payload": "{\"columns\":[\"Date\",\"Close\"],\"rows\":[[\"2026-01-08\",1],[\"2026-01-08\",2]]}"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "fca427d82ab0eaec6e9ac5d03946f4a227daccbd3ad03de84dc425ed388c8cc6"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "fca427d82ab0eaec6e9ac5d03946f4a227daccbd3ad03de84dc425ed388c8cc6",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "e56dc9c3a72282511e3d6013a7d9aa806a3de48f9ea331eb459da1dcb6df705c"
+      },
+      "request": {
+        "review_id": "fe71e821-7db2-53e1-a8b3-218a4879f968",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "e56dc9c3a72282511e3d6013a7d9aa806a3de48f9ea331eb459da1dcb6df705c",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "fe71e821-7db2-53e1-a8b3-218a4879f968",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "e56dc9c3a72282511e3d6013a7d9aa806a3de48f9ea331eb459da1dcb6df705c",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          },
+          "provider": "yfinance",
+          "data_sha256": "007d6887fa91a2afa43ae658b31102759ec3c6ae2ffe45f1158cb2d4304d8ff2",
+          "raw_number_lexeme": null
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "missing",
+          "reason": "row_ambiguous",
+          "rounded_decimal": null,
+          "context_results": {
+            "instrument": "unreviewed",
+            "row_date": "unreviewed",
+            "units": "unreviewed"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "instrument",
+            "row_date",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": null,
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "unknown",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "d21466fd7383bd9516fdca1339af29f302ea439a26b71feb24071443e6919aa6"
+      }
+    },
+    {
+      "name": "duplicate_columns",
+      "evidence": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "research_as_of": "2026-01-09T23:59:59.999999Z",
+        "as_of_policy": "analysis_date_end_utc",
+        "market_timezone": null,
+        "created_at": "2026-01-09T10:00:00.000000Z",
+        "manifest": {
+          "analysts": [
+            "market"
+          ]
+        },
+        "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+        "records": [
+          {
+            "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "analyst": "market",
+            "tool": "get_stock_data",
+            "instrument": "FICT",
+            "parameters": {
+              "symbol": "FICT"
+            },
+            "status": "available",
+            "fetched_at": "2026-01-09T10:00:00.000000Z",
+            "output_sha256": "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54",
+            "sources": [
+              {
+                "provider": "yfinance",
+                "url": null,
+                "observed_window": {
+                  "start": "2026-01-07",
+                  "end": "2026-01-08"
+                },
+                "publication_dates": null,
+                "historical_availability": "unknown",
+                "units": null,
+                "adjustments": null,
+                "transformations": [
+                  "Fictional offline table"
+                ],
+                "data_sha256": "fc0f693e0359efe88e0a17cb5645596017932d8a831909c3324b9728bb0929f7"
+              }
+            ],
+            "attempts": []
+          }
+        ],
+        "artifacts": {
+          "d1e40e93187700fef6f7b63f05bcce22d2ef80615a407386cd5b104e867b4f54": {
+            "kind": "tool_text",
+            "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional saved table"
+          },
+          "fc0f693e0359efe88e0a17cb5645596017932d8a831909c3324b9728bb0929f7": {
+            "kind": "normalized_data",
+            "payload": "{\"columns\":[\"Date\",\"Close\",\"Close\"],\"rows\":[[\"2026-01-08\",1,2]]}"
+          }
+        },
+        "citation_audit": {
+          "market_report": {
+            "referenced_ids": [
+              "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            ],
+            "unresolved_ids": [],
+            "status": "resolved"
+          },
+          "sentiment_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "news_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "fundamentals_report": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "trader_investment_plan": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          },
+          "final_trade_decision": {
+            "referenced_ids": [],
+            "unresolved_ids": [],
+            "status": "none"
+          }
+        },
+        "bundle_sha256": "9eb8c8300b3974d2046bc87c99f80997f19b8f1338623386dd75a227e74da493"
+      },
+      "snapshot": {
+        "schema_version": 1,
+        "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+        "instrument": "FICT",
+        "analysis_date": "2026-01-09",
+        "captured_at": "2026-01-09T11:00:00.000000Z",
+        "evidence_bundle_sha256": "9eb8c8300b3974d2046bc87c99f80997f19b8f1338623386dd75a227e74da493",
+        "report_sections": {
+          "market_report": "研究📈\r\nFICT 2026-01-08 close 125.02\nOTHER 2026-01-09 USD 999.00\nTies 1.01 2.68 -1.01 -2.68 carry 10.00 zero 0.00 scientific 100.00 large 1e127\nUnsupported 1125.02 -125.02 125.02e2 1,125.02 125.02M 125.02% −125.02\nCJK 收盘价125.02元 1万\nSaved reference [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+          "sentiment_report": null,
+          "news_report": null,
+          "fundamentals_report": null,
+          "investment_plan": null,
+          "trader_investment_plan": null,
+          "final_trade_decision": null
+        },
+        "snapshot_sha256": "9bc388cebb7474514338834fac8bd2de8859e3b4378817aff58ba93c80ac4f0a"
+      },
+      "request": {
+        "review_id": "f2de5fc8-f3b6-52c6-a3f7-eca74df77744",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "9bc388cebb7474514338834fac8bd2de8859e3b4378817aff58ba93c80ac4f0a",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          }
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        }
+      },
+      "review": {
+        "schema_version": 1,
+        "review_id": "f2de5fc8-f3b6-52c6-a3f7-eca74df77744",
+        "reviewed_at": "2026-01-09T12:00:00.000000Z",
+        "previous_review_sha256": null,
+        "target": {
+          "task_id": "task-fictional",
+          "version_id": "version-fictional",
+          "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+          "report_snapshot_sha256": "9bc388cebb7474514338834fac8bd2de8859e3b4378817aff58ba93c80ac4f0a",
+          "section_key": "market_report",
+          "section_utf8_sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5"
+        },
+        "numeric_span": {
+          "start_byte": 34,
+          "end_byte": 40,
+          "text": "125.02"
+        },
+        "operand": {
+          "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "source_index": 0,
+          "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": "2026-01-08",
+            "field": "Close"
+          },
+          "provider": "yfinance",
+          "data_sha256": "fc0f693e0359efe88e0a17cb5645596017932d8a831909c3324b9728bb0929f7",
+          "raw_number_lexeme": null
+        },
+        "rounding": {
+          "mode": "saved_decimal_half_up",
+          "places": 2
+        },
+        "context_bindings": {
+          "instrument": null,
+          "row_date": null,
+          "units": null
+        },
+        "policy_version": "saved-numeric-field-v1",
+        "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+        "scope": "selected_saved_numeric_field",
+        "result": {
+          "status": "missing",
+          "reason": "table_ambiguous",
+          "rounded_decimal": null,
+          "context_results": {
+            "instrument": "unreviewed",
+            "row_date": "unreviewed",
+            "units": "unreviewed"
+          },
+          "unreviewed_dimensions": [
+            "surrounding_prose",
+            "source_reliability",
+            "historical_vintage",
+            "indicator_method",
+            "prediction",
+            "causality",
+            "instrument",
+            "row_date",
+            "units"
+          ],
+          "source_context": {
+            "instrument": "FICT",
+            "row_date": null,
+            "units": null,
+            "provider": "yfinance",
+            "historical_availability": "unknown",
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ]
+          }
+        },
+        "review_sha256": "79fe6b87683412967f7aa4c49bf29db8c0629f19b5076b892b5f61a2f8bf6646"
+      }
+    }
+  ],
+  "invalid_mutations": [
+    "rehashed_false_match",
+    "wrong_data_sha256",
+    "cross_record_source_index",
+    "wrong_span_text",
+    "split_utf8_boundary",
+    "wrong_snapshot_sha256",
+    "duplicate_json_key"
+  ]
+}

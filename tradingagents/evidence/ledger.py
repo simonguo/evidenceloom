@@ -212,7 +212,10 @@ def _timestamp(value):
         r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z", value
     ):
         raise ValueError("Invalid evidence timestamp")
-    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    # Python 3.10 accepts only three/six fractional digits. Parse an equivalent
+    # padded form without rewriting the saved timestamp or its hash binding.
+    parsed_value = re.sub(r"\.([0-9]{1,6})Z$", lambda m: "." + m[1].ljust(6, "0") + "Z", value)
+    parsed = datetime.fromisoformat(parsed_value.replace("Z", "+00:00"))
     if parsed.utcoffset().total_seconds() != 0:
         raise ValueError("Invalid evidence timestamp")
     return parsed

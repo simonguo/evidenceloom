@@ -10,6 +10,7 @@ import { createFictionalDemoTask } from "../fixtures/fictional-demo";
 import { useReportExport } from "./useReportExport";
 import type { ExportFormat } from "../types";
 import { reviewFor } from "@/features/memory/fixtures/test-data";
+import { numericFixture } from "@/features/numeric-review/fixtures/fictional-numeric";
 
 const { saveTextExport } = vi.hoisted(() => ({ saveTextExport: vi.fn() }));
 vi.mock("@/lib/runtime", () => ({ getRuntimeAdapter: () => ({ saveTextExport }) }));
@@ -79,6 +80,30 @@ describe("verified report export snapshot", () => {
     await act(async () => exportSelected(format));
     expect(saveTextExport).not.toHaveBeenCalled();
     expect(container.textContent).toContain("hash_mismatch");
+  });
+
+  it.each(["html", "md", "json"] as const)("blocks invalid numeric review hashes before saving %s", async (format) => {
+    const task = numericFixture(); task.reportVersions[0].numericReviews!.at(-1)!.review_sha256 = "f".repeat(64);
+    await act(async () => root.render(createElement(Session, { task })));
+    await act(async () => exportSelected(format));
+    expect(saveTextExport).not.toHaveBeenCalled(); expect(container.textContent).toContain("hash_mismatch");
+  });
+  it.each(["html", "md", "json"] as const)("preserves exact numeric snapshot/history when inputs mutate during %s verification", async (format) => {
+    const task = numericFixture(), original = structuredClone(task.reportVersions[0]);
+    const verify = validation.verifyEvidenceBundle;
+    vi.spyOn(validation, "verifyEvidenceBundle").mockImplementation(async (value, reports) => {
+      const result = await verify(value, reports);
+      task.reportVersions[0].numericReviews![0].numeric_span.text = "CHANGED-NUMBER";
+      task.reportVersions[0].reportTextSnapshot!.report_sections.market_report = "CHANGED-SNAPSHOT";
+      return result;
+    });
+    await act(async () => root.render(createElement(Session, { task })));
+    await act(async () => exportSelected(format));
+    expect(saveTextExport).toHaveBeenCalledOnce(); const content = saveTextExport.mock.calls[0][0].content;
+    expect(content).not.toMatch(/CHANGED-/); expect(content).toContain(original.reportTextSnapshot!.snapshot_sha256);
+    if (format === "json") {
+      const exported = JSON.parse(content); expect(exported.report_text_snapshot).toEqual(original.reportTextSnapshot); expect(exported.numeric_reviews).toEqual(original.numericReviews);
+    }
   });
 
   it.each(["html", "md", "json"] as const)("keeps exact frozen memory when original inputs mutate during %s verification", async (format) => {

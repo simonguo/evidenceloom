@@ -12,8 +12,8 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-# Parsed observation comparisons need correctly rounded IEEE-754 values; saved payloads stay opaque.
-serde_json = { version = "1", features = ["float_roundtrip"] }
+# Observation checks retain IEEE-754 behavior; numeric reviews read saved number lexemes verbatim.
+serde_json = { version = "1", features = ["float_roundtrip", "raw_value"] }
 sha2 = "0.10"
 regex = "=1.13.1"
 rusqlite = { version = "0.32", features = ["bundled"] }

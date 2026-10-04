@@ -2,6 +2,8 @@
 
 import { Download, FileCode2, FileText, Loader2 } from "lucide-react";
 import type { AnalysisTask, GlobalSettings, SystemLanguage } from "@/lib/types";
+import { NumericReviewPanel } from "@/features/numeric-review/components/NumericReviewPanel";
+import type { NumericReview } from "@/features/numeric-review/types";
 import type { ReviewAttachment } from "@/features/memory/types";
 import { ReadinessInspector } from "@/features/research-readiness/components/ReadinessInspector";
 import { MemoryInspector } from "@/features/memory/components/MemoryInspector";
@@ -16,10 +18,12 @@ export function ReportVersionsPanel({
   language,
   settings,
   onReviews,
+  onNumericReviews,
 }: {
   task: AnalysisTask;
   language: SystemLanguage;
   settings?: GlobalSettings;
+  onNumericReviews?: (taskId: string, versionId: string, reviews: NumericReview[]) => Promise<void>;
   onReviews?: (taskId: string, versionId: string, reviews: ReviewAttachment[]) => Promise<void>;
 }) {
   const {
@@ -108,7 +112,8 @@ export function ReportVersionsPanel({
           <EvidenceInspector bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
           <ReadinessInspector snapshot={selectedVersion} language={language} />
           <MemoryInspector snapshot={selectedVersion} language={language} />
-          <details key={selectedVersion.id} className="rounded-lg border border-zinc-800 p-4">
+          <NumericReviewPanel key={`numeric:${selectedVersion.id}`} taskId={task.id} version={selectedVersion} language={language} onSave={onNumericReviews} />
+          <details key={`preview:${selectedVersion.id}`} className="rounded-lg border border-zinc-800 p-4">
             <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">
               {zh ? `审阅选中的报告 v${selectedVersion.versionNumber}` : `Review selected report v${selectedVersion.versionNumber}`}
             </summary>

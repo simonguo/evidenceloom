@@ -27,7 +27,15 @@ from tradingagents.agents.utils.rating import run_rating
 from tradingagents.agents.utils.settlement import compute_returns
 from tradingagents.memory.evaluation import make_evaluation_plan
 from tradingagents.research import make_policy, validate_policy, validate_readiness
+from tradingagents.research.numeric_review import (
+    REPORT_SECTION_KEYS,
+    NumericReviewError,
+    public_report_copy,
+    validate_report_text_snapshot,
+)
+from tradingagents.research.numeric_persistence import freeze_report_text_snapshot
 from tradingagents.memory.schema import (
+    utc_timestamp,
     validate_context_snapshot,
     validate_bundle as validate_memory_bundle,
 )
@@ -456,6 +464,10 @@ class TradingAgentsGraph:
             raise ValueError("Research readiness policy has no frozen manifest binding")
         if state.get("research_readiness"):
             validate_readiness(state["research_readiness"], bundle)
+        if state.get("report_text_snapshot"):
+            frozen = validate_report_text_snapshot(state["report_text_snapshot"], bundle)
+            if frozen["report_sections"] != {key: state.get(key) for key in REPORT_SECTION_KEYS}:
+                raise ValueError("Completed report text differs from its immutable snapshot")
         if memory:
             context = validate_context_snapshot(memory["input_snapshot"])
             plan = memory["evaluation_plan"]
@@ -625,15 +637,15 @@ class TradingAgentsGraph:
 
     def record_decision(self, company_name, trade_date, final_state, *, persist_state=True):
         """Write the final state and preserve the Portfolio Manager's authoritative rating."""
-        if isinstance(final_state.get("final_trade_decision"), str):
-            final_state["final_trade_decision"] = sanitize_diagnostic(
-                final_state["final_trade_decision"], secrets=self._evidence_secrets()
-            )
+        for key in REPORT_SECTION_KEYS:
+            if isinstance(final_state.get(key), str):
+                final_state[key] = sanitize_diagnostic(
+                    final_state[key], secrets=self._evidence_secrets()
+                )
         if final_state.get("evidence_bundle"):
             ledger = self._ledger_for_state(final_state)
             merge_evidence_bundles(final_state["evidence_bundle"], ledger.bundle())
             final_state["evidence_bundle"] = ledger.bundle(reports=_reports_for_audit(final_state))
-        self.curr_state = final_state
         if not final_state.get("run_settings"):
             final_state["run_settings"] = {
                 **self.run_settings(),
@@ -659,6 +671,18 @@ class TradingAgentsGraph:
                 "memory_input_sha256"
             ):
                 raise ValueError("completed research memory does not match the evidence manifest")
+            snapshot = freeze_report_text_snapshot(
+                self._evidence_storage(),
+                final_state["evidence_bundle"],
+                final_state,
+                existing=final_state.get("report_text_snapshot"),
+            )
+            if utc_timestamp(snapshot["captured_at"]) < utc_timestamp(
+                memory["decision_snapshot"]["decision"]["recorded_at"]
+            ):
+                raise NumericReviewError()
+            final_state["report_text_snapshot"] = snapshot
+        self.curr_state = final_state
         if persist_state:
             self._log_state(trade_date, final_state)
 
@@ -784,6 +808,11 @@ class TradingAgentsGraph:
             "output_quality": sanitize_output_quality(final_state.get("output_quality")),
             "evidence_bundle": final_state.get("evidence_bundle", {}),
             **(
+                {"report_text_snapshot": final_state["report_text_snapshot"]}
+                if final_state.get("report_text_snapshot")
+                else {}
+            ),
+            **(
                 {"research_readiness": final_state["research_readiness"]}
                 if final_state.get("research_readiness")
                 else {}
@@ -795,6 +824,9 @@ class TradingAgentsGraph:
             ),
         }
 
+        self.log_states_dict[str(trade_date)] = public_report_copy(
+            self.log_states_dict[str(trade_date)], secrets=self._evidence_secrets()
+        )
         # Save to file. Reject ticker values that would escape the
         # results directory when joined as a path component.
         safe_ticker = safe_ticker_component(final_state["company_of_interest"])

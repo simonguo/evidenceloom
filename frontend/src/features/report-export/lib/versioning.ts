@@ -1,3 +1,5 @@
+import { normalizeNumericTaskFields } from "@/features/numeric-review/lib/tasks";
+import { copySnapshotFromEvent } from "@/features/numeric-review/lib/snapshot";
 import { resolveTaskDecision } from "@/components/task-center/decisions";
 import { mergeEventOutputQuality, normalizeOutputQuality } from "@/features/output-quality/lib/quality";
 import { mergeRuntimeManifest } from "./runtime-settings";
@@ -46,6 +48,7 @@ export function appendCompletedReportVersion(
 
   const reportSections = event.reportSections ?? task.reportSections;
   if (!hasReportContent(reportSections)) return task;
+  const numeric = task.numericValidation ? { reportTextSnapshot: undefined, numericValidation: task.numericValidation } : copySnapshotFromEvent(event, evidenceTask.evidenceBundle) ?? { reportTextSnapshot: task.reportTextSnapshot, numericValidation: undefined };
 
   const nextVersionNumber = task.reportVersions.reduce(
     (maximum, version) => Math.max(maximum, version.versionNumber),
@@ -57,6 +60,9 @@ export function appendCompletedReportVersion(
     versionNumber: nextVersionNumber,
     createdAt,
     legacy: false,
+    reportTextSnapshot: numeric.reportTextSnapshot,
+    numericValidation: numeric.numericValidation,
+    numericReviews: [],
     task: taskSnapshot(task),
     run: mergeRuntimeManifest(runContext.manifest, event.runSettings),
     decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
@@ -72,7 +78,7 @@ export function appendCompletedReportVersion(
     evaluationReviews: [],
   };
 
-  return normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [...task.reportVersions, version] })));
+  return normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, ...numeric, reportVersions: [...task.reportVersions, version] }))));
 }
 
 export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
@@ -90,6 +96,9 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     versionNumber: 1,
     createdAt: task.updatedAt || task.createdAt,
     legacy: true,
+    reportTextSnapshot: task.reportTextSnapshot,
+    numericValidation: task.numericValidation,
+    numericReviews: [],
     task: taskSnapshot(task),
     run: null,
     decision: task.decision,
@@ -104,7 +113,7 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     readinessValidation: task.readinessValidation,
     evaluationReviews: task.evaluationReviews ?? [],
   };
-  return normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [version] }));
+  return normalizeNumericTaskFields(normalizeTaskMemory(normalizeTaskEvidence({ ...task, reportVersions: [version] })));
 }
 
 export function hasReportContent(sections: Record<string, string | null | undefined>) {

@@ -1,3 +1,4 @@
+import type { NumericReview, NumericValidation, ReportTextSnapshot } from "@/features/numeric-review/types";
 import type { OutputQuality } from "@/features/output-quality/types";
 import type { EvidenceBundle, EvidenceValidation } from "@/features/evidence/types";
 import type { MemoryBundle, MemoryValidation, ReviewAttachment } from "@/features/memory/types";
@@ -138,6 +139,7 @@ export type ReportVersion = {
   versionNumber: number;
   createdAt: string;
   legacy: boolean;
+  numericReviews?: NumericReview[];
   task: ReportTaskSnapshot;
   run: ReportRunManifest | null;
   decision: string;
@@ -150,6 +152,8 @@ export type ReportVersion = {
   memoryValidation?: MemoryValidation;
   researchReadiness?: ResearchReadiness;
   readinessValidation?: ReadinessValidation;
+  reportTextSnapshot?: ReportTextSnapshot;
+  numericValidation?: NumericValidation;
   evaluationReviews: ReviewAttachment[];
 };
 
@@ -184,6 +188,8 @@ export type AnalysisTask = {
   memoryValidation?: MemoryValidation;
   researchReadiness?: ResearchReadiness;
   readinessValidation?: ReadinessValidation;
+  reportTextSnapshot?: ReportTextSnapshot;
+  numericValidation?: NumericValidation;
   evaluationReviews: ReviewAttachment[];
   reportVersions: ReportVersion[];
   logs: LogEntry[];
@@ -232,6 +238,7 @@ export type AnalysisEvent = {
   memoryBundle?: MemoryBundle;
   error?: string;
   researchReadiness?: ResearchReadiness;
+  reportTextSnapshot?: ReportTextSnapshot;
   agent?: string;
 };
 

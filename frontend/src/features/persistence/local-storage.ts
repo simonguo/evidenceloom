@@ -1,3 +1,5 @@
+import { normalizeNumericTasks, verifyNumericTasks } from "@/features/numeric-review/lib/tasks";
+import { assertRetainedNumericAuthority } from "@/features/numeric-review/lib/history";
 import {
   createEmptyTask,
   defaultGlobalSettings,
@@ -53,19 +55,22 @@ export function loadTasks(): AnalysisTask[] {
     ?? firstJson<AnalysisTask[]>(legacyTasksKeys)
     ?? [];
   const normalized = normalizeTasks(tasks);
-  saveTasks(normalized);
+  if (!normalized.some((task) => task.numericValidation || task.reportVersions.some((version) => version.numericValidation))) saveTasks(normalized);
   removeKeys(legacyTasksKeys);
   return normalized;
 }
 
 export function saveTasks(tasks: AnalysisTask[]) {
   if (typeof window === "undefined") return;
-  const safe = normalizeReadinessTasks(tasks.map(normalizeTaskOutputQuality).map(normalizeTaskEvidence).map(normalizeTaskMemory));
+  assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  const safe = normalizeNumericTasks(normalizeReadinessTasks(tasks.map(normalizeTaskOutputQuality).map(normalizeTaskEvidence).map(normalizeTaskMemory)));
+  assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], safe);
   window.localStorage.setItem(tasksStorageKey, JSON.stringify(safe));
 }
 
 export async function saveVerifiedTasks(tasks: AnalysisTask[]) {
-  const safe = await verifyReadinessTasks(await Promise.all(tasks.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))));
+  if (typeof window !== "undefined") assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  const safe = await verifyNumericTasks(await verifyReadinessTasks(await Promise.all(tasks.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task))))));
   saveTasks(safe);
 }
 
@@ -123,7 +128,7 @@ export function stripSecretFields<T extends { apiKey?: string; alphaVantageApiKe
 }
 
 function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
-  return normalizeReadinessTasks(tasks.map((task) => {
+  return normalizeNumericTasks(normalizeReadinessTasks(tasks.map((task) => {
     const status = task.status === "running" ? "stopped" : task.status;
     const normalized: AnalysisTask = {
       ...createEmptyTask({
@@ -151,7 +156,7 @@ function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
       reportVersions: task.reportVersions ?? [],
     };
     return normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality(ensureLegacyReportVersion(normalized))));
-  }));
+  })));
 }
 
 function firstJson<T>(keys: string[]): T | undefined {

@@ -71,6 +71,7 @@ class AgentState(MessagesState):
     research_readiness_policy: Annotated[dict, "Frozen deterministic research input policy"]
     research_readiness: Annotated[dict, "Saved research input checks before recommendation"]
     memory_bundle: Annotated[dict, "Immutable completion memory and outcome contract"]
+    report_text_snapshot: Annotated[dict, "Immutable original report strings after final Evidence"]
     output_quality: Annotated[dict, merge_output_quality]
     past_context: Annotated[
         str,

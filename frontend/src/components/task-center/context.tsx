@@ -1,5 +1,11 @@
 "use client";
 
+import { normalizeNumericTasks, normalizeNumericTaskFields, verifyNumericTask, verifyNumericTasks } from "@/features/numeric-review/lib/tasks";
+import { reportSnapshotFromEvent } from "@/features/numeric-review/lib/snapshot";
+import { appendNumericReviews } from "@/features/numeric-review/lib/history";
+import { verifyNumericReview } from "@/features/numeric-review/lib/validation";
+import type { NumericReview } from "@/features/numeric-review/types";
+
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   createEmptyTask,
@@ -68,6 +74,7 @@ type TaskCenterContextValue = {
   getTask: (taskId: string) => AnalysisTask | undefined;
   runtimeInfo: RuntimeInfo;
   checkRuntime: (settingsOverride?: GlobalSettings) => Promise<RuntimeCheck>;
+  saveNumericReviews: (taskId: string, versionId: string, reviews: NumericReview[]) => Promise<void>;
   saveEvaluationReviews: (taskId: string, versionId: string, reviews: ReviewAttachment[]) => Promise<void>;
 };
 
@@ -76,6 +83,8 @@ const TaskCenterContext = createContext<TaskCenterContextValue | null>(null);
 export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<GlobalSettings>(() => defaultGlobalSettings());
   const [tasks, setTasks] = useState<AnalysisTask[]>([]);
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
   const [notice, setNotice] = useState("");
   const [activeTaskId, setActiveTaskId] = useState("");
   const [hydrated, setHydrated] = useState(false);
@@ -95,7 +104,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       try {
         setSettings(loadGlobalSettings());
         const loaded = loadTasks().map(normalizeTaskRuntimeState);
-        void Promise.all(loaded.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))).then(verifyReadinessTasks).then(setTasks).catch(() => setNotice("Saved research evidence and memory could not be verified.")).finally(() => setHydrated(true));
+        void Promise.all(loaded.map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))).then(verifyReadinessTasks).then(verifyNumericTasks).then(setTasks).catch(() => setNotice("Saved research evidence and memory could not be verified.")).finally(() => setHydrated(true));
       } catch {
         setNotice("Local storage is unavailable. Reports have not been saved or loaded.");
         setHydrated(true);
@@ -107,7 +116,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     void adapter.loadDesktopData(legacy)
       .then(async (snapshot) => {
         setSettings(normalizeGlobalSettings(snapshot.settings ?? {}));
-        const normalizedTasks = await verifyReadinessTasks(await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task)))));
+        const normalizedTasks = await verifyNumericTasks(await verifyReadinessTasks(await Promise.all(snapshot.tasks.map(normalizeTaskRuntimeState).map(async (task) => verifyTaskMemory(await verifyTaskEvidence(task))))));
         setTasks(normalizedTasks);
         normalizedTasks.forEach((task, index) => {
           const stored = snapshot.tasks[index];
@@ -127,7 +136,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         setSettings(sessionSafeSettings(legacy.settings ?? defaultGlobalSettings()));
-        setTasks(normalizeReadinessTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState)));
+        setTasks(normalizeNumericTasks(normalizeReadinessTasks((legacy.tasks ?? []).map(normalizeTaskRuntimeState))));
         setNotice("Desktop storage could not be loaded. The displayed reports have not been confirmed saved.");
       })
       .finally(() => setHydrated(true));
@@ -171,14 +180,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     persistenceQueueRef.current = persistenceQueueRef.current.catch(() => undefined)
       .then(async () => {
         const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
-        await adapter.saveDesktopTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(task))));
+        await adapter.saveDesktopTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(task)))));
       })
       .catch(() => setNotice("Failed to save report and evidence. The displayed report may not be available after restart."));
   }, []);
 
   const updateTask = useCallback((taskId: string, updater: (task: AnalysisTask) => AnalysisTask) => {
     setTasks((current) => {
-      const next = normalizeReadinessTasks(current.map((task) => task.id === taskId ? updater(task) : task));
+      const next = normalizeNumericTasks(normalizeReadinessTasks(current.map((task) => task.id === taskId ? updater(task) : task)));
       const changed = next.find((task) => task.id === taskId);
       if (changed) persistTask(changed);
       return next;
@@ -193,14 +202,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   function normalizeTaskRuntimeState(task: AnalysisTask): AnalysisTask {
     const decision = resolveTaskDecision(task.decision, task.reportSections?.final_trade_decision);
-    const normalizedTask = normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality({
+    const normalizedTask = normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(normalizeTaskEvidence(normalizeTaskOutputQuality({
       ...task,
       origin: task.origin ?? "analysis",
       reportVersions: task.reportVersions ?? [],
       queuedAt: task.queuedAt ?? "",
       queueOrder: Number.isFinite(task.queueOrder) ? task.queueOrder : null,
       decision,
-    }))));
+    })))));
     if (normalizedTask.status === "running") {
       return ensureLegacyReportVersion({
         ...normalizedTask,
@@ -224,6 +233,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       const evidence = await evidenceFromEvent(empty, event);
       const memory = await memoryFromEvent(event, evidence.evidenceBundle);
       const readiness = await readinessFromEvent(event, evidence.evidenceBundle);
+      const numeric = await reportSnapshotFromEvent(event, evidence.evidenceBundle);
       updateTask(taskId, (task) => {
         const logs = event.message || event.error
           ? prependLog(task.logs, event.messageType ?? event.type, event.error ?? event.message ?? "", event.timestamp, event.agent)
@@ -235,7 +245,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           : event.type === "error"
             ? "error"
             : task.status;
-        const nextTask: AnalysisTask = normalizeReadinessTaskFields(normalizeTaskMemory(evidenceMatchesSnapshot({
+        const nextTask: AnalysisTask = normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeTaskMemory(evidenceMatchesSnapshot({
           ...task,
           status,
           updatedAt: new Date().toISOString(),
@@ -247,9 +257,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
           ...((event.evidenceBundle !== undefined || event.finalState?.evidence_bundle !== undefined) ? evidence : {}),
           ...(memory ?? {}),
           ...(readiness ?? {}),
+          ...(numeric ?? {}),
           logs,
           error: event.error ?? (status === "running" ? "" : task.error),
-        })));
+        }))));
         return runContext
           ? appendCompletedReportVersion(nextTask, event, runContext)
           : nextTask;
@@ -427,6 +438,38 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     return adapter.checkRuntime(settingsOverride ?? settings);
   }
 
+  async function saveNumericReviews(taskId: string, versionId: string, reviews: NumericReview[]) {
+    const version = tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
+    if (!version?.reportTextSnapshot || !version.evidenceBundle || version.numericValidation) throw new Error("This version has no verified original report snapshot.");
+    const frozen = JSON.parse(JSON.stringify(version)) as typeof version;
+    const verified = await Promise.all(reviews.map((review) => verifyNumericReview(review, frozen.reportTextSnapshot, frozen.evidenceBundle, { taskId, versionId })));
+    const write = persistenceQueueRef.current.catch(() => undefined).then(async () => {
+      const latest = tasksRef.current;
+      const owner = latest.find((item) => item.id === taskId);
+      if (!owner) throw new Error("The selected task no longer exists.");
+      const next = appendNumericReviews(owner, versionId, verified);
+      const candidate = normalizeNumericTasks(latest.map((item) => item.id === taskId ? next : item));
+      if (candidate.find((item) => item.id === taskId)?.reportVersions.find((item) => item.id === versionId)?.numericValidation) throw new Error("Numeric reviews conflict with this saved report history.");
+      if (isTauriRuntime()) {
+        await (runtimeAdapterRef.current ?? getRuntimeAdapter()).saveDesktopTask(await verifyNumericTask(next));
+      } else await saveVerifiedTasks(candidate);
+      // Publish only after durable success. Re-append to the latest owner rather
+      // than replacing unrelated updates made during the asynchronous write.
+      await new Promise<void>((resolve, reject) => setTasks((current) => {
+        try {
+          const currentOwner = current.find((item) => item.id === taskId);
+          if (!currentOwner) throw new Error();
+          const saved = appendNumericReviews(currentOwner, versionId, verified);
+          const result = normalizeNumericTasks(current.map((item) => item.id === taskId ? saved : item));
+          if (result.find((item) => item.id === taskId)?.reportVersions.find((item) => item.id === versionId)?.numericValidation) throw new Error();
+          queueMicrotask(resolve); return result;
+        } catch { queueMicrotask(() => reject(new Error("Numeric review was saved, but its current owner could not be updated."))); return current; }
+      }));
+    });
+    persistenceQueueRef.current = write;
+    await write;
+  }
+
   async function saveEvaluationReviews(taskId: string, versionId: string, reviews: ReviewAttachment[]) {
     const version = tasks.find((task) => task.id === taskId)?.reportVersions.find((item) => item.id === versionId);
     if (!version?.memoryBundle || version.memoryValidation) throw new Error("This saved version has no verified memory attachment.");
@@ -476,6 +519,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     runtimeInfo,
     checkRuntime: checkRuntimeAction,
     saveEvaluationReviews,
+    saveNumericReviews,
   };
 
   return <TaskCenterContext.Provider value={value}>{children}</TaskCenterContext.Provider>;

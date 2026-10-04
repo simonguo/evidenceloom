@@ -58,7 +58,7 @@ function TaskDetailRouteContent() {
 
 function TaskDetailPage({ taskId }: { taskId: string }) {
   const router = useRouter();
-  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews } = useTaskCenter();
+  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const task = getTask(taskId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -284,7 +284,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
         </div>
       </section>
 
-      <ReportVersionsPanel task={task} language={settings.systemLanguage} settings={settings} onReviews={saveEvaluationReviews} />
+      <ReportVersionsPanel task={task} language={settings.systemLanguage} settings={settings} onReviews={saveEvaluationReviews} onNumericReviews={saveNumericReviews} />
 
       <section className="space-y-6">
         <Panel title={t("agentProgressReports")} sticky>

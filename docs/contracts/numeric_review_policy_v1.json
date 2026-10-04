@@ -1,0 +1,19 @@
+{
+  "policy_version": "saved-numeric-field-v1",
+  "scope": "selected_saved_numeric_field",
+  "operation": "field_value",
+  "rounding_mode": "saved_decimal_half_up",
+  "rounded_zero_sign": "positive",
+  "max_decimal_places": 18,
+  "max_number_bytes": 256,
+  "max_coefficient_digits": 128,
+  "max_abs_exponent": 1024,
+  "max_section_bytes": 1048576,
+  "max_table_rows": 100000,
+  "max_table_columns": 256,
+  "max_reviews_per_version": 1000,
+  "span_encoding": "utf8_half_open",
+  "context_comparison": "exact_bound_literal_only",
+  "table_paths": [[], ["latest_ohlcv"], ["recent_closes"]],
+  "unreviewed_dimensions": ["surrounding_prose", "source_reliability", "historical_vintage", "indicator_method", "prediction", "causality"]
+}

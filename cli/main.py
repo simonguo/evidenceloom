@@ -672,33 +672,66 @@ def get_analysis_date():
             console.print("[red]Error: Invalid date format. Please use YYYY-MM-DD[/red]")
 
 
-def save_report_to_disk(final_state, ticker: str, save_path: Path):
+def save_report_to_disk(final_state, ticker: str, save_path: Path, *, secrets=()):
     """Save complete analysis report to disk with organized subfolders."""
+    from tradingagents.research.numeric_review import (
+        REPORT_SECTION_KEYS,
+        NumericReviewError,
+        public_report_copy,
+        validate_report_text_snapshot,
+    )
+
+    snapshot = None
+    if final_state.get("report_text_snapshot"):
+        snapshot = validate_report_text_snapshot(
+            final_state["report_text_snapshot"], final_state["evidence_bundle"]
+        )
+        if snapshot["report_sections"] != {
+            key: final_state.get(key) for key in REPORT_SECTION_KEYS
+        }:
+            raise NumericReviewError()
+        if final_state.get("memory_bundle"):
+            from tradingagents.memory.schema import utc_timestamp, validate_bundle
+
+            memory = validate_bundle(final_state["memory_bundle"])
+            if (
+                memory["run_id"] != snapshot["run_id"]
+                or memory["instrument"] != snapshot["instrument"]
+                or memory["analysis_date"] != snapshot["analysis_date"]
+                or memory["evidence_bundle_sha256"] != snapshot["evidence_bundle_sha256"]
+                or utc_timestamp(snapshot["captured_at"])
+                < utc_timestamp(memory["decision_snapshot"]["decision"]["recorded_at"])
+            ):
+                raise NumericReviewError()
+    final_state = public_report_copy(final_state, secrets=secrets)
+    if snapshot is not None and snapshot["report_sections"] != {
+        key: final_state.get(key) for key in REPORT_SECTION_KEYS
+    }:
+        raise NumericReviewError()
     save_path.mkdir(parents=True, exist_ok=True)
     sections = []
+
+    def write_utf8(path, text):
+        path.write_bytes(text.encode("utf-8"))
 
     # 1. Analysts
     analysts_dir = save_path / "1_analysts"
     analyst_parts = []
     if final_state.get("market_report"):
         analysts_dir.mkdir(exist_ok=True)
-        (analysts_dir / "market.md").write_text(final_state["market_report"], encoding="utf-8")
+        write_utf8(analysts_dir / "market.md", final_state["market_report"])
         analyst_parts.append(("Market Analyst", final_state["market_report"]))
     if final_state.get("sentiment_report"):
         analysts_dir.mkdir(exist_ok=True)
-        (analysts_dir / "sentiment.md").write_text(
-            final_state["sentiment_report"], encoding="utf-8"
-        )
+        write_utf8(analysts_dir / "sentiment.md", final_state["sentiment_report"])
         analyst_parts.append(("Sentiment Analyst", final_state["sentiment_report"]))
     if final_state.get("news_report"):
         analysts_dir.mkdir(exist_ok=True)
-        (analysts_dir / "news.md").write_text(final_state["news_report"], encoding="utf-8")
+        write_utf8(analysts_dir / "news.md", final_state["news_report"])
         analyst_parts.append(("News Analyst", final_state["news_report"]))
     if final_state.get("fundamentals_report"):
         analysts_dir.mkdir(exist_ok=True)
-        (analysts_dir / "fundamentals.md").write_text(
-            final_state["fundamentals_report"], encoding="utf-8"
-        )
+        write_utf8(analysts_dir / "fundamentals.md", final_state["fundamentals_report"])
         analyst_parts.append(("Fundamentals Analyst", final_state["fundamentals_report"]))
     if analyst_parts:
         content = "\n\n".join(f"### {name}\n{text}" for name, text in analyst_parts)
@@ -711,15 +744,15 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
         research_parts = []
         if debate.get("bull_history"):
             research_dir.mkdir(exist_ok=True)
-            (research_dir / "bull.md").write_text(debate["bull_history"], encoding="utf-8")
+            write_utf8(research_dir / "bull.md", debate["bull_history"])
             research_parts.append(("Bull Researcher", debate["bull_history"]))
         if debate.get("bear_history"):
             research_dir.mkdir(exist_ok=True)
-            (research_dir / "bear.md").write_text(debate["bear_history"], encoding="utf-8")
+            write_utf8(research_dir / "bear.md", debate["bear_history"])
             research_parts.append(("Bear Researcher", debate["bear_history"]))
         if debate.get("judge_decision"):
             research_dir.mkdir(exist_ok=True)
-            (research_dir / "manager.md").write_text(debate["judge_decision"], encoding="utf-8")
+            write_utf8(research_dir / "manager.md", debate["judge_decision"])
             research_parts.append(("Research Manager", debate["judge_decision"]))
         if research_parts:
             content = "\n\n".join(f"### {name}\n{text}" for name, text in research_parts)
@@ -729,9 +762,7 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
     if final_state.get("trader_investment_plan"):
         trading_dir = save_path / "3_trading"
         trading_dir.mkdir(exist_ok=True)
-        (trading_dir / "trader.md").write_text(
-            final_state["trader_investment_plan"], encoding="utf-8"
-        )
+        write_utf8(trading_dir / "trader.md", final_state["trader_investment_plan"])
         sections.append(
             f"## III. Trading Team Plan\n\n### Trader\n{final_state['trader_investment_plan']}"
         )
@@ -743,17 +774,15 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
         risk_parts = []
         if risk.get("aggressive_history"):
             risk_dir.mkdir(exist_ok=True)
-            (risk_dir / "aggressive.md").write_text(risk["aggressive_history"], encoding="utf-8")
+            write_utf8(risk_dir / "aggressive.md", risk["aggressive_history"])
             risk_parts.append(("Aggressive Analyst", risk["aggressive_history"]))
         if risk.get("conservative_history"):
             risk_dir.mkdir(exist_ok=True)
-            (risk_dir / "conservative.md").write_text(
-                risk["conservative_history"], encoding="utf-8"
-            )
+            write_utf8(risk_dir / "conservative.md", risk["conservative_history"])
             risk_parts.append(("Conservative Analyst", risk["conservative_history"]))
         if risk.get("neutral_history"):
             risk_dir.mkdir(exist_ok=True)
-            (risk_dir / "neutral.md").write_text(risk["neutral_history"], encoding="utf-8")
+            write_utf8(risk_dir / "neutral.md", risk["neutral_history"])
             risk_parts.append(("Neutral Analyst", risk["neutral_history"]))
         if risk_parts:
             content = "\n\n".join(f"### {name}\n{text}" for name, text in risk_parts)
@@ -763,7 +792,7 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
         if risk.get("judge_decision"):
             portfolio_dir = save_path / "5_portfolio"
             portfolio_dir.mkdir(exist_ok=True)
-            (portfolio_dir / "decision.md").write_text(risk["judge_decision"], encoding="utf-8")
+            write_utf8(portfolio_dir / "decision.md", risk["judge_decision"])
             sections.append(
                 f"## V. Portfolio Manager Decision\n\n### Portfolio Manager\n{risk['judge_decision']}"
             )
@@ -779,7 +808,14 @@ def save_report_to_disk(final_state, ticker: str, save_path: Path):
             + json.dumps(settings, ensure_ascii=False, indent=2)
             + "\n```\n\n"
         )
-    (save_path / "complete_report.md").write_text(header + "\n\n".join(sections), encoding="utf-8")
+    if snapshot is not None:
+        import json
+
+        write_utf8(
+            save_path / "report_text_snapshot.json",
+            json.dumps(snapshot, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+    write_utf8(save_path / "complete_report.md", header + "\n\n".join(sections))
     return save_path / "complete_report.md"
 
 
@@ -1289,7 +1325,9 @@ def run_analysis(checkpoint: bool | None = None):
         ).strip()
         save_path = Path(save_path_str)
         try:
-            report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
+            report_file = save_report_to_disk(
+                final_state, selections["ticker"], save_path, secrets=graph._evidence_secrets()
+            )
             console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
             console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
         except Exception as e:

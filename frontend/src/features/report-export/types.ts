@@ -11,6 +11,7 @@ export type ReportDocumentSection = {
 };
 
 export type ReportDocument = {
+  taskId: string;
   title: string;
   disclaimer: string;
   fictionalNotice: string;

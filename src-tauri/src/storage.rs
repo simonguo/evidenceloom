@@ -12,10 +12,11 @@ use tauri::{AppHandle, Manager};
 use crate::evidence::{validate_bundle, validate_invalid};
 use crate::output_quality::{normalize_output_quality, normalize_report_version_quality};
 use crate::secrets;
+use crate::{numeric_review as numeric, numeric_review_storage as numeric_store};
 use crate::{research_memory as memory, research_memory_storage as memory_store};
 use crate::{research_readiness as readiness, research_readiness_storage as readiness_store};
 
-const SCHEMA_VERSION: i64 = 8;
+const SCHEMA_VERSION: i64 = 9;
 const SECRET_PREFIX: &str = "enc:v1:";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -143,6 +144,10 @@ pub struct AnalysisTaskRecord {
     pub readiness_validation: Option<Value>,
     #[serde(default = "empty_array")]
     pub evaluation_reviews: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub report_text_snapshot: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub numeric_validation: Option<Value>,
     pub logs: Value,
     pub error: String,
 }
@@ -210,6 +215,7 @@ pub fn clear_data(app: &AppHandle) -> Result<(), String> {
     secrets::delete_all_secrets(current_provider.as_deref())?;
     memory_store::clear(&conn)?;
     readiness_store::clear(&conn)?;
+    numeric_store::clear(&conn)?;
     conn.execute_batch(
         "DELETE FROM task_report_versions;
          DELETE FROM task_reports;
@@ -410,6 +416,7 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     .map_err(|error| error.to_string())?;
     memory_store::initialize(conn)?;
     readiness_store::initialize(conn)?;
+    numeric_store::initialize(conn)?;
     ensure_column(conn, "tasks", "instrument_name", "TEXT NOT NULL DEFAULT ''")?;
     ensure_column(conn, "tasks", "origin", "TEXT NOT NULL DEFAULT 'analysis'")?;
     ensure_column(conn, "tasks", "queued_at", "TEXT NOT NULL DEFAULT ''")?;
@@ -421,6 +428,14 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     ensure_column(conn, "tasks", "memory_validation", "TEXT")?;
     ensure_column(conn, "tasks", "readiness_assessment_sha256", "TEXT")?;
     ensure_column(conn, "tasks", "readiness_validation", "TEXT")?;
+    ensure_column(conn, "tasks", "numeric_snapshot_sha256", "TEXT")?;
+    ensure_column(conn, "tasks", "numeric_validation", "TEXT")?;
+    ensure_column(
+        conn,
+        "task_report_versions",
+        "numeric_snapshot_sha256",
+        "TEXT",
+    )?;
     ensure_column(
         conn,
         "task_report_versions",
@@ -636,7 +651,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
     let mut stmt = conn
         .prepare(
             "SELECT id, ticker, analysis_date, asset_type, research_depth, analysts, output_language, status,
-                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation
+                    instrument_name, queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, origin, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation, numeric_snapshot_sha256, numeric_validation
              FROM tasks ORDER BY updated_at DESC",
         )
         .map_err(|error| error.to_string())?;
@@ -696,6 +711,28 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                     Ok::<Value, rusqlite::Error>(marker)
                 })
                 .transpose()?;
+            let report_text_snapshot = row
+                .get::<_, Option<String>>(26)?
+                .map(|hash| {
+                    numeric_store::load_snapshot(
+                        conn,
+                        &hash,
+                        evidence_bundle
+                            .as_ref()
+                            .ok_or_else(|| evidence_sql_error(numeric::ERROR.into()))?,
+                    )
+                    .map_err(evidence_sql_error)
+                })
+                .transpose()?;
+            let numeric_validation = row
+                .get::<_, Option<String>>(27)?
+                .map(|raw| {
+                    let marker = memory::parse_json(&raw).map_err(evidence_sql_error)?;
+                    numeric::validate_fields(None, Some(&marker), None)
+                        .map_err(evidence_sql_error)?;
+                    Ok::<Value, rusqlite::Error>(marker)
+                })
+                .transpose()?;
             Ok(AnalysisTaskRecord {
                 id: task_id,
                 origin: row.get(18)?,
@@ -732,6 +769,8 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
                 memory_validation,
                 research_readiness,
                 readiness_validation,
+                report_text_snapshot,
+                numeric_validation,
                 evaluation_reviews,
                 logs,
                 error: row.get(17)?,
@@ -743,6 +782,7 @@ fn load_tasks_from_conn(conn: &Connection) -> Result<Vec<AnalysisTaskRecord>, St
         .collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())?;
     for task in &tasks {
+        validate_task_numeric(task)?;
         validate_task_readiness(task)?;
         validate_memory_fields(
             task.memory_bundle.as_ref(),
@@ -824,7 +864,7 @@ fn load_report_sections(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
 
 fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Value> {
     let mut stmt = conn.prepare(
-        "SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,id,run_id,version_number,created_at,readiness_assessment_sha256 FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
+        "SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,id,run_id,version_number,created_at,readiness_assessment_sha256,numeric_snapshot_sha256 FROM task_report_versions WHERE task_id = ?1 ORDER BY version_number ASC",
     )?;
     let rows = stmt.query_map(params![task_id], |row| {
         let raw = row.get::<_, String>(0)?;
@@ -939,6 +979,49 @@ fn load_report_versions(conn: &Connection, task_id: &str) -> rusqlite::Result<Va
                 .ok_or_else(|| evidence_sql_error(readiness::ERROR.into()))?
                 .insert("researchReadiness".into(), receipt);
         }
+        if version.get("reportTextSnapshot").is_some()
+            || version
+                .get("numericReviews")
+                .is_some_and(|reviews| !reviews.as_array().is_some_and(Vec::is_empty))
+        {
+            return Err(evidence_sql_error(numeric::ERROR.into()));
+        }
+        if let Some(hash) = row.get::<_, Option<String>>(8)? {
+            if version["id"] != row.get::<_, String>(3)?
+                || version["runId"] != row.get::<_, String>(4)?
+                || version["versionNumber"] != row.get::<_, i64>(5)?
+                || version["createdAt"] != row.get::<_, String>(6)?
+            {
+                return Err(evidence_sql_error(numeric::ERROR.into()));
+            }
+            let snapshot = numeric_store::load_snapshot(
+                conn,
+                &hash,
+                version
+                    .get("evidenceBundle")
+                    .ok_or_else(|| evidence_sql_error(numeric::ERROR.into()))?,
+            )
+            .map_err(evidence_sql_error)?;
+            version
+                .as_object_mut()
+                .ok_or_else(|| evidence_sql_error(numeric::ERROR.into()))?
+                .insert("reportTextSnapshot".into(), snapshot);
+        }
+        let reviews = numeric_store::load_reviews(
+            conn,
+            task_id,
+            version["id"].as_str().unwrap_or_default(),
+            version.get("reportTextSnapshot"),
+            version.get("evidenceBundle"),
+        )
+        .map_err(evidence_sql_error)?;
+        if !reviews.as_array().is_some_and(Vec::is_empty) {
+            version
+                .as_object_mut()
+                .ok_or_else(|| evidence_sql_error(numeric::ERROR.into()))?
+                .insert("numericReviews".into(), reviews);
+        }
+        validate_version_numeric(&version, task_id).map_err(evidence_sql_error)?;
         validate_version_readiness(&version).map_err(evidence_sql_error)?;
         Ok(version)
     })?;
@@ -963,6 +1046,7 @@ fn evidence_sql_error(message: String) -> rusqlite::Error {
 }
 
 fn prune_evidence(conn: &Connection) -> Result<(), String> {
+    numeric_store::prune(conn)?;
     readiness_store::prune(conn)?;
     memory_store::prune(conn)?;
     conn.execute_batch("DELETE FROM evidence_bundles WHERE sha256 NOT IN (SELECT evidence_bundle_sha256 FROM tasks WHERE evidence_bundle_sha256 IS NOT NULL UNION SELECT evidence_bundle_sha256 FROM task_report_versions WHERE evidence_bundle_sha256 IS NOT NULL);
@@ -1206,7 +1290,91 @@ fn load_evidence_bundle(conn: &Connection, hash: &str) -> rusqlite::Result<Value
     Ok(bundle)
 }
 
+fn validate_task_numeric(task: &AnalysisTaskRecord) -> Result<(), String> {
+    numeric::validate_fields(
+        task.report_text_snapshot.as_ref(),
+        task.numeric_validation.as_ref(),
+        None,
+    )?;
+    if let Some(snapshot) = &task.report_text_snapshot {
+        if task.status != "completed" || task.id.is_empty() || task.id.len() > 256 {
+            return Err(numeric::ERROR.into());
+        }
+        numeric::validate_snapshot_binding(
+            snapshot,
+            task.evidence_bundle.as_ref().ok_or(numeric::ERROR)?,
+            None,
+            &task.ticker,
+            &task.analysis_date,
+            &task.report_sections,
+        )?;
+        validate_numeric_memory_chronology(snapshot, task.memory_bundle.as_ref())?;
+    }
+    if let Some(versions) = task.report_versions.as_array() {
+        for version in versions {
+            validate_version_numeric(version, &task.id)?;
+        }
+    }
+    Ok(())
+}
+fn validate_version_numeric(version: &Value, task_id: &str) -> Result<(), String> {
+    numeric::validate_fields(
+        version.get("reportTextSnapshot"),
+        version.get("numericValidation"),
+        version.get("numericReviews"),
+    )?;
+    if let Some(snapshot) = version.get("reportTextSnapshot") {
+        if version["id"]
+            .as_str()
+            .is_none_or(|id| id.is_empty() || id.len() > 256)
+            || !version["versionNumber"]
+                .as_i64()
+                .is_some_and(|number| (1..=9_007_199_254_740_991).contains(&number))
+            || version["createdAt"].as_str().is_none_or(str::is_empty)
+        {
+            return Err(numeric::ERROR.into());
+        }
+        numeric::validate_snapshot_binding(
+            snapshot,
+            version.get("evidenceBundle").ok_or(numeric::ERROR)?,
+            Some(version["runId"].as_str().ok_or(numeric::ERROR)?),
+            version["task"]["ticker"].as_str().ok_or(numeric::ERROR)?,
+            version["task"]["analysisDate"]
+                .as_str()
+                .ok_or(numeric::ERROR)?,
+            &version["reportSections"],
+        )?;
+        validate_numeric_memory_chronology(snapshot, version.get("memoryBundle"))?;
+    }
+    if let Some(reviews) = version.get("numericReviews") {
+        numeric::validate_reviews(
+            reviews,
+            version.get("reportTextSnapshot"),
+            version.get("evidenceBundle"),
+            task_id,
+            version["id"].as_str().ok_or(numeric::ERROR)?,
+        )?;
+    }
+    Ok(())
+}
+
+fn validate_numeric_memory_chronology(
+    snapshot: &Value,
+    completion: Option<&Value>,
+) -> Result<(), String> {
+    if let Some(completion) = completion {
+        if memory::timestamp(&snapshot["captured_at"]).map_err(|_| numeric::ERROR)?
+            < memory::timestamp(&completion["decision_snapshot"]["decision"]["recorded_at"])
+                .map_err(|_| numeric::ERROR)?
+        {
+            return Err(numeric::ERROR.into());
+        }
+    }
+    Ok(())
+}
+
 fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), String> {
+    validate_task_numeric(task)?;
     validate_task_readiness(task)?;
     validate_memory_fields(
         task.memory_bundle.as_ref(),
@@ -1321,6 +1489,17 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             )
         })
         .transpose()?;
+    let numeric_hash = task
+        .report_text_snapshot
+        .as_ref()
+        .map(|snapshot| {
+            numeric_store::store_snapshot(
+                conn,
+                snapshot,
+                task.evidence_bundle.as_ref().ok_or(numeric::ERROR)?,
+            )
+        })
+        .transpose()?;
     let previous_memory_hash: Option<Option<String>> = conn
         .query_row(
             "SELECT memory_bundle_sha256 FROM tasks WHERE id=?1",
@@ -1339,8 +1518,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     conn.execute(
         "INSERT INTO tasks (
             id, origin, ticker, instrument_name, analysis_date, asset_type, research_depth, analysts, output_language, status,
-            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation
-         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26)
+            queued_at, queue_order, created_at, updated_at, decision, stats, agent_statuses, report_sections, error, output_quality, evidence_bundle_sha256, evidence_validation, memory_bundle_sha256, memory_validation, readiness_assessment_sha256, readiness_validation, numeric_snapshot_sha256, numeric_validation
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28)
          ON CONFLICT(id) DO UPDATE SET
             origin = excluded.origin,
             ticker = excluded.ticker,
@@ -1365,7 +1544,9 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             memory_bundle_sha256 = excluded.memory_bundle_sha256,
             memory_validation = excluded.memory_validation,
             readiness_assessment_sha256 = excluded.readiness_assessment_sha256,
-            readiness_validation = excluded.readiness_validation",
+            readiness_validation = excluded.readiness_validation,
+            numeric_snapshot_sha256 = excluded.numeric_snapshot_sha256,
+            numeric_validation = excluded.numeric_validation",
         params![
             task.id,
             task.origin,
@@ -1393,6 +1574,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             task.memory_validation.as_ref().map(json_string).transpose()?,
             readiness_hash,
             task.readiness_validation.as_ref().map(json_string).transpose()?,
+            numeric_hash,
+            task.numeric_validation.as_ref().map(json_string).transpose()?,
         ],
     )
     .map_err(|error| error.to_string())?;
@@ -1452,6 +1635,26 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
     if let Value::Array(versions) = &task.report_versions {
         for version in versions {
             let mut version = normalize_report_version_quality(version.clone());
+            let numeric_snapshot = version
+                .as_object_mut()
+                .and_then(|map| map.remove("reportTextSnapshot"));
+            let numeric_evidence = version.get("evidenceBundle").cloned();
+            let numeric_hash = numeric_snapshot
+                .as_ref()
+                .map(|snapshot| {
+                    numeric_store::store_snapshot(
+                        conn,
+                        snapshot,
+                        numeric_evidence.as_ref().ok_or(numeric::ERROR)?,
+                    )
+                })
+                .transpose()?;
+            let numeric_reviews = version
+                .as_object_mut()
+                .and_then(|map| map.remove("numericReviews"));
+            if numeric_reviews.is_some() {
+                version["numericReviews"] = Value::Array(Vec::new());
+            }
             let readiness_hash = version
                 .get("researchReadiness")
                 .map(|receipt| {
@@ -1509,10 +1712,17 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                 Option<String>,
                 String,
                 Option<String>,
+                Option<String>,
             );
-            let existing: Option<FrozenVersionRow> = conn.query_row("SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,task_id,readiness_assessment_sha256 FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?,row.get(3)?,row.get(4)?))).optional().map_err(|error| error.to_string())?;
-            if let Some((snapshot, hash, saved_memory_hash, saved_task, saved_readiness_hash)) =
-                existing
+            let existing: Option<FrozenVersionRow> = conn.query_row("SELECT snapshot, evidence_bundle_sha256, memory_bundle_sha256,task_id,readiness_assessment_sha256,numeric_snapshot_sha256 FROM task_report_versions WHERE id = ?1", params![id], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?,row.get(3)?,row.get(4)?,row.get(5)?))).optional().map_err(|error| error.to_string())?;
+            if let Some((
+                snapshot,
+                hash,
+                saved_memory_hash,
+                saved_task,
+                saved_readiness_hash,
+                saved_numeric_hash,
+            )) = existing
             {
                 let mut saved = normalize_report_version_quality(
                     serde_json::from_str::<Value>(&snapshot)
@@ -1527,10 +1737,19 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     .as_object_mut()
                     .ok_or(memory::ERROR)?
                     .remove("evaluationReviews");
+                saved
+                    .as_object_mut()
+                    .ok_or(numeric::ERROR)?
+                    .remove("numericReviews");
+                frozen
+                    .as_object_mut()
+                    .ok_or(numeric::ERROR)?
+                    .remove("numericReviews");
                 if saved != frozen
                     || hash != evidence_hash
                     || saved_memory_hash != memory_hash
                     || saved_readiness_hash != readiness_hash
+                    || saved_numeric_hash != numeric_hash
                     || saved_task != task.id
                 {
                     return Err("A frozen report version cannot be changed".into());
@@ -1538,8 +1757,8 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
             }
             conn.execute(
                 "INSERT OR IGNORE INTO task_report_versions
-                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256, memory_bundle_sha256, readiness_assessment_sha256)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                    (id, task_id, version_number, run_id, created_at, snapshot, evidence_bundle_sha256, memory_bundle_sha256, readiness_assessment_sha256, numeric_snapshot_sha256)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 params![
                     id,
                     task.id,
@@ -1550,12 +1769,23 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     evidence_hash,
                     memory_hash,
                     readiness_hash,
+                    numeric_hash,
                 ],
             )
             .map_err(|error| error.to_string())?;
             if let Some(reviews) = reviews {
                 memory_store::append_reviews(conn, id, completion.as_ref(), &reviews)?;
             }
+            numeric_store::append_reviews(
+                conn,
+                &task.id,
+                id,
+                numeric_snapshot.as_ref(),
+                numeric_evidence.as_ref(),
+                numeric_reviews
+                    .as_ref()
+                    .unwrap_or(&Value::Array(Vec::new())),
+            )?;
         }
     }
 
@@ -1925,6 +2155,346 @@ mod tests {
         upsert_task(&transaction, task)?;
         prune_evidence(&transaction)?;
         transaction.commit().map_err(|_| memory::ERROR.into())
+    }
+
+    fn numeric_task_fixture() -> (AnalysisTaskRecord, Value) {
+        let fixture = numeric::test_support::fixture();
+        let snapshot = fixture["snapshot"].clone();
+        let evidence = fixture["evidence"].clone();
+        let version = serde_json::json!({"id":"version-fictional","runId":snapshot["run_id"],"versionNumber":1,"createdAt":snapshot["captured_at"],"legacy":false,"task":{"ticker":snapshot["instrument"],"analysisDate":snapshot["analysis_date"]},"reportSections":snapshot["report_sections"],"evidenceBundle":evidence,"reportTextSnapshot":snapshot,"numericReviews":[]});
+        let mut task = quality_task_fixture(Value::Null, version);
+        task.id = "task-fictional".into();
+        task.ticker = snapshot["instrument"].as_str().unwrap().into();
+        task.analysis_date = snapshot["analysis_date"].as_str().unwrap().into();
+        task.report_sections = snapshot["report_sections"].clone();
+        task.evidence_bundle = Some(evidence);
+        task.report_text_snapshot = Some(snapshot);
+        (task, fixture)
+    }
+
+    #[test]
+    fn numeric_migration_reload_preserves_complete_snapshot_review_and_payloads() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        conn.execute("DELETE FROM schema_migrations WHERE version=9", [])
+            .unwrap();
+        initialize_schema(&conn).unwrap();
+        let version: i64 = conn
+            .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(version, 9);
+        let (mut task, fixture) = numeric_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].report_text_snapshot,
+            task.report_text_snapshot
+        );
+        for index in 1..=fixture["reviews"].as_array().unwrap().len() {
+            task.report_versions[0]["numericReviews"] =
+                Value::Array(fixture["reviews"].as_array().unwrap()[..index].to_vec());
+            save_test_task(&mut conn, &task).unwrap();
+            save_test_task(&mut conn, &task).unwrap();
+            let loaded = load_tasks_from_conn(&conn).unwrap();
+            assert_eq!(loaded[0].report_versions, task.report_versions);
+            assert_eq!(loaded[0].evidence_bundle, task.evidence_bundle);
+            assert_eq!(loaded[0].report_sections, task.report_sections);
+        }
+        let snapshots: i64 = conn
+            .query_row("SELECT COUNT(*) FROM numeric_report_snapshots", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(snapshots, 1);
+        let raw: String = conn
+            .query_row("SELECT snapshot FROM task_report_versions", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        let core: Value = serde_json::from_str(&raw).unwrap();
+        assert!(core.get("reportTextSnapshot").is_none());
+        assert!(core["numericReviews"].as_array().unwrap().is_empty());
+        // Restart/current clearing preserves the full frozen historical owner.
+        task.status = "pending".into();
+        task.report_text_snapshot = None;
+        task.evidence_bundle = None;
+        task.report_sections = serde_json::json!({});
+        save_test_task(&mut conn, &task).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert!(loaded[0].report_text_snapshot.is_none());
+        assert_eq!(loaded[0].report_versions, task.report_versions);
+        conn.execute("DELETE FROM tasks WHERE id=?1", params![task.id])
+            .unwrap();
+        prune_evidence(&conn).unwrap();
+        for table in [
+            "numeric_report_snapshots",
+            "numeric_review_receipts",
+            "report_numeric_reviews",
+            "evidence_bundles",
+            "evidence_artifacts",
+        ] {
+            let count: i64 = conn
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(count, 0, "{table}");
+        }
+    }
+
+    #[test]
+    fn numeric_v8_upgrade_retains_legacy_unknown_and_does_not_invent_a_snapshot() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (task, _) = evidence_task_fixture();
+        save_test_task(&mut conn, &task).unwrap();
+        conn.execute_batch("DROP TABLE report_numeric_reviews; DROP TABLE numeric_review_receipts; DROP TABLE numeric_report_snapshots;
+            ALTER TABLE tasks DROP COLUMN numeric_snapshot_sha256;
+            ALTER TABLE tasks DROP COLUMN numeric_validation;
+            ALTER TABLE task_report_versions DROP COLUMN numeric_snapshot_sha256;
+            DELETE FROM schema_migrations WHERE version=9;").unwrap();
+        initialize_schema(&conn).unwrap();
+        initialize_schema(&conn).unwrap();
+        let loaded = load_tasks_from_conn(&conn).unwrap();
+        assert!(loaded[0].report_text_snapshot.is_none());
+        assert!(loaded[0].numeric_validation.is_none());
+        assert!(loaded[0].report_versions[0]
+            .get("reportTextSnapshot")
+            .is_none());
+        assert_eq!(loaded[0].report_versions, task.report_versions);
+        assert_eq!(loaded[0].evidence_bundle, task.evidence_bundle);
+    }
+
+    #[test]
+    fn numeric_stale_append_false_match_and_frozen_section_rewrite_roll_back() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, fixture) = numeric_task_fixture();
+        task.report_versions[0]["numericReviews"] =
+            Value::Array(fixture["reviews"].as_array().unwrap()[..2].to_vec());
+        save_test_task(&mut conn, &task).unwrap();
+        let original = load_tasks_from_conn(&conn).unwrap()[0]
+            .report_versions
+            .clone();
+        let mut stale =
+            serde_json::from_value::<AnalysisTaskRecord>(serde_json::to_value(&task).unwrap())
+                .unwrap();
+        stale.report_versions[0]["numericReviews"] =
+            Value::Array(fixture["reviews"].as_array().unwrap()[..1].to_vec());
+        assert!(save_test_task(&mut conn, &stale).is_err());
+        stale.report_versions[0]
+            .as_object_mut()
+            .unwrap()
+            .remove("numericReviews");
+        assert!(save_test_task(&mut conn, &stale).is_err());
+        stale.report_versions = original.clone();
+        stale.report_versions[0]["numericReviews"][1]["result"]["status"] =
+            serde_json::json!("match");
+        stale.report_versions[0]["numericReviews"][1]["result"]["reason"] =
+            serde_json::json!("value_match");
+        numeric::test_support::rehash(
+            &mut stale.report_versions[0]["numericReviews"][1],
+            "review_sha256",
+        );
+        assert!(save_test_task(&mut conn, &stale).is_err());
+        stale.report_versions = original.clone();
+        stale.report_versions[0]["reportSections"]["market_report"] =
+            serde_json::json!("rewritten");
+        stale.report_versions[0]["reportTextSnapshot"]["report_sections"]["market_report"] =
+            serde_json::json!("rewritten");
+        numeric::test_support::rehash(
+            &mut stale.report_versions[0]["reportTextSnapshot"],
+            "snapshot_sha256",
+        );
+        assert!(save_test_task(&mut conn, &stale).is_err());
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].report_versions,
+            original
+        );
+    }
+
+    #[test]
+    fn numeric_global_run_and_review_uuid_authorities_bind_across_tasks() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, fixture) = numeric_task_fixture();
+        task.report_versions[0]["numericReviews"] =
+            Value::Array(vec![fixture["reviews"][0].clone()]);
+        save_test_task(&mut conn, &task).unwrap();
+        let mut other =
+            serde_json::from_value::<AnalysisTaskRecord>(serde_json::to_value(&task).unwrap())
+                .unwrap();
+        other.id = "other-task".into();
+        other.report_versions[0]["id"] = serde_json::json!("other-version");
+        other.report_versions[0]["numericReviews"] = serde_json::json!([]);
+        // Identical snapshot copies share one authority.
+        save_test_task(&mut conn, &other).unwrap();
+        let mut changed =
+            serde_json::from_value::<AnalysisTaskRecord>(serde_json::to_value(&other).unwrap())
+                .unwrap();
+        changed.report_text_snapshot.as_mut().unwrap()["captured_at"] =
+            serde_json::json!("2026-01-09T11:01:00.000000Z");
+        numeric::test_support::rehash(
+            changed.report_text_snapshot.as_mut().unwrap(),
+            "snapshot_sha256",
+        );
+        changed.report_versions[0]["reportTextSnapshot"] =
+            changed.report_text_snapshot.clone().unwrap();
+        assert!(save_test_task(&mut conn, &changed).is_err());
+        let mut reused = fixture["reviews"][0].clone();
+        reused["target"]["task_id"] = serde_json::json!("other-task");
+        reused["target"]["version_id"] = serde_json::json!("other-version");
+        numeric::test_support::rehash(&mut reused, "review_sha256");
+        other.report_versions[0]["numericReviews"] = serde_json::json!([reused]);
+        assert!(save_test_task(&mut conn, &other).is_err());
+        other.report_versions[0]["numericReviews"][0]["review_id"] =
+            serde_json::json!("33333333-3333-4333-8333-333333333333");
+        numeric::test_support::rehash(
+            &mut other.report_versions[0]["numericReviews"][0],
+            "review_sha256",
+        );
+        save_test_task(&mut conn, &other).unwrap();
+        assert_eq!(load_tasks_from_conn(&conn).unwrap().len(), 2);
+        conn.execute("DELETE FROM tasks WHERE id=?1", params![task.id])
+            .unwrap();
+        prune_evidence(&conn).unwrap();
+        let remaining = load_tasks_from_conn(&conn).unwrap();
+        assert_eq!(remaining.len(), 1);
+        assert_eq!(
+            remaining[0].report_text_snapshot,
+            other.report_text_snapshot
+        );
+        assert_eq!(
+            remaining[0].report_versions[0]["numericReviews"],
+            other.report_versions[0]["numericReviews"]
+        );
+        conn.execute("DELETE FROM tasks WHERE id=?1", params![other.id])
+            .unwrap();
+        prune_evidence(&conn).unwrap();
+        for table in [
+            "numeric_report_snapshots",
+            "numeric_review_receipts",
+            "report_numeric_reviews",
+        ] {
+            let count: i64 = conn
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .unwrap();
+            assert_eq!(count, 0);
+        }
+    }
+
+    #[test]
+    fn numeric_corrupt_rows_indices_and_explicit_invalid_markers_fail_closed() {
+        for query in [
+            "UPDATE numeric_report_snapshots SET run_id='33333333-3333-4333-8333-333333333333'",
+            "UPDATE numeric_review_receipts SET review_id='33333333-3333-4333-8333-333333333333' WHERE rowid=(SELECT MIN(rowid) FROM numeric_review_receipts)",
+            "UPDATE report_numeric_reviews SET position=9 WHERE position=0",
+            "UPDATE numeric_review_receipts SET payload='{}'",
+            "UPDATE task_report_versions SET numeric_snapshot_sha256=NULL",
+        ] {
+            let mut conn = Connection::open_in_memory().unwrap();
+            initialize_schema(&conn).unwrap();
+            let (mut task, fixture) = numeric_task_fixture();
+            task.report_versions[0]["numericReviews"] = fixture["reviews"].clone();
+            save_test_task(&mut conn, &task).unwrap();
+            conn.execute(query, []).unwrap();
+            assert!(load_tasks_from_conn(&conn).is_err(), "{query}");
+        }
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, _) = numeric_task_fixture();
+        task.numeric_validation =
+            Some(serde_json::json!({"status":"invalid","reason":"hash_mismatch"}));
+        assert!(save_test_task(&mut conn, &task).is_err());
+        task.report_text_snapshot = None;
+        task.report_versions = serde_json::json!([]);
+        save_test_task(&mut conn, &task).unwrap();
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].numeric_validation,
+            task.numeric_validation
+        );
+        numeric_store::clear(&conn).unwrap();
+        let counts: i64 = conn
+            .query_row("SELECT COUNT(*) FROM numeric_report_snapshots", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(counts, 0);
+    }
+
+    #[test]
+    fn numeric_owner_capture_chronology_includes_frozen_memory_decision() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, _) = memory_task_fixture();
+        let mut sections = serde_json::json!({"market_report":null,"sentiment_report":null,"news_report":null,"fundamentals_report":null,"investment_plan":null,"trader_investment_plan":null,"final_trade_decision":null});
+        sections["final_trade_decision"] = task.report_sections["final_trade_decision"].clone();
+        let evidence = task.evidence_bundle.as_ref().unwrap();
+        let mut snapshot = serde_json::json!({"schema_version":1,"run_id":evidence["run_id"],"instrument":evidence["instrument"],"analysis_date":evidence["analysis_date"],"captured_at":"2025-02-14T12:04:59.000000Z","evidence_bundle_sha256":evidence["bundle_sha256"],"report_sections":sections});
+        numeric::test_support::rehash(&mut snapshot, "snapshot_sha256");
+        // Standalone Evidence validation cannot establish Memory chronology.
+        numeric::validate_snapshot(&snapshot, evidence).unwrap();
+        task.report_text_snapshot = Some(snapshot.clone());
+        assert!(save_test_task(&mut conn, &task).is_err());
+        task.report_text_snapshot = None;
+        task.report_versions[0]["reportTextSnapshot"] = snapshot.clone();
+        assert!(save_test_task(&mut conn, &task).is_err());
+        snapshot["captured_at"] = serde_json::json!("2025-02-14T12:05:00.000000Z");
+        numeric::test_support::rehash(&mut snapshot, "snapshot_sha256");
+        task.report_text_snapshot = Some(snapshot.clone());
+        task.report_versions[0]["reportTextSnapshot"] = snapshot.clone();
+        save_test_task(&mut conn, &task).unwrap();
+        assert_eq!(
+            load_tasks_from_conn(&conn).unwrap()[0].report_text_snapshot,
+            Some(snapshot)
+        );
+        // A coherent external hash rewrite still cannot pass the owner clock.
+        let mut earlier = task.report_text_snapshot.clone().unwrap();
+        earlier["captured_at"] = serde_json::json!("2025-02-14T12:04:59.000000Z");
+        numeric::test_support::rehash(&mut earlier, "snapshot_sha256");
+        conn.execute(
+            "UPDATE numeric_report_snapshots SET snapshot_sha256=?1,payload=?2",
+            params![
+                earlier["snapshot_sha256"].as_str().unwrap(),
+                json_string(&earlier).unwrap()
+            ],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE tasks SET numeric_snapshot_sha256=?1",
+            params![earlier["snapshot_sha256"].as_str().unwrap()],
+        )
+        .unwrap();
+        conn.execute(
+            "UPDATE task_report_versions SET numeric_snapshot_sha256=?1",
+            params![earlier["snapshot_sha256"].as_str().unwrap()],
+        )
+        .unwrap();
+        assert!(load_tasks_from_conn(&conn).is_err());
+    }
+
+    #[test]
+    fn numeric_missing_receipt_link_cannot_silently_erase_saved_history() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        initialize_schema(&conn).unwrap();
+        let (mut task, fixture) = numeric_task_fixture();
+        task.report_versions[0]["numericReviews"] = fixture["reviews"].clone();
+        save_test_task(&mut conn, &task).unwrap();
+        conn.execute_batch(
+            "PRAGMA foreign_keys=OFF; DELETE FROM numeric_review_receipts; PRAGMA foreign_keys=ON;",
+        )
+        .unwrap();
+        assert!(load_tasks_from_conn(&conn).is_err());
+        assert!(save_test_task(&mut conn, &task).is_err());
+        let links: i64 = conn
+            .query_row("SELECT COUNT(*) FROM report_numeric_reviews", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(links, fixture["reviews"].as_array().unwrap().len() as i64);
     }
 
     fn readiness_task_fixture() -> AnalysisTaskRecord {

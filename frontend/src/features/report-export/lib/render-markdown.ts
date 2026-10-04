@@ -1,3 +1,4 @@
+import { numericMarkdown } from "@/features/numeric-review/lib/render-appendix";
 import type { ReportDocument } from "../types";
 import { evidenceAbsent, evidenceNotice, linkEvidenceCitations } from "@/features/evidence/lib/export";
 import { renderReadinessMarkdown } from "@/features/research-readiness/lib/render-appendix";
@@ -44,6 +45,7 @@ export function renderReportMarkdown(document: ReportDocument) {
     renderEvidenceAppendix(document),
     renderMemoryMarkdown(document.version, document.language),
     renderReadinessMarkdown(document.version, document.language),
+    numericMarkdown(document.taskId, document.version, document.language),
     "",
   ].filter((line, index, lines) => line || lines[index - 1] !== "").join("\n");
 }

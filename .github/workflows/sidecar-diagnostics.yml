@@ -56,7 +56,9 @@ jobs:
             tests/test_market_data_validator.py \
             tests/test_stockstats_date_column.py \
             tests/test_market_inputs.py \
-            tests/test_research_readiness.py
+            tests/test_research_readiness.py \
+            tests/test_numeric_review.py \
+            tests/test_numeric_pipeline.py
       - name: Build and validate the native packaged sidecar
         env:
           SIDECAR_TARGET: ${{ matrix.target }}
@@ -76,6 +78,7 @@ jobs:
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked runtime_probe
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked memory
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked readiness
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked numeric
       - name: Seed an owned saved-memory fixture store
         run: |
           uv run --frozen python - <<'PY'

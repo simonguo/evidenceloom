@@ -78,6 +78,7 @@ export function buildReportDocument(
   ];
 
   return {
+    taskId,
     title: `${text.title}: ${version.task.ticker}`,
     disclaimer: text.disclaimer,
     fictionalNotice: origin === "demo" ? text.fictional : "",

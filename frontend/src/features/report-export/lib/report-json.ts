@@ -1,3 +1,4 @@
+import { copyNumericExport } from "@/features/numeric-review/lib/export";
 import type { AnalysisTask, ReportVersion } from "@/lib/types";
 import { normalizeOutputQuality } from "@/features/output-quality/lib/quality";
 import { copyExportReadiness } from "@/features/research-readiness/lib/export";
@@ -22,6 +23,6 @@ export function reportJson(taskId: string, origin: AnalysisTask["origin"], versi
     reportSections: Object.fromEntries(["market_report", "sentiment_report", "news_report", "fundamentals_report", "investment_plan", "trader_investment_plan", "final_trade_decision"].filter((key) => Object.hasOwn(version.reportSections, key)).map((key) => [key, version.reportSections[key]])),
     outputQuality: normalizeOutputQuality(version.outputQuality),
   };
-  return { schema_version: 1, kind: "research_report", report, evidence_bundle: version.evidenceBundle ?? null,
+  return { ...copyNumericExport(taskId, version), schema_version: 1, kind: "research_report", report, evidence_bundle: version.evidenceBundle ?? null,
     memory_bundle: version.memoryBundle ?? null, evaluation_reviews: version.evaluationReviews ?? [], research_readiness: copyExportReadiness(version) ?? null };
 }

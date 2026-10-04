@@ -1,8 +1,10 @@
+import { webcrypto } from "node:crypto";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createFictionalDemoTask } from "../fixtures/fictional-demo";
 import { ReportVersionsPanel } from "./ReportVersionsPanel";
+import { numericFixture } from "@/features/numeric-review/fixtures/fictional-numeric";
 
 const { saveTextExport } = vi.hoisted(() => ({ saveTextExport: vi.fn() }));
 vi.mock("@/lib/runtime", () => ({ getRuntimeAdapter: () => ({ saveTextExport }) }));
@@ -13,10 +15,33 @@ describe("selected immutable report review", () => {
 
   beforeEach(() => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.stubGlobal("crypto", webcrypto);
     saveTextExport.mockReset().mockResolvedValue({ status: "saved" });
     container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
+  });
+
+  it("replaces the combined saved numeric panel on legacy selection and restores only the selected receipt", async () => {
+    const task = numericFixture(), saved = task.reportVersions[0], legacy = task.reportVersions[1];
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task, language: "zh" })));
+    const numericHeadings = () => [...container.querySelectorAll("h4")].filter((heading) => heading.textContent === "保存数值字段审阅");
+    await vi.waitFor(async () => { await act(async () => {}); expect(container.textContent).toContain(saved.numericReviews![0].review_id); });
+    expect(numericHeadings()).toHaveLength(1);
+    expect(container.textContent).toContain("所选数值相符");
+    const select = container.querySelector<HTMLSelectElement>("#report-version-select")!;
+    await act(async () => { select.value = legacy.id; select.dispatchEvent(new Event("change", { bubbles: true })); });
+    await vi.waitFor(async () => { await act(async () => {}); expect(container.textContent).toContain("此历史版本没有冻结原文快照，不能创建数值审阅。"); });
+    expect(numericHeadings()).toHaveLength(1);
+    expect(container.textContent).not.toContain("所选数值相符");
+    expect(container.textContent).not.toContain(saved.numericReviews![0].review_id);
+    expect(container.textContent).toContain("审阅选中的报告 v1");
+    await act(async () => { select.value = saved.id; select.dispatchEvent(new Event("change", { bubbles: true })); });
+    await vi.waitFor(async () => { await act(async () => {}); expect(container.textContent).toContain(saved.numericReviews![0].review_id); });
+    expect(numericHeadings()).toHaveLength(1);
+    expect(container.textContent).toContain("所选数值相符");
+    expect(container.textContent).not.toContain("此历史版本没有冻结原文快照，不能创建数值审阅。");
+    expect(container.textContent).toContain("审阅选中的报告 v2");
   });
 
   afterEach(async () => {

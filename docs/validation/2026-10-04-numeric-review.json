@@ -1,0 +1,193 @@
+{
+  "actual_browser_downloads": {
+    "all_passed": true,
+    "checks": {
+      "html": {
+        "append_only_chain_valid": true,
+        "attachment_equal_across_formats": true,
+        "exact_evidence_bundle": true,
+        "exact_fixture_snapshot": true,
+        "exact_utf8_sections": true,
+        "four_statuses_and_reasons": true,
+        "opaque_payload_strings_unchanged": true,
+        "python_rederived_all_four_reviews": true,
+        "snapshot_valid": true
+      },
+      "json": {
+        "append_only_chain_valid": true,
+        "attachment_equal_across_formats": true,
+        "exact_evidence_bundle": true,
+        "exact_fixture_snapshot": true,
+        "exact_utf8_sections": true,
+        "four_statuses_and_reasons": true,
+        "opaque_payload_strings_unchanged": true,
+        "python_rederived_all_four_reviews": true,
+        "snapshot_valid": true
+      },
+      "md": {
+        "append_only_chain_valid": true,
+        "attachment_equal_across_formats": true,
+        "exact_evidence_bundle": true,
+        "exact_fixture_snapshot": true,
+        "exact_utf8_sections": true,
+        "four_statuses_and_reasons": true,
+        "opaque_payload_strings_unchanged": true,
+        "python_rederived_all_four_reviews": true,
+        "snapshot_valid": true
+      }
+    },
+    "copy_directory": "/tmp/evidenceloom-numeric-downloads-final",
+    "downloads": {
+      "html": {
+        "bytes": 31113,
+        "copy_bytes_identical": true,
+        "download_modified_at_utc": "2026-10-04T03:06:05.074076+00:00",
+        "filename": "EvidenceLoom_FICT_2026-01-09_v2 (1).html",
+        "sha256": "eb52a454563a93114157c255f00bbba0aa63d13be8b4c03a146154e48dcc50db"
+      },
+      "json": {
+        "bytes": 15905,
+        "copy_bytes_identical": true,
+        "download_modified_at_utc": "2026-10-04T03:03:36.223282+00:00",
+        "filename": "EvidenceLoom_FICT_2026-01-09_v2 (1).json",
+        "sha256": "ca13690a0583ac85c6a3ad81672efa6744e15d46f92b5d80ef91d96e1f7af5d4"
+      },
+      "md": {
+        "bytes": 18213,
+        "copy_bytes_identical": true,
+        "download_modified_at_utc": "2026-10-04T03:06:39.466911+00:00",
+        "filename": "EvidenceLoom_FICT_2026-01-09_v2 (1).md",
+        "sha256": "4534b809daa72c1fe1c810a418f8b29ce0372003f5346a14a04d7ca52167bcb1"
+      }
+    },
+    "evidence_bundle_sha256": "c3c7f852286efbbd1b0a50e02ad63f8ac89330a2ef214caef87fccf64c98c725",
+    "fictional": true,
+    "market_section_utf8": {
+      "bytes": 303,
+      "original_crlf_count": 1,
+      "original_lf_count": 6,
+      "sha256": "bd1d6ae4169f192a5b274dbbb595177bdc74d45a92097664833cb9356c7bbcf5",
+      "unicode_emoji_preserved": true
+    },
+    "model_calls": 0,
+    "older_downloads_modified_or_deleted": false,
+    "original_downloads_modified_or_deleted": false,
+    "provider_calls": 0,
+    "published_json_sections_exact": true,
+    "results": [
+      {
+        "reason": "value_match",
+        "status": "match"
+      },
+      {
+        "reason": "value_mismatch",
+        "status": "mismatch"
+      },
+      {
+        "reason": "field_missing",
+        "status": "missing"
+      },
+      {
+        "reason": "selection_unsupported",
+        "status": "manual_inference"
+      }
+    ],
+    "review_count": 4,
+    "review_sha256": [
+      "415e8263dcc97d15e6b98122f9dd2d9f6c6a5ecee60680e9f4fb665b6faa6ea1",
+      "64dd447076f1857cfafd97ec41591834d2cce6e01e33533c89a49ac6cbdca11a",
+      "fdfdd119a9675422deef4b6f427395e427a4e2fa9d63e19292acfee79376c72f",
+      "2baf0750f62983019fc7b0e547250e6f11b4e55c0b5633fad1938a897812917c"
+    ],
+    "schema_version": 1,
+    "scope": "actual newly downloaded fictional browser JSON HTML Markdown artifacts; pure offline Python validation",
+    "snapshot_sha256": "784b9b05bd33ef0b7f2fc0627333b27757f85c038b2f3697f84c88a13be6f279",
+    "task_id": "task-fictional",
+    "validated_at_utc": "2026-10-04T03:09:05.365980+00:00",
+    "version_id": "version-fictional",
+    "version_number": 2
+  },
+  "base_revision": "b1c8cb1670b8ae328ffa281932c977ae08bb10b3",
+  "browser_acceptance": {
+    "coherent_false_match_rejected": "reference_mismatch",
+    "invalid_export_blocked": true,
+    "legacy_hides_new_receipts": true,
+    "legacy_ordinary_export": true,
+    "reload_retains_four_receipts": true,
+    "selected_version_panel_count": 1,
+    "synthetic_task_state_cleaned": true
+  },
+  "fictional_validation_only": true,
+  "local_checks": {
+    "frontend": {
+      "eslint": true,
+      "files": 30,
+      "passed": 385,
+      "production_build": true,
+      "static_build": true,
+      "typecheck": true
+    },
+    "packaged_rust": {
+      "deadline_seconds": 90,
+      "memory_inventory_passed": 1,
+      "memory_inventory_seconds": 15.12,
+      "runtime_passed": 1,
+      "runtime_seconds": 72.99
+    },
+    "python": {
+      "deselected": 1,
+      "passed": 1201,
+      "seconds": 131.49,
+      "warnings": 8
+    },
+    "rust": {
+      "clippy_all_targets": true,
+      "fmt": true,
+      "ignored": 2,
+      "passed": 83
+    }
+  },
+  "native_ci": "pending_on_pull_request_final_head",
+  "open_limitations": [
+    "effective_source_identity",
+    "automatic_claim_identification",
+    "formulas",
+    "factual_support",
+    "historical_vintage",
+    "expert_research_evaluation",
+    "startup_performance",
+    "signed_clean_install",
+    "analyst_accessibility_acceptance",
+    "competitive_comparison"
+  ],
+  "packaged_inventory": {
+    "artifact_bytes": 53976912,
+    "artifact_sha256": "604455e66359092e81508d3e7669100e1a04c6fbabec5e36f1ae5221e94b4966",
+    "compiled_own_modules_matching": 102,
+    "core_source_sha256": "c6cef779254dd20280c22b9ffb697bce80db07ca10453e1453efbf390cbd07bf",
+    "fictional_validation_only": true,
+    "namespace_entries_without_code": [
+      "tradingagents.agents.analysts",
+      "tradingagents.agents.managers",
+      "tradingagents.agents.researchers",
+      "tradingagents.agents.risk_mgmt",
+      "tradingagents.agents.trader",
+      "tradingagents.agents.utils"
+    ],
+    "numeric_modules_matching": [
+      "tradingagents.research.numeric_decimal",
+      "tradingagents.research.numeric_persistence",
+      "tradingagents.research.numeric_review",
+      "tradingagents.research.numeric_spans"
+    ],
+    "readable_own_sources_matching": 92
+  },
+  "policy_sha256": "0bef4bf9c45e94a4e850c054553cb7a80725b0873745d8187bc3de8cb87d52bf",
+  "schema_version": 1,
+  "validation_log_sha256": {
+    "native-memory-final": "3313fd68cc418588d64e5c53299035ede37303c24eebbbce7a35e10e99004df4",
+    "native-runtime-final": "c8b4d9cffda9d58d1519c2f4cb6e942294f9c80685db1558bfd11cfe8e6289fa",
+    "packaged-probes-final": "bd8ff5dd385878ce4693602e1e4a0d43046c9da8615c1f8d5cef52ea0c3fbe44",
+    "python-accepted": "4cbe46e9d65f0ecc61604eed505268aa4d1b162ab78704638a76f8f0860eaf48"
+  }
+}
