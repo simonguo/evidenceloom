@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "failed_head": "e49c3749cc7f1f372983e85202fda7730cf1c419",
+  "failed_job": {
+    "id": 111427142889,
+    "run_id": 37199181087,
+    "url": "https://github.com/simonguo/evidenceloom/actions/runs/37199181087/job/111427142889",
+    "status": "completed",
+    "conclusion": "failure",
+    "started_at": "2026-10-04T11:34:20Z",
+    "completed_at": "2026-10-04T11:54:11Z",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-04T11:34:21Z",
+        "completed_at": "2026-10-04T11:34:21Z"
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-04T11:34:21Z",
+        "completed_at": "2026-10-04T11:34:26Z"
+      },
+      {
+        "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-04T11:34:26Z",
+        "completed_at": "2026-10-04T11:34:26Z"
+      },
+      {
+        "name": "Install frozen dependencies",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-04T11:34:26Z",
+        "completed_at": "2026-10-04T11:35:07Z"
+      },
+      {
+        "name": "Run native source and process diagnostics",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 5,
+        "started_at": "2026-10-04T11:35:07Z",
+        "completed_at": "2026-10-04T11:54:07Z"
+      },
+      {
+        "name": "Build and validate the native packaged sidecar",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 6,
+        "started_at": "2026-10-04T11:54:07Z",
+        "completed_at": "2026-10-04T11:54:07Z"
+      },
+      {
+        "name": "Run native Rust protocol and process fixtures",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 7,
+        "started_at": "2026-10-04T11:54:07Z",
+        "completed_at": "2026-10-04T11:54:07Z"
+      },
+      {
+        "name": "Seed an owned saved-memory fixture store",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 8,
+        "started_at": "2026-10-04T11:54:07Z",
+        "completed_at": "2026-10-04T11:54:07Z"
+      },
+      {
+        "name": "Exercise the Rust bridge against the real packaged sidecar",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 9,
+        "started_at": "2026-10-04T11:54:07Z",
+        "completed_at": "2026-10-04T11:54:07Z"
+      },
+      {
+        "name": "Clean up the owned fixture store",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10,
+        "started_at": "2026-10-04T11:54:07Z",
+        "completed_at": "2026-10-04T11:54:08Z"
+      },
+      {
+        "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 19,
+        "started_at": "2026-10-04T11:54:08Z",
+        "completed_at": "2026-10-04T11:54:08Z"
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 20,
+        "started_at": "2026-10-04T11:54:08Z",
+        "completed_at": "2026-10-04T11:54:10Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 21,
+        "started_at": "2026-10-04T11:54:10Z",
+        "completed_at": "2026-10-04T11:54:10Z"
+      }
+    ]
+  },
+  "failure_annotations": [
+    [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/simonguo/evidenceloom/blob/e49c3749cc7f1f372983e85202fda7730cf1c419/.github",
+        "start_line": 188,
+        "start_column": null,
+        "end_line": 188,
+        "end_column": null,
+        "annotation_level": "failure",
+        "title": "",
+        "message": "Process completed with exit code 1.",
+        "raw_details": ""
+      }
+    ]
+  ],
+  "clipped_excerpts": {
+    "scope": "Observed line excerpts from unchanged full raw log; long lines clipped, not raw replacement",
+    "rows": [
+      {
+        "raw_log_line": 351,
+        "original_character_count": 8388734,
+        "excerpt": "2026-10-04T11:54:02.2144633Z _ ERROR at setup of test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[                                                                                                                                           [clipped]                                                                                        ] _"
+      },
+      {
+        "raw_log_line": 399,
+        "original_character_count": 72,
+        "excerpt": "2026-10-04T11:54:03.0672469Z     _update_current_test_var(item, \"setup\")"
+      },
+      {
+        "raw_log_line": 400,
+        "original_character_count": 103,
+        "excerpt": "2026-10-04T11:54:03.0672793Z .venv\\Lib\\site-packages\\_pytest\\runner.py:215: in _update_current_test_var"
+      },
+      {
+        "raw_log_line": 401,
+        "original_character_count": 61,
+        "excerpt": "2026-10-04T11:54:03.0673165Z     os.environ[var_name] = value"
+      },
+      {
+        "raw_log_line": 410,
+        "original_character_count": 101,
+        "excerpt": "2026-10-04T11:54:03.0680289Z E   ValueError: the environment variable is longer than 32767 characters"
+      },
+      {
+        "raw_log_line": 413,
+        "original_character_count": 8388737,
+        "excerpt": "2026-10-04T11:54:03.8855276Z _ ERROR at teardown of test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[                                                                                                                                        [clipped]                                                                                        ] _"
+      },
+      {
+        "raw_log_line": 461,
+        "original_character_count": 75,
+        "excerpt": "2026-10-04T11:54:04.7134074Z     _update_current_test_var(item, \"teardown\")"
+      },
+      {
+        "raw_log_line": 462,
+        "original_character_count": 103,
+        "excerpt": "2026-10-04T11:54:04.7134391Z .venv\\Lib\\site-packages\\_pytest\\runner.py:215: in _update_current_test_var"
+      },
+      {
+        "raw_log_line": 463,
+        "original_character_count": 61,
+        "excerpt": "2026-10-04T11:54:04.7134890Z     os.environ[var_name] = value"
+      },
+      {
+        "raw_log_line": 472,
+        "original_character_count": 101,
+        "excerpt": "2026-10-04T11:54:04.7189375Z E   ValueError: the environment variable is longer than 32767 characters"
+      },
+      {
+        "raw_log_line": 475,
+        "original_character_count": 108,
+        "excerpt": "2026-10-04T11:54:04.7190260Z =========================== short test summary info ==========================="
+      },
+      {
+        "raw_log_line": 484,
+        "original_character_count": 8388825,
+        "excerpt": "2026-10-04T11:54:05.5485003Z ERROR tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[                                                                                                                     [clipped]                   ] - ValueError: the environment variable is longer than 32767 characters"
+      },
+      {
+        "raw_log_line": 485,
+        "original_character_count": 8388826,
+        "excerpt": "\ufeff2026-10-04T11:54:07.1933061Z ERROR tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[                                                                                                                    [clipped]                   ] - ValueError: the environment variable is longer than 32767 characters"
+      },
+      {
+        "raw_log_line": 486,
+        "original_character_count": 85,
+        "excerpt": "\ufeff2026-10-04T11:54:07.9931778Z 1006 passed, 15 skipped, 2 errors in 1132.49s (0:18:52)"
+      }
+    ]
+  },
+  "local_repair_validation": {
+    "schema_version": 1,
+    "base_commit": "e49c3749cc7f1f372983e85202fda7730cf1c419",
+    "test_ast_unchanged_except_explicit_parameter_ids": true,
+    "test_sha256_before": "ae1500bc945cface9994700ccfb56444a46fad191c788a61005eb49fb67ae4d1",
+    "test_sha256_after": "300ef12a94d450b3719d3db82956a614eed18c6b32c0e965d36df5c578003826",
+    "focused_pytest": {
+      "returncode": 0,
+      "collected": 137,
+      "elapsed_seconds": 11.562887124999179,
+      "log_sha256": "d6e6f1808a67550521b1988baeced2dd1ad2f3fc542c5e8206cef64ce9e5676c",
+      "max_nodeid_with_teardown_length": 208,
+      "boundary_parameters": [
+        {
+          "nodeid": "tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[empty]",
+          "payload_type": "bytes",
+          "payload_length": 0,
+          "payload_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nodeid": "tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[incomplete-json]",
+          "payload_type": "bytes",
+          "payload_length": 1,
+          "payload_sha256": "245843abef9e72e7efac30138a994bf6301e7e1d7d7042a33d42e863d2638811"
+        },
+        {
+          "nodeid": "tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[nonfinite-json]",
+          "payload_type": "bytes",
+          "payload_length": 3,
+          "payload_sha256": "d5b592c05dc25b5032553f1b27f4139be95e881f73db33b02b05ab20c3f9981e"
+        },
+        {
+          "nodeid": "tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[oversize-bytes]",
+          "payload_type": "bytes",
+          "payload_length": 8388609,
+          "payload_sha256": "165fd9abd9a46227a44f1beba4c239fc215b5c4ca8d21e180889175f9ebb8b05"
+        },
+        {
+          "nodeid": "tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[string-type]",
+          "payload_type": "str",
+          "payload_length": 2,
+          "payload_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        },
+        {
+          "nodeid": "tests/test_public_source_corpus.py::test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic[bytearray-type]",
+          "payload_type": "bytearray",
+          "payload_length": 2,
+          "payload_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+        }
+      ]
+    },
+    "static_checks": [
+      {
+        "command": [
+          "python",
+          "-m",
+          "ruff",
+          "check",
+          "tests/test_public_source_corpus.py"
+        ],
+        "returncode": 0,
+        "stdout": "All checks passed!\n",
+        "stderr": ""
+      },
+      {
+        "command": [
+          "python",
+          "-m",
+          "ruff",
+          "format",
+          "--check",
+          "tests/test_public_source_corpus.py"
+        ],
+        "returncode": 0,
+        "stdout": "1 file already formatted\n",
+        "stderr": ""
+      }
+    ],
+    "diff_check_returncode": 0,
+    "source_fixture_dependency_policy_file_count": 229,
+    "unchanged_files_other_than_test": 228,
+    "before_after_all_bytes_unchanged": true,
+    "python": "3.12.10",
+    "limits": [
+      "Actual local macOS collection and execution, not Windows execution.",
+      "Complete Windows/native build and bridge checks remain required at the next exact PR head."
+    ]
+  },
+  "source_artifact_identities": [
+    {
+      "filename": "pr91-e49c374-windows-failed-job.json",
+      "bytes": 3368,
+      "sha256": "2752faecd759e8963bc17596dea3c23e0201da71c409ace31846417921958e6e"
+    },
+    {
+      "filename": "pr91-e49c374-check-111427142889-annotations.json",
+      "bytes": 306,
+      "sha256": "bb49e9d545388dab6f3af4281c56498ba84650fca1a60242fb40f8d0b8a12752"
+    },
+    {
+      "filename": "pr91-e49c374-failed-job-111427142889-direct-api.log",
+      "bytes": 33597136,
+      "sha256": "deeb3853265df5f8fa80e08b5335ccc6c238f0ecaeae1fbcc1e212212ba202ba"
+    },
+    {
+      "filename": "pr91-e49c374-windows-failure-excerpts.json",
+      "bytes": 3852,
+      "sha256": "2795b691b4110f546358628d835dae5b60221e9514593e1837652ce7cfb342ce"
+    },
+    {
+      "filename": "windows-param-id-repair.py",
+      "bytes": 5089,
+      "sha256": "57d1a00655c0c81af1975e9ad408786eca39842b1df8142c2aca415a10530254"
+    },
+    {
+      "filename": "windows-param-id-repair.json",
+      "bytes": 3413,
+      "sha256": "cb181d06c0f72716d149f3cc6684e085b8b3b6cbc0f7847a37ac8bfc8b0382ef"
+    },
+    {
+      "filename": "windows-param-id-repair-focused.log",
+      "bytes": 181,
+      "sha256": "d6e6f1808a67550521b1988baeced2dd1ad2f3fc542c5e8206cef64ce9e5676c"
+    },
+    {
+      "filename": "windows-param-id-before-format.py",
+      "bytes": 32528,
+      "sha256": "b2594f54d8475ddecbb4307135f046df94599e2d2e707a62f9c1bdf4ab156ae1"
+    },
+    {
+      "filename": "windows-param-id-repair-before-format.log",
+      "bytes": 181,
+      "sha256": "662ca9a861be855af3ad189533991791e90b1bc04c6fa2b6bea123486b587d1c"
+    }
+  ],
+  "limits": [
+    "Raw artifacts are retained locally; this JSON is a portable projection and identity list, not the full raw log.",
+    "Local collection and execution are on macOS, not actual Windows acceptance.",
+    "Packaging, probes, Rust fixtures and real bridge were skipped at the failed Windows head.",
+    "All remote checks are required at the next exact candidate head."
+  ]
+}

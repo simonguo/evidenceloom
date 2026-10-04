@@ -13,6 +13,11 @@ dependency bytes are unchanged. A fresh post-rebase corpus CLI run preserved
 the same complete summary and input bytes. The workflow retains every gate,
 with the inherited Intel 90-minute budget; final-head remote checks are required.
 
+The first corpus PR head then exposed a Windows pytest parameter-name limit.
+[The Windows repair record](2026-10-04-public-source-windows.md) preserves the
+actual failed job and verifies short IDs with the original oversized input and
+all assertions retained. That failed head supplies no Windows packaging proof.
+
 The [data-only protocol](../PUBLIC_SOURCE_CORPUS.md) retains an actual BLS API v1
 response with two CPI series and 48 monthly observations. The original entity is
 4,393 bytes, SHA `d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90`.

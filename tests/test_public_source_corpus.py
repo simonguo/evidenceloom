@@ -507,7 +507,16 @@ def test_duplicate_pending_selected_witness_rejected_but_empty_unfilled_selectio
 
 
 @pytest.mark.parametrize(
-    "payload", [b"", b"[", b"NaN", b" " * (8 * 1024 * 1024 + 1), "{}", bytearray(b"{}")]
+    "payload",
+    [b"", b"[", b"NaN", b" " * (8 * 1024 * 1024 + 1), "{}", bytearray(b"{}")],
+    ids=[
+        "empty",
+        "incomplete-json",
+        "nonfinite-json",
+        "oversize-bytes",
+        "string-type",
+        "bytearray-type",
+    ],
 )
 def test_raw_input_type_size_or_nonfinite_parse_failure_has_fixed_diagnostic(payload):
     assert_corpus_error(lambda: derive_bls_table(payload))
