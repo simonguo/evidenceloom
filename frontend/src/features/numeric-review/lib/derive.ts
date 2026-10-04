@@ -6,11 +6,12 @@ import { fixed, requireNumeric, rawBytes, safeBounded, same } from "./guards";
 import { contextKeys, numericPolicy, numericPolicyHash, sectionKeys } from "./policy";
 import { selectedSource, dateComponent } from "./source";
 import { fullLiteral, fullNumber, spanText } from "./spans";
+import { assertPreparedNumericInput, type PreparedNumericInput } from "./prepared";
 export function validateSpan(value: unknown): asserts value is TextSpan {
     exact(value, ["start_byte", "end_byte", "text"]);
     requireNumeric(Number.isSafeInteger(value.start_byte) && Number.isSafeInteger(value.end_byte) && (value.start_byte as number) >= 0 && (value.end_byte as number) > (value.start_byte as number) && text(value.text));
 }
-export function copyRequest(value: unknown, snapshot: ReportTextSnapshot): ReviewRequest {
+export function copyRequest(value: unknown, snapshot: ReportTextSnapshot, sectionContext?: PreparedNumericInput["section"]): ReviewRequest {
     try {
         safeBounded(value);
         exact(value, ["review_id", "reviewed_at", "previous_review_sha256", "target", "numeric_span", "operand", "rounding", "context_bindings"]);
@@ -22,7 +23,11 @@ export function copyRequest(value: unknown, snapshot: ReportTextSnapshot): Revie
         const section = snapshot.report_sections[value.target.section_key as string];
         requireNumeric(typeof section === "string", "reference_mismatch");
         validateSpan(value.numeric_span);
-        spanText(section, value.numeric_span);
+        const spans = sectionContext?.(value.target.section_key as string);
+        if (spans)
+            spans.text(value.numeric_span);
+        else
+            spanText(section, value.numeric_span);
         exact(value.operand, ["evidence_id", "source_index", "selector"]);
         requireNumeric(typeof value.operand.evidence_id === "string" && /^ev-[a-f0-9]{32}$/.test(value.operand.evidence_id) && Number.isSafeInteger(value.operand.source_index) && (value.operand.source_index as number) >= 0 && (value.operand.source_index as number) < 1024);
         exact(value.operand.selector, ["kind", "table_path", "row_date", "field"]);
@@ -36,7 +41,10 @@ export function copyRequest(value: unknown, snapshot: ReportTextSnapshot): Revie
         for (const context of Object.values(value.context_bindings))
             if (context !== null) {
                 validateSpan(context);
-                spanText(section, context);
+                if (spans)
+                    spans.text(context);
+                else
+                    spanText(section, context);
             }
         return clone(value) as ReviewRequest;
     }
@@ -47,15 +55,19 @@ export function copyRequest(value: unknown, snapshot: ReportTextSnapshot): Revie
 export function requestFromReview(review: NumericReview): ReviewRequest {
     return { review_id: review.review_id, reviewed_at: review.reviewed_at, previous_review_sha256: review.previous_review_sha256, target: clone(review.target), numeric_span: clone(review.numeric_span), operand: { evidence_id: review.operand.evidence_id, source_index: review.operand.source_index, selector: clone(review.operand.selector) }, rounding: clone(review.rounding), context_bindings: clone(review.context_bindings) };
 }
-export function deriveReviewBody(snapshot: ReportTextSnapshot, evidence: EvidenceBundle, value: unknown): Omit<NumericReview, "review_sha256"> {
-    const request = copyRequest(value, snapshot), section = snapshot.report_sections[request.target.section_key]!;
-    const source = selectedSource(request, evidence), contexts: NumericResult["context_results"] = { instrument: "unreviewed", row_date: "unreviewed", units: "unreviewed" };
+export function deriveReviewBody(snapshot: ReportTextSnapshot, evidence: EvidenceBundle, value: unknown, prepared?: PreparedNumericInput): Omit<NumericReview, "review_sha256"> {
+    if (prepared) {
+        assertPreparedNumericInput(prepared);
+        requireNumeric(prepared.snapshot === snapshot && prepared.evidence === evidence, "reference_mismatch");
+    }
+    const request = copyRequest(value, snapshot, prepared?.section), section = snapshot.report_sections[request.target.section_key]!, spans = prepared?.section(request.target.section_key);
+    const source = prepared ? prepared.source(request) : selectedSource(request, evidence), contexts: NumericResult["context_results"] = { instrument: "unreviewed", row_date: "unreviewed", units: "unreviewed" };
     const expectedContext = { instrument: snapshot.instrument, row_date: dateComponent(source.context.row_date), units: source.context.units };
     for (const key of contextKeys) {
         const binding = request.context_bindings[key];
-        contexts[key] = binding === null ? "unreviewed" : expectedContext[key] === null || !fullLiteral(section, binding) ? "missing" : binding.text === expectedContext[key] ? "match" : "mismatch";
+        contexts[key] = binding === null ? "unreviewed" : expectedContext[key] === null || !(spans ? spans.literal(binding) : fullLiteral(section, binding)) ? "missing" : binding.text === expectedContext[key] ? "match" : "mismatch";
     }
-    const supported = fullNumber(section, request.numeric_span), selected = request.numeric_span.text;
+    const supported = spans ? spans.number(request.numeric_span) : fullNumber(section, request.numeric_span), selected = request.numeric_span.text;
     let lexeme = source.lexeme, reason = source.reason;
     if (lexeme !== null && !parseDecimal(lexeme)) {
         lexeme = null;

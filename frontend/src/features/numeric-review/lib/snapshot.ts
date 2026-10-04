@@ -7,13 +7,21 @@ import { checkHash, fixed, NumericError, rawBytes, requireNumeric, safeBounded, 
 import { numericPolicy, sectionKeys } from "./policy";
 export function copyReportTextSnapshot(value: unknown, evidenceValue: unknown): ReportTextSnapshot {
     try {
+        return copySnapshotAgainstEvidence(value, copyEvidenceBundle(evidenceValue));
+    }
+    catch (error) {
+        return fixed(error);
+    }
+}
+/** Internal batch entry point; evidence has already been copied and validated. */
+export function copySnapshotAgainstEvidence(value: unknown, evidence: EvidenceBundle): ReportTextSnapshot {
+    try {
         safeBounded(value);
         exact(value, ["schema_version", "run_id", "instrument", "analysis_date", "captured_at", "evidence_bundle_sha256", "report_sections", "snapshot_sha256"]);
         requireNumeric(value.schema_version === 1 && uuid(value.run_id) && text(value.instrument) && value.instrument && day(value.analysis_date) && timestamp(value.captured_at) && /\.[0-9]{6}Z$/.test(value.captured_at) && hash(value.evidence_bundle_sha256) && hash(value.snapshot_sha256));
         exact(value.report_sections, sectionKeys);
         for (const section of Object.values(value.report_sections))
             requireNumeric(section === null || (text(section) && rawBytes(section).length <= numericPolicy.max_section_bytes));
-        const evidence = copyEvidenceBundle(evidenceValue);
         requireNumeric(value.run_id === evidence.run_id && value.instrument === evidence.instrument && value.analysis_date === evidence.analysis_date && value.evidence_bundle_sha256 === evidence.bundle_sha256, "reference_mismatch");
         requireNumeric([evidence.created_at, ...evidence.records.map((record) => record.fetched_at)].every((at) => stamp(value.captured_at as string) >= stamp(at)), "reference_mismatch");
         return clone(value) as ReportTextSnapshot;
@@ -45,12 +53,17 @@ export function bindReportSnapshot<T extends AnalysisTask | ReportVersion>(value
 export function invalidNumeric(error: unknown): NumericValidation { return { status: "invalid", reason: error instanceof NumericError ? error.reason : "malformed" }; }
 export function copySnapshotFromEvent(event: AnalysisEvent, evidence: EvidenceBundle | undefined) {
     const top = event.reportTextSnapshot, nested = event.finalState?.report_text_snapshot;
-    if (top === undefined && nested === undefined) return undefined;
+    if (top === undefined && nested === undefined)
+        return undefined;
     try {
         const snapshot = copyReportTextSnapshot(top === undefined ? nested : top, evidence);
-        if (top !== undefined && nested !== undefined) requireNumeric(copyReportTextSnapshot(nested, evidence).snapshot_sha256 === snapshot.snapshot_sha256, "reference_mismatch");
+        if (top !== undefined && nested !== undefined)
+            requireNumeric(copyReportTextSnapshot(nested, evidence).snapshot_sha256 === snapshot.snapshot_sha256, "reference_mismatch");
         return { reportTextSnapshot: snapshot, numericValidation: undefined };
-    } catch (error) { return { reportTextSnapshot: undefined, numericValidation: invalidNumeric(error) }; }
+    }
+    catch (error) {
+        return { reportTextSnapshot: undefined, numericValidation: invalidNumeric(error) };
+    }
 }
 export async function reportSnapshotFromEvent(event: AnalysisEvent, evidence: EvidenceBundle | undefined) {
     const top = event.reportTextSnapshot, nested = event.finalState?.report_text_snapshot;

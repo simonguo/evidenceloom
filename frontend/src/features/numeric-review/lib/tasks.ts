@@ -32,7 +32,10 @@ function normalizeOwner<T extends AnalysisTask | ReportVersion>(row: T, taskId: 
 /** Collect global UUID conflicts before clearing any affected owner's attachment. */
 export function normalizeNumericTasks(tasks: AnalysisTask[]): AnalysisTask[] {
     const normalized = tasks.map(normalizeNumericTaskFields);
-    const snapshots = new Map<string, string>(), reviews = new Map<string, string>(), versions = new Map<string, { taskId: string; core: unknown }>(), runConflicts = new Set<string>(), reviewConflicts = new Set<string>(), versionConflicts = new Set<string>();
+    const snapshots = new Map<string, string>(), reviews = new Map<string, string>(), versions = new Map<string, {
+        taskId: string;
+        core: unknown;
+    }>(), runConflicts = new Set<string>(), reviewConflicts = new Set<string>(), versionConflicts = new Set<string>();
     for (const task of normalized)
         for (const row of [task, ...(task.reportVersions ?? [])]) {
             if (row.reportTextSnapshot) {
@@ -44,7 +47,8 @@ export function normalizeNumericTasks(tasks: AnalysisTask[]): AnalysisTask[] {
             if ("task" in row) {
                 if (row.reportTextSnapshot || row.numericReviews?.length) {
                     const previous = versions.get(row.id), core = immutableVersionCore(row);
-                    if (previous && (previous.taskId !== task.id || !same(previous.core, core))) versionConflicts.add(row.id);
+                    if (previous && (previous.taskId !== task.id || !same(previous.core, core)))
+                        versionConflicts.add(row.id);
                     versions.set(row.id, { taskId: task.id, core });
                 }
                 for (const review of row.numericReviews ?? []) {
@@ -74,6 +78,7 @@ async function verifyOwner<T extends AnalysisTask | ReportVersion>(row: T, taskI
     }
 }
 export async function verifyNumericTasks(tasks: AnalysisTask[]): Promise<AnalysisTask[]> {
-    return normalizeNumericTasks(await Promise.all(normalizeNumericTasks(tasks).map(async (task) => ({ ...await verifyOwner(task, task.id), reportVersions: await Promise.all(task.reportVersions.map((version) => verifyOwner(version, task.id))) }))));
+    const captured = clone(tasks);
+    return normalizeNumericTasks(await Promise.all(normalizeNumericTasks(captured).map(async (task) => ({ ...await verifyOwner(task, task.id), reportVersions: await Promise.all(task.reportVersions.map((version) => verifyOwner(version, task.id))) }))));
 }
 export async function verifyNumericTask(task: AnalysisTask) { return (await verifyNumericTasks([task]))[0]; }

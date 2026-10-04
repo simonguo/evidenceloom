@@ -17,7 +17,7 @@ from tradingagents.evidence import audit_citations, sanitize_diagnostic, validat
 from tradingagents.evidence.ledger import _timestamp
 from tradingagents.memory.schema import canonical_json, hash_component, make_component, _safe
 from .numeric_decimal import decimal_parts, equal_decimal, round_saved_decimal
-from .numeric_spans import span_text, supported_context_span, supported_numeric_span
+from .numeric_spans import _SectionSpans
 
 REPORT_SECTION_KEYS = (
     "market_report",
@@ -300,14 +300,13 @@ def date_component(label):
         return None
 
 
-def _cell(payload, selector):
-    table = parse_saved_numbers(payload)
-    for key in selector["table_path"]:
+def _table(table, path):
+    for key in path:
         if not isinstance(table, dict) or key not in table:
-            return None, None, "table_missing"
+            return "table_missing"
         table = table[key]
     if not isinstance(table, dict) or not {"columns", "rows"}.issubset(table):
-        return None, None, "table_missing"
+        return "table_missing"
     columns, rows = table["columns"], table["rows"]
     if (
         not isinstance(columns, list)
@@ -317,23 +316,30 @@ def _cell(payload, selector):
         or len(rows) > 100000
         or any(not isinstance(row, list) or len(row) != len(columns) for row in rows)
     ):
-        return None, None, "table_missing"
+        return "table_missing"
     if len(set(columns)) != len(columns):
-        return None, None, "table_ambiguous"
+        return "table_ambiguous"
     if "Date" not in columns:
-        return None, None, "table_missing"
+        return "table_missing"
     date_index = columns.index("Date")
     labels = [row[date_index] for row in rows]
     if not all(type(label) is str for label in labels):
-        return None, None, "table_missing"
+        return "table_missing"
     if len(set(labels)) != len(labels):
-        return None, None, "row_ambiguous"
-    if selector["row_date"] not in labels or date_component(selector["row_date"]) is None:
+        return "row_ambiguous"
+    return {name: index for index, name in enumerate(columns)}, dict(zip(labels, rows))
+
+
+def _cell(table, selector):
+    if isinstance(table, str):
+        return None, None, table
+    columns, rows = table
+    if selector["row_date"] not in rows or date_component(selector["row_date"]) is None:
         return None, None, "row_missing"
     actual_date = selector["row_date"]
     if selector["field"] not in columns:
         return None, actual_date, "field_missing"
-    cell = rows[labels.index(actual_date)][columns.index(selector["field"])]
+    cell = rows[actual_date][columns[selector["field"]]]
     if not isinstance(cell, RawNumber):
         return None, actual_date, "field_not_numeric"
     if decimal_parts(str(cell)) is None:
@@ -341,7 +347,72 @@ def _cell(payload, selector):
     return str(cell), actual_date, None
 
 
-def _request(value, snapshot):
+class _PreparedNumericInput:
+    """One captured envelope; caches never survive the public operation."""
+
+    def __init__(self, snapshot, evidence):
+        self.evidence = validate_evidence_bundle(deepcopy(evidence))
+        self.snapshot = _snapshot(deepcopy(snapshot), self.evidence)
+        self.records = {record["id"]: record for record in self.evidence["records"]}
+        self.sections = {}
+        self.section_hashes = {}
+        self.artifacts = {}
+        self.tables = {}
+        self.selections = {}
+
+    def section(self, key):
+        if key not in self.sections:
+            section = self.snapshot["report_sections"][key]
+            if section is None:
+                _fail()
+            self.sections[key] = _SectionSpans(section)
+            self.section_hashes[key] = hashlib.sha256(self.sections[key].raw).hexdigest()
+        return self.sections[key]
+
+    def selected(self, operand):
+        selector = operand["selector"]
+        key = (
+            operand["evidence_id"],
+            operand["source_index"],
+            tuple(selector["table_path"]),
+            selector["row_date"],
+            selector["field"],
+        )
+        if key not in self.selections:
+            record = self.records.get(operand["evidence_id"])
+            if (
+                record is None
+                or operand["source_index"] >= len(record["sources"])
+                or record["instrument"] != self.snapshot["instrument"]
+            ):
+                _fail()
+            source = record["sources"][operand["source_index"]]
+            lexeme, label, reason = None, None, None
+            if source["historical_availability"] == "withheld" or record["status"] == "withheld":
+                reason = "source_withheld"
+            elif record["status"] not in {"available", "partial"}:
+                reason = "source_unavailable"
+            elif source["data_sha256"] is None:
+                reason = "table_missing"
+            else:
+                data_hash = source["data_sha256"]
+                artifact = self.evidence["artifacts"][data_hash]
+                if artifact["kind"] != "normalized_data":
+                    _fail()
+                if data_hash not in self.artifacts:
+                    self.artifacts[data_hash] = parse_saved_numbers(artifact["payload"])
+                table_key = data_hash, tuple(selector["table_path"])
+                if table_key not in self.tables:
+                    self.tables[table_key] = _table(
+                        self.artifacts[data_hash], selector["table_path"]
+                    )
+                lexeme, label, reason = _cell(self.tables[table_key], selector)
+            self.selections[key] = source, lexeme, label, reason
+        return self.selections[key]
+
+
+def _request(value, prepared):
+    snapshot = prepared.snapshot
     _shape(
         value,
         {
@@ -380,13 +451,10 @@ def _request(value, snapshot):
         or target["section_key"] not in REPORT_SECTION_KEYS
     ):
         _fail()
-    section = snapshot["report_sections"][target["section_key"]]
-    if (
-        section is None
-        or target["section_utf8_sha256"] != hashlib.sha256(section.encode()).hexdigest()
-    ):
+    section = prepared.section(target["section_key"])
+    if target["section_utf8_sha256"] != prepared.section_hashes[target["section_key"]]:
         _fail()
-    span_text(section, value["numeric_span"])
+    section.parts(value["numeric_span"])
     operand = value["operand"]
     _shape(operand, {"evidence_id", "source_index", "selector"})
     if not isinstance(operand["evidence_id"], str) or not _ID.fullmatch(operand["evidence_id"]):
@@ -412,32 +480,15 @@ def _request(value, snapshot):
     _shape(value["context_bindings"], {"instrument", "row_date", "units"})
     for binding in value["context_bindings"].values():
         if binding is not None:
-            span_text(section, binding)
+            section.parts(binding)
     return section
 
 
-def _derive(snapshot, evidence, request):
-    section = _request(request, snapshot)
+def _derive(prepared, request):
+    snapshot = prepared.snapshot
+    section = _request(request, prepared)
     operand = request["operand"]
-    matches = [r for r in evidence["records"] if r["id"] == operand["evidence_id"]]
-    if len(matches) != 1 or operand["source_index"] >= len(matches[0]["sources"]):
-        _fail()
-    record = matches[0]
-    if record["instrument"] != snapshot["instrument"]:
-        _fail()
-    source = record["sources"][operand["source_index"]]
-    lexeme, label, reason = None, None, None
-    if source["historical_availability"] == "withheld" or record["status"] == "withheld":
-        reason = "source_withheld"
-    elif record["status"] not in {"available", "partial"}:
-        reason = "source_unavailable"
-    elif source["data_sha256"] is None:
-        reason = "table_missing"
-    else:
-        artifact = evidence["artifacts"][source["data_sha256"]]
-        if artifact["kind"] != "normalized_data":
-            _fail()
-        lexeme, label, reason = _cell(artifact["payload"], operand["selector"])
+    source, lexeme, label, reason = prepared.selected(operand)
     context = {
         "instrument": snapshot["instrument"],
         "row_date": label,
@@ -458,14 +509,14 @@ def _derive(snapshot, evidence, request):
             "unreviewed"
             if binding is None
             else "missing"
-            if expected_context[key] is None or not supported_context_span(section, binding)
+            if expected_context[key] is None or not section.context(binding)
             else "match"
             if binding["text"] == expected_context[key]
             else "mismatch"
         )
     rounded = None if lexeme is None else round_saved_decimal(lexeme, request["rounding"]["places"])
     selected = request["numeric_span"]["text"]
-    supported = supported_numeric_span(section, request["numeric_span"])
+    supported = section.numeric(request["numeric_span"])
     comparable = supported and decimal_parts(selected) is not None and rounded is not None
     if "mismatch" in context_results.values():
         status, reason = "mismatch", "context_mismatch"
@@ -515,75 +566,84 @@ def _derive(snapshot, evidence, request):
 
 def derive_numeric_review(snapshot, evidence, request):
     def derive():
-        bundle = validate_evidence_bundle(evidence)
-        return _derive(_snapshot(snapshot, bundle), bundle, request)
+        captured_request = deepcopy(request)
+        return _derive(_PreparedNumericInput(snapshot, evidence), captured_request)
 
     return _checked(derive)
 
 
+def _validate_numeric_review(review, prepared, *, task_id=None, version_id=None):
+    _shape(
+        review,
+        {
+            "schema_version",
+            "review_id",
+            "reviewed_at",
+            "previous_review_sha256",
+            "policy_version",
+            "policy_sha256",
+            "scope",
+            "target",
+            "numeric_span",
+            "operand",
+            "rounding",
+            "context_bindings",
+            "result",
+            "review_sha256",
+        },
+    )
+    _safe(review)
+    _shape(
+        review["operand"],
+        {
+            "evidence_id",
+            "source_index",
+            "provider",
+            "data_sha256",
+            "selector",
+            "raw_number_lexeme",
+        },
+    )
+    if hash_component(review, "review_sha256") != review["review_sha256"]:
+        _fail()
+    request = {
+        key: deepcopy(review[key])
+        for key in (
+            "review_id",
+            "reviewed_at",
+            "previous_review_sha256",
+            "target",
+            "numeric_span",
+            "rounding",
+            "context_bindings",
+        )
+    }
+    request["operand"] = {
+        key: deepcopy(review["operand"][key]) for key in ("evidence_id", "source_index", "selector")
+    }
+    expected = _derive(prepared, request)
+    # Canonical comparison also rejects bool/int equivalence in outer fields.
+    if canonical_json(review) != canonical_json(expected):
+        _fail()
+    if (
+        task_id is not None
+        and review["target"]["task_id"] != task_id
+        or version_id is not None
+        and review["target"]["version_id"] != version_id
+    ):
+        _fail()
+    return expected
+
+
 def validate_numeric_review(review, snapshot, evidence, *, task_id=None, version_id=None):
     def validate():
-        _shape(
-            review,
-            {
-                "schema_version",
-                "review_id",
-                "reviewed_at",
-                "previous_review_sha256",
-                "policy_version",
-                "policy_sha256",
-                "scope",
-                "target",
-                "numeric_span",
-                "operand",
-                "rounding",
-                "context_bindings",
-                "result",
-                "review_sha256",
-            },
+        captured = deepcopy(review)
+        return _validate_numeric_review(
+            captured,
+            _PreparedNumericInput(snapshot, evidence),
+            task_id=task_id,
+            version_id=version_id,
         )
-        _safe(review)
-        _shape(
-            review["operand"],
-            {
-                "evidence_id",
-                "source_index",
-                "provider",
-                "data_sha256",
-                "selector",
-                "raw_number_lexeme",
-            },
-        )
-        if hash_component(review, "review_sha256") != review["review_sha256"]:
-            _fail()
-        request = {
-            key: deepcopy(review[key])
-            for key in (
-                "review_id",
-                "reviewed_at",
-                "previous_review_sha256",
-                "target",
-                "numeric_span",
-                "rounding",
-                "context_bindings",
-            )
-        }
-        request["operand"] = {
-            key: deepcopy(review["operand"][key])
-            for key in ("evidence_id", "source_index", "selector")
-        }
-        expected = derive_numeric_review(snapshot, evidence, request)
-        # Canonical comparison also rejects bool/int equivalence in outer fields.
-        if canonical_json(review) != canonical_json(expected):
-            _fail()
-        if (
-            task_id is not None
-            and review["target"]["task_id"] != task_id
-            or version_id is not None
-            and review["target"]["version_id"] != version_id
-        ):
-            _fail()
-        return expected
 
     return _checked(validate)
 
@@ -592,10 +652,14 @@ def validate_numeric_reviews(reviews, snapshot, evidence, *, task_id, version_id
     def validate():
         if not isinstance(reviews, list) or len(reviews) > 1000:
             _fail()
+        if not reviews:
+            return []
+        captured = deepcopy(reviews)
+        prepared = _PreparedNumericInput(snapshot, evidence)
         result, ids, previous, time = [], set(), None, None
-        for review in reviews:
-            checked = validate_numeric_review(
-                review, snapshot, evidence, task_id=task_id, version_id=version_id
+        for review in captured:
+            checked = _validate_numeric_review(
+                review, prepared, task_id=task_id, version_id=version_id
             )
             current = _utc(checked["reviewed_at"])
             if (

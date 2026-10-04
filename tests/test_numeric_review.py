@@ -621,3 +621,213 @@ def test_shared_fixture_rederives_exact_receipts():
             validate_numeric_review(case["review"], case["snapshot"], case["evidence"])
             == case["review"]
         )
+
+
+def batch_scenario():
+    """Distinct selections share data, but never provider/context ownership."""
+    nested = {
+        **json.loads(TABLE),
+        "latest_ohlcv": {"columns": ["Date", "Close"], "rows": [["2026-01-08", 222.225]]},
+        "recent_closes": {"columns": ["Date", "Close"], "rows": [["2026-01-08", 125.024]]},
+    }
+    evidence, _, request = scenario(payload=json.dumps(nested), units="USD")
+    alternate = {"kind": "normalized_data", "payload": TABLE.replace("1.005", "2.675")}
+    alternate_hash = hash_value(alternate)
+    evidence["artifacts"][alternate_hash] = alternate
+    source = evidence["records"][0]["sources"][0]
+    evidence["records"][0]["sources"].extend(
+        [
+            {**deepcopy(source), "units": "EUR", "provider": "eastmoney"},
+            {**deepcopy(source), "provider": "tencent", "data_sha256": alternate_hash},
+            {**deepcopy(source), "historical_availability": "withheld", "data_sha256": None},
+        ]
+    )
+    other_record = deepcopy(evidence["records"][0])
+    other_record["id"] = "ev-" + "b" * 32
+    other_record["status"] = "unavailable"
+    output = {"kind": "tool_text", "payload": f"[E:{other_record['id']}]\nUnavailable fixture"}
+    other_record["output_sha256"] = hash_value(output)
+    evidence["artifacts"][hash_value(output)] = output
+    evidence["records"].append(other_record)
+    sections = {key: None for key in REPORT_SECTION_KEYS}
+    sections["market_report"] = REPORT
+    sections["news_report"] = "研究📈\r\nSeparate field 1.01"
+    evidence = audit_citations(make_component(evidence, "bundle_sha256"), sections)
+    snapshot = make_report_text_snapshot(evidence, sections, captured_at=CAPTURED)
+    request["target"]["report_snapshot_sha256"] = snapshot["snapshot_sha256"]
+    specifications = [
+        ({}, "match", "value_match", "125.02345678901236", "125.02"),
+        ({"field": "TieOne", "literal": "1.01"}, "match", "value_match", "1.005", "1.01"),
+        (
+            {"source": 1, "units": True},
+            "mismatch",
+            "context_mismatch",
+            "125.02345678901236",
+            "125.02",
+        ),
+        (
+            {"source": 2, "field": "TieOne", "literal": "1.01"},
+            "mismatch",
+            "value_mismatch",
+            "2.675",
+            "2.68",
+        ),
+        ({"path": ["latest_ohlcv"]}, "mismatch", "value_mismatch", "222.225", "222.23"),
+        ({"path": ["recent_closes"]}, "match", "value_match", "125.024", "125.02"),
+        ({"row": "2026-01-07"}, "mismatch", "value_mismatch", "124.92345678901235", "124.92"),
+        (
+            {"section": "news_report", "field": "TieOne", "literal": "1.01"},
+            "match",
+            "value_match",
+            "1.005",
+            "1.01",
+        ),
+        ({"source": 3}, "missing", "source_withheld", None, None),
+        ({"record": other_record["id"]}, "missing", "source_unavailable", None, None),
+        ({"field": "Absent"}, "missing", "field_missing", None, None),
+    ]
+    reviews = []
+    for index, (options, status, reason, lexeme, rounded) in enumerate(specifications):
+        item = deepcopy(request)
+        item["review_id"] = str(uuid5(NAMESPACE_URL, f"batch selection {index}"))
+        item["previous_review_sha256"] = reviews[-1]["review_sha256"] if reviews else None
+        section_key = options.get("section", "market_report")
+        section = sections[section_key]
+        item["target"].update(
+            section_key=section_key,
+            section_utf8_sha256=hashlib.sha256(section.encode()).hexdigest(),
+        )
+        item["numeric_span"] = span(section, options.get("literal", "125.02"))
+        item["operand"].update(
+            source_index=options.get("source", 0), evidence_id=options.get("record", RECORD_ID)
+        )
+        item["operand"]["selector"].update(
+            table_path=options.get("path", []),
+            row_date=options.get("row", "2026-01-08"),
+            field=options.get("field", "Close"),
+        )
+        if options.get("units"):
+            item["context_bindings"]["units"] = span(section, "USD")
+        review = derive_numeric_review(snapshot, evidence, item)
+        assert review["result"]["status"] == status
+        assert review["result"]["reason"] == reason
+        assert review["operand"]["raw_number_lexeme"] == lexeme
+        assert review["result"]["rounded_decimal"] == rounded
+        reviews.append(review)
+    return evidence, snapshot, reviews
+
+
+def test_batch_distinct_source_row_field_path_and_section_bindings():
+    evidence, snapshot, reviews = batch_scenario()
+    assert (
+        validate_numeric_reviews(
+            reviews, snapshot, evidence, task_id="task-fictional", version_id="version-fictional"
+        )
+        == reviews
+    )
+    assert reviews[2]["result"]["source_context"]["provider"] == "eastmoney"
+    assert reviews[2]["result"]["source_context"]["units"] == "EUR"
+    assert reviews[7]["target"]["section_key"] == "news_report"
+
+
+@pytest.mark.parametrize(
+    "attack", ["result", "source", "field", "quote", "owner", "chain", "time", "uuid"]
+)
+def test_batch_rechecks_late_coherent_receipt_attacks(attack):
+    evidence, snapshot, reviews = batch_scenario()
+    index = 2 if attack == "source" else len(reviews) - 1
+    changed = deepcopy(reviews)
+    review = changed[index]
+    if attack == "result":
+        review["result"].update(status="match", reason="value_match", rounded_decimal="125.02")
+    elif attack == "source":
+        review["operand"]["source_index"] = 0  # Same data hash, different actual metadata.
+    elif attack == "field":
+        review["operand"]["selector"]["field"] = "Close"
+    elif attack == "quote":
+        review["numeric_span"]["text"] = "999.00"  # Identical cached byte offsets.
+    elif attack == "owner":
+        review["target"]["version_id"] = "other-version"
+    elif attack == "chain":
+        review["previous_review_sha256"] = "0" * 64
+    elif attack == "time":
+        review["reviewed_at"] = CAPTURED  # Valid individually; earlier than previous receipt.
+    else:
+        review["review_id"] = changed[0]["review_id"]
+    changed[index] = make_component(review, "review_sha256")
+    # Keep the chain coherent after the changed receipt: derivation must still
+    # catch source/value/context corruption independently of its own hash.
+    if attack not in {"chain", "time", "uuid"}:
+        for following in range(index + 1, len(changed)):
+            changed[following]["previous_review_sha256"] = changed[following - 1]["review_sha256"]
+            changed[following] = make_component(changed[following], "review_sha256")
+    with pytest.raises(NumericReviewError):
+        validate_numeric_reviews(
+            changed, snapshot, evidence, task_id="task-fictional", version_id="version-fictional"
+        )
+
+
+def test_batch_captures_inputs_and_outputs_cannot_poison_later_operations(monkeypatch):
+    import tradingagents.research.numeric_review as module
+
+    evidence, snapshot, reviews = batch_scenario()
+    original = deepcopy((evidence, snapshot, reviews))
+    real_parse = module.parse_saved_numbers
+    mutated = False
+
+    def mutate_caller_during_parse(payload):
+        nonlocal mutated
+        if not mutated:
+            mutated = True
+            evidence["records"][0]["sources"][0]["units"] = "POISONED"
+            snapshot["report_sections"]["market_report"] = "Changed published report"
+            reviews[-1]["operand"]["raw_number_lexeme"] = "999"
+        return real_parse(payload)
+
+    monkeypatch.setattr(module, "parse_saved_numbers", mutate_caller_during_parse)
+    checked = validate_numeric_reviews(
+        reviews, snapshot, evidence, task_id="task-fictional", version_id="version-fictional"
+    )
+    assert checked == original[2]
+    with pytest.raises(NumericReviewError):
+        validate_numeric_reviews(
+            reviews, snapshot, evidence, task_id="task-fictional", version_id="version-fictional"
+        )
+    checked[0]["result"]["source_context"]["transformations"].append("POISONED")
+    checked[0]["target"]["version_id"] = "changed-output"
+    assert "POISONED" not in checked[1]["result"]["source_context"]["transformations"]
+    fresh_evidence, fresh_snapshot, fresh_reviews = original
+    assert (
+        validate_numeric_reviews(
+            fresh_reviews,
+            fresh_snapshot,
+            fresh_evidence,
+            task_id="task-fictional",
+            version_id="version-fictional",
+        )
+        == fresh_reviews
+    )
+
+
+def test_complete_maximum_history_retains_each_receipt_and_rejects_overflow():
+    evidence, snapshot, request = scenario()
+    original = derive_numeric_review(snapshot, evidence, request)
+    reviews = []
+    for index in range(NUMERIC_REVIEW_POLICY["max_reviews_per_version"]):
+        review = deepcopy(original)
+        review["review_id"] = str(uuid5(NAMESPACE_URL, f"maximum saved review {index}"))
+        review["previous_review_sha256"] = reviews[-1]["review_sha256"] if reviews else None
+        reviews.append(make_component(review, "review_sha256"))
+    checked = validate_numeric_reviews(
+        reviews, snapshot, evidence, task_id="task-fictional", version_id="version-fictional"
+    )
+    assert checked == reviews
+    assert len({review["review_id"] for review in checked}) == 1000
+    with pytest.raises(NumericReviewError):
+        validate_numeric_reviews(
+            [*reviews, reviews[-1]],
+            snapshot,
+            evidence,
+            task_id="task-fictional",
+            version_id="version-fictional",
+        )

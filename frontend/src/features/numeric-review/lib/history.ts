@@ -4,8 +4,16 @@ import { clone, stamp } from "@/features/memory/lib/guards";
 import type { NumericReview, ReportTextSnapshot } from "../types";
 import { numericPolicy } from "./policy";
 import { requireNumeric, same } from "./guards";
-import { copyNumericReview, verifyNumericReview } from "./validation";
+import { copyPreparedNumericReview } from "./validation";
+import { prepareNumericInput, type PreparedNumericInput } from "./prepared";
 export function copyNumericHistory(value: unknown, snapshot: ReportTextSnapshot, evidence: EvidenceBundle, owner: {
+    taskId: string;
+    versionId: string;
+}): NumericReview[] {
+    requireNumeric(Array.isArray(value) && value.length <= numericPolicy.max_reviews_per_version);
+    return copyPreparedHistory(value, prepareNumericInput(snapshot, evidence), owner);
+}
+function copyPreparedHistory(value: unknown, prepared: PreparedNumericInput, owner: {
     taskId: string;
     versionId: string;
 }): NumericReview[] {
@@ -13,7 +21,7 @@ export function copyNumericHistory(value: unknown, snapshot: ReportTextSnapshot,
     const seen = new Set<string>();
     let previous: NumericReview | undefined;
     return value.map((item) => {
-        const review = copyNumericReview(item, snapshot, evidence, owner);
+        const review = copyPreparedNumericReview(item, prepared, owner);
         requireNumeric(!seen.has(review.review_id) && review.previous_review_sha256 === (previous?.review_sha256 ?? null) && (!previous || stamp(review.reviewed_at) >= stamp(previous.reviewed_at)), "reference_mismatch");
         seen.add(review.review_id);
         previous = review;
@@ -24,8 +32,11 @@ export async function verifyNumericHistory(value: unknown, snapshot: ReportTextS
     taskId: string;
     versionId: string;
 }) {
-    const history = copyNumericHistory(value, snapshot, evidence, owner);
-    return Promise.all(history.map((review) => verifyNumericReview(review, snapshot, evidence, owner)));
+    requireNumeric(Array.isArray(value) && value.length <= numericPolicy.max_reviews_per_version);
+    const prepared = prepareNumericInput(snapshot, evidence), history = copyPreparedHistory(value, prepared, { ...owner });
+    await prepared.verify();
+    await Promise.all(history.map((review) => prepared.verifyReceipt(review)));
+    return history;
 }
 export function appendNumericReviews(task: AnalysisTask, versionId: string, incoming: NumericReview[]): AnalysisTask {
     const version = task.reportVersions.find((item) => item.id === versionId);
@@ -47,7 +58,10 @@ export function immutableVersionCore(version: ReportVersion) {
 }
 /** Ordinary saves preserve retained owners; explicit whole-task deletion remains possible. */
 export function assertRetainedNumericAuthority(prior: AnalysisTask[], incoming: AnalysisTask[]) {
-    const snapshots = new Map<string, string>(), reviews = new Map<string, string>(), versions = new Map<string, { taskId: string; core: unknown }>();
+    const snapshots = new Map<string, string>(), reviews = new Map<string, string>(), versions = new Map<string, {
+        taskId: string;
+        core: unknown;
+    }>();
     for (const task of prior)
         for (const row of [task, ...(task.reportVersions ?? [])]) {
             if (row.reportTextSnapshot) {
@@ -55,7 +69,8 @@ export function assertRetainedNumericAuthority(prior: AnalysisTask[], incoming: 
                 snapshots.set(value.run_id, JSON.stringify(value));
             }
             if ("task" in row) {
-                if (row.reportTextSnapshot || row.numericReviews?.length) versions.set(row.id, { taskId: task.id, core: immutableVersionCore(row) });
+                if (row.reportTextSnapshot || row.numericReviews?.length)
+                    versions.set(row.id, { taskId: task.id, core: immutableVersionCore(row) });
                 for (const review of row.numericReviews ?? [])
                     reviews.set(review.review_id, JSON.stringify(review));
             }
@@ -67,7 +82,8 @@ export function assertRetainedNumericAuthority(prior: AnalysisTask[], incoming: 
                 requireNumeric(same(JSON.parse(snapshots.get(row.reportTextSnapshot.run_id)!), row.reportTextSnapshot), "reference_mismatch");
             if ("task" in row) {
                 const oldVersion = versions.get(row.id);
-                if (oldVersion) requireNumeric(oldVersion.taskId === task.id && same(oldVersion.core, immutableVersionCore(row)), "reference_mismatch");
+                if (oldVersion)
+                    requireNumeric(oldVersion.taskId === task.id && same(oldVersion.core, immutableVersionCore(row)), "reference_mismatch");
                 for (const review of row.numericReviews ?? [])
                     if (reviews.has(review.review_id))
                         requireNumeric(same(JSON.parse(reviews.get(review.review_id)!), review), "reference_mismatch");

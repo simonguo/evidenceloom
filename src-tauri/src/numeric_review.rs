@@ -336,6 +336,13 @@ fn review_shape(review: &Value, snapshot: &Value, task_id: &str, version_id: &st
     checked_hash(review, "review_sha256")
 }
 
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "Retain the standalone receipt validator alongside batch validation"
+    )
+)]
 pub fn validate_review(
     review: &Value,
     snapshot: &Value,
@@ -344,18 +351,19 @@ pub fn validate_review(
     version_id: &str,
 ) -> Result<()> {
     validate_snapshot(snapshot, evidence)?;
-    validate_bound_review(review, snapshot, evidence, task_id, version_id)
+    let mut prepared = engine::Prepared::new(snapshot, evidence)?;
+    validate_bound_review(review, snapshot, &mut prepared, task_id, version_id)
 }
 
 fn validate_bound_review(
     review: &Value,
     snapshot: &Value,
-    evidence: &Value,
+    prepared: &mut engine::Prepared<'_>,
     task_id: &str,
     version_id: &str,
 ) -> Result<()> {
     review_shape(review, snapshot, task_id, version_id)?;
-    let derived = engine::derive(review, snapshot, evidence)?;
+    let derived = prepared.derive(review)?;
     ensure(
         review["operand"]["provider"] == derived.provider
             && review["operand"]["data_sha256"] == derived.data_sha256
@@ -372,22 +380,19 @@ pub fn validate_reviews(
     version_id: &str,
 ) -> Result<()> {
     validate_fields(snapshot, None, Some(reviews))?;
+    let reviews = reviews.as_array().ok_or(ERROR)?;
+    if reviews.is_empty() {
+        return Ok(());
+    }
+    let snapshot = snapshot.ok_or(ERROR)?;
+    let evidence = evidence.ok_or(ERROR)?;
+    validate_snapshot(snapshot, evidence)?;
+    let mut prepared = engine::Prepared::new(snapshot, evidence)?;
     let mut ids = BTreeSet::new();
     let mut previous = Value::Null;
     let mut previous_time = None;
-    for (index, review) in reviews.as_array().ok_or(ERROR)?.iter().enumerate() {
-        let verify = if index == 0 {
-            validate_review
-        } else {
-            validate_bound_review
-        };
-        verify(
-            review,
-            snapshot.ok_or(ERROR)?,
-            evidence.ok_or(ERROR)?,
-            task_id,
-            version_id,
-        )?;
+    for review in reviews {
+        validate_bound_review(review, snapshot, &mut prepared, task_id, version_id)?;
         let time = timestamp(&review["reviewed_at"])?;
         ensure(
             ids.insert(string(&review["review_id"])?)
@@ -530,6 +535,172 @@ mod tests {
             &reports
         )
         .is_err());
+    }
+
+    #[test]
+    fn numeric_batch_cache_keeps_record_source_selector_and_receipt_checks_independent() {
+        let fixture = test_support::fixture();
+        let mut evidence = fixture["evidence"].clone();
+        let first_id = evidence["records"][0]["id"].as_str().unwrap().to_string();
+        let second_id = format!("ev-{}", "b".repeat(32));
+        let mut second_source = evidence["records"][0]["sources"][0].clone();
+        second_source["provider"] = json!("tencent");
+        evidence["records"][0]["sources"]
+            .as_array_mut()
+            .unwrap()
+            .push(second_source);
+        let mut record = evidence["records"][0].clone();
+        record["id"] = second_id.clone().into();
+        record["sources"].as_array_mut().unwrap().truncate(1);
+        record["sources"][0]["provider"] = json!("eastmoney");
+        record["sources"][0]["units"] = json!("EUR/share");
+        let mut output = evidence["artifacts"][record["output_sha256"].as_str().unwrap()].clone();
+        output["payload"] = output["payload"]
+            .as_str()
+            .unwrap()
+            .replacen(&first_id, &second_id, 1)
+            .into();
+        let output_hash = memory::hash_value(&output).unwrap();
+        evidence["artifacts"][&output_hash] = output;
+        record["output_sha256"] = output_hash.into();
+        evidence["records"].as_array_mut().unwrap().push(record);
+        test_support::rehash(&mut evidence, "bundle_sha256");
+        let mut snapshot = fixture["snapshot"].clone();
+        snapshot["evidence_bundle_sha256"] = evidence["bundle_sha256"].clone();
+        test_support::rehash(&mut snapshot, "snapshot_sha256");
+        let mut first = fixture["reviews"][0].clone();
+        first["target"]["report_snapshot_sha256"] = snapshot["snapshot_sha256"].clone();
+        test_support::rehash(&mut first, "review_sha256");
+        let mut second = first.clone();
+        second["review_id"] = json!("22222222-2222-4222-8222-222222222222");
+        second["previous_review_sha256"] = first["review_sha256"].clone();
+        second["operand"]["source_index"] = json!(1);
+        second["operand"]["provider"] = json!("tencent");
+        second["result"]["source_context"]["provider"] = json!("tencent");
+        test_support::rehash(&mut second, "review_sha256");
+        let mut third = first.clone();
+        third["review_id"] = json!("33333333-3333-4333-8333-333333333333");
+        third["previous_review_sha256"] = second["review_sha256"].clone();
+        third["operand"]["evidence_id"] = second_id.into();
+        third["operand"]["provider"] = json!("eastmoney");
+        third["result"]["source_context"]["provider"] = json!("eastmoney");
+        third["result"]["source_context"]["units"] = json!("EUR/share");
+        test_support::rehash(&mut third, "review_sha256");
+        let history = json!([first, second, third]);
+        validate_reviews(
+            &history,
+            Some(&snapshot),
+            Some(&evidence),
+            "task-fictional",
+            "version-fictional",
+        )
+        .unwrap();
+        // All use the same exact saved number but have independently bound metadata.
+        for (pointer, value) in [
+            ("/operand/source_index", json!(0)),
+            ("/operand/selector/field", json!("TieOne")),
+            ("/operand/selector/row_date", json!("2026-01-07")),
+            ("/operand/selector/table_path", json!(["latest_ohlcv"])),
+            ("/result/reason", json!("value_mismatch")),
+            ("/target/task_id", json!("other-owner")),
+            ("/previous_review_sha256", Value::Null),
+        ] {
+            let mut wrong = json!([history[0].clone(), history[1].clone()]);
+            *wrong[1].pointer_mut(pointer).unwrap() = value;
+            test_support::rehash(&mut wrong[1], "review_sha256");
+            assert!(
+                validate_reviews(
+                    &wrong,
+                    Some(&snapshot),
+                    Some(&evidence),
+                    "task-fictional",
+                    "version-fictional"
+                )
+                .is_err(),
+                "{pointer}"
+            );
+        }
+        let mut wrong = history.clone();
+        wrong[2]["operand"]["evidence_id"] = history[0]["operand"]["evidence_id"].clone();
+        test_support::rehash(&mut wrong[2], "review_sha256");
+        assert!(validate_reviews(
+            &wrong,
+            Some(&snapshot),
+            Some(&evidence),
+            "task-fictional",
+            "version-fictional"
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn numeric_batch_preparation_is_not_shared_across_operations() {
+        let fixture = test_support::fixture();
+        let first = json!([fixture["reviews"][0].clone()]);
+        validate_reviews(
+            &first,
+            Some(&fixture["snapshot"]),
+            Some(&fixture["evidence"]),
+            "task-fictional",
+            "version-fictional",
+        )
+        .unwrap();
+        let mut evidence = fixture["evidence"].clone();
+        let old_hash = evidence["records"][0]["sources"][0]["data_sha256"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let mut artifact = evidence["artifacts"][&old_hash].clone();
+        artifact["payload"] = artifact["payload"]
+            .as_str()
+            .unwrap()
+            .replace("125.02345678901236", "126.02345678901236")
+            .into();
+        let hash = memory::hash_value(&artifact).unwrap();
+        evidence["artifacts"]
+            .as_object_mut()
+            .unwrap()
+            .remove(&old_hash);
+        evidence["artifacts"][&hash] = artifact;
+        evidence["records"][0]["sources"][0]["data_sha256"] = hash.clone().into();
+        test_support::rehash(&mut evidence, "bundle_sha256");
+        let mut snapshot = fixture["snapshot"].clone();
+        snapshot["evidence_bundle_sha256"] = evidence["bundle_sha256"].clone();
+        test_support::rehash(&mut snapshot, "snapshot_sha256");
+        let mut changed = first.clone();
+        changed[0]["target"]["report_snapshot_sha256"] = snapshot["snapshot_sha256"].clone();
+        changed[0]["operand"]["data_sha256"] = hash.into();
+        test_support::rehash(&mut changed[0], "review_sha256");
+        // Coherent new parent hashes cannot reuse the preceding operation's match.
+        assert!(validate_reviews(
+            &changed,
+            Some(&snapshot),
+            Some(&evidence),
+            "task-fictional",
+            "version-fictional"
+        )
+        .is_err());
+        changed[0]["operand"]["raw_number_lexeme"] = json!("126.02345678901236");
+        changed[0]["result"]["rounded_decimal"] = json!("126.02");
+        changed[0]["result"]["status"] = json!("mismatch");
+        changed[0]["result"]["reason"] = json!("value_mismatch");
+        test_support::rehash(&mut changed[0], "review_sha256");
+        validate_reviews(
+            &changed,
+            Some(&snapshot),
+            Some(&evidence),
+            "task-fictional",
+            "version-fictional",
+        )
+        .unwrap();
+        validate_reviews(
+            &first,
+            Some(&fixture["snapshot"]),
+            Some(&fixture["evidence"]),
+            "task-fictional",
+            "version-fictional",
+        )
+        .unwrap();
     }
 }
 
