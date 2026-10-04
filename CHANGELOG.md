@@ -34,6 +34,8 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ### Fixed
 
+- Patch three locked Python runtime packages and compatible frontend dependencies; audit frozen Python requirements and the complete npm tree on pull requests, main pushes and the weekly schedule. Record the unpatched braces chain and Next's separate vendored Browserslist limitation.
+- Bind browser development and local production npm scripts to IPv4 loopback by default.
 - Exclude date-only legacy Markdown from authoritative settlement and historical context selection; model-written delimiters cannot create decisions or evaluation facts.
 - Prevent current settings, changed benchmark aliases, reflection failures, or completion retries from reinterpreting a saved decision; historical date-only decisions remain explicitly not evaluable.
 - Require successful exit and strict stdout JSONL from sidecar checks; reject legacy bootstrap-only responses and clean up timed-out diagnostic processes.

@@ -57,11 +57,13 @@ uv sync --locked --group dev
 npm --prefix frontend ci
 ```
 
-Start the browser development UI at `http://localhost:31741`:
+Start the browser development UI at `http://127.0.0.1:31741`:
 
 ```bash
 npm --prefix frontend run dev
 ```
+
+The browser development server and `npm --prefix frontend run start` bind to `127.0.0.1` by default. Use Next.js's `--hostname` option after npm's `--` separator to choose another listening address explicitly. Tauri continues to use the local development server on port 31741.
 
 Start the Tauri development app:
 
@@ -121,6 +123,8 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked
 ```
 
 `uv run pytest` uses dummy credentials, temporary storage, and blocked network access. Tests marked `integration` are excluded by default. Run them explicitly with `uv run pytest -m integration` only when external provider calls are intended and the required credentials are configured.
+
+The scheduled and pull-request security checks also audit the exported, hash-pinned Python runtime dependencies. Frontend production auditing remains separate from the full development-tool audit. See the [dependency security record](docs/DEPENDENCY_SECURITY.md) for commands and the remaining unpatched development dependency.
 
 Build outputs and architecture-specific sidecars are generated locally and must not be committed. See [frontend/SIDECAR.md](frontend/SIDECAR.md) and [frontend/DESKTOP_DISTRIBUTION.md](frontend/DESKTOP_DISTRIBUTION.md) for packaging details.
 

@@ -1,0 +1,66 @@
+# Dependency security record
+
+Reviewed on 2026-10-04. This record distinguishes registry audits, bundled code, and actual build observations. A clear registry audit does not establish that every bundled library or operating-system component is free of vulnerabilities.
+
+## Patched locked dependencies
+
+| Dependency | Previous version | Candidate version | Basis |
+| --- | --- | --- | --- |
+| urllib3 | 2.7.0 | 2.8.0 | [Chunk-size allocation](https://github.com/urllib3/urllib3/security/advisories/GHSA-vxq7-64xx-v4gw), [proxy TLS handling](https://github.com/urllib3/urllib3/security/advisories/GHSA-8988-9cw3-xx77), and [chunked deflate loop](https://github.com/urllib3/urllib3/security/advisories/GHSA-gh4c-6fx4-qh6g) |
+| cryptography | 49.0.0 | 50.0.2 | [PKCS#7 decryption advisory](https://github.com/pyca/cryptography/security/advisories/GHSA-g6cj-pr64-35w5) and subsequent [50.0.x packaging updates](https://cryptography.io/en/latest/changelog/) |
+| langgraph-checkpoint-sqlite | 3.1.0 | 3.1.1 | [Namespace segment isolation](https://github.com/langchain-ai/langgraph/security/advisories/GHSA-47pj-3jcm-6whg) |
+| Vitest and its seven pinned companion packages | 4.1.10 | 4.1.11 | [Redirect mock path traversal](https://github.com/vitest-dev/vitest/security/advisories/GHSA-82fw-gwwq-j7x9) |
+| brace-expansion | 1.1.16 / 5.0.8 | 1.1.21 / 5.0.12 | [Unbounded expansion advisory](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-q2hr-2g5m-vwhr) |
+| Browserslist | 4.28.2 | 4.28.7 | [Unbounded caches](https://github.com/browserslist/browserslist/security/advisories/GHSA-c83g-rgw3-j3cx) and [statistics object handling](https://github.com/browserslist/browserslist/security/advisories/GHSA-73wf-gq98-2v4g) |
+| baseline-browser-mapping | 2.10.38 | 2.11.0 | [Advisory](https://github.com/advisories/GHSA-w5vr-8v7q-w6rv) |
+| js-yaml | 4.3.0 | 4.3.2 | [Advisory](https://github.com/nodeca/js-yaml/security/advisories/GHSA-2883-xcg3-v3hh) |
+| undici | 7.28.0 | 7.29.1 | [Upstream security advisories](https://github.com/nodejs/undici/security/advisories) |
+
+Browserslist also requires the supporting data updates `caniuse-lite` 1.0.30001806, `electron-to-chromium` 1.5.393 and `node-releases` 2.0.51. The first is shared with production dependencies. Other Python package records and unrelated npm package versions remain unchanged. Next.js and Tailwind remain at their existing versions.
+
+The fresh Python runtime requirements audit found five unique advisory IDs across three packages before the updates and none afterward. Its raw baseline output contains six findings because one cryptography advisory appears twice. The fresh full npm audit changed from 14 affected package entries to seven, and from 27 unique advisory URLs to one. Earlier observations reported 15 entries for the same original lockfile: npm also attributed the Tailwind chain to `@tailwindcss/typography` at that time. That changing attribution was not a package update. Both fresh npm production-only audits reported zero findings.
+
+## Open exceptions
+
+### braces development dependency chain
+
+`braces` 3.0.3 still has the [deep-recursion denial-of-service advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm). No patched release was available at review time; the [upstream issue](https://github.com/micromatch/braces/issues/70) remains the reference for a fix.
+
+The seven npm entries are `braces`, `chokidar`, `micromatch`, `fast-glob`, `@next/eslint-plugin-next`, `eslint-config-next`, and `tailwindcss`. All affected locked instances are development dependencies. Ordinary tests use `vitest run`; no test API/UI listener is enabled. Project lint/build patterns come from repository configuration. This exception does not establish that untrusted patterns are safe.
+
+The full-audit checker permits only this exact reviewed advisory and locked development chain. New advisories, runtime nodes, altered versions or graph edges, malformed reports, and incomplete dependency references fail the check. A future attribution or dependency change requires renewed review. The independent production audit keeps its existing threshold. The exception remains an unresolved finding.
+
+### Next.js vendored Browserslist
+
+The normal Next.js standalone output also copies `next/dist/compiled/browserslist`. Its package metadata has no version, so npm's package audit does not assess that compiled copy. The Next.js 15.5.27 bundle retains both behaviors fixed in the Browserslist advisories above: inherited-key statistics handling and unbounded result/parse caches. Updating the separate npm Browserslist package does not replace this copy.
+
+An offline reproduction distinguishes the old vendored implementation from the patched npm implementation. Static source inspection identifies callers in build configuration and the development bundler; no externally controlled production request path was identified. The Next helper catches the statistics error, so the direct Browserslist reproduction does not demonstrate a whole-build or server crash. This is a bounded source finding, not proof of non-exploitability. The latest stable Next.js 15 release at review time remains 15.5.27. The registry-integrity-verified Next.js 16.3.8 archive retains the same two behaviors. A compatible upstream fix or separately reviewed replacement remains open.
+
+## Automated checks and local scope
+
+The Security workflow runs on pull requests, main pushes and the weekly schedule. It installs the frozen npm tree, checks the full audit against the explicit braces exception, and separately audits production dependencies. Python auditing exports the locked runtime requirements with hashes, then uses pinned `pip-audit` without dependency resolution or vulnerability ignores. Vulnerability findings and audit errors remain failures.
+
+Run the same Python audit locally:
+
+```bash
+uv export --locked --no-dev --no-emit-project --no-header \
+  --output-file /tmp/evidenceloom-runtime-requirements.txt
+uvx --from pip-audit==2.10.1 pip-audit \
+  --require-hashes --disable-pip --strict --progress-spinner off \
+  --requirement /tmp/evidenceloom-runtime-requirements.txt
+```
+
+For the full frontend report, preserve npm's exit status and JSON as shown in the Security workflow, then run:
+
+```bash
+python3 scripts/check_frontend_audit.py \
+  --report /tmp/evidenceloom-frontend-audit.json \
+  --lock frontend/package-lock.json
+npm --prefix frontend audit --omit=dev --audit-level=moderate
+```
+
+The `dev` and `start` npm scripts bind to IPv4 loopback by default; another hostname must be chosen explicitly. The standalone `server.js` has its own hostname configuration. This change does not add authentication or make a network deployment an accepted product workflow.
+
+Local acceptance includes a fresh isolated install, the full offline Python and frontend suites, offline signing/chunk-boundary/namespace checks, both frontend build modes, and a relocated JavaScript standalone smoke. That copied output has no symlinks and omits all seven audited braces-chain packages. It contains two Python entry scripts but no Python environment or research core, so the smoke covers the page, assets and rejected-input routes. Complete web-backend clean-install acceptance remains open.
+
+cryptography removed upstream macOS Intel support starting with version 49. Our local x86_64 source build succeeds and links OpenSSL 3.6.1. Official 50.0.2 wheels use OpenSSL 4.0.3; those are different observations. Native candidate packaging results are tracked by required PR checks, and do not restore upstream support. Actual proxy/provider interoperability, signed installers, operating-system library auditing and broader security acceptance remain open.
