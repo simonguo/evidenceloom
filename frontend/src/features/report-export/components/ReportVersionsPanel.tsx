@@ -13,6 +13,7 @@ import { useReportExport } from "../hooks/useReportExport";
 import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
 import { ReportVersionPreview } from "./ReportVersionPreview";
 import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
+import { ReportVersionComparison } from "./ReportVersionComparison";
 
 export function ReportVersionsPanel({
   task,
@@ -123,6 +124,7 @@ export function ReportVersionsPanel({
           </details>
         </div>
       )}
+      <ReportVersionComparison taskId={task.id} reportVersions={task.reportVersions} language={language} />
       {message && <p role="status" className="mt-3 break-words text-xs text-zinc-400">{message}</p>}
       {review.message && <p role="status" className="mt-3 break-words text-xs text-zinc-400">{review.message}</p>}
     </section>

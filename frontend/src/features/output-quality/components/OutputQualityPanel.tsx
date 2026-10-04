@@ -1,11 +1,16 @@
 import type { SystemLanguage } from "@/lib/types";
 import { buildOutputQualityView } from "../lib/quality";
 
-export function OutputQualityPanel({ quality, language }: { quality: unknown; language: SystemLanguage }) {
+export function OutputQualityPanel({ quality, language, headingLevel = 3 }: {
+  quality: unknown;
+  language: SystemLanguage;
+  headingLevel?: 3 | 5;
+}) {
   const view = buildOutputQualityView(quality, language);
+  const Heading = headingLevel === 5 ? "h5" : "h3";
   return (
     <section className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4" aria-label={view.title}>
-      <h3 className="text-sm font-semibold text-zinc-200">{view.title}</h3>
+      <Heading className="text-sm font-semibold text-zinc-200">{view.title}</Heading>
       <p className="mt-2 text-xs leading-5 text-zinc-400">{view.disclaimer}</p>
       {view.entries.length ? (
         <ul className="mt-3 space-y-3">

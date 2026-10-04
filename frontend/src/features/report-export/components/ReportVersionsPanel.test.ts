@@ -6,6 +6,7 @@ import { createFictionalDemoTask } from "../fixtures/fictional-demo";
 import { ReportVersionsPanel } from "./ReportVersionsPanel";
 import { numericFixture } from "@/features/numeric-review/fixtures/fictional-numeric";
 import { proxyTargetMemoryTask, targetMemoryReviewFor } from "@/features/memory/fixtures/target-memory";
+import { loadTasks } from "@/features/persistence/local-storage";
 
 const { saveTextExport } = vi.hoisted(() => ({ saveTextExport: vi.fn() }));
 vi.mock("@/lib/runtime", () => ({ getRuntimeAdapter: () => ({ saveTextExport }) }));
@@ -49,6 +50,7 @@ describe("selected immutable report review", () => {
     await act(async () => root.unmount());
     container.remove();
     vi.unstubAllGlobals();
+    localStorage.clear();
   });
 
   it("selects the same frozen report and quality for preview and export", async () => {
@@ -118,5 +120,82 @@ describe("selected immutable report review", () => {
     await vi.waitFor(async () => { await act(async () => {}); expect(container.textContent).toContain("US500 → ^GSPC"); });
     expect(container.textContent).toContain("Later evaluation review");
     expect(container.querySelectorAll('[aria-label="Immutable research memory"]')).toHaveLength(1);
+  });
+
+  it("keeps comparison choices independent of single-version review/export and never reads arriving live task prose", async () => {
+    const original = createFictionalDemoTask("en");
+    const versions = [1, 2, 3].map((number) => ({ ...original.reportVersions[0], id: `saved-v${number}`, runId: `saved-run-${number}`,
+      versionNumber: number, reportSections: { market_report: `FROZEN-${number}` } }));
+    const task = { ...original, reportVersions: versions, reportSections: { market_report: "LIVE-NOT-SAVED" } };
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task, language: "en" })));
+    const comparison = [...container.querySelectorAll("details")].find((details) => details.querySelector(":scope > summary")?.textContent === "Compare saved report versions")!;
+    await act(async () => { comparison.open = true; comparison.dispatchEvent(new Event("toggle")); });
+    const baselineLabel = [...container.querySelectorAll("label")].find((label) => label.textContent === "Baseline")!;
+    const baseline = document.getElementById(baselineLabel.htmlFor) as HTMLSelectElement;
+    const targetLabel = [...container.querySelectorAll("label")].find((label) => label.textContent === "Target")!;
+    const target = document.getElementById(targetLabel.htmlFor) as HTMLSelectElement;
+    await act(async () => { baseline.value = versions[0].id; baseline.dispatchEvent(new Event("change", { bubbles: true })); });
+    const selected = container.querySelector<HTMLSelectElement>("#report-version-select")!;
+    expect(selected.value).toBe(versions[2].id);
+    const markdown = [...container.querySelectorAll("button")].find((button) => button.textContent === "Markdown")!;
+    await act(async () => markdown.click());
+    expect(saveTextExport.mock.calls[0][0].content).toContain("FROZEN-3");
+    expect(saveTextExport.mock.calls[0][0].content).not.toContain("FROZEN-1");
+    await act(async () => { selected.value = versions[1].id; selected.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(baseline.value).toBe(versions[0].id); expect(target.value).toBe(versions[2].id);
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task: { ...task, reportSections: { market_report: "ARRIVING-LIVE" } }, language: "en" })));
+    expect(container.textContent).not.toContain("LIVE-NOT-SAVED"); expect(container.textContent).not.toContain("ARRIVING-LIVE");
+    expect(comparison.textContent).toContain("FROZEN-1"); expect(comparison.textContent).toContain("FROZEN-3");
+    expect(comparison.textContent).not.toContain("FROZEN-2");
+    await act(async () => markdown.click());
+    expect(saveTextExport.mock.calls[1][0].content).toContain("FROZEN-2");
+    expect(saveTextExport.mock.calls[1][0].content).not.toContain("FROZEN-1");
+    expect(saveTextExport.mock.calls[1][0].content).not.toContain("FROZEN-3");
+  });
+
+  it("keeps a healthy selected version exportable when comparison opens a stored old version with null task metadata", async () => {
+    const task = createFictionalDemoTask("en");
+    const older = { ...task.reportVersions[0], id: "stored-malformed-old", runId: "old-run", versionNumber: 1,
+      task: null, reportSections: { market_report: "OLD-EXACT\r\n", final_trade_decision: "Rating: Hold" } };
+    const latest = { ...task.reportVersions[0], id: "stored-healthy-latest", runId: "latest-run", versionNumber: 2,
+      reportSections: { market_report: "LATEST-EXACT\r\n", final_trade_decision: "Rating: Hold" } };
+    localStorage.setItem("evidenceloom.analysisTasks.v1", JSON.stringify([{ ...task, reportVersions: [older, latest] }]));
+    const retained = loadTasks()[0];
+    const frozen = JSON.stringify(retained);
+    expect(retained.reportVersions[0].task).toBeNull();
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task: retained, language: "en" })));
+    const disclosure = [...container.querySelectorAll<HTMLDetailsElement>("details")].find(d => d.querySelector(":scope > summary")?.textContent === "Compare saved report versions")!;
+    await act(async () => { disclosure.open = true; disclosure.dispatchEvent(new Event("toggle")); });
+    const baseline = container.querySelector('[aria-label="Baseline v1"]')!;
+    expect(baseline.textContent).toContain("Some saved version metadata is unavailable");
+    const instrument = [...baseline.querySelectorAll("dt")].find(dt => dt.textContent === "Instrument")!;
+    expect(instrument.nextElementSibling?.textContent).toBe("Not recorded · unknown");
+    expect(container.querySelector('[aria-label="Baseline v1 · Market Analysis"] pre')?.textContent).toBe("OLD-EXACT\r\n");
+    const selected = container.querySelector<HTMLSelectElement>("#report-version-select")!;
+    expect(selected.value).toBe(latest.id);
+    const targetLabel = [...container.querySelectorAll<HTMLLabelElement>("label")].find(l => l.textContent === "Target")!;
+    const target = document.getElementById(targetLabel.htmlFor) as HTMLSelectElement;
+    await act(async () => { target.value = older.id; target.dispatchEvent(new Event("change", { bubbles: true })); });
+    await act(async () => { target.value = latest.id; target.dispatchEvent(new Event("change", { bubbles: true })); });
+    const json = [...container.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "Report JSON")!;
+    await act(async () => json.click());
+    expect(JSON.parse(saveTextExport.mock.calls[0][0].content).report.id).toBe(latest.id);
+    expect(JSON.stringify(retained)).toBe(frozen);
+  });
+
+  it("shows only public manifest fields from actual persisted versions without exposing saved extensions", async () => {
+    const task = createFictionalDemoTask("en");
+    const version = { ...task.reportVersions[0], run: { ...task.reportVersions[0].run!,
+      privateExtension: { body: "OWNED-PRIVATE-MANIFEST-SENTINEL" },
+      runtimeRunSettings: { temperature: "0.1250", privateExtension: "OWNED-PRIVATE-NESTED-SENTINEL" } } };
+    localStorage.setItem("evidenceloom.analysisTasks.v1", JSON.stringify([{ ...task, reportVersions: [version, { ...version, id: "stored-second", runId: "run-second", versionNumber: 2 }] }]));
+    const retained = loadTasks()[0];
+    const frozen = JSON.stringify(retained);
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task: retained, language: "en" })));
+    const disclosure = [...container.querySelectorAll<HTMLDetailsElement>("details")].find(d => d.querySelector(":scope > summary")?.textContent === "Compare saved report versions")!;
+    await act(async () => { disclosure.open = true; disclosure.dispatchEvent(new Event("toggle")); });
+    expect(disclosure.textContent).toContain('"temperature": "0.1250"');
+    expect(disclosure.textContent).not.toContain("OWNED-PRIVATE");
+    expect(JSON.stringify(retained)).toBe(frozen);
   });
 });
