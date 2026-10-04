@@ -71,10 +71,16 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
   const [drawerAgent, setDrawerAgent] = useState("");
   const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pageMountedRef = useRef(false);
+  const selectionRef = useRef({ taskId });
+  const deletionAttemptRef = useRef<{ selection: { taskId: string } } | null>(null);
+  if (selectionRef.current.taskId !== taskId) selectionRef.current = { taskId };
   const activeReports = Object.entries(task?.reportSections ?? {}).filter(([, content]) => Boolean(content));
 
   useEffect(() => {
+    pageMountedRef.current = true;
     setMounted(true);
+    return () => { pageMountedRef.current = false; };
   }, []);
 
   useEffect(() => {
@@ -228,7 +234,20 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 py-1 shadow-xl">
-                  <button type="button" onClick={() => { deleteTask(task.id); setMenuOpen(false); router.push("/"); }} disabled={task.status === "running"} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-300 transition hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-40">
+                  <button type="button" onClick={async () => {
+                    const selected = selectionRef.current;
+                    if (deletionAttemptRef.current?.selection === selected) return;
+                    const attempt = { selection: selected };
+                    deletionAttemptRef.current = attempt;
+                    try {
+                      if (await deleteTask(task.id) && pageMountedRef.current && selectionRef.current === selected) {
+                        setMenuOpen(false);
+                        router.push("/");
+                      }
+                    } finally {
+                      if (deletionAttemptRef.current === attempt) deletionAttemptRef.current = null;
+                    }
+                  }} disabled={task.status === "running"} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-300 transition hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-40">
                     <Trash2 className="size-4" /> {t("deleteTask")}
                   </button>
                 </div>

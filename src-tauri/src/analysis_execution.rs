@@ -153,6 +153,23 @@ impl Registry {
         delete()
     }
 
+    /// Serialize the entire synchronous clear with admission and release.
+    /// Any retained owner protects all saved research data, including an
+    /// unclaimed reservation or cleanup that still needs an explicit retry.
+    pub fn clear_idle_data<T>(
+        &self,
+        clear: impl FnOnce() -> Result<T, String>,
+    ) -> Result<T, String> {
+        let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
+        Self::expire_unstarted(&mut active);
+        if active.is_some() {
+            return Err("Stop the active task before clearing saved data.".into());
+        }
+        // The caller dispatches this filesystem operation off the UI thread.
+        // Keeping this lock through clear closes the check/admission gap.
+        clear()
+    }
+
     fn owns(&self, owner: &Arc<Run>) -> bool {
         self.active
             .lock()

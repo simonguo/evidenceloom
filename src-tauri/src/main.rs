@@ -144,8 +144,13 @@ async fn delete_desktop_task(
 }
 
 #[tauri::command]
-fn clear_desktop_data(app: AppHandle) -> Result<(), String> {
-    storage::clear_data(&app)
+async fn clear_desktop_data(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let runtime = state.runtime.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        runtime.clear_idle_data(|| storage::clear_data(&app))
+    })
+    .await
+    .map_err(|_| "Saved data clearing failed.".to_string())?
 }
 
 #[tauri::command]
@@ -667,11 +672,21 @@ fn analysis_worker_join_error(
 }
 
 #[tauri::command]
-fn reserve_analysis(
+async fn reserve_analysis(
     state: State<'_, AppState>,
     task_id: String,
 ) -> Result<String, AnalysisCommandError> {
-    state.runtime.reserve(task_id).map_err(Into::into)
+    reserve_analysis_owner(state.runtime.clone(), task_id).await
+}
+
+async fn reserve_analysis_owner(
+    runtime: Arc<RuntimeState>,
+    task_id: String,
+) -> Result<String, AnalysisCommandError> {
+    tauri::async_runtime::spawn_blocking(move || runtime.reserve(task_id))
+        .await
+        .map_err(|_| AnalysisCommandError::from("Analysis reservation failed.".to_string()))?
+        .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -1581,6 +1596,81 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn analysis_execution_reservation_yields_while_clear_callback_holds_admission() {
+        use std::{future::Future, sync::mpsc, task::Poll};
+        let runtime = Arc::new(RuntimeState::default());
+        let clearing = runtime.clone();
+        let (entered, inside) = mpsc::channel();
+        let (release, gate) = mpsc::channel();
+        let clear_worker = thread::spawn(move || {
+            clearing.clear_idle_data(|| {
+                entered.send(()).map_err(|error| error.to_string())?;
+                gate.recv_timeout(Duration::from_secs(10))
+                    .map_err(|error| error.to_string())?;
+                Ok(())
+            })
+        });
+        let entered_result = inside.recv_timeout(Duration::from_secs(3));
+        let reserving = runtime.clone();
+        let (witness, observed) = mpsc::channel();
+        let reservation_worker = thread::spawn(move || {
+            let mut future = std::pin::pin!(reserve_analysis_owner(reserving, "owned-task".into()));
+            let mut first_poll = true;
+            tauri::async_runtime::block_on(std::future::poll_fn(|context| {
+                let result = future.as_mut().poll(context);
+                if first_poll {
+                    first_poll = false;
+                    let pending = matches!(&result, Poll::Pending);
+                    let _ = witness.send(pending);
+                }
+                result
+            }))
+            .map_err(|error| error.message)
+        });
+        // Observe this future's first poll while the clear gate is still held.
+        // A direct synchronous lock in its body produces no timely witness.
+        let pending_before_release = observed.recv_timeout(Duration::from_secs(3));
+        let released = release.send(()).is_ok();
+        let deadline = Instant::now() + Duration::from_secs(12);
+        while (!clear_worker.is_finished() || !reservation_worker.is_finished())
+            && Instant::now() < deadline
+        {
+            thread::sleep(Duration::from_millis(2));
+        }
+        // Success requires both joined outcomes. An OS-stalled Rust thread
+        // cannot be force-killed here; a missed deadline fails this test.
+        let clear_result = clear_worker.is_finished().then(|| clear_worker.join());
+        let reservation_result = reservation_worker
+            .is_finished()
+            .then(|| reservation_worker.join());
+        let reserved = reservation_result.and_then(Result::ok);
+        let cleanup = reserved.as_ref().and_then(|result| {
+            result.as_ref().ok().map(|id| {
+                runtime
+                    .cancel("owned-task", id)
+                    .ok_or_else(|| "owned reservation disappeared".to_string())
+                    .and_then(|request| {
+                        request.wait(Instant::now() + analysis_execution::CLEANUP_TIMEOUT)
+                    })
+            })
+        });
+        assert!(entered_result.is_ok() && released);
+        clear_result
+            .expect("owned clear worker did not join")
+            .unwrap()
+            .unwrap();
+        reserved
+            .expect("owned reservation worker did not join")
+            .unwrap();
+        cleanup
+            .expect("owned reservation was not supervised")
+            .unwrap();
+        assert!(
+            pending_before_release.expect("first poll did not yield while clear held admission")
+        );
+    }
 
     #[test]
     fn analysis_execution_cleanup_error_uses_machine_code() {

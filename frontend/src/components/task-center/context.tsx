@@ -72,7 +72,7 @@ type TaskCenterContextValue = {
   createTask: (draft: NewTaskDraft) => { task?: AnalysisTask; errors: string[] };
   createAndQueueTask: (draft: NewTaskDraft) => Promise<{ task?: AnalysisTask; errors: string[] }>;
   createDemoTask: () => AnalysisTask;
-  deleteTask: (taskId: string) => void;
+  deleteTask: (taskId: string) => Promise<boolean>;
   queueTask: (taskId: string) => boolean;
   cancelQueuedTask: (taskId: string) => void;
   moveQueuedTask: (taskId: string, direction: "up" | "down") => void;
@@ -99,6 +99,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const runtimeAdapterRef = useRef<RuntimeAdapter | null>(null);
   const persistenceQueueRef = useRef<Promise<void>>(Promise.resolve());
   const eventQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const deletionInFlightRef = useRef<Map<string, Promise<boolean>>>(new Map());
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>(() => defaultRuntimeInfo());
   const t = createTranslator(settings.systemLanguage);
 
@@ -435,19 +436,39 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     return demo;
   }
 
-  function deleteTask(taskId: string) {
-    const task = tasks.find((item) => item.id === taskId);
+  function deleteTask(taskId: string): Promise<boolean> {
+    const pending = deletionInFlightRef.current.get(taskId);
+    if (pending) return pending;
+    const task = tasksRef.current.find((item) => item.id === taskId);
     if (cleanupFailedTask?.id === taskId) {
       setNotice(t("analysisCleanupFailed"));
-      return;
+      return Promise.resolve(false);
     }
     if (task?.status === "running" || runningTask?.id === taskId) {
       setNotice(t("cannotDeleteRunning"));
-      return;
+      return Promise.resolve(false);
     }
-    setTasks((current) => current.filter((item) => item.id !== taskId));
-    if (isTauriRuntime()) void runtimeAdapterRef.current?.deleteDesktopTask(taskId).catch(() => undefined);
-    setNotice(t("taskDeleted"));
+    if (!isTauriRuntime()) {
+      setTasks((current) => current.filter((item) => item.id !== taskId));
+      setNotice(t("taskDeleted"));
+      return Promise.resolve(true);
+    }
+    const adapter = runtimeAdapterRef.current ?? getRuntimeAdapter();
+    const deletion = Promise.resolve().then(async () => {
+      try {
+        await adapter.deleteDesktopTask(taskId);
+        setTasks((current) => current.filter((item) => item.id !== taskId));
+        setNotice(t("taskDeleted"));
+        return true;
+      } catch {
+        setNotice(t("taskDeleteFailed"));
+        return false;
+      }
+    }).finally(() => {
+      if (deletionInFlightRef.current.get(taskId) === deletion) deletionInFlightRef.current.delete(taskId);
+    });
+    deletionInFlightRef.current.set(taskId, deletion);
+    return deletion;
   }
 
   async function checkRuntimeAction(settingsOverride?: GlobalSettings) {
