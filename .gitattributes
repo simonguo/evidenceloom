@@ -2,3 +2,4 @@
 *.py text eol=lf
 /docs/contracts/*.json text eol=lf
 /tests/fixtures/*.json text eol=lf
+/tests/fixtures/**/*.json text eol=lf

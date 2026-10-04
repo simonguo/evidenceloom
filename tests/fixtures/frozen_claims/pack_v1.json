@@ -1,0 +1,2965 @@
+{
+  "schema_version": 1,
+  "kind": "frozen_claim_evaluation_pack",
+  "pack_id": "6a2fadf4-1258-54b0-900c-0ce71b354496",
+  "policy_sha256": "0768d10d1ee5b799a6e2c7d837711a7c5d2eb1a4531ca0562d85d46f0848e14f",
+  "distribution": {
+    "status": "fictional_owned",
+    "record": "All report text and tables are invented and owned for repository tests; no real security, provider retrieval, or external expert labels."
+  },
+  "provenance": {
+    "stratum": "engineering",
+    "labeler": null,
+    "expert_labels": null
+  },
+  "cases": [
+    {
+      "case_id": "field_baseline",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-field_baseline",
+          "origin": "demo",
+          "id": "version-fictional-field_baseline",
+          "runId": "fe6549ef-f717-5a2c-b9f8-b500b0aaa6de",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nSaved close 101.01; wrong close 101.00.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "fe6549ef-f717-5a2c-b9f8-b500b0aaa6de",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "85bc4bc13658cbe2c59b83a60c1877c96a1adafbee0936260f0a9cb4c39df22f"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "fe6549ef-f717-5a2c-b9f8-b500b0aaa6de",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "85bc4bc13658cbe2c59b83a60c1877c96a1adafbee0936260f0a9cb4c39df22f",
+          "report_sections": {
+            "market_report": "研究📈\r\nSaved close 101.01; wrong close 101.00.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "0c29454c08a91a97cf51e0e8cf9f6ddd82f4f7b7b48dec14f65008053937daac"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "field_baseline-1",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-field_baseline",
+            "version_id": "version-fictional-field_baseline",
+            "run_id": "fe6549ef-f717-5a2c-b9f8-b500b0aaa6de",
+            "report_snapshot_sha256": "0c29454c08a91a97cf51e0e8cf9f6ddd82f4f7b7b48dec14f65008053937daac",
+            "section_key": "market_report",
+            "section_utf8_sha256": "68f66135f637bcd4b2557dc8a1ecea8daf2cbceaf9b0b381ea321a4546c8e0b6"
+          },
+          "span": {
+            "start_byte": 24,
+            "end_byte": 30,
+            "text": "101.01"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Close"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "f9e4ebbe4258f41fa6cbb8edd5b3715d6c4dc056a33571e9ee18095d7f803363"
+        },
+        {
+          "claim_id": "field_baseline-2",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-field_baseline",
+            "version_id": "version-fictional-field_baseline",
+            "run_id": "fe6549ef-f717-5a2c-b9f8-b500b0aaa6de",
+            "report_snapshot_sha256": "0c29454c08a91a97cf51e0e8cf9f6ddd82f4f7b7b48dec14f65008053937daac",
+            "section_key": "market_report",
+            "section_utf8_sha256": "68f66135f637bcd4b2557dc8a1ecea8daf2cbceaf9b0b381ea321a4546c8e0b6"
+          },
+          "span": {
+            "start_byte": 44,
+            "end_byte": 50,
+            "text": "101.00"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Close"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "66df951cc6b261e7e4531c70a245044266ffbf5a1b34a2b06c7d24f91604d5bd"
+        }
+      ],
+      "report_sha256": "c4613fcdebbcc58e7461a73d124a6918a97ea0b44f205952643880e96806b7cf",
+      "case_sha256": "126a74902c01def65a704f5d2e1f24175d80f1d1e661005baa67958d640c5271"
+    },
+    {
+      "case_id": "percent_baseline",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-percent_baseline",
+          "origin": "demo",
+          "id": "version-fictional-percent_baseline",
+          "runId": "7859b86c-fb7c-53aa-921c-bc06ac30f73b",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nFICT USD 2026-01-07→2026-01-08 change 1.01%; wrong change 1.00%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "7859b86c-fb7c-53aa-921c-bc06ac30f73b",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "0dbab8ff6960aea1070d02556d46c6b6cea6f4f9dd9136368f62ace7e6c86467"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "7859b86c-fb7c-53aa-921c-bc06ac30f73b",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "0dbab8ff6960aea1070d02556d46c6b6cea6f4f9dd9136368f62ace7e6c86467",
+          "report_sections": {
+            "market_report": "研究📈\r\nFICT USD 2026-01-07→2026-01-08 change 1.01%; wrong change 1.00%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "bd98750109331a373ebb87bd06709b47e431ec00245f34fc6e3583ae56c31344"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "percent_baseline-1",
+          "kind": "price_change_percent",
+          "target": {
+            "task_id": "task-fictional-percent_baseline",
+            "version_id": "version-fictional-percent_baseline",
+            "run_id": "7859b86c-fb7c-53aa-921c-bc06ac30f73b",
+            "report_snapshot_sha256": "bd98750109331a373ebb87bd06709b47e431ec00245f34fc6e3583ae56c31344",
+            "section_key": "market_report",
+            "section_utf8_sha256": "d6203b9d9215ac7d603f1e6744d3a6442eedd9460dfc27776c0167178bfb52b5"
+          },
+          "span": {
+            "start_byte": 52,
+            "end_byte": 57,
+            "text": "1.01%"
+          },
+          "selection": {
+            "operands": [
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-07",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              },
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-08",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              }
+            ],
+            "rounding": {
+              "mode": "exact_fraction_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "start_date": null,
+              "end_date": null,
+              "units": null,
+              "basis": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "1fd7d7cfa7432418c281547d158d9faf99be0c31911e8c6b5ab4c7fb82c42a8e"
+        },
+        {
+          "claim_id": "percent_baseline-2",
+          "kind": "price_change_percent",
+          "target": {
+            "task_id": "task-fictional-percent_baseline",
+            "version_id": "version-fictional-percent_baseline",
+            "run_id": "7859b86c-fb7c-53aa-921c-bc06ac30f73b",
+            "report_snapshot_sha256": "bd98750109331a373ebb87bd06709b47e431ec00245f34fc6e3583ae56c31344",
+            "section_key": "market_report",
+            "section_utf8_sha256": "d6203b9d9215ac7d603f1e6744d3a6442eedd9460dfc27776c0167178bfb52b5"
+          },
+          "span": {
+            "start_byte": 72,
+            "end_byte": 77,
+            "text": "1.00%"
+          },
+          "selection": {
+            "operands": [
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-07",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              },
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-08",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              }
+            ],
+            "rounding": {
+              "mode": "exact_fraction_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "start_date": null,
+              "end_date": null,
+              "units": null,
+              "basis": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "850dbf7b29a96a751788bbb54b680bc0f53639573a4f0ff3e0ec00b83f4f6a10"
+        }
+      ],
+      "report_sha256": "19e4261eef7f0a2cf3518ba19665cd257534e6155f8f417d650b644ccb5207c7",
+      "case_sha256": "1265899c0cc75b11981e76c8480508ec24283467a0c149858ad6d5ef6ab702f5"
+    },
+    {
+      "case_id": "unknown_context",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-unknown_context",
+          "origin": "demo",
+          "id": "version-fictional-unknown_context",
+          "runId": "476c9048-7720-56f8-90ec-dd5843c817d5",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nUnspecified currency/basis change 1.01%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "476c9048-7720-56f8-90ec-dd5843c817d5",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": null,
+                  "adjustments": null,
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "7805ffe840fd1cf798018064265c0122bcf7ace578698ecefdd26c18fa9a60e7"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "476c9048-7720-56f8-90ec-dd5843c817d5",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "7805ffe840fd1cf798018064265c0122bcf7ace578698ecefdd26c18fa9a60e7",
+          "report_sections": {
+            "market_report": "研究📈\r\nUnspecified currency/basis change 1.01%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "ce89e1195146df272c1adb675b87008afd643d3085364cb49812c8f81fbb193e"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "unknown_context-1",
+          "kind": "price_change_percent",
+          "target": {
+            "task_id": "task-fictional-unknown_context",
+            "version_id": "version-fictional-unknown_context",
+            "run_id": "476c9048-7720-56f8-90ec-dd5843c817d5",
+            "report_snapshot_sha256": "ce89e1195146df272c1adb675b87008afd643d3085364cb49812c8f81fbb193e",
+            "section_key": "market_report",
+            "section_utf8_sha256": "0375cce85dcc5b3b14f58261826f115711356f785d68e934a4a6efc4ac344e19"
+          },
+          "span": {
+            "start_byte": 46,
+            "end_byte": 51,
+            "text": "1.01%"
+          },
+          "selection": {
+            "operands": [
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-07",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": null,
+                "adjustments": null
+              },
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-08",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": null,
+                "adjustments": null
+              }
+            ],
+            "rounding": {
+              "mode": "exact_fraction_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "start_date": null,
+              "end_date": null,
+              "units": null,
+              "basis": null
+            }
+          },
+          "note": "Arithmetic match leaves source context unknown.",
+          "claim_sha256": "484dc73caef59e4c8cfd3c50f88b358332e51d247c57118b51b46f8d9ae3505f"
+        }
+      ],
+      "report_sha256": "a8d7ba9686b5506a59b8b86345566dcbc811ee13d681a905957cf26b6f439f67",
+      "case_sha256": "50e6e6e14837bb65ba882c124e2a0297896bc042cb5540f88ebf96e333e410de"
+    },
+    {
+      "case_id": "wrong_field",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-wrong_field",
+          "origin": "demo",
+          "id": "version-fictional-wrong_field",
+          "runId": "21c3384e-5946-5304-b8ea-8f5dfa6c9f81",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nTieOne copied incorrectly as 2.68.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "21c3384e-5946-5304-b8ea-8f5dfa6c9f81",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "5bc39e7c57169d464bc6c7c3a8cc9ac6742e39c4551a53094661094af1428893"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "21c3384e-5946-5304-b8ea-8f5dfa6c9f81",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "5bc39e7c57169d464bc6c7c3a8cc9ac6742e39c4551a53094661094af1428893",
+          "report_sections": {
+            "market_report": "研究📈\r\nTieOne copied incorrectly as 2.68.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "3d6b795fd5020fde9e7532e7d0df553ec5ff12ba99f13913c57e7d45615bbf76"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "wrong_field-1",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-wrong_field",
+            "version_id": "version-fictional-wrong_field",
+            "run_id": "21c3384e-5946-5304-b8ea-8f5dfa6c9f81",
+            "report_snapshot_sha256": "3d6b795fd5020fde9e7532e7d0df553ec5ff12ba99f13913c57e7d45615bbf76",
+            "section_key": "market_report",
+            "section_utf8_sha256": "cf4dcea7669e3b2339ffdf1a4a8953b8439763b0150837a4a47edbf34e47f1c7"
+          },
+          "span": {
+            "start_byte": 41,
+            "end_byte": 45,
+            "text": "2.68"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "TieOne"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "ef88124dc6d9a91fc5e7116423ed3d3df9fd73a3ef717c9bc937b201936a8538"
+        }
+      ],
+      "report_sha256": "8d2b0c0773e4b10f9bf7ac97f5e8bb0129d386674d8365a0e5b66ed6d3155d0d",
+      "case_sha256": "fc8c5e3a872616b3e00e1393a2072e6561ccd4b1dcbd1a1ee27dfb5d21583d55"
+    },
+    {
+      "case_id": "non_numeric",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-non_numeric",
+          "origin": "demo",
+          "id": "version-fictional-non_numeric",
+          "runId": "f4502723-9901-5e20-9975-cb1f8c8fc384",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nNull 1.01; boolean 2.00; JSON string 3.00.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "f4502723-9901-5e20-9975-cb1f8c8fc384",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "625ce5e42b4893a61d6850e19cdeb3e6d92c248ea36a4b178ff771509243b3dd"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "f4502723-9901-5e20-9975-cb1f8c8fc384",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "625ce5e42b4893a61d6850e19cdeb3e6d92c248ea36a4b178ff771509243b3dd",
+          "report_sections": {
+            "market_report": "研究📈\r\nNull 1.01; boolean 2.00; JSON string 3.00.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "26adfdfa363e459f5cd53092d1c590ecd7902d3b0da59444c4d05f6d17a141be"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "non_numeric-1",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-non_numeric",
+            "version_id": "version-fictional-non_numeric",
+            "run_id": "f4502723-9901-5e20-9975-cb1f8c8fc384",
+            "report_snapshot_sha256": "26adfdfa363e459f5cd53092d1c590ecd7902d3b0da59444c4d05f6d17a141be",
+            "section_key": "market_report",
+            "section_utf8_sha256": "05b3c65370d4f3c6cc4000dd1eaf680faa2ae60e30d243bb9b4b2527b23e99c8"
+          },
+          "span": {
+            "start_byte": 17,
+            "end_byte": 21,
+            "text": "1.01"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Null"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "16ecb30834c3d6bc3bc0f25add3a1a0e5ed17c1a948cc194d868204ea9372041"
+        },
+        {
+          "claim_id": "non_numeric-2",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-non_numeric",
+            "version_id": "version-fictional-non_numeric",
+            "run_id": "f4502723-9901-5e20-9975-cb1f8c8fc384",
+            "report_snapshot_sha256": "26adfdfa363e459f5cd53092d1c590ecd7902d3b0da59444c4d05f6d17a141be",
+            "section_key": "market_report",
+            "section_utf8_sha256": "05b3c65370d4f3c6cc4000dd1eaf680faa2ae60e30d243bb9b4b2527b23e99c8"
+          },
+          "span": {
+            "start_byte": 31,
+            "end_byte": 35,
+            "text": "2.00"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Boolean"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "707131b8837754be6b7fd6823688af4c871b163d334ce07c4c206c63ed35c34d"
+        },
+        {
+          "claim_id": "non_numeric-3",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-non_numeric",
+            "version_id": "version-fictional-non_numeric",
+            "run_id": "f4502723-9901-5e20-9975-cb1f8c8fc384",
+            "report_snapshot_sha256": "26adfdfa363e459f5cd53092d1c590ecd7902d3b0da59444c4d05f6d17a141be",
+            "section_key": "market_report",
+            "section_utf8_sha256": "05b3c65370d4f3c6cc4000dd1eaf680faa2ae60e30d243bb9b4b2527b23e99c8"
+          },
+          "span": {
+            "start_byte": 49,
+            "end_byte": 53,
+            "text": "3.00"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "String"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "07896162f51db0dff89313417ef9d4602602dd71fa08b29207917c9a5f8ff3a9"
+        }
+      ],
+      "report_sha256": "3a0fcf2a3c484f2de13fafcb9a85d62b8dff97d6975158bbc8867af1df6e66f9",
+      "case_sha256": "bd739f1a00939981e1e9356e34b824f05533d5ba7b0a7e6f5436a7b7b49b9f6d"
+    },
+    {
+      "case_id": "withheld",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-withheld",
+          "origin": "demo",
+          "id": "version-fictional-withheld",
+          "runId": "1d7db520-b739-50e0-b273-5f0ae291a325",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nWithheld observation 101.01.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "1d7db520-b739-50e0-b273-5f0ae291a325",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "withheld",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "withheld",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": null
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "978a7c39f8825e0190af65e0da1df57e1d18f12c266ce895bd4b930d80a33c94"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "1d7db520-b739-50e0-b273-5f0ae291a325",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "978a7c39f8825e0190af65e0da1df57e1d18f12c266ce895bd4b930d80a33c94",
+          "report_sections": {
+            "market_report": "研究📈\r\nWithheld observation 101.01.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "96e5745cc8b38e35b31309eaa0c570bd734d5b8b422c45f8f2449b9556c9af68"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "withheld-1",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-withheld",
+            "version_id": "version-fictional-withheld",
+            "run_id": "1d7db520-b739-50e0-b273-5f0ae291a325",
+            "report_snapshot_sha256": "96e5745cc8b38e35b31309eaa0c570bd734d5b8b422c45f8f2449b9556c9af68",
+            "section_key": "market_report",
+            "section_utf8_sha256": "5397805fa2f2a6d71092068cd93b9c7b03af0bc9b348a774ea7b03a7ea74c55d"
+          },
+          "span": {
+            "start_byte": 33,
+            "end_byte": 39,
+            "text": "101.01"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Close"
+              },
+              "provider": "yfinance",
+              "data_sha256": null,
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "8f32d81d63f2afe83e5dc01106244de415040de310ad566bd615378d9b0ab1e8"
+        }
+      ],
+      "report_sha256": "293f7c6fba1ce04ccc032a90977a4b713bc118dbc472bd3b91c11ffe72b28b2f",
+      "case_sha256": "12fc033db80a3bb189e421100273a3a4fb6e4947c8b87df0a34074f9fbc793e1"
+    },
+    {
+      "case_id": "unavailable",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-unavailable",
+          "origin": "demo",
+          "id": "version-fictional-unavailable",
+          "runId": "61160bfc-2140-52ca-ae08-8f22e9e04405",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nUnavailable observation 101.01.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "61160bfc-2140-52ca-ae08-8f22e9e04405",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "unavailable",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "fabcd133602d055f916e51558d5be0faa98928ecaa066b4c8bd67616dab99c33"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "61160bfc-2140-52ca-ae08-8f22e9e04405",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "fabcd133602d055f916e51558d5be0faa98928ecaa066b4c8bd67616dab99c33",
+          "report_sections": {
+            "market_report": "研究📈\r\nUnavailable observation 101.01.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "e75333e4287a9b76926d6183319c37ae572259ad7d3465d15ca05f0acf7747a3"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "unavailable-1",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-unavailable",
+            "version_id": "version-fictional-unavailable",
+            "run_id": "61160bfc-2140-52ca-ae08-8f22e9e04405",
+            "report_snapshot_sha256": "e75333e4287a9b76926d6183319c37ae572259ad7d3465d15ca05f0acf7747a3",
+            "section_key": "market_report",
+            "section_utf8_sha256": "2d216b26fa5e401f82b52d2a0c02dc7a342de71362e6d40195ec46b5ee5a7fcc"
+          },
+          "span": {
+            "start_byte": 36,
+            "end_byte": 42,
+            "text": "101.01"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Close"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "b14416b904ef3e2a21fb447d6cb81d5e0806a34aa8f9f87c57bc63b399d95a50"
+        }
+      ],
+      "report_sha256": "b9cbd8e582776f6a711a3e95e537963712dc12795723ccad208e55c0359c9449",
+      "case_sha256": "58ad1a5e417ccaed32b2dbce01a54a45cb8bf0d1d5a26097e755cabef29fddc9"
+    },
+    {
+      "case_id": "missing_row",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-missing_row",
+          "origin": "demo",
+          "id": "version-fictional-missing_row",
+          "runId": "591afd5a-e441-51bb-8b18-0bd1f1e4669e",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nMissing prior date arithmetic change 1.01%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "591afd5a-e441-51bb-8b18-0bd1f1e4669e",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "4004ce1e23566be71c7f70282f821f170356ba16d4a841099a191b03cb8ea010"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "591afd5a-e441-51bb-8b18-0bd1f1e4669e",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "4004ce1e23566be71c7f70282f821f170356ba16d4a841099a191b03cb8ea010",
+          "report_sections": {
+            "market_report": "研究📈\r\nMissing prior date arithmetic change 1.01%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "3b9f7405e73b116fe955c9736cbf1156b976f48433d0db1a26f10158ae4a2242"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "missing_row-1",
+          "kind": "price_change_percent",
+          "target": {
+            "task_id": "task-fictional-missing_row",
+            "version_id": "version-fictional-missing_row",
+            "run_id": "591afd5a-e441-51bb-8b18-0bd1f1e4669e",
+            "report_snapshot_sha256": "3b9f7405e73b116fe955c9736cbf1156b976f48433d0db1a26f10158ae4a2242",
+            "section_key": "market_report",
+            "section_utf8_sha256": "9abcb52e62dad9d9b447c018899e070a296fda51646af4f6a13ae02a6db82a76"
+          },
+          "span": {
+            "start_byte": 49,
+            "end_byte": 54,
+            "text": "1.01%"
+          },
+          "selection": {
+            "operands": [
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-06",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              },
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-08",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              }
+            ],
+            "rounding": {
+              "mode": "exact_fraction_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "start_date": null,
+              "end_date": null,
+              "units": null,
+              "basis": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "572cbabd848b1e7c5856f7b8778415a764b286483dcf5aeb21cd66196178d35d"
+        }
+      ],
+      "report_sha256": "2eb6a396626ca4c34f3ee866fb021308ebf1b13eadfec70de00539cbba7c843d",
+      "case_sha256": "6163cc939f7e5a45384e7f30dc3728a6bc3c2e607b7c0c24d9dcf4f8a142a309"
+    },
+    {
+      "case_id": "manual_forms",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-manual_forms",
+          "origin": "demo",
+          "id": "version-fictional-manual_forms",
+          "runId": "818dfae2-1e82-5a23-921e-206f478d927a",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nCopying one field is not arithmetic: 1.01%. Repeated suffix 1.01%%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "818dfae2-1e82-5a23-921e-206f478d927a",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "e6386c401ad4b936081f07b17530a5585a8c7a9903083e3761a11bdf731822da"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "818dfae2-1e82-5a23-921e-206f478d927a",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "e6386c401ad4b936081f07b17530a5585a8c7a9903083e3761a11bdf731822da",
+          "report_sections": {
+            "market_report": "研究📈\r\nCopying one field is not arithmetic: 1.01%. Repeated suffix 1.01%%.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "59ef95ded13e9b5fa9a9ba4ae1540342e332304a67f0cdd32d04656be71ffdb8"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "manual_forms-1",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-manual_forms",
+            "version_id": "version-fictional-manual_forms",
+            "run_id": "818dfae2-1e82-5a23-921e-206f478d927a",
+            "report_snapshot_sha256": "59ef95ded13e9b5fa9a9ba4ae1540342e332304a67f0cdd32d04656be71ffdb8",
+            "section_key": "market_report",
+            "section_utf8_sha256": "eee4e7d41f4a8d7697b0a41676243ac7e1359ec029e53282e7fb5bd53a7bfd55"
+          },
+          "span": {
+            "start_byte": 49,
+            "end_byte": 53,
+            "text": "1.01"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "TieOne"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "5c6fa21a99c73b790b723fca6468429fb5cbcf55c62914311d1882986e5bed33"
+        },
+        {
+          "claim_id": "manual_forms-2",
+          "kind": "price_change_percent",
+          "target": {
+            "task_id": "task-fictional-manual_forms",
+            "version_id": "version-fictional-manual_forms",
+            "run_id": "818dfae2-1e82-5a23-921e-206f478d927a",
+            "report_snapshot_sha256": "59ef95ded13e9b5fa9a9ba4ae1540342e332304a67f0cdd32d04656be71ffdb8",
+            "section_key": "market_report",
+            "section_utf8_sha256": "eee4e7d41f4a8d7697b0a41676243ac7e1359ec029e53282e7fb5bd53a7bfd55"
+          },
+          "span": {
+            "start_byte": 72,
+            "end_byte": 78,
+            "text": "1.01%%"
+          },
+          "selection": {
+            "operands": [
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-07",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              },
+              {
+                "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "source_index": 0,
+                "selector": {
+                  "kind": "table_cell",
+                  "table_path": [],
+                  "row_date": "2026-01-08",
+                  "field": "Close"
+                },
+                "provider": "yfinance",
+                "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+                "units": "USD",
+                "adjustments": "fictional_raw"
+              }
+            ],
+            "rounding": {
+              "mode": "exact_fraction_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "start_date": null,
+              "end_date": null,
+              "units": null,
+              "basis": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "78b8abc9846b570e88ddb959b099ba771b4836c1723a38aa56bde2f4aac43a2e"
+        }
+      ],
+      "report_sha256": "8826aa002c415eb37244932bed769bc7d2c641369601b74bcde543aa081b7ab1",
+      "case_sha256": "4dd94ba5bdd5231404afe777e767c74fa04a4e0eda0b6e8d47d4b8271d39f3f3"
+    },
+    {
+      "case_id": "prediction",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-prediction",
+          "origin": "demo",
+          "id": "version-fictional-prediction",
+          "runId": "781fa046-df7e-5389-91a6-586fe3f361d7",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": false,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nFuture close forecast 101.01 is not a saved fact.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": {
+          "schema_version": 1,
+          "run_id": "781fa046-df7e-5389-91a6-586fe3f361d7",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "research_as_of": "2026-01-09T23:59:59.999999Z",
+          "as_of_policy": "analysis_date_end_utc",
+          "market_timezone": null,
+          "created_at": "2026-01-09T10:00:00.000000Z",
+          "manifest": {
+            "analysts": [
+              "market"
+            ]
+          },
+          "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+          "records": [
+            {
+              "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "analyst": "market",
+              "tool": "get_stock_data",
+              "instrument": "FICT",
+              "parameters": {
+                "symbol": "FICT"
+              },
+              "status": "available",
+              "fetched_at": "2026-01-09T10:00:00.000000Z",
+              "output_sha256": "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08",
+              "sources": [
+                {
+                  "provider": "yfinance",
+                  "url": null,
+                  "observed_window": {
+                    "start": "2026-01-07",
+                    "end": "2026-01-08"
+                  },
+                  "publication_dates": null,
+                  "historical_availability": "unknown",
+                  "units": "USD",
+                  "adjustments": "fictional_raw",
+                  "transformations": [
+                    "Fictional offline test table"
+                  ],
+                  "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3"
+                }
+              ],
+              "attempts": []
+            }
+          ],
+          "artifacts": {
+            "28cf0cf446c1a64c63e160014c3ccfec4345e5562cfb0940a447107135c47c08": {
+              "kind": "tool_text",
+              "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline table; no actual provider call."
+            },
+            "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3": {
+              "kind": "normalized_data",
+              "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-07\",100,1.005,null,false,\"1.005\"],[\"2026-01-08\",101.005,1.005,null,true,\"1.005\"]]}"
+            }
+          },
+          "citation_audit": {
+            "market_report": {
+              "referenced_ids": [
+                "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+              ],
+              "unresolved_ids": [],
+              "status": "resolved"
+            },
+            "sentiment_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "news_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "fundamentals_report": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "trader_investment_plan": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            },
+            "final_trade_decision": {
+              "referenced_ids": [],
+              "unresolved_ids": [],
+              "status": "none"
+            }
+          },
+          "bundle_sha256": "bf423cc1394119ce0c0f295b4cac83701d25dc0de824e98be26e2f314e1ba3ec"
+        },
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": {
+          "schema_version": 1,
+          "run_id": "781fa046-df7e-5389-91a6-586fe3f361d7",
+          "instrument": "FICT",
+          "analysis_date": "2026-01-09",
+          "captured_at": "2026-01-09T11:00:00.000000Z",
+          "evidence_bundle_sha256": "bf423cc1394119ce0c0f295b4cac83701d25dc0de824e98be26e2f314e1ba3ec",
+          "report_sections": {
+            "market_report": "研究📈\r\nFuture close forecast 101.01 is not a saved fact.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "snapshot_sha256": "401e90062de325bdca794e7f1cfa35e19f35b0424653a090f2cd1e1eff76230b"
+        },
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "prediction-1",
+          "kind": "prediction",
+          "target": {
+            "task_id": "task-fictional-prediction",
+            "version_id": "version-fictional-prediction",
+            "run_id": "781fa046-df7e-5389-91a6-586fe3f361d7",
+            "report_snapshot_sha256": "401e90062de325bdca794e7f1cfa35e19f35b0424653a090f2cd1e1eff76230b",
+            "section_key": "market_report",
+            "section_utf8_sha256": "9b90d2ead7018d18ee3db578b3eca0f44e378e627d3400303e7be4e71f1fa85a"
+          },
+          "span": {
+            "start_byte": 34,
+            "end_byte": 40,
+            "text": "101.01"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Close"
+              },
+              "provider": "yfinance",
+              "data_sha256": "2143e265416ccf945d1887b0e9aa5df2971acb2faee01be942a2e9ef256984b3",
+              "units": "USD",
+              "adjustments": "fictional_raw"
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": "Numerical equality does not verify prediction.",
+          "claim_sha256": "9ca9212845d6875ad616bee05eb2b827f0542b529755fb34d2ac9ef2d0a39359"
+        }
+      ],
+      "report_sha256": "5886cfeae6f1f24571dd3beff040719d1bbcfc038c309e3864f3bf6337b2332c",
+      "case_sha256": "6ac4b1c3739ec9b927deee6c4bf36d641df2cd1cafdf11d8d8d8d678e151200f"
+    },
+    {
+      "case_id": "legacy",
+      "research_report": {
+        "schema_version": 1,
+        "kind": "research_report",
+        "report": {
+          "task_id": "task-fictional-legacy",
+          "origin": "demo",
+          "id": "version-fictional-legacy",
+          "runId": "legacy-run-task-fictional-legacy",
+          "versionNumber": 1,
+          "createdAt": "2026-01-09T11:00:00.000000Z",
+          "legacy": true,
+          "decision": "REVIEW",
+          "task": {
+            "ticker": "FICT",
+            "instrumentName": "Fictional owned offline case",
+            "analysisDate": "2026-01-09",
+            "assetType": "stock",
+            "researchDepth": 1,
+            "analysts": [
+              "market"
+            ],
+            "outputLanguage": "en"
+          },
+          "run": null,
+          "stats": {
+            "llmCalls": 0,
+            "toolCalls": 1,
+            "tokensIn": 0,
+            "tokensOut": 0,
+            "elapsedSeconds": 0
+          },
+          "reportSections": {
+            "market_report": "研究📈\r\nLegacy unfrozen close 101.01.\r\n[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\n",
+            "sentiment_report": "Fictional sentiment_report 📈\r\nOwned original text.\n",
+            "news_report": "Fictional news_report 📈\r\nOwned original text.\n",
+            "fundamentals_report": "Fictional fundamentals_report 📈\r\nOwned original text.\n",
+            "investment_plan": "Fictional investment_plan 📈\r\nOwned original text.\n",
+            "trader_investment_plan": "Fictional trader_investment_plan 📈\r\nOwned original text.\n",
+            "final_trade_decision": "Fictional final_trade_decision 📈\r\nOwned original text.\n"
+          },
+          "outputQuality": null
+        },
+        "evidence_bundle": null,
+        "memory_bundle": null,
+        "evaluation_reviews": [],
+        "research_readiness": null,
+        "effective_request_identity": null,
+        "report_text_snapshot": null,
+        "numeric_reviews": []
+      },
+      "claims": [
+        {
+          "claim_id": "legacy-1",
+          "kind": "saved_field",
+          "target": {
+            "task_id": "task-fictional-legacy",
+            "version_id": "version-fictional-legacy",
+            "run_id": "legacy-run-task-fictional-legacy",
+            "report_snapshot_sha256": null,
+            "section_key": "market_report",
+            "section_utf8_sha256": "cdffc2fdb8296aa3cd1cb5d5f93e132eeb416d26c81835061f911c2a9abcfb26"
+          },
+          "span": {
+            "start_byte": 34,
+            "end_byte": 40,
+            "text": "101.01"
+          },
+          "selection": {
+            "operand": {
+              "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_index": 0,
+              "selector": {
+                "kind": "table_cell",
+                "table_path": [],
+                "row_date": "2026-01-08",
+                "field": "Close"
+              },
+              "provider": null,
+              "data_sha256": null,
+              "units": null,
+              "adjustments": null
+            },
+            "rounding": {
+              "mode": "saved_decimal_half_up",
+              "places": 2
+            },
+            "context_bindings": {
+              "instrument": null,
+              "row_date": null,
+              "units": null
+            }
+          },
+          "note": null,
+          "claim_sha256": "ff4be5f73f7d327023a0a2d591dd3a308dc5c6d47f70b03ab38c328415393825"
+        }
+      ],
+      "report_sha256": "ba1b3ad754ad0a327183a67e138398e04df6a157c216b8106716c7ef709cdfa2",
+      "case_sha256": "daedc2dbc9bc1eebf18b8262d1081a77086ff04cc1664701aaa8dd893ed119e7"
+    }
+  ],
+  "label_sets": [
+    {
+      "schema_version": 1,
+      "label_set_id": "8c7e0678-4d6f-5b8c-8562-6595a91b9048",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "field_baseline",
+      "case_sha256": "126a74902c01def65a704f5d2e1f24175d80f1d1e661005baa67958d640c5271",
+      "labels": [
+        {
+          "claim_id": "field_baseline-1",
+          "claim_sha256": "f9e4ebbe4258f41fa6cbb8edd5b3715d6c4dc056a33571e9ee18095d7f803363",
+          "expected": {
+            "status": "MATCH",
+            "rounded_decimal": "101.01",
+            "reason": "value_match"
+          }
+        },
+        {
+          "claim_id": "field_baseline-2",
+          "claim_sha256": "66df951cc6b261e7e4531c70a245044266ffbf5a1b34a2b06c7d24f91604d5bd",
+          "expected": {
+            "status": "MISMATCH",
+            "rounded_decimal": "101.01",
+            "reason": "value_mismatch"
+          }
+        }
+      ],
+      "label_set_sha256": "a4e5121288097a6cfb690106b3b712d38accf93b8809c48882c31031415f9d19"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "60d3c734-8dd0-5eaf-8bef-719cdd1583e4",
+      "provenance": "independent_arithmetic",
+      "method_record": "Hand expected HALF_UP ties: 101.005 to 101.01 and 1.005 to 1.01; percentage is 100*(101.005-100)/100=1.005. Decimal precision 6000 independently checked in tests; not external expert labels.",
+      "revision": 1,
+      "case_id": "field_baseline",
+      "case_sha256": "126a74902c01def65a704f5d2e1f24175d80f1d1e661005baa67958d640c5271",
+      "labels": [
+        {
+          "claim_id": "field_baseline-1",
+          "claim_sha256": "f9e4ebbe4258f41fa6cbb8edd5b3715d6c4dc056a33571e9ee18095d7f803363",
+          "expected": {
+            "status": "MATCH",
+            "rounded_decimal": "101.01",
+            "reason": "value_match"
+          }
+        },
+        {
+          "claim_id": "field_baseline-2",
+          "claim_sha256": "66df951cc6b261e7e4531c70a245044266ffbf5a1b34a2b06c7d24f91604d5bd",
+          "expected": {
+            "status": "MISMATCH",
+            "rounded_decimal": "101.01",
+            "reason": "value_mismatch"
+          }
+        }
+      ],
+      "label_set_sha256": "27e7020411d57b36191c259d360328729f80057a09b56487dae6ebb7672bc1bb"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "c92434ed-6244-5205-bdc8-35e0a12713e3",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "percent_baseline",
+      "case_sha256": "1265899c0cc75b11981e76c8480508ec24283467a0c149858ad6d5ef6ab702f5",
+      "labels": [
+        {
+          "claim_id": "percent_baseline-1",
+          "claim_sha256": "1fd7d7cfa7432418c281547d158d9faf99be0c31911e8c6b5ab4c7fb82c42a8e",
+          "expected": {
+            "status": "MATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_match"
+          }
+        },
+        {
+          "claim_id": "percent_baseline-2",
+          "claim_sha256": "850dbf7b29a96a751788bbb54b680bc0f53639573a4f0ff3e0ec00b83f4f6a10",
+          "expected": {
+            "status": "MISMATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_mismatch"
+          }
+        }
+      ],
+      "label_set_sha256": "87896ae24d82bc67700dc57ff41b3bb6df632c1c1ad428e91aa79dc8a0922a76"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "164e7107-dda6-592c-b5c6-b6dc11a9ec87",
+      "provenance": "independent_arithmetic",
+      "method_record": "Hand expected HALF_UP ties: 101.005 to 101.01 and 1.005 to 1.01; percentage is 100*(101.005-100)/100=1.005. Decimal precision 6000 independently checked in tests; not external expert labels.",
+      "revision": 1,
+      "case_id": "percent_baseline",
+      "case_sha256": "1265899c0cc75b11981e76c8480508ec24283467a0c149858ad6d5ef6ab702f5",
+      "labels": [
+        {
+          "claim_id": "percent_baseline-1",
+          "claim_sha256": "1fd7d7cfa7432418c281547d158d9faf99be0c31911e8c6b5ab4c7fb82c42a8e",
+          "expected": {
+            "status": "MATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_match"
+          }
+        },
+        {
+          "claim_id": "percent_baseline-2",
+          "claim_sha256": "850dbf7b29a96a751788bbb54b680bc0f53639573a4f0ff3e0ec00b83f4f6a10",
+          "expected": {
+            "status": "MISMATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_mismatch"
+          }
+        }
+      ],
+      "label_set_sha256": "0f57d307970b8ec48d29163e043c20f1168ada821451073db6d6e2d0cf8da776"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "607a0b31-4be2-5142-a006-f0922c18c955",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "unknown_context",
+      "case_sha256": "50e6e6e14837bb65ba882c124e2a0297896bc042cb5540f88ebf96e333e410de",
+      "labels": [
+        {
+          "claim_id": "unknown_context-1",
+          "claim_sha256": "484dc73caef59e4c8cfd3c50f88b358332e51d247c57118b51b46f8d9ae3505f",
+          "expected": {
+            "status": "MATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_match"
+          }
+        }
+      ],
+      "label_set_sha256": "afabdd339a04fce715e94a53feb9a11cf90dc6d61fd5b39057f97a82781b2b22"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "2c642bb4-873a-5526-9289-82749c6afb5a",
+      "provenance": "independent_arithmetic",
+      "method_record": "Hand expected HALF_UP ties: 101.005 to 101.01 and 1.005 to 1.01; percentage is 100*(101.005-100)/100=1.005. Decimal precision 6000 independently checked in tests; not external expert labels.",
+      "revision": 1,
+      "case_id": "unknown_context",
+      "case_sha256": "50e6e6e14837bb65ba882c124e2a0297896bc042cb5540f88ebf96e333e410de",
+      "labels": [
+        {
+          "claim_id": "unknown_context-1",
+          "claim_sha256": "484dc73caef59e4c8cfd3c50f88b358332e51d247c57118b51b46f8d9ae3505f",
+          "expected": {
+            "status": "MATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_match"
+          }
+        }
+      ],
+      "label_set_sha256": "a0771e26678f64c3e8bf493ffdf27fea77fc0e293d9d6687b5cec88b02a4e71a"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "dff06563-9396-5b42-ab86-f0c25ce616f2",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "wrong_field",
+      "case_sha256": "fc8c5e3a872616b3e00e1393a2072e6561ccd4b1dcbd1a1ee27dfb5d21583d55",
+      "labels": [
+        {
+          "claim_id": "wrong_field-1",
+          "claim_sha256": "ef88124dc6d9a91fc5e7116423ed3d3df9fd73a3ef717c9bc937b201936a8538",
+          "expected": {
+            "status": "MISMATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_mismatch"
+          }
+        }
+      ],
+      "label_set_sha256": "32a9ad7290eb9c3eb85e343cfca54f72c7157473c84dedfe7d92ab4e48cca2d8"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "bed5dceb-6f41-5ca9-b004-9b89aaf3d48a",
+      "provenance": "independent_arithmetic",
+      "method_record": "Hand expected HALF_UP ties: 101.005 to 101.01 and 1.005 to 1.01; percentage is 100*(101.005-100)/100=1.005. Decimal precision 6000 independently checked in tests; not external expert labels.",
+      "revision": 1,
+      "case_id": "wrong_field",
+      "case_sha256": "fc8c5e3a872616b3e00e1393a2072e6561ccd4b1dcbd1a1ee27dfb5d21583d55",
+      "labels": [
+        {
+          "claim_id": "wrong_field-1",
+          "claim_sha256": "ef88124dc6d9a91fc5e7116423ed3d3df9fd73a3ef717c9bc937b201936a8538",
+          "expected": {
+            "status": "MISMATCH",
+            "rounded_decimal": "1.01",
+            "reason": "value_mismatch"
+          }
+        }
+      ],
+      "label_set_sha256": "e422ca6fd9b6442c27fa403643f0f559e961a9d389e7b4e3f6cb5a7feb777ecb"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "4fcd32ea-8bd9-5ca8-bb12-b7db1fad2e8d",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "non_numeric",
+      "case_sha256": "bd739f1a00939981e1e9356e34b824f05533d5ba7b0a7e6f5436a7b7b49b9f6d",
+      "labels": [
+        {
+          "claim_id": "non_numeric-1",
+          "claim_sha256": "16ecb30834c3d6bc3bc0f25add3a1a0e5ed17c1a948cc194d868204ea9372041",
+          "expected": {
+            "status": "MISSING",
+            "rounded_decimal": null,
+            "reason": "field_not_numeric"
+          }
+        },
+        {
+          "claim_id": "non_numeric-2",
+          "claim_sha256": "707131b8837754be6b7fd6823688af4c871b163d334ce07c4c206c63ed35c34d",
+          "expected": {
+            "status": "MISSING",
+            "rounded_decimal": null,
+            "reason": "field_not_numeric"
+          }
+        },
+        {
+          "claim_id": "non_numeric-3",
+          "claim_sha256": "07896162f51db0dff89313417ef9d4602602dd71fa08b29207917c9a5f8ff3a9",
+          "expected": {
+            "status": "MISSING",
+            "rounded_decimal": null,
+            "reason": "field_not_numeric"
+          }
+        }
+      ],
+      "label_set_sha256": "41b4f683dcbc58560bd198f52f822d4d4739380ab0429984fcbd14af1409d40c"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "f5ddb668-fc7c-5813-98c7-338cb18ccdc0",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "withheld",
+      "case_sha256": "12fc033db80a3bb189e421100273a3a4fb6e4947c8b87df0a34074f9fbc793e1",
+      "labels": [
+        {
+          "claim_id": "withheld-1",
+          "claim_sha256": "8f32d81d63f2afe83e5dc01106244de415040de310ad566bd615378d9b0ab1e8",
+          "expected": {
+            "status": "MISSING",
+            "rounded_decimal": null,
+            "reason": "source_withheld"
+          }
+        }
+      ],
+      "label_set_sha256": "87f7cb105a3329c349d6d62daad7cb7bed1e50bb51be8761c21b5998eb04788f"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "e10405f8-a0c0-5c54-a464-ac69da2167df",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "unavailable",
+      "case_sha256": "58ad1a5e417ccaed32b2dbce01a54a45cb8bf0d1d5a26097e755cabef29fddc9",
+      "labels": [
+        {
+          "claim_id": "unavailable-1",
+          "claim_sha256": "b14416b904ef3e2a21fb447d6cb81d5e0806a34aa8f9f87c57bc63b399d95a50",
+          "expected": {
+            "status": "MISSING",
+            "rounded_decimal": null,
+            "reason": "source_unavailable"
+          }
+        }
+      ],
+      "label_set_sha256": "cba2758cfaf9ad2ab695784efd9c9cd65a7a730f408d4a3e56a88530a1df7899"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "9329dec0-bff8-5474-bcec-c8683acc4bac",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "missing_row",
+      "case_sha256": "6163cc939f7e5a45384e7f30dc3728a6bc3c2e607b7c0c24d9dcf4f8a142a309",
+      "labels": [
+        {
+          "claim_id": "missing_row-1",
+          "claim_sha256": "572cbabd848b1e7c5856f7b8778415a764b286483dcf5aeb21cd66196178d35d",
+          "expected": {
+            "status": "MISSING",
+            "rounded_decimal": null,
+            "reason": "row_missing"
+          }
+        }
+      ],
+      "label_set_sha256": "80f2b9e1ee12cfdf78eda9de718ca9e13b8cb74ca95375022bff1d8df4f212b1"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "8b56947e-851a-54c6-807a-fcd12760443f",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "manual_forms",
+      "case_sha256": "4dd94ba5bdd5231404afe777e767c74fa04a4e0eda0b6e8d47d4b8271d39f3f3",
+      "labels": [
+        {
+          "claim_id": "manual_forms-1",
+          "claim_sha256": "5c6fa21a99c73b790b723fca6468429fb5cbcf55c62914311d1882986e5bed33",
+          "expected": {
+            "status": "MANUAL",
+            "rounded_decimal": "1.01",
+            "reason": "selection_unsupported"
+          }
+        },
+        {
+          "claim_id": "manual_forms-2",
+          "claim_sha256": "78b8abc9846b570e88ddb959b099ba771b4836c1723a38aa56bde2f4aac43a2e",
+          "expected": {
+            "status": "MANUAL",
+            "rounded_decimal": "1.01",
+            "reason": "selection_unsupported"
+          }
+        }
+      ],
+      "label_set_sha256": "93fd267ead3ccbbc8b4e69a4248ec6de016e567a33bf6e767542ac7c2327dc22"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "1eb5d676-7eef-53e0-8d25-7735333e85ed",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "prediction",
+      "case_sha256": "6ac4b1c3739ec9b927deee6c4bf36d641df2cd1cafdf11d8d8d8d678e151200f",
+      "labels": [
+        {
+          "claim_id": "prediction-1",
+          "claim_sha256": "9ca9212845d6875ad616bee05eb2b827f0542b529755fb34d2ac9ef2d0a39359",
+          "expected": {
+            "status": "MANUAL",
+            "rounded_decimal": "101.01",
+            "reason": "prediction_not_evaluated"
+          }
+        }
+      ],
+      "label_set_sha256": "9a230db61648c0ab743c30c8536ade3278b58e57e5940cbe0b7208b83e08fa20"
+    },
+    {
+      "schema_version": 1,
+      "label_set_id": "836ee4b2-ff91-53b6-bd83-72ecbd967974",
+      "provenance": "engineering",
+      "method_record": "Owned fictional boundary expectations declared by fixture author before evaluator execution; not external expert labels.",
+      "revision": 1,
+      "case_id": "legacy",
+      "case_sha256": "daedc2dbc9bc1eebf18b8262d1081a77086ff04cc1664701aaa8dd893ed119e7",
+      "labels": [
+        {
+          "claim_id": "legacy-1",
+          "claim_sha256": "ff4be5f73f7d327023a0a2d591dd3a308dc5c6d47f70b03ab38c328415393825",
+          "expected": {
+            "status": "UNKNOWN_LEGACY",
+            "rounded_decimal": null,
+            "reason": "original_numeric_authority_absent"
+          }
+        }
+      ],
+      "label_set_sha256": "83928f676cc81058feb82610dfc7c505e51701c626dd5ca0a663591d77f78db1"
+    }
+  ],
+  "pack_sha256": "b3f8cfd37d3c58ed681c02c94bb21513ad02eb551703ee53eabda867c0783aac"
+}
