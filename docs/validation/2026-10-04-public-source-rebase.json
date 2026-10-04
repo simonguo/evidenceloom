@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "historical_validated_source_commit": "12a92198d08762ea9eed59531f2ccb25e14eeb5a",
+  "historical_validation_head": "89fe610b8556d812ee41af183d7b4c71bff71c31",
+  "rebased_source_commit": "ef4fc666e8c8df5651af8c6d79d69bbb037b94c6",
+  "rebased_validation_head": "b2704584c348ca86ed443d357eb06b5abb5317bf",
+  "new_parent": "33d6de68eddae27af38ae224cb273080aa8625d3",
+  "changed_paths_from_historical_validation": [
+    ".github/workflows/sidecar-diagnostics.yml",
+    "docs/validation/2026-10-04-frozen-claim-evaluation.md",
+    "docs/validation/2026-10-04-native-ci-timeout.json",
+    "docs/validation/2026-10-04-native-ci-timeout.md"
+  ],
+  "unchanged_tracked_file_count": 567,
+  "unchanged_core_python_count": 108,
+  "unchanged_inventory_component_sha256": "7787c8fc53ee5fcc3b57aa9b05fdc75a99828c297b3faa054500f1c2fc73a72e",
+  "workflow_coverage": {
+    "only_new_source_test_added_to_parent": true,
+    "all_other_steps_unchanged": true,
+    "timeouts": {
+      "aarch64-apple-darwin": 45,
+      "x86_64-apple-darwin": 90,
+      "x86_64-pc-windows-msvc": 45
+    }
+  },
+  "actual_post_rebase_cli": {
+    "python": "3.12.10",
+    "returncode": 0,
+    "summary": {
+      "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+      "expert": "NOT_EVALUATED",
+      "historical_authority": "UNAVAILABLE",
+      "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+      "observation_count": 48,
+      "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+      "series_count": 2,
+      "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+    },
+    "json_inputs_before_after_unchanged": true,
+    "input_sha256": {
+      "raw.json": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+      "manifest_v1.json": "992f3de577e8d50a3e28e5c3dc6e06dc2dac19d404b7f0f71a4b726a79516577",
+      "pending_review_v1.json": "6de6a6b7b2e6a85194efe6e3e99dfbc35762cdee09d878d2ab8494887b84f7e6"
+    }
+  },
+  "limits": [
+    "Historical tests and actual CRLF/cross-version proof were executed at the named original commits.",
+    "Exact byte comparison binds their code/fixture scope after rebase, not new remote CI acceptance.",
+    "The actual post-rebase CLI is a single local CPython 3.12 execution, not all supported platforms.",
+    "Final candidate head still requires complete remote checks; no external expert adjudication occurred."
+  ]
+}

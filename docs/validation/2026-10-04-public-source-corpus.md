@@ -1,9 +1,17 @@
 # Real public-source corpus validation
 
-This record binds source commit `12a92198d08762ea9eed59531f2ccb25e14eeb5a`,
+This record covers the original validated source commit `12a92198d08762ea9eed59531f2ccb25e14eeb5a`,
 based on `d98eeba0baf601df2acf3791ab85b2d6d5a5b6b6` from
 [PR #90](https://github.com/simonguo/evidenceloom/pull/90). Later validation-only
 commits do not replace required checks at the final candidate PR head.
+
+The candidate was subsequently rebased onto the parent's Intel CI budget repair.
+[The rebase record](2026-10-04-public-source-rebase.json) binds the resulting
+source commit `ef4fc666e8c8df5651af8c6d79d69bbb037b94c6` to the original
+validation scopes: all 108 core Python files, tests, inputs, policies and
+dependency bytes are unchanged. A fresh post-rebase corpus CLI run preserved
+the same complete summary and input bytes. The workflow retains every gate,
+with the inherited Intel 90-minute budget; final-head remote checks are required.
 
 The [data-only protocol](../PUBLIC_SOURCE_CORPUS.md) retains an actual BLS API v1
 response with two CPI series and 48 monthly observations. The original entity is
