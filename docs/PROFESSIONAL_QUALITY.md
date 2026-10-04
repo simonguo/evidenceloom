@@ -89,6 +89,8 @@ The [Memory target validation record](validation/2026-10-04-memory-target-bindin
 
 ## Completion audit
 
+The [pre-start cancellation validation](validation/2026-10-04-pre-start-analysis-cancellation.md) records an actual frontend-adapter race: cancelling while listener registration was pending still invoked start afterward. The one-line guard and seven permanent cases prevent that request after registration resolves. Mocked IPC and passing frontend checks do not establish acknowledged backend cancellation or process-tree cleanup; coordinated execution ownership and broader analyst/release acceptance remain open.
+
 The [settlement race validation](validation/2026-10-04-settlement-race-test.md) records a confirmed test gap: an unhandled worker exception could leave the old race test passing with a warning. The candidate propagates worker results/errors, requires actual post-release state reload and makes pytest's unhandled-thread warning fail globally. This changes validation behavior, not the settlement algorithm; bounded failure paths cannot forcibly terminate a stuck Python thread. Native gates and the broader analyst/release objective remain open.
 
 The [PyInstaller security validation](validation/2026-10-04-pyinstaller-security.md) binds a locked development-packager update and official artifacts to bounded, nonprivileged minimal-program checks. Existing binaries require rebuilding; native production packaging and real bridges are separate exact-head CI gates. Privileged application exploitability, signed releases, clean-machine installation and broader security/analyst acceptance are not established by these local checks.
