@@ -54,6 +54,7 @@ markers = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
+    "error::pytest.PytestUnhandledThreadExceptionWarning",
 ]
 
 [dependency-groups]

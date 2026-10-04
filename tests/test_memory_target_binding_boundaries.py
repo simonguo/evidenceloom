@@ -1,6 +1,7 @@
 """Offline consumer, shared-observation and durable scheduler boundaries."""
 
 from copy import deepcopy
+from concurrent.futures import Future
 import hashlib
 import json
 import os
@@ -546,6 +547,42 @@ with MemoryStore(sys.argv[1]).review_batch('FICT',json.loads(sys.argv[2])) as id
     assert result.returncode == 0 and json.loads(result.stdout) == [ids[5], *ids[:4]]
 
 
+def _start_race_worker(action, *, name):
+    result = Future()
+
+    def run():
+        try:
+            result.set_result(action())
+        except BaseException as exc:
+            result.set_exception(exc)
+
+    thread = threading.Thread(target=run, name=name, daemon=True)
+    thread.start()
+    return thread, result
+
+
+def _finish_race_worker(worker, timeout):
+    thread, result = worker
+    try:
+        return result.result(timeout=timeout)
+    finally:
+        thread.join(timeout)
+        assert not thread.is_alive(), "bounded fictional worker did not finish"
+
+
+def test_fair_scheduler_race_worker_exception_reaches_main_thread():
+    failure = AssertionError("owned fictional worker failure")
+
+    def fail():
+        raise failure
+
+    worker = _start_race_worker(fail, name="exception-witness")
+    with pytest.raises(AssertionError, match="owned fictional worker failure") as raised:
+        _finish_race_worker(worker, timeout=10)
+    assert raised.value is failure
+    assert worker[1].done()
+
+
 def test_fair_scheduler_reloads_after_delayed_prelock_list_before_reflection(tmp_path):
     item = snapshot()
     item = saved(
@@ -572,28 +609,51 @@ def test_fair_scheduler_reloads_after_delayed_prelock_list_before_reflection(tmp
     first.store.record_decision(item)
     collected, finished = threading.Event(), threading.Event()
     actual_list = second.store.list_decisions
+    actual_load = second.store.load_decision
+    reloaded = []
+    # First settlement has its own bounded worker completion. The delayed read
+    # gets enough time for that bound, rather than racing an uncontrolled main
+    # thread settlement against the old independent ten-second assertion.
+    stage_timeout = 120
 
     def delayed_list():
         stale = actual_list()
+        assert len(stale) == 1 and stale[0]["reflection"] is None
         collected.set()
-        assert finished.wait(10), "bounded fictional race did not release"
+        assert finished.wait(2 * stage_timeout), "bounded fictional race did not release"
         return stale
 
+    def observed_reload(run_id):
+        current = actual_load(run_id)
+        if finished.is_set():
+            reloaded.append((run_id, current))
+        return current
+
     second.store.list_decisions = delayed_list
-    thread = threading.Thread(target=second.settle_pending, args=("FICT_SOURCE_A",))
-    thread.start()
+    second.store.load_decision = observed_reload
+    second_worker = _start_race_worker(
+        lambda: second.settle_pending("FICT_SOURCE_A"), name="second-settlement"
+    )
+    first_worker = None
     try:
-        assert collected.wait(10), "bounded fictional race did not collect"
-        first.settle_pending("FICT_SOURCE_A")
-        retained = first.store.load_decision(item["run_id"])
-        assert retained["reflection"] is not None
+        assert collected.wait(stage_timeout), "bounded fictional race did not collect"
+        first_worker = _start_race_worker(
+            lambda: first.settle_pending("FICT_SOURCE_A"), name="first-settlement"
+        )
+        _finish_race_worker(first_worker, timeout=stage_timeout)
     finally:
         finished.set()
-        thread.join(10)
-    assert not thread.is_alive()
+        second_worker[0].join(stage_timeout)
+        if first_worker is not None:
+            first_worker[0].join(stage_timeout)
+        _finish_race_worker(second_worker, timeout=0)
+    assert second_worker[1].done()
+    retained = first.store.load_decision(item["run_id"])
+    assert retained["reflection"] is not None
+    assert reloaded == [(item["run_id"], retained)]
     assert first.reflector.invoke_reference_reflection.call_count == 1
     second.reflector.invoke_reference_reflection.assert_not_called()
-    assert second.store.load_decision(item["run_id"]) == retained
+    assert actual_load(item["run_id"]) == retained
 
 
 def test_fair_scheduler_corrupt_cursor_defers_without_provider_or_outcome(tmp_path, monkeypatch):
