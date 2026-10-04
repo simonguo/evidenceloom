@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "kind": "public_source_corpus",
+  "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+  "provider": "bls",
+  "dataset": "cpi",
+  "normalization_policy": "bls-api-monthly-decimal-string-v1",
+  "request": {
+    "source_url": "https://api.bls.gov/publicAPI/v1/timeseries/data/",
+    "method": "POST",
+    "body_utf8": "{\"seriesid\":[\"CUSR0000SA0\",\"CUUR0000SA0\"],\"startyear\":\"2023\",\"endyear\":\"2024\"}",
+    "body_sha256": "4e9b6e65a3d257e267c57ec38a2a0a5d6a74208f44f9bd5b0f06a80fda253251"
+  },
+  "capture": {
+    "retrieval_started_at": "2026-10-04T09:51:29.776446+00:00",
+    "retrieval_completed_at": "2026-10-04T09:51:31.990955+00:00",
+    "http_status": 200,
+    "api_status": "REQUEST_SUCCEEDED",
+    "content_type": "text/plain;charset=ISO-8859-1",
+    "raw_bytes": 4393,
+    "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90"
+  },
+  "snapshot": {
+    "kind": "current_api_snapshot",
+    "publication_time": null,
+    "historical_vintage": "unknown",
+    "first_public_availability": null,
+    "first_public_availability_status": "unknown"
+  },
+  "series": [
+    {
+      "series_id": "CUSR0000SA0",
+      "subject": {
+        "index_type": "CPI-U",
+        "area_code": "0000",
+        "area_name": "U.S. city average",
+        "item_code": "SA0",
+        "item_name": "All items"
+      },
+      "frequency": "monthly",
+      "units": {
+        "kind": "index",
+        "base": "1982-84=100"
+      },
+      "adjustment": "seasonally_adjusted",
+      "metadata_basis": {
+        "status": "declared_from_official_definitions",
+        "source_urls": [
+          "https://www.bls.gov/cpi/factsheets/cpi-series-ids.htm",
+          "https://www.bls.gov/help/column.htm"
+        ]
+      },
+      "observed_coverage": {
+        "start": "2023-01",
+        "end": "2024-12",
+        "observation_count": 24
+      }
+    },
+    {
+      "series_id": "CUUR0000SA0",
+      "subject": {
+        "index_type": "CPI-U",
+        "area_code": "0000",
+        "area_name": "U.S. city average",
+        "item_code": "SA0",
+        "item_name": "All items"
+      },
+      "frequency": "monthly",
+      "units": {
+        "kind": "index",
+        "base": "1982-84=100"
+      },
+      "adjustment": "not_seasonally_adjusted",
+      "metadata_basis": {
+        "status": "declared_from_official_definitions",
+        "source_urls": [
+          "https://www.bls.gov/cpi/factsheets/cpi-series-ids.htm",
+          "https://www.bls.gov/help/column.htm"
+        ]
+      },
+      "observed_coverage": {
+        "start": "2023-01",
+        "end": "2024-12",
+        "observation_count": 24
+      }
+    }
+  ],
+  "rights": {
+    "basis": "official_public_domain_statement",
+    "source_urls": [
+      "https://www.bls.gov/bls/linksite.htm",
+      "https://www.bls.gov/developers/termsOfService.htm"
+    ],
+    "checked_date": "2026-10-04",
+    "attribution": "Source: U.S. Bureau of Labor Statistics",
+    "retrieval_date": "2026-10-04",
+    "required_notice": "BLS.gov cannot vouch for the data or analyses derived from these data after the data have been retrieved from BLS.gov.",
+    "scope": "numeric_data_only_excludes_logos_photographs_illustrations",
+    "status": "official_statements_recorded_not_legal_attestation"
+  },
+  "historical_references": [
+    {
+      "reference_id": "bls-cpi-release-20240111",
+      "source_url": "https://www.bls.gov/news.release/archives/cpi_01112024.htm",
+      "release_id": "USDL-24-0019",
+      "reference_period": "2023-12",
+      "reported_publication_literal": "8:30 a.m. (ET) Thursday, January 11, 2024",
+      "reported_timezone": "ET",
+      "reported_publication_utc": "2024-01-11T13:30:00.000000Z",
+      "reported_value": "0.3",
+      "units": "percent_change_from_previous_month",
+      "acquisition_status": "web_reader_only",
+      "raw_sha256": null,
+      "raw_bytes": null,
+      "support_status": "reference_metadata_only_no_numeric_authority"
+    },
+    {
+      "reference_id": "bls-cpi-release-20240213",
+      "source_url": "https://www.bls.gov/news.release/archives/cpi_02132024.htm",
+      "release_id": "USDL-24-0265",
+      "reference_period": "2023-12",
+      "reported_publication_literal": "8:30 a.m. (ET) Tuesday, February 13, 2024",
+      "reported_timezone": "ET",
+      "reported_publication_utc": "2024-02-13T13:30:00.000000Z",
+      "reported_value": "0.2",
+      "units": "percent_change_from_previous_month",
+      "acquisition_status": "web_reader_only",
+      "raw_sha256": null,
+      "raw_bytes": null,
+      "support_status": "reference_metadata_only_no_numeric_authority"
+    }
+  ],
+  "acquisition_failure": {
+    "source_url": "https://www.bls.gov/news.release/archives/cpi_01112024.htm",
+    "retrieval_started_at": "2026-10-04T09:50:11.370306+00:00",
+    "http_status": 403,
+    "result": "automatic_capture_unavailable_no_bypass"
+  },
+  "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8"
+}

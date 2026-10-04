@@ -5,3 +5,4 @@
 /tests/fixtures/**/*.json text eol=lf
 /pyproject.toml text eol=lf
 /uv.lock text eol=lf
+/tests/fixtures/public_sources/**/raw.json -text
