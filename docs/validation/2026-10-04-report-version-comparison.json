@@ -1,0 +1,1303 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-04T12:29:39.881481+00:00",
+  "source_commit": "a420e171a82e9b1ba8dda5b94b454f67ea1ed90c",
+  "base_commit": "79fd4e326159815accde8e8b28ef6bfdc564581b",
+  "original_source_commit": "0affa8ca422239dbae41088f3f9e69428a3f5e6f",
+  "candidate_files_sha256": {
+    "frontend/src/features/output-quality/components/OutputQualityPanel.tsx": "5d0c57f455ca73483c0ac892f188fa8434795f1505a806699d390a6e9cf4b990",
+    "frontend/src/features/report-export/components/ReportVersionsPanel.tsx": "423a408441c32daadf180aa1f2bf7bbf4e8e88c5a633a5f243cb27bf4eb48725",
+    "frontend/src/features/report-export/components/ReportVersionsPanel.test.ts": "21547f14f5c93097820e3c1df3666f86399f30c4d372a95527c0cdaef80a4079",
+    "frontend/src/features/report-export/comparison-types.ts": "92130708e405d109a3119ebc06e96542649bc7e51b06791455d1faef3c17c6c0",
+    "frontend/src/features/report-export/components/ComparisonVersionSummary.tsx": "88ee5e522576156a9dad2ac1699f76b6e67fd21909b38359feb09da21225c880",
+    "frontend/src/features/report-export/components/ReportVersionComparison.tsx": "2f4934f97c8352e541a0c6559b6e7dc716f7d74359e1adc65d6af98972a460a1",
+    "frontend/src/features/report-export/components/ReportVersionComparison.test.ts": "1dff6689684fd2622079b2faac97204b27909e28764ca12c345ab95f23cf0b70",
+    "frontend/src/features/report-export/hooks/useReportComparison.ts": "642b655e91560d5462b38b61c0866bda64689ab6cbff61a78accc5bfc207cfbe",
+    "frontend/src/features/report-export/lib/comparison-labels.ts": "4a0139704a55a201e08e2107965f34d1268f3bf5e2609a01cd5b8d21f9f034eb",
+    "frontend/src/features/report-export/lib/comparison.ts": "a3e2c4abb6d58d9997ed372d5103706253c8ac1c23e5a30030d462940a9a784d",
+    "frontend/src/features/report-export/lib/comparison.test.ts": "6eecd877b8ac533da75a54d21ec04711e5c7bb10a3998df0d6901236d0a4f42a",
+    "frontend/src/features/report-export/lib/comparison-metadata.ts": "2f18e281efaf7630e0f2839a066168e0806435b6d88c95c677ce33e9ba76afab",
+    "frontend/src/features/report-export/lib/comparison-metadata.test.ts": "7b6b339dc40969c4bb341b89409f2129f4e003519bf19cee26a6cab35c7dcad8"
+  },
+  "tracked_frontend_files_sha256": [
+    {
+      "path": "frontend/.gitignore",
+      "sha256": "cd32c69b1ac9c913a62bc4be4e290238bec2dd960ac3fa41b1df8fc0970defb8"
+    },
+    {
+      "path": "frontend/DESKTOP_DISTRIBUTION.md",
+      "sha256": "be202ab0d023bca9e14e9e0c618320517eb516ad5ada84b34dee1d6c9703397f"
+    },
+    {
+      "path": "frontend/README.md",
+      "sha256": "f72e359e17d487f0af9885471893e375163d73d821def93de6725b46c6814ebe"
+    },
+    {
+      "path": "frontend/SIDECAR.md",
+      "sha256": "c79a181093b25e1fd243a83f14cd6caebb57f690dc601d44e576cccefabaab4f"
+    },
+    {
+      "path": "frontend/eslint.config.mjs",
+      "sha256": "265f1d8a3c93743d8fbf084f7e61b7526754aff0d9d784519143055f48a30529"
+    },
+    {
+      "path": "frontend/next-env.d.ts",
+      "sha256": "85ae5aee75f011967cf2d25cbc342f62d69314e9d925f7f4aa3456fc2cffcca6"
+    },
+    {
+      "path": "frontend/next.config.mjs",
+      "sha256": "923c95fcd27fcfcedb1036a10789957504124411ca84f36e011861f1a4b1154d"
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "sha256": "49ebbdecb64fa39974a1946a66b2d93b2a0d4a751b45a6b69bf5994c3b0cf9e4"
+    },
+    {
+      "path": "frontend/package.json",
+      "sha256": "5b901a7a5f3f254bb64385f784dc2bd0d9983421a5ebe3a2e1317f442267b356"
+    },
+    {
+      "path": "frontend/postcss.config.mjs",
+      "sha256": "8c4071497479b4bb346d0ebb53b1bdeb555beb659512aaa0d6988d0d83ddeed5"
+    },
+    {
+      "path": "frontend/server/evidenceloom-runner.spec",
+      "sha256": "5ad52e91a6c6fbf94e29efaae9f482ab3c1ca781e827f7135c995971bc41bbed"
+    },
+    {
+      "path": "frontend/server/load_ohlcv_chart.py",
+      "sha256": "9640d940b05c09ac56cbe1a62990caa4ddadf0ca2c72f2172192d37290042843"
+    },
+    {
+      "path": "frontend/server/resolve_instrument.py",
+      "sha256": "7c59fd7f02e57ca353a71f6804add9c9a8307eac8608c695913d06fa54d6ad08"
+    },
+    {
+      "path": "frontend/server/run_analysis.py",
+      "sha256": "440aded271e02f4aa0b0edb6281817b4432e27b92d6e499c328f176dc44ec5ca"
+    },
+    {
+      "path": "frontend/server/test_llm.py",
+      "sha256": "341eabf4642280ae98cc1f90d1de9c4b81f8a402f67cf7c8e4eeb2ab57007ba6"
+    },
+    {
+      "path": "frontend/src/app/api/_lib/runner-env.test.ts",
+      "sha256": "ee55629029a12aa7f91e18ba425dfd7760056dc3a71852faeeda2e9b2b99f583"
+    },
+    {
+      "path": "frontend/src/app/api/_lib/runner-env.ts",
+      "sha256": "2a3e98bb35a39e71f23425efd2b758852b7c9e3d4376a32660f1fcba098d87fe"
+    },
+    {
+      "path": "frontend/src/app/api/analyze/route.ts",
+      "sha256": "e8b41286bbbfbaf5f0377dea5009401110d428d620fa95e61203a9c9f9514ddf"
+    },
+    {
+      "path": "frontend/src/app/api/memory/route.test.ts",
+      "sha256": "cf6e75739859e3a65088b4371a24c5c9036af11b7f0628f738d8cde6838cd046"
+    },
+    {
+      "path": "frontend/src/app/api/memory/route.ts",
+      "sha256": "09c8404b102e01ed9614b71a371eeaf289a0892e57382981f03ee3d3ad5eeef4"
+    },
+    {
+      "path": "frontend/src/app/api/resolve-instrument/route.ts",
+      "sha256": "6ac82e45438c8cd0783fdcba76cef4a4ed8bd815edc46168944766e2fe10103d"
+    },
+    {
+      "path": "frontend/src/app/api/test-llm/route.ts",
+      "sha256": "feb23c898dfed01c14b219a613d4bbab141b4a9d38d2eff8a8e186245a89a8bc"
+    },
+    {
+      "path": "frontend/src/app/diagnostics/page.tsx",
+      "sha256": "3f070f561c70aa20a25ef81d77f49df692a5ffec4e919848f22ef3d4934e831d"
+    },
+    {
+      "path": "frontend/src/app/globals.css",
+      "sha256": "9e6fa1fa57748cb43197b61a7a4b18bcd6cb4b002f31a8c564fc182556027e7f"
+    },
+    {
+      "path": "frontend/src/app/layout.tsx",
+      "sha256": "86cefe274a41cc445cb7c9c70688b6c912bffb474e1dcd4d7d199e6925ecbee0"
+    },
+    {
+      "path": "frontend/src/app/page.tsx",
+      "sha256": "063d5037b15d101a603c6762906facd0436e80ba474895a09f4a46ed34ae4567"
+    },
+    {
+      "path": "frontend/src/app/settings/page.tsx",
+      "sha256": "a2a00dad8784a11c375c8cb2fcca094490221aff6ea18ded83e0edd71081c3af"
+    },
+    {
+      "path": "frontend/src/app/tasks/detail/page.tsx",
+      "sha256": "008c1b99f9e7155938b662ab778851e27c0598ccfba047cad8c659280b6cbd11"
+    },
+    {
+      "path": "frontend/src/app/tasks/new/NewTaskFlow.tsx",
+      "sha256": "1bbc21d9c4d7c03afcc3d84fdcd82178aaf4646f99bb761bd91e019ef59ef812"
+    },
+    {
+      "path": "frontend/src/app/tasks/new/page.tsx",
+      "sha256": "16ffe75cbb0447b1ff5b21c80227e5b28d4bf9c1c0c9bb9e0c88a6bd06888fe1"
+    },
+    {
+      "path": "frontend/src/components/charts/CandlestickChart.tsx",
+      "sha256": "5ca221dcdc45887fa324e02853d5496d32a2ee2894353de0ef31354a5c832ed9"
+    },
+    {
+      "path": "frontend/src/components/task-center/AppShell.tsx",
+      "sha256": "3a8bd6b6fdf2732e4fb25665e99506a6f7b20702f314152a7a218f9f8dc19ce6"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/AgentMemberCard.tsx",
+      "sha256": "0fda3a21250ac018d2dc76d9bd14dc474779bbcad19553af55ca713c9f2fe88e"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/AgentProcessDrawer.tsx",
+      "sha256": "9f440789859468b19d4a60fdb3a1377cffb3fb194297b3eba07ef88b72afda62"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/AgentTeamCard.tsx",
+      "sha256": "bf66cbd2f656846fc640eb70df9b821959c482e72a8ecdafc82615d9df40a718"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/AnalystSelector.tsx",
+      "sha256": "7a4f9a6c706f86ad50fd6eb4e306529b69a91f92aa77b43c51b61077a4a31b31"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/BrandMark.tsx",
+      "sha256": "00f80cfcb38ac095c8577bdcd48530c02d6443dfdb59b95cd16a0ad58b3d35f9"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/CheckCard.tsx",
+      "sha256": "4d1477d072d144b76d2fb3318ee730e4a976879ca98b7434d058e1d91f05be68"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/DecisionSummaryCard.tsx",
+      "sha256": "fc166899d81baefefd56a816aa67717ea3156351c6a3c04d998eea1e47a5e7a7"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/DesktopTitleBar.tsx",
+      "sha256": "5efb35e399f1ac1c6628179f250ccb4f821b38b7dfd4570337e34f4902ceb4f0"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/EmptyTasks.tsx",
+      "sha256": "9ee09ad041a96e36098fa71b73b7ce87bf16a02852bf7617fbbdb67e8fe463a3"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/ErrorList.tsx",
+      "sha256": "a4b208423ae8ba9f20d8b41dddc084a87f577be05f3cb651691f39b7a575d461"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/EventStream.tsx",
+      "sha256": "a9028357174905e48a4306a85f867b7689b28767b360522e49325eef23e9ff64"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/KeyValue.tsx",
+      "sha256": "06bc0d12a557d1abb0e27644e22d46390f7c80db0d992a8747bff46661d52804"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/LogCard.tsx",
+      "sha256": "f7ad014eb8b4f7556721ab177143e88d7ac14f1f00c83c7805c3762c4a6a4be8"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/MetricCard.tsx",
+      "sha256": "0fc181ad5966990099a6a104d91a16ae03af4876eca9b0b58e16b08d5ab68333"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/Panel.tsx",
+      "sha256": "c6293d3c472eadf2c04837e75b319233f53489015252119b791df50505f749ef"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/ReportMarkdown.tsx",
+      "sha256": "a1195b3d3104d93042f382335e5ed9a0bce803e11947dd61ce340eb97370fe4e"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/SecretField.tsx",
+      "sha256": "9c2666c1e175fa34a5fbd666b4f126ca046f7d0f2939b5537b47bbae58e87176"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/SegmentedControl.tsx",
+      "sha256": "1a8a1995e21f54a64967b531904a93c3601a22a6b42eccc789f52bfa83c19842"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/StatusPill.tsx",
+      "sha256": "202c2086d6d666dd4cc616eeffcd7e22a87fa6e54c75b032d3a937336635bf1d"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/StatusPillLike.tsx",
+      "sha256": "482631b130c341466be27efddd8d0990878b840c81490faacf4601acc7770597"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/SummaryTile.tsx",
+      "sha256": "8d84fba1edd5eaaf86b9464161026974120840e18643f17bf4ed5735ec4eb3f3"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/TeamIcon.tsx",
+      "sha256": "05d43b71141faabaa6674e31cc0bc2f08b609ad71964c13783656051fea7ec05"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/TextField.tsx",
+      "sha256": "11cb21afb7c16211173a152ee9f4682d648c549a0dc914e38a1ec630621f420b"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/TickerFormatGuide.tsx",
+      "sha256": "f2dd29cfca486ad7d139a507e368d03c77379a774b79a4690961296660b8a163"
+    },
+    {
+      "path": "frontend/src/components/task-center/components/TimelineLogRow.tsx",
+      "sha256": "8f44f6b017c7232dbeb1ff511e85f9c451931504c53b401c432298f0e4302737"
+    },
+    {
+      "path": "frontend/src/components/task-center/constants.ts",
+      "sha256": "865d866f19ad13684fed393831c0b0de64df9debbc07e15038da2108553c79f8"
+    },
+    {
+      "path": "frontend/src/components/task-center/context.tsx",
+      "sha256": "9243ef72401f269c5f132879418fd1878a0d15dd0ef44f3830d8f9b3ceb56b5a"
+    },
+    {
+      "path": "frontend/src/components/task-center/decisions.test.ts",
+      "sha256": "79bc019e14e763b60805db4c52050b52e4dd962c4dc792414d30e527ddcbef5d"
+    },
+    {
+      "path": "frontend/src/components/task-center/decisions.ts",
+      "sha256": "5d5c1fe64683fcbf52ee081176f6f8cd6cd7ab983c64b6499b47b5865551731c"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/TaskQueuePanel.tsx",
+      "sha256": "357b132bef2aff7dd09b15cef15d54eb220e0bf98f307a583f5618d927ad90f7"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/queue-utils.ts",
+      "sha256": "d9decbcb14bd9886bda8424f921622a12fe571c9386f4a0ba16db18b0fadc17e"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/useTaskQueueController.ts",
+      "sha256": "ecceaa23fdc61c22dc9bc93f40522b19c027dbbdbdc48c5f6f987a0c5bcc71c3"
+    },
+    {
+      "path": "frontend/src/components/task-center/task-list/TaskListFilters.tsx",
+      "sha256": "33320e0f6f63a647e19dd93c331909e01829cfcaac4fb6e2f65bfe4bd32accc3"
+    },
+    {
+      "path": "frontend/src/components/task-center/task-list/useTaskFilters.ts",
+      "sha256": "83d941f123ec7437925c098e46874fe2c02d270ffb2ed7c3a9fae36ca74830ab"
+    },
+    {
+      "path": "frontend/src/components/task-center/utils.ts",
+      "sha256": "f7cfb7600f41fb28a4705ed91a0ee20ddc0c1ff6175e56e9903db9ec0730c7d2"
+    },
+    {
+      "path": "frontend/src/features/evidence/components/EvidenceInspector.test.ts",
+      "sha256": "fb2385b9aec5ea32f9e48a5789350e2ad4f896474e8baf2b224573ff09b84740"
+    },
+    {
+      "path": "frontend/src/features/evidence/components/EvidenceInspector.tsx",
+      "sha256": "303befec2e307fe20d3b6dba7bcdde5e938b9e794694dae099ca81945481f650"
+    },
+    {
+      "path": "frontend/src/features/evidence/hooks/useEvidenceCheck.ts",
+      "sha256": "ac5c9ee5379df470588d15fdb35101e26852eaa52eac4b729f512343abbd6e89"
+    },
+    {
+      "path": "frontend/src/features/evidence/lib/evidence.test.ts",
+      "sha256": "1c0ef2b857bbf27746573efa9d236ec1f7a7746d25c907e0016b9c1a2cc8b57d"
+    },
+    {
+      "path": "frontend/src/features/evidence/lib/export.ts",
+      "sha256": "1eee175332df1a755ae807fc8b59472eb7ed4ff7f898a631da30914c40244bbb"
+    },
+    {
+      "path": "frontend/src/features/evidence/lib/validation.ts",
+      "sha256": "0ea735ee5a1b4dc7474077c2aec870d2e67af47a6a47daacaa0cb0bd1863fdd3"
+    },
+    {
+      "path": "frontend/src/features/evidence/types.ts",
+      "sha256": "2c2be68571199acbf1d3876c3c106e70870bba601138045efeabab6beae6b5fc"
+    },
+    {
+      "path": "frontend/src/features/memory/components/MemoryInspector.test.ts",
+      "sha256": "af58dcb14c2b5987e1aa347ae65c5d31f6884b368211e7d9991c4a90ac9e7ba0"
+    },
+    {
+      "path": "frontend/src/features/memory/components/MemoryInspector.tsx",
+      "sha256": "7acef3c5aaed6359d1b58423568398f95d9baeb92d5875efd1bfb52f534bd2c7"
+    },
+    {
+      "path": "frontend/src/features/memory/fixtures/fictional-memory.ts",
+      "sha256": "34aae3c14cb9e0e830a2adc17bd101ce2d679038e805bc2283a63d63abedf5f1"
+    },
+    {
+      "path": "frontend/src/features/memory/fixtures/target-memory.ts",
+      "sha256": "34b16a23ede61963a595ff96081b475d8bce5064a3a6f54a6ea775f4f94fdf83"
+    },
+    {
+      "path": "frontend/src/features/memory/fixtures/test-data.ts",
+      "sha256": "ba184b7ac004e066efd5f1344ab88889bf6791c8855c96c4ad8b100a94e944f1"
+    },
+    {
+      "path": "frontend/src/features/memory/hooks/saveEvaluationReviews.test.ts",
+      "sha256": "66a5a37438db2b8fde1fc68251ba3e140715a51c9cf17d679d49cddd5dc24fd4"
+    },
+    {
+      "path": "frontend/src/features/memory/hooks/useEvaluationReview.test.ts",
+      "sha256": "6c842e4ae56448b5250fef4f086bc62b9509ea90384954307d953d2e10557f59"
+    },
+    {
+      "path": "frontend/src/features/memory/hooks/useEvaluationReview.ts",
+      "sha256": "062cf5bd81a02922c54be22ecf4f2c7cecec67e1960ad26e417d08ab3f0dae4c"
+    },
+    {
+      "path": "frontend/src/features/memory/hooks/useMemoryCheck.ts",
+      "sha256": "70702b91d8687d2d7e72e67942070cfe8b41f4897896dcb2c0d82056bb6a488c"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/context.ts",
+      "sha256": "1f9c9d1a46ca792d7673214bb1b48b75ce3d84cec7bdeffaa30adf1f2eb7ad26"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/decision.ts",
+      "sha256": "2003d3175512bc396fcdc3892c1d55e87cda331171e7bfecd3fd06717a599341"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/export.test.ts",
+      "sha256": "c60b62651459f2ec6b0048ebf8f1ba16439104497d0bad8aa997c0d4a0ffc630"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/export.ts",
+      "sha256": "0252888db70f230e19b84766b4a3adb3d68a8f3eeceb26fbb0b52bc377895dfa"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/guards.ts",
+      "sha256": "6c94b251b17835bb2ce879e6b468bc1ceadf7dd30ac69d2b658b1195fc34d448"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/persistence.test.ts",
+      "sha256": "57232df062c14454c12d09c2e9a7636888145591577a5dbec7a96dfb24239948"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/render-appendix.ts",
+      "sha256": "41a9e9e8d34e4d222fe12dfad988997a661c26a48bac05908fb4ac99d00ae945"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/reviews.ts",
+      "sha256": "6a478ee6b305dd817235965b7cc7efe09a5084ea5653ea69dd64bcebdadd61f4"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/target-persistence.test.ts",
+      "sha256": "64300a75c82c287098efebb626f363d405b163e92e99d2e42fc5dd967ca68bc3"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/target-policy.ts",
+      "sha256": "0b479d4de86852b71afaa392efda1547d4a933994f4cf2a9852608200a52abda"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/target-subjects.ts",
+      "sha256": "6ca7dc25c826db6a9f009ffba3c8a284ff10b6d069882a1f027a64ace193d247"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/targets.test.ts",
+      "sha256": "d09271ea81db4febc4703eaa15445ac650e04bbace848ffe2999a58e66d80590"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/targets.ts",
+      "sha256": "60422b4387580dec11c7ee11a596aa52e5f33d3756b0ac7d57f7403fd1f46c1b"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/tasks.ts",
+      "sha256": "e6bd7c25d36a9a71c627ba8d37e34f4a197b007c138d6b38674d60a174f6e983"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/validation.test.ts",
+      "sha256": "e76d54b1c003f1da928ebc0b0f9840f14b051972d66fdb75167f24ae8d4a54b1"
+    },
+    {
+      "path": "frontend/src/features/memory/lib/validation.ts",
+      "sha256": "b4887a67408870042d07cb00474e4888c508211c88bc238515d6e4f1bf35cf73"
+    },
+    {
+      "path": "frontend/src/features/memory/types.ts",
+      "sha256": "cefcc8b16dfcd8383df24aa3568dc3c7963e90a28069327f7445a14892f5f452"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/NumericResultView.tsx",
+      "sha256": "15fb44b5736e8300313121494424a4ee6519e5b286d0493729d54ed159981aac"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/NumericReviewForm.tsx",
+      "sha256": "87c7bbb8c11489a1500e6f5453b3e45f51585b124967a08345600b0c9960f3ed"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/NumericReviewPanel.test.ts",
+      "sha256": "6d1b6cfc8a01dbf3e735c22d95f0d5aa321f22f92447ded69e350a0b567d2876"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/NumericReviewPanel.tsx",
+      "sha256": "0d52f501249ae76960f0f657ffcb877f690baf5b05cde05a94a87618a5a7ac94"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/fixtures/fictional-numeric.ts",
+      "sha256": "8029e053bbb3c7013d1ee1598254ed2173ef2ed5326fa48ca4967e801f3bd4e7"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/hooks/useNumericReview.test.ts",
+      "sha256": "468e5d86ff87f8a2014f57cfb965652bdb2a97306c3cdca728b340bba7f81262"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/hooks/useNumericReview.ts",
+      "sha256": "bc12a57f1dd98103d729966b436aeab6dcdacea7dd7fa961ccdf151761ed32f0"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/batch.test.ts",
+      "sha256": "88ab3dbfc754f29495f255874ee7175a2bc7765c066ed1586bf09abdbac58202"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/decimal.test.ts",
+      "sha256": "85d37a739f0c318f3cf34f22ef57dbee19c9141fcc4145a0d29840474c9f843c"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/decimal.ts",
+      "sha256": "2f44997c7397a05d9cc0b420679c3a35d03d025029403a85656fbf911fdf0ab2"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/derive.ts",
+      "sha256": "236fc4d5aabb8dad83481d8b7e8be1189ea89f69a9598b556880b79a52fd1f90"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/export.test.ts",
+      "sha256": "9f2ea48a2e4824769db68df724040d10f0542cbe82b3b8e0e880472a6a4e5b76"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/export.ts",
+      "sha256": "3c061e5e7bb53c8be8d0e972faefb0bda4cf3bbe0bd7c507d1a809b2b8419396"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/guards.ts",
+      "sha256": "b16266b29e5c875a0567cd22ef34d57f72ce23cf01b814ab407a6c413a97581b"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/history.ts",
+      "sha256": "4afbfcb1929d614450ab4fde31ecd5447f0fcbaee4a09bd5ae5815023f84804a"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/options.ts",
+      "sha256": "0c2451ca1ec38cf445f2617f9d19b59380f72206e4df9eb45e2cb215fcca9009"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/persistence.test.ts",
+      "sha256": "5341918bb00c664e3c5ad19b0d1c4655e12e3a5dc14d4bc262f84c8440984c84"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/policy.ts",
+      "sha256": "1ee982c41d55ea14e49aa23a1a0d67889eff5862009fb7e986124682a360a8a4"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/prepared.ts",
+      "sha256": "bd41e6d2137d7e9554539b9d114bcb16c7e50bb7405d7e83951edb31384316e4"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/presentation.ts",
+      "sha256": "8cf2d240a80a5b236a6bceebed5da6ce08f332e9410d5cd96ca0a61d3ef1e765"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/raw-json.ts",
+      "sha256": "207f056174005d9b6d3c7b94811c56a670cfafed6933203f1302f32b187bb82e"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/render-appendix.ts",
+      "sha256": "cc33b380f69931553c0e79c1cabbef26c0ca9f0f1abba047d90549bb98ecd846"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/snapshot.ts",
+      "sha256": "7604a0009a52a006691db358a02327892044f5272b6aaef9ca045043906a17a6"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/source.ts",
+      "sha256": "b33994fe4787d971217e2b4f4a0acf278ccb7436e626b2c1aeb7cee10c15b573"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/spans.ts",
+      "sha256": "3529e0f9384a9c8e556563646d9e01bca32239e1dfd1274519e4005df49762e5"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/tasks.ts",
+      "sha256": "328dfbfa0094a3b54d6aab522a475d74936e9d80f26d3d212a82db56adee8941"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/validation.test.ts",
+      "sha256": "e06b3f229001870bc4a527dec48e0a0e9334387bbbf9a275b75a139b42b1a685"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/validation.ts",
+      "sha256": "a29a89020bb62e3863decbf05f5947b35a37d4c2d116002a98be2e5a0af1845e"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/types.ts",
+      "sha256": "678c94fed02babfa426b412687c09a6f44df7a2e86226b0f511043ac0f1585a0"
+    },
+    {
+      "path": "frontend/src/features/output-quality/components/OutputQualityPanel.tsx",
+      "sha256": "5d0c57f455ca73483c0ac892f188fa8434795f1505a806699d390a6e9cf4b990"
+    },
+    {
+      "path": "frontend/src/features/output-quality/lib/quality.test.ts",
+      "sha256": "1d18a59c5525bc3dccfc0bdbeb8aba44599d047c61a48d1e0fcee235d9482f71"
+    },
+    {
+      "path": "frontend/src/features/output-quality/lib/quality.ts",
+      "sha256": "3fb019405b8a6c29c012367d7466c90ba686577de2dd193088285c4d98f50478"
+    },
+    {
+      "path": "frontend/src/features/output-quality/types.ts",
+      "sha256": "416ade9ea1b405c07c6d9cc6ead6727ef5f2a66b4f85d29c3b8ac2f524dcf76c"
+    },
+    {
+      "path": "frontend/src/features/persistence/local-storage.test.ts",
+      "sha256": "8f1b820684f93ee873751e48d4c39c69d2a10c52bc3b62c5ddf030c8aa9172e3"
+    },
+    {
+      "path": "frontend/src/features/persistence/local-storage.ts",
+      "sha256": "e52f122daee49f75cac95e7b0bb3ab968a67bce01af0e9fe08978b95aa4a966a"
+    },
+    {
+      "path": "frontend/src/features/report-export/comparison-types.ts",
+      "sha256": "92130708e405d109a3119ebc06e96542649bc7e51b06791455d1faef3c17c6c0"
+    },
+    {
+      "path": "frontend/src/features/report-export/components/ComparisonVersionSummary.tsx",
+      "sha256": "88ee5e522576156a9dad2ac1699f76b6e67fd21909b38359feb09da21225c880"
+    },
+    {
+      "path": "frontend/src/features/report-export/components/ReportVersionComparison.test.ts",
+      "sha256": "1dff6689684fd2622079b2faac97204b27909e28764ca12c345ab95f23cf0b70"
+    },
+    {
+      "path": "frontend/src/features/report-export/components/ReportVersionComparison.tsx",
+      "sha256": "2f4934f97c8352e541a0c6559b6e7dc716f7d74359e1adc65d6af98972a460a1"
+    },
+    {
+      "path": "frontend/src/features/report-export/components/ReportVersionPreview.tsx",
+      "sha256": "144871a6c1adf0c8ecd8a32f8539eb86181d159dcdbfcf593f200f49c612e9a0"
+    },
+    {
+      "path": "frontend/src/features/report-export/components/ReportVersionsPanel.test.ts",
+      "sha256": "21547f14f5c93097820e3c1df3666f86399f30c4d372a95527c0cdaef80a4079"
+    },
+    {
+      "path": "frontend/src/features/report-export/components/ReportVersionsPanel.tsx",
+      "sha256": "423a408441c32daadf180aa1f2bf7bbf4e8e88c5a633a5f243cb27bf4eb48725"
+    },
+    {
+      "path": "frontend/src/features/report-export/fixtures/fictional-demo.test.ts",
+      "sha256": "d92082e7a4c4fa3f00a2e4bf56fe9054ae80db9cedbde7e354e449e84afa77a3"
+    },
+    {
+      "path": "frontend/src/features/report-export/fixtures/fictional-demo.ts",
+      "sha256": "34e99f7014fd951b1974377164ae594c77e2e8f428bd90379afcf9d2337782a0"
+    },
+    {
+      "path": "frontend/src/features/report-export/hooks/useReportComparison.ts",
+      "sha256": "642b655e91560d5462b38b61c0866bda64689ab6cbff61a78accc5bfc207cfbe"
+    },
+    {
+      "path": "frontend/src/features/report-export/hooks/useReportExport.test.ts",
+      "sha256": "2c6d38af5556626b24d3e8b27dd3dab0b59b48518ade7d8751afbf9dda0d5895"
+    },
+    {
+      "path": "frontend/src/features/report-export/hooks/useReportExport.ts",
+      "sha256": "d6e6deddb1d3f364dfdcea9c06d7fda7e591f95009db63b7db376dc63fec5a12"
+    },
+    {
+      "path": "frontend/src/features/report-export/index.ts",
+      "sha256": "eacc9699931855608d9e7c50c6dcb5557fda5508b4781d59b621063d0dc21985"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/comparison-labels.ts",
+      "sha256": "4a0139704a55a201e08e2107965f34d1268f3bf5e2609a01cd5b8d21f9f034eb"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/comparison-metadata.test.ts",
+      "sha256": "7b6b339dc40969c4bb341b89409f2129f4e003519bf19cee26a6cab35c7dcad8"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/comparison-metadata.ts",
+      "sha256": "2f18e281efaf7630e0f2839a066168e0806435b6d88c95c677ce33e9ba76afab"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/comparison.test.ts",
+      "sha256": "6eecd877b8ac533da75a54d21ec04711e5c7bb10a3998df0d6901236d0a4f42a"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/comparison.ts",
+      "sha256": "a3e2c4abb6d58d9997ed372d5103706253c8ac1c23e5a30030d462940a9a784d"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/filename.ts",
+      "sha256": "7ce57ade5920dfef82c1ee7a3b223bb107bbd7fd2ce6f77331d7ae115b6d64e5"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/markdown-fence.ts",
+      "sha256": "79a1c147a55c566cd2edb7fbcf3c2caf555c2847caf8d97dbdac06f60ed3fd47"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/render-html.ts",
+      "sha256": "4e87a69b718eb273485e558b80960deb54e4b24ca759c351de74cd947f3ea8b5"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/render-markdown.ts",
+      "sha256": "99f3330885f6970eea212edc910239af753042a6d6047e392cef33c5d82d4902"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/renderers.test.ts",
+      "sha256": "66fc53f69501895ca6872637ed21b5c0da7ea897dcbad51b899e451e2b17a750"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/report-document.ts",
+      "sha256": "bcf7919c7b507e7d154d427d4ce55003b2211ea16ca4e5eb419b20fadd1398b1"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/report-json.ts",
+      "sha256": "161fe0144f1091f34d7c5ec32407dcf995f2a8be5a307c490c597f413536a4e5"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/runtime-settings.test.ts",
+      "sha256": "9b165a602decd7fbb3fc2d1870d732d672bcf55445da5ca39da3526cc539bbee"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/runtime-settings.ts",
+      "sha256": "c994b5ccf2e64338cbf05eb465f57fd77e0251b2106b8b14c0fd07e839f7ad42"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/versioning.test.ts",
+      "sha256": "6b9f5c1d831b75f92fcb60fbbe82a70025f55fc6d913fc17ece10a41c5fdd572"
+    },
+    {
+      "path": "frontend/src/features/report-export/lib/versioning.ts",
+      "sha256": "2eda9f58e4d43f6ea15edd14c0f0731a10e32a85e0d08ba4bdb555a7713faa75"
+    },
+    {
+      "path": "frontend/src/features/report-export/types.ts",
+      "sha256": "59d045df11ac727134b26837ff271dd8bdbf7e6aea2527bd89cc215e58f1cf97"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/components/ReadinessInspector.test.ts",
+      "sha256": "90fd45c475c905ca0fc54c26b328431bab0985c5df529cd67402042e945ece93"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/components/ReadinessInspector.tsx",
+      "sha256": "7fab61a0f703725ad6e78ebf93766a6cb6920efa7899b0d1ae23bfed7297e038"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/fixtures/fictional-readiness.ts",
+      "sha256": "9febee044523e3e6febb374e5f1d7bdcd71b3f3bf77e61a6bc431dd21bdef415"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/fixtures/test-data.ts",
+      "sha256": "08d0f396722cbb9b2d3c42db3553392fb01585249f0fdfa7f9bd509aa0378d28"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/hooks/useReadinessCheck.ts",
+      "sha256": "d3114b04f3a56cf8d71e75b5800c68ab0ca3f174d945cb0f5ae7c0bc65d51882"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/checks.ts",
+      "sha256": "e8365e2e654c6506a813ae03746b681fc122e5734f2f75742f2da8857fafafb7"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/display.ts",
+      "sha256": "cc3f11080eea36277db2ab749528166225dadd509a700909a5a502be6d180de7"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/export.test.ts",
+      "sha256": "09ffe594b08c2b5a2e8df1a7a4090dc072e618c83f70bcc5bd7598eb392d6ef2"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/export.ts",
+      "sha256": "2da9429ba03a55c29c80bd9df4931e2af509a196c43a23ff687052e54fecad31"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/market-inputs.test.ts",
+      "sha256": "41b00d57939f9650ab3b5111da3bd54f9d64c9cffd2a95f9561a77bdf46d0f48"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/market-inputs.ts",
+      "sha256": "9c2f496c0e2333e956b2f73beb5268c4f72d435b769e4e9915beaa885535f609"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/observed-sources.ts",
+      "sha256": "f0b25b531b98318075cc37cdc3336866a91e8c19e6329e3ce79cd1bdc8836e8d"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/persistence.test.ts",
+      "sha256": "8f8aac3481d192421773bb7fb1c9da23b4f0b5501d8b714f76a0f1aae2b633fa"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/policy.ts",
+      "sha256": "6782bc7c029b9038bbba9604d6be809955908b138080ceae19af598f94e662e9"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/quality.ts",
+      "sha256": "f84940b8937af0ef53435c7f78031a68c719b0b11a495ee14adbe9e904927e2a"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/render-appendix.ts",
+      "sha256": "61cf50ffcce0c4b2de09fbe66fc8e64a426d7b6318e89afd2fcfaaed56be6e3f"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/validation-guards.ts",
+      "sha256": "16b4d396bd5e687a2660cdfffa6c0b49268f2b0d168cb09f6c9665ae125451d5"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/validation.test.ts",
+      "sha256": "d521ac1c313ae57a528a2250705b1012847feb8e7885dc0b2ce92b38c99276de"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/lib/validation.ts",
+      "sha256": "d3182acf30a25e7e1e29c2f5ac630f5f5c1451d68c8f588152e06fffe53006c5"
+    },
+    {
+      "path": "frontend/src/features/research-readiness/types.ts",
+      "sha256": "514fca59cdbdb08b90f5f67b9501dfd631096b72a618ba7f0d7a78bf36910050"
+    },
+    {
+      "path": "frontend/src/features/settings/components/CredentialField.tsx",
+      "sha256": "96e1775d6babe1756dbd6d295be3f5ad9090f16f0539fae106622cfeff165f97"
+    },
+    {
+      "path": "frontend/src/features/settings/lib/normalize-settings.test.ts",
+      "sha256": "476e91456772352b41b539c635b3612804e148c81dbdecf489b202b0a7a71ae0"
+    },
+    {
+      "path": "frontend/src/features/settings/lib/normalize-settings.ts",
+      "sha256": "e5c956a768d53da56678ec8f47c0d637e451c1525dd1b1699f90c3945b029ec3"
+    },
+    {
+      "path": "frontend/src/features/source-identity/components/IdentityInspector.test.ts",
+      "sha256": "bdfee3d52aea620d27b09517775127a8c467ddc476d38a223534e704ca1bef40"
+    },
+    {
+      "path": "frontend/src/features/source-identity/components/IdentityInspector.tsx",
+      "sha256": "5024765ef3d3aff74a81d519d3ffedb7179ee053ce60fb39afb7c0aecdf16305"
+    },
+    {
+      "path": "frontend/src/features/source-identity/fixtures/fictional-identity.ts",
+      "sha256": "3d07f24e97cc610361c844eb9ddcb506e354b032ed056360c69017fea41adeea"
+    },
+    {
+      "path": "frontend/src/features/source-identity/fixtures/modified-identity.ts",
+      "sha256": "7b3f5518096894c051c4024f2bac8bcb9ced3fdc9c11d302757416d569f2a509"
+    },
+    {
+      "path": "frontend/src/features/source-identity/hooks/useIdentityCheck.ts",
+      "sha256": "d49b58b74d9fd66fb3c24a041989ef9fd62f08383a0fda4cef5d34666ff1370c"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/derive.ts",
+      "sha256": "d5c4586e26a3faa2542337a5d3c0c798779ce4ad8edec43fe61ef4700d03ed08"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/display.ts",
+      "sha256": "721808c18c1582aa45d4024fd2c141d1144a1668f53597cab9bb2dcbd951e142"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/export.test.ts",
+      "sha256": "eb563c0aae1fb663eed99eb29be14336c759e0cf1e0179f01b267c477a12356e"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/export.ts",
+      "sha256": "6504e325e333b459c982cc0c34ec3cb3db45b8ae419c4ec3e2e46ea532b5b46c"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/guards.ts",
+      "sha256": "60aa55519f6b144030c4fe986ad2cadeafc747660322dd1846ee99ceb8c225f9"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/inherited-owner.test.ts",
+      "sha256": "f4c39df19fd3cdc8afe5faf2934744f85ec2665987b9f2f29896ea0026e7f482"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/persistence.test.ts",
+      "sha256": "a331109fdd00502c9f6afbefe987c3748f32da34621ee0f3bf6b711c60ecc39e"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/policy.ts",
+      "sha256": "0b08a93b2fcf5597e42ddd1b6df3699b51918a90a73b971b55b8f6c1d7989901"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/render-appendix.ts",
+      "sha256": "5a2ae78ddcd162c84e0ffc98822903c371dbec07c90ecb51f8aaf01fff180ac1"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/tasks.ts",
+      "sha256": "9bf6610b099121ddeaeae947c5d9754d7e04045f3724ef1715d6f67622e2ab6b"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/validation.test.ts",
+      "sha256": "e1b735edd672937a82ccf6c39dd1f2acaa987f9b43610f3feb5012b7c65c7df3"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/validation.ts",
+      "sha256": "c59eddea74b59e169f763e603e8e145654459c99e6112814922b8b959292cbdd"
+    },
+    {
+      "path": "frontend/src/features/source-identity/lib/versioning.test.ts",
+      "sha256": "c4072f7434f627e0cbf82b766f3007c38f0582556d5f70491361e33ffbbb9991"
+    },
+    {
+      "path": "frontend/src/features/source-identity/types.ts",
+      "sha256": "c05a6d8b43d53b6ab7504a10e3a0dbdc6461de5d3de877dcb04a9bb9e9526f41"
+    },
+    {
+      "path": "frontend/src/lib/analysis.ts",
+      "sha256": "c112af76889ae54eda1e6c25dcdb5316bb381e3a760eb5196aea3dfb9815d492"
+    },
+    {
+      "path": "frontend/src/lib/errors.ts",
+      "sha256": "c4ad380e08ecd3eb27e8b44f044fe93d988b0d2d79c86a577522d368843afae7"
+    },
+    {
+      "path": "frontend/src/lib/i18n.ts",
+      "sha256": "b6f8b08d77082614add72abbe670e8700cbccdfef6700fe7d1a3e6cab24dc4e9"
+    },
+    {
+      "path": "frontend/src/lib/runtime.ts",
+      "sha256": "baef5b6d1e1775e64ef07205d7093c37c3bf2067ec0ad10255b7c7b532952560"
+    },
+    {
+      "path": "frontend/src/lib/types.ts",
+      "sha256": "859b368c8dd6840ce87ca57b16f518746dcd049255614efd746b26c97dd7d63e"
+    },
+    {
+      "path": "frontend/tailwind.config.ts",
+      "sha256": "eb598579a88dddd9064d3544ef9fd28f5a89e5ddc1f12ad306785d66401de781"
+    },
+    {
+      "path": "frontend/tsconfig.json",
+      "sha256": "ed981cda9d74810e9818debec3af62037fe2758ce376c1a04af2f0c16510a354"
+    },
+    {
+      "path": "frontend/vitest.config.ts",
+      "sha256": "eb1abb8cef6b4d9d7a95d7a9e85a147d19c05c9a6fcc10ce78542eb4ac4fab01"
+    }
+  ],
+  "tracked_frontend_count": 215,
+  "frontend_manifest_sha256": "bbf6fab6dbaf3e95ad81e2af1843dadbbee34e0a9603cc3f37c90be22b96e0c7",
+  "scope": "Portable projection of actual retained local execution records and bounded CUA observation notes. Source commit, shared frontend hashes and every retained command log are checked during generation. No external expert or independent target-analyst approval is claimed.",
+  "full_frontend_checks": {
+    "schema_version": 1,
+    "started_at": "2026-10-04T12:23:46.866546+00:00",
+    "runtime": {
+      "node": "v22.22.3",
+      "npm": "10.9.8",
+      "declared_package_manager": "npm@11.6.2",
+      "installed": {
+        "next": "15.5.27",
+        "vitest": "4.1.11",
+        "typescript": "5.9.3",
+        "eslint": "9.39.4",
+        "react": "19.2.7",
+        "react-dom": "19.2.7"
+      }
+    },
+    "scope": "All frontend tests/lint/typecheck/standalone production build using existing dependencies; no install, source edit, provider call, native packaging or analyst acceptance.",
+    "environment_record_scope": "Explicit command overrides only. Inherited environment values and credentials are never recorded.",
+    "package_scripts": {
+      "test": "vitest run",
+      "lint": "eslint .",
+      "typecheck": "tsc --noEmit",
+      "build": "next build"
+    },
+    "tracked_frontend_unchanged": true,
+    "candidate_unchanged": true,
+    "head_unchanged": true,
+    "completed_at": "2026-10-04T12:24:27.956656+00:00",
+    "all_required_final_checks_passed": true,
+    "checks": {
+      "test": {
+        "command": [
+          "npm",
+          "run",
+          "test"
+        ],
+        "working_directory": "frontend",
+        "script": "vitest run",
+        "started_at": "2026-10-04T12:23:46.998942+00:00",
+        "explicit_environment_overrides": {},
+        "log_file": "test.log",
+        "timeout_seconds": 300,
+        "exit_code": 0,
+        "completed_at": "2026-10-04T12:23:56.086027+00:00",
+        "elapsed_seconds": 9.08705,
+        "log_sha256": "47fae2d5fc24cf0cea11c81c678f85bb231484701dad7a9bdffc75d3d8376e16"
+      },
+      "lint": {
+        "command": [
+          "npm",
+          "run",
+          "lint"
+        ],
+        "working_directory": "frontend",
+        "script": "eslint .",
+        "started_at": "2026-10-04T12:23:46.999483+00:00",
+        "explicit_environment_overrides": {},
+        "log_file": "lint.log",
+        "timeout_seconds": 300,
+        "exit_code": 0,
+        "completed_at": "2026-10-04T12:23:55.692636+00:00",
+        "elapsed_seconds": 8.693157,
+        "log_sha256": "64433d90eb0a53d21a047c1d717ff93fcf82ac583b21a1a700535929f3fe26a0"
+      },
+      "typecheck-before-build": {
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "working_directory": "frontend",
+        "script": "tsc --noEmit",
+        "started_at": "2026-10-04T12:23:56.087222+00:00",
+        "explicit_environment_overrides": {},
+        "log_file": "typecheck-before-build.log",
+        "timeout_seconds": 300,
+        "exit_code": 2,
+        "completed_at": "2026-10-04T12:24:00.092584+00:00",
+        "elapsed_seconds": 4.005389,
+        "log_sha256": "9d3604cf9c7d4588cc4491b910df89def401155091cf11d3c49526a418e0558f"
+      },
+      "build": {
+        "command": [
+          "npm",
+          "run",
+          "build"
+        ],
+        "working_directory": "frontend",
+        "script": "next build",
+        "started_at": "2026-10-04T12:24:00.093894+00:00",
+        "explicit_environment_overrides": {
+          "NEXT_TELEMETRY_DISABLED": "1"
+        },
+        "log_file": "build.log",
+        "timeout_seconds": 600,
+        "exit_code": 0,
+        "completed_at": "2026-10-04T12:24:23.950951+00:00",
+        "elapsed_seconds": 23.856998,
+        "log_sha256": "19e3031a5c773c4863ff24d1035e340b3a534034150f88b8728c469546ad39fd"
+      },
+      "typecheck-after-build": {
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "working_directory": "frontend",
+        "script": "tsc --noEmit",
+        "started_at": "2026-10-04T12:24:23.952358+00:00",
+        "explicit_environment_overrides": {},
+        "log_file": "typecheck-after-build.log",
+        "timeout_seconds": 300,
+        "exit_code": 0,
+        "completed_at": "2026-10-04T12:24:27.859271+00:00",
+        "elapsed_seconds": 3.906939,
+        "log_sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+      }
+    }
+  },
+  "desktop_static_checks": {
+    "schema_version": 1,
+    "started_at": "2026-10-04T12:27:05.133824+00:00",
+    "preceding_execution_sha256": "882471ec4351981461fcd9a00c7225da08f9a43b002ec0211320b04e10908e37",
+    "runtime": {
+      "node": "v22.22.3",
+      "npm": "10.9.8",
+      "declared_package_manager": "npm@11.6.2",
+      "installed": {
+        "next": "15.5.27",
+        "vitest": "4.1.11",
+        "typescript": "5.9.3",
+        "eslint": "9.39.4",
+        "react": "19.2.7",
+        "react-dom": "19.2.7"
+      }
+    },
+    "scope": "Additional actual frontend desktop static-export configuration only; no repeated tests/lint, native packaging, installs or source edits.",
+    "environment_record_scope": "Explicit overrides and package-script overrides only; no inherited environment values or credentials recorded.",
+    "completed_at": "2026-10-04T12:27:21.953416+00:00",
+    "tracked_frontend_unchanged": true,
+    "candidate_unchanged": true,
+    "head_unchanged": true,
+    "all_required_final_checks_passed": true,
+    "temporary_route_in_build_log": false,
+    "static_export_index_present": true,
+    "static_export_task_detail_present": true,
+    "temporary_route_in_static_output": false,
+    "checks": {
+      "build-tauri": {
+        "command": [
+          "npm",
+          "run",
+          "build:tauri"
+        ],
+        "package_script": "cross-env TAURI=1 next build",
+        "working_directory": "frontend",
+        "started_at": "2026-10-04T12:27:05.261326+00:00",
+        "explicit_environment_overrides": {
+          "NEXT_TELEMETRY_DISABLED": "1"
+        },
+        "package_script_environment_overrides": {
+          "TAURI": "1"
+        },
+        "log_file": "build-tauri.log",
+        "timeout_seconds": 600,
+        "exit_code": 0,
+        "completed_at": "2026-10-04T12:27:20.425573+00:00",
+        "elapsed_seconds": 15.163554,
+        "log_sha256": "22ad535173d98a5f3593f1064c69aa6012c85f0912f6217002dcfe8752d85e36"
+      },
+      "typecheck-after-tauri-build": {
+        "command": [
+          "npm",
+          "run",
+          "typecheck"
+        ],
+        "package_script": "tsc --noEmit",
+        "working_directory": "frontend",
+        "started_at": "2026-10-04T12:27:20.426866+00:00",
+        "explicit_environment_overrides": {},
+        "package_script_environment_overrides": {},
+        "log_file": "typecheck-after-tauri-build.log",
+        "timeout_seconds": 300,
+        "exit_code": 0,
+        "completed_at": "2026-10-04T12:27:21.857372+00:00",
+        "elapsed_seconds": 1.429988,
+        "log_sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+      }
+    }
+  },
+  "test_summary": {
+    "files_passed": 43,
+    "tests_passed": 618,
+    "final_focused_tests_passed": 56,
+    "independent_after_repair_tests_passed": 3
+  },
+  "focused_review": {
+    "recorded_at": "2026-10-04T12:08:14.647787+00:00",
+    "base_commit": "e49c3749cc7f1f372983e85202fda7730cf1c419",
+    "source_observation": "These hashes were captured after the focused and independent probes. No edits occurred between running probes and this capture; root owns subsequent full checks. No claimed pre/post source audit.",
+    "checks": {
+      "focused_tests": {
+        "files": 4,
+        "tests_passed": 56,
+        "duration_seconds": 2.34,
+        "exit_code": 0,
+        "log_sha256": "b800b8311ee01a8d698e8c7abb0feffba5a95d668bf6c6e03fa6451b4ad3e398"
+      },
+      "independent_after_repair": {
+        "tests_passed": 3,
+        "duration_seconds": 1.69,
+        "test_ms": 165,
+        "exit_code": 0,
+        "log_sha256": "8a78ff17d52935c10601db8097651958de9a5934af41ea447bad44fe545b3b88"
+      },
+      "narrow_eslint": {
+        "exit_code": 0,
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "git_diff_check": {
+        "exit_code": 0
+      }
+    },
+    "preserved_contrary_evidence": {
+      "record_sha256": "ad016e07c7859171a2b805f9e0f0fd701ad4501701a41d019d778b10da5718da",
+      "probe_sha256": "4f92ca857709ef36a4989f5c3daa7a933a78f9819c41ae4213bba67d34ef84af",
+      "log_sha256": "f5949f3ae1fef46ef4e95cd50970dc5e327f08806e918a89aa73db88d5c8cf8b"
+    },
+    "fixed_behavior": [
+      "Actual localStorage task:null old version retained verbatim; comparison opens with unavailable metadata and exact CRLF original text; healthy latest JSON export remains selected and usable.",
+      "Public saved manifest projection excludes arbitrary outer extensions and nested settings/vendor extensions, matching serialized existing reportJson run projection for valid known inputs without calling reportJson or attachment validators in product UI.",
+      "Unsupported IDs omitted from comparison selectors with explicit visible notice; well-identified malformed metadata remains selectable with unknown fields and exact original text.",
+      "Duplicate interruption and task-switch recovery retain correct ownership; no fetch observed in independent probes."
+    ],
+    "scope_limits": [
+      "No full frontend suite/typecheck/build/browser/native/screen-reader/analyst acceptance run by reviewer.",
+      "No commit, push, dependency install, provider/model call or credential use.",
+      "Only owned fictional tasks and diagnostic sentinels.",
+      "Root temporary validation route excluded."
+    ],
+    "changed_by_reviewer": [
+      "frontend/src/features/report-export/components/ComparisonVersionSummary.tsx",
+      "frontend/src/features/report-export/components/ReportVersionComparison.tsx",
+      "frontend/src/features/report-export/components/ReportVersionComparison.test.ts",
+      "frontend/src/features/report-export/components/ReportVersionsPanel.test.ts",
+      "frontend/src/features/report-export/hooks/useReportComparison.ts",
+      "frontend/src/features/report-export/lib/comparison.ts",
+      "frontend/src/features/report-export/lib/comparison-labels.ts",
+      "frontend/src/features/report-export/lib/comparison-metadata.ts",
+      "frontend/src/features/report-export/lib/comparison-metadata.test.ts"
+    ]
+  },
+  "preserved_pre_repair_findings": {
+    "recorded_at": "2026-10-04T12:00:38.921749+00:00",
+    "base_commit": "e49c3749cc7f1f372983e85202fda7730cf1c419",
+    "source_observation": "Hashes captured immediately after the independent probes and inspected line reads; this is not a before/after mutation attestation.",
+    "probe_files": {
+      "probe.test.ts": "4f92ca857709ef36a4989f5c3daa7a933a78f9819c41ae4213bba67d34ef84af",
+      "probe.config.mts": "d2a95ef3f9fb1dcdf4b654296f61ff23bff71211568a32a5240cc0e5dd368495",
+      "probe.log": "f5949f3ae1fef46ef4e95cd50970dc5e327f08806e918a89aa73db88d5c8cf8b"
+    },
+    "result": {
+      "exit_code": 0,
+      "test_count": 3,
+      "vitest_test_ms": 157,
+      "vitest_duration_seconds": 1.13
+    },
+    "confirmed_findings": [
+      {
+        "severity": "P2",
+        "file": "frontend/src/features/report-export/components/ComparisonVersionSummary.tsx",
+        "line": 15,
+        "title": "Opening comparison crashes on an unselected historical version with null task metadata",
+        "actual_path": "Local storage JSON -> loadTasks normalizers retain old task:null -> selected latest version renders and JSON export succeeds -> opening new comparison causes caught ticker TypeError and panel boundary failure."
+      },
+      {
+        "severity": "recommendation",
+        "file": "frontend/src/features/report-export/components/ComparisonVersionSummary.tsx",
+        "line": 42,
+        "title": "Raw saved run serialization displays arbitrary persisted extension fields",
+        "actual_path": "Local storage load retains own privateExtension sentinel -> summary serialization renders it even under closed manifest disclosure -> reportJson public projection omits it. This probe demonstrates UI exposure, not network exfiltration."
+      }
+    ],
+    "passing_additional_probe": "Explicit selected sides retained through duplicate-ID interruption/recovery; task switch while duplicateIDs are present resets sides upon recovery despite colliding IDs. No fetch observed in all probes.",
+    "limits": [
+      "No full suite, build, browser, native application, screen reader or analyst acceptance run.",
+      "Fictional owned saved tasks and sentinels only; no provider/model request or credential use.",
+      "Temporary root-owned validation route excluded from candidate scope.",
+      "No tracked source or package/dependency mutation by reviewer."
+    ]
+  },
+  "preserved_pre_repair_source_sha256": {
+    "frontend/src/features/output-quality/components/OutputQualityPanel.tsx": "5d0c57f455ca73483c0ac892f188fa8434795f1505a806699d390a6e9cf4b990",
+    "frontend/src/features/report-export/components/ReportVersionsPanel.tsx": "423a408441c32daadf180aa1f2bf7bbf4e8e88c5a633a5f243cb27bf4eb48725",
+    "frontend/src/features/report-export/components/ReportVersionsPanel.test.ts": "b69a2216e959890560d70cb874384c3cf7bffcf34d7386976187cbbf364b72b4",
+    "frontend/src/features/report-export/comparison-types.ts": "92130708e405d109a3119ebc06e96542649bc7e51b06791455d1faef3c17c6c0",
+    "frontend/src/features/report-export/components/ComparisonVersionSummary.tsx": "da312985eb69782adf13b147e067ff59aeef41ac97827337ed2fd207b7bdf017",
+    "frontend/src/features/report-export/components/ReportVersionComparison.tsx": "6767cab805e6e73c34c9aea85136c4e7c90d06acbca9ff5c4554a133eeff7a4a",
+    "frontend/src/features/report-export/components/ReportVersionComparison.test.ts": "79e1c01e52b63d4e0d5da6f1aee00a42f33a7c49581afba49ac5acf2205b4b43",
+    "frontend/src/features/report-export/hooks/useReportComparison.ts": "cde783dfe7c92b9b4d418e2dca291e5aaf3b7246dbb3b3d40377d6583f5823c0",
+    "frontend/src/features/report-export/lib/comparison-labels.ts": "43d4c7012b1531d2706f47ed1202beb434052178394c1c9c0274703507dcece7",
+    "frontend/src/features/report-export/lib/comparison.ts": "5a76eb0d7e678ae1aff85a675eb16e0374934ae6dfeba286d0ad48d3a5a48922",
+    "frontend/src/features/report-export/lib/comparison.test.ts": "6eecd877b8ac533da75a54d21ec04711e5c7bb10a3998df0d6901236d0a4f42a"
+  },
+  "browser": {
+    "recorded_at": "2026-10-04T12:21:38.511098+00:00",
+    "original_source_commit": "0affa8ca422239dbae41088f3f9e69428a3f5e6f",
+    "rebase_source_commit": "a420e171a82e9b1ba8dda5b94b454f67ea1ed90c",
+    "base_commit": "79fd4e326159815accde8e8b28ef6bfdc564581b",
+    "candidate_files_sha256": {
+      "frontend/src/features/output-quality/components/OutputQualityPanel.tsx": "5d0c57f455ca73483c0ac892f188fa8434795f1505a806699d390a6e9cf4b990",
+      "frontend/src/features/report-export/components/ReportVersionsPanel.tsx": "423a408441c32daadf180aa1f2bf7bbf4e8e88c5a633a5f243cb27bf4eb48725",
+      "frontend/src/features/report-export/components/ReportVersionsPanel.test.ts": "21547f14f5c93097820e3c1df3666f86399f30c4d372a95527c0cdaef80a4079",
+      "frontend/src/features/report-export/comparison-types.ts": "92130708e405d109a3119ebc06e96542649bc7e51b06791455d1faef3c17c6c0",
+      "frontend/src/features/report-export/components/ComparisonVersionSummary.tsx": "88ee5e522576156a9dad2ac1699f76b6e67fd21909b38359feb09da21225c880",
+      "frontend/src/features/report-export/components/ReportVersionComparison.tsx": "2f4934f97c8352e541a0c6559b6e7dc716f7d74359e1adc65d6af98972a460a1",
+      "frontend/src/features/report-export/components/ReportVersionComparison.test.ts": "1dff6689684fd2622079b2faac97204b27909e28764ca12c345ab95f23cf0b70",
+      "frontend/src/features/report-export/hooks/useReportComparison.ts": "642b655e91560d5462b38b61c0866bda64689ab6cbff61a78accc5bfc207cfbe",
+      "frontend/src/features/report-export/lib/comparison-labels.ts": "4a0139704a55a201e08e2107965f34d1268f3bf5e2609a01cd5b8d21f9f034eb",
+      "frontend/src/features/report-export/lib/comparison.ts": "a3e2c4abb6d58d9997ed372d5103706253c8ac1c23e5a30030d462940a9a784d",
+      "frontend/src/features/report-export/lib/comparison.test.ts": "6eecd877b8ac533da75a54d21ec04711e5c7bb10a3998df0d6901236d0a4f42a",
+      "frontend/src/features/report-export/lib/comparison-metadata.ts": "2f18e281efaf7630e0f2839a066168e0806435b6d88c95c677ce33e9ba76afab",
+      "frontend/src/features/report-export/lib/comparison-metadata.test.ts": "7b6b339dc40969c4bb341b89409f2129f4e003519bf19cee26a6cab35c7dcad8"
+    },
+    "source_hashes_match_independent_review": true,
+    "harness_sha256": "170b87708da410a17c3a647e265fa8da24133a008d463ed8f6daa30644c45c3f",
+    "method": "Native Google Chrome through documented CUA APIs; isolated fictional local route, fresh reload after final metadata repair. Observation notes are a bounded manual transcription of actual tool results, not a screenshot archive.",
+    "local_url": "http://127.0.0.1:31751/validation-report-comparison",
+    "observations": [
+      "Fresh reload reset owned fixture count to2. Opening comparison selected baseline owned-comparison-baseline-v1 and target owned-comparison-target-v2, with5/7 changed sections.",
+      "Per-side runID, saved date, analysis date, Hold/Sell and fallback/validated format status displayed independently; saved attachment absence displayed unknown.",
+      "News link opened the section and changed URL to its anchor; Unicode alpha was retained, character counts43/42 distinguished CRLF and LF. Escaped view showed original \\r\\n.",
+      "Append frozen v3 changed the visible fixture count2 to3 and disabled that bounded fixture control; baselinev1/targetv2 remained unchanged.",
+      "Switch language changed comparison labels/descriptions/navigation to Chinese while retaining chosen pair and expanded news.",
+      "Native selector keyboard Space/Up/Return selected baselinev2, displayed same-version notice and0/7; restoringv1 with Space/Down/Return kept selector focus and expanded news/escaped views.",
+      "Chrome device simulation reported Responsive width390 height844 at100percent. This records native AX interaction at that viewport, not a physical mobile-device or complete visual-layout audit.",
+      "Desktop device simulation was disabled. Keyboard Tab from baseline to target to saved manifest and Return opened the baseline manifest.",
+      "Malformed baseline metadata control set saved baseline task to null and added an arbitrary run privateExtension. Page showed unavailable metadata, unknown instrument/date, retained healthy target and original news; opened manifest omitted privateExtension and its sentinel.",
+      "Replace task restored two healthy fixture versions without a crash. This observation alone does not prove all pair-reset transitions; focused component tests cover task ownership."
+    ],
+    "contrary_or_unresolved": [
+      "Chrome devtools summary reported2errors and12warnings; console showed0messages and43hidden under existing context/filter preferences, so their origin was not established. No clean-console claim is made and no existing user console settings/live expressions were changed.",
+      "Some initial native clicks on offscreen details produced no AX change; subsequent keyboard navigation opened the manifest and confirmed the result."
+    ],
+    "limits": [
+      "No external analyst, expert factual assessment, screen-reader or installed native-package acceptance.",
+      "No API credential used, provider/model call, persisted task mutation or exported-file upload.",
+      "Owned temporary route is archived here and removed before full checks; it is excluded from source commit.",
+      "No browser screenshot is included; unrelated existing user tabs and state are excluded from the record."
+    ],
+    "cleanup_observation": "Owned route archived and removed, dev supervisor stopped by Ctrl-C. Closing the owned Chrome tab was not confirmed because CUA reported the user changed the app; no further UI action was attempted."
+  },
+  "first_typecheck_contrary_log": "\n> evidenceloom-frontend@0.1.0-beta.10 typecheck\n> tsc --noEmit\n\n.next/types/app/validation-report-comparison/page.ts(2,24): error TS2307: Cannot find module '../../../../src/app/validation-report-comparison/page.js' or its corresponding type declarations.\n.next/types/app/validation-report-comparison/page.ts(5,29): error TS2307: Cannot find module '../../../../src/app/validation-report-comparison/page.js' or its corresponding type declarations.\n.next/types/validator.ts(98,39): error TS2307: Cannot find module '../../src/app/validation-report-comparison/page.js' or its corresponding type declarations.\n",
+  "known_build_warning": "Next.js reports its ESLint plugin was not detected. Independent full eslint and both build modes pass; logs are retained. No warning-free build claim.",
+  "raw_records_identity": {
+    "root-source-freeze.json": "a0022dd8835d256108e3c97a44a65d4a88d7598b14b51bf951ba2c4e98ae2350",
+    "root-browser-validation.json": "24a494edfc934aee5122a817a781265722a1b7e8b849dfb90f7994956feaf6ba",
+    "owned-browser-harness.tsx": "170b87708da410a17c3a647e265fa8da24133a008d463ed8f6daa30644c45c3f",
+    "frontend-full-checks/execution.json": "882471ec4351981461fcd9a00c7225da08f9a43b002ec0211320b04e10908e37",
+    "frontend-tauri-checks/execution.json": "2e4fd3a42f806f7876e3ac86f6e1d69b91035360d6ca99fd1e1dc9f7e832df68",
+    "independent-review/review-result-before-fixes.json": "ad016e07c7859171a2b805f9e0f0fd701ad4501701a41d019d778b10da5718da",
+    "independent-review/review-result-after-repair.json": "fd31ba9048bb90770137b2163d8700ae28518c04097b18a75fea52b69d2e880b",
+    "independent-review/probe.test.ts": "4f92ca857709ef36a4989f5c3daa7a933a78f9819c41ae4213bba67d34ef84af",
+    "independent-review/probe.log": "f5949f3ae1fef46ef4e95cd50970dc5e327f08806e918a89aa73db88d5c8cf8b",
+    "independent-review/after-repair-probe.test.ts": "f187e7ad28903f885d1c73432a69053438447eaff0dd12865237d0d86364eabc",
+    "independent-review/after-repair-probe.log": "8a78ff17d52935c10601db8097651958de9a5934af41ea447bad44fe545b3b88"
+  },
+  "acceptance_limits": [
+    "Local package script launcher npm10.9.8 differs from declared/CI npm11.6.2; clean dependencies were installed with repository npm11.6.2 before these checks.",
+    "Fictional UI inputs only; no actual provider/model research, credentials or task-storage changes.",
+    "No physical mobile-device, external analyst, screen-reader, clean-install or signed-release acceptance.",
+    "Browser console summary2errors/12warnings remained unattributed under existing hidden-message preferences; no clean-console claim.",
+    "Complete exact-head remote CI remains required for the resulting pull request; local tests do not substitute for it.",
+    "Temporary harness and raw local logs remain in the owned validation directory; this JSON is a projection with identities, not a full copy of every raw artifact."
+  ],
+  "secret_scan_repair": {
+    "previous_pr_head": "3d9cff479f2092af99c15a641e472d0ea7196234",
+    "actual_job_url": "https://github.com/simonguo/evidenceloom/actions/runs/37202474411/job/111436795073",
+    "scanner_version": "8.24.3",
+    "rule": "generic-api-key",
+    "finding_count": 3,
+    "findings": [
+      {
+        "source_path": "frontend/src/components/task-center/components/KeyValue.tsx",
+        "previous_record_line": 66,
+        "value_kind": "source_content_sha256",
+        "sha256": "06bc0d12a557d1abb0e27644e22d46390f7c80db0d992a8747bff46661d52804"
+      },
+      {
+        "source_path": "frontend/src/components/task-center/components/SecretField.tsx",
+        "previous_record_line": 71,
+        "value_kind": "source_content_sha256",
+        "sha256": "9c2666c1e175fa34a5fbd666b4f126ca046f7d0f2939b5537b47bbae58e87176"
+      },
+      {
+        "source_path": "frontend/src/features/settings/components/CredentialField.tsx",
+        "previous_record_line": 208,
+        "value_kind": "source_content_sha256",
+        "sha256": "96e1775d6babe1756dbd6d295be3f5ad9090f16f0539fae106622cfeff165f97"
+      }
+    ],
+    "cause": "File paths containing Key, Secret and Credential were JSON object keys followed by actual source hashes. Scanner classified these three hashes as credential-like assignments. Each value was independently recomputed from its source file.",
+    "repair": "Represent the same215 complete source identities as separate path/sha256 records. No source file, hash, dependency or scanner rule is removed or changed.",
+    "history": "The unmerged documentation commit is replaced because the scanner reads commit history; the source commit stays unchanged. Original head, actual failed-job log, original validation bytes and raw API records are retained.",
+    "raw_artifact": {
+      "path": "pr92-3d9cff4-secret-scan-job.log",
+      "sha256": "16112e6e4040260248c8df30faef385acb64194e3d9f6bc065f297f28fa92b7c",
+      "bytes": 54575
+    },
+    "original_validation_artifact": {
+      "path": "pr92-3d9cff4-original-validation-record.json",
+      "sha256": "c608541d87b63e91ea73daf941001b5ab9412296f91b4a58683cb23485f9b3c8",
+      "bytes": 53085
+    },
+    "remote_repair_status": "NOT_YET_RUN_AT_REPAIRED_HEAD"
+  }
+}
