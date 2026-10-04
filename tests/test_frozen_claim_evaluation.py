@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from decimal import Decimal, ROUND_HALF_UP, localcontext
 import hashlib
+from itertools import permutations
 import json
 import os
 from pathlib import Path
@@ -17,12 +18,17 @@ from tradingagents.evaluation import (
     evaluate_pack,
     validate_evaluation_result,
     validate_pack,
+    validate_research_report,
 )
 from tradingagents.evaluation.io import write_result
 from tradingagents.evaluation.oracle import exact_price_change_percent
 from tradingagents.evidence import audit_citations
-from tradingagents.memory.schema import hash_value, make_component
-from tradingagents.research.numeric_review import derive_numeric_review
+from tradingagents.memory.schema import build_review_attachment, hash_value, make_component
+from tradingagents.research.numeric_review import (
+    REPORT_SECTION_KEYS,
+    derive_numeric_review,
+    make_report_text_snapshot,
+)
 
 ROOT = Path(__file__).parents[1]
 FIXTURE = ROOT / "tests/fixtures/frozen_claims/pack_v1.json"
@@ -160,6 +166,127 @@ def decimal_reference(start, end, places):
         if expected == 0:
             expected = abs(expected)
         return format(expected, "f")
+
+
+def owned_history_case():
+    """Bind both review families to an unchanged owned Memory completion."""
+    case = case_pack("field_baseline")["cases"][0]
+    fixture = json.loads((ROOT / "tests/fixtures/memory_target_binding_v2.json").read_bytes())
+    envelope = case["research_report"]
+    evidence, memory = fixture["evidence"], fixture["bundle"]
+    decision = memory["decision_snapshot"]["decision"]
+    sections = dict.fromkeys(REPORT_SECTION_KEYS)
+    sections["market_report"] = "Fictional research📈\r\nSaved close 123.46."
+    sections["final_trade_decision"] = memory["decision_snapshot"]["artifacts"][
+        decision["decision_text_sha256"]
+    ]["payload"]
+    owner = envelope["report"]
+    owner.update(runId=memory["run_id"], decision=decision["rating"], reportSections=sections)
+    owner["task"].update(
+        ticker=memory["instrument"],
+        analysisDate=memory["analysis_date"],
+        assetType=decision["asset_type"],
+        analysts=["market"],
+    )
+    snapshot = make_report_text_snapshot(evidence, sections, captured_at=decision["recorded_at"])
+    envelope.update(
+        evidence_bundle=evidence,
+        memory_bundle=memory,
+        report_text_snapshot=snapshot,
+        numeric_reviews=[],
+        evaluation_reviews=[],
+    )
+    claim = case["claims"][0]
+    claim["target"].update(
+        run_id=memory["run_id"],
+        report_snapshot_sha256=snapshot["snapshot_sha256"],
+        section_utf8_sha256=hashlib.sha256(sections["market_report"].encode()).hexdigest(),
+    )
+    claim["span"] = raw_span(sections["market_report"], "123.46")
+    source = evidence["records"][0]["sources"][0]
+    claim["selection"]["operand"] = {
+        "evidence_id": evidence["records"][0]["id"],
+        "source_index": 0,
+        "selector": {
+            "kind": "table_cell",
+            "table_path": [],
+            "row_date": memory["analysis_date"],
+            "field": "Close",
+        },
+        **{key: source[key] for key in ("provider", "data_sha256", "units", "adjustments")},
+    }
+    assert validate_research_report(envelope) == envelope
+    return case, fixture["available_snapshot"]
+
+
+def owned_review_histories(case, available_snapshot):
+    """Public constructors produce distinct valid roots and append-only tails."""
+    envelope, claim = case["research_report"], case["claims"][0]
+    request = {
+        "reviewed_at": envelope["report_text_snapshot"]["captured_at"],
+        "previous_review_sha256": None,
+        "target": deepcopy(claim["target"]),
+        "numeric_span": deepcopy(claim["span"]),
+        **deepcopy(claim["selection"]),
+    }
+    request["operand"] = {
+        key: request["operand"][key] for key in ("evidence_id", "source_index", "selector")
+    }
+
+    def numeric(index, previous=None):
+        return derive_numeric_review(
+            envelope["report_text_snapshot"],
+            envelope["evidence_bundle"],
+            {
+                **request,
+                "review_id": f"{index:08x}-7777-4777-8777-{index:012x}",
+                "previous_review_sha256": previous,
+            },
+        )
+
+    numeric_a = numeric(1)
+    numeric_b = numeric(2, numeric_a["review_sha256"])
+    numeric_other_root = numeric(3)
+    numeric_other_tail = numeric(4, numeric_a["review_sha256"])
+    evaluation_a, evaluation_b, evaluation_other = [
+        build_review_attachment(
+            available_snapshot,
+            reviewed_at=f"2025-02-25T18:00:0{index}.000000Z",
+            completion_bundle=envelope["memory_bundle"],
+        )
+        for index in range(3)
+    ]
+    return {
+        "numeric_reviews": {
+            "prefixes": [[], [numeric_a], [numeric_a, numeric_b]],
+            "other_root": [numeric_other_root],
+            "other_tail": [numeric_a, numeric_other_tail],
+        },
+        "evaluation_reviews": {
+            "prefixes": [[], [evaluation_a], [evaluation_a, evaluation_b]],
+            "other_root": [evaluation_other],
+            "other_tail": [evaluation_a, evaluation_other],
+        },
+    }
+
+
+@pytest.fixture(scope="module")
+def saved_review_case():
+    case, available = owned_history_case()
+    return case, owned_review_histories(case, available)
+
+
+def history_cases_pack(case, histories, order):
+    pack = owned_pack()
+    pack["cases"], pack["label_sets"] = [], []
+    for index in order:
+        copied = deepcopy(case)
+        copied["case_id"] = f"owned-history-case-{index}"
+        copied["claims"][0]["claim_id"] = f"owned-history-claim-{index}"
+        copied["research_report"].update(deepcopy(histories[index]))
+        assert validate_research_report(copied["research_report"]) == copied["research_report"]
+        pack["cases"].append(copied)
+    return rehash(pack)
 
 
 def test_owned_frozen_pack_denominator_and_original_bytes():
@@ -693,6 +820,89 @@ def test_global_saved_run_and_version_conflicts_reject_coherent_rehash(conflict)
         copy["research_report"]["report"]["stats"]["toolCalls"] += 1
     with pytest.raises(ValueError):
         evaluate_pack(rehash(pack))
+
+
+@pytest.mark.parametrize("family", ["numeric_reviews", "evaluation_reviews"])
+@pytest.mark.parametrize("order", list(permutations(range(3))))
+def test_same_version_empty_history_cannot_hide_individually_valid_review_forks(
+    saved_review_case, family, order
+):
+    case, all_reviews = saved_review_case
+    reviews = all_reviews[family]
+    histories = [{family: items} for items in [[], reviews["prefixes"][1], reviews["other_root"]]]
+    pack = history_cases_pack(case, histories, order)
+    before = deepcopy(pack)
+    assert pack["label_sets"] == []
+    assert len({item["case_id"] for item in pack["cases"]}) == 3
+    assert len({item["claims"][0]["claim_id"] for item in pack["cases"]}) == 3
+    with pytest.raises(ValueError, match="^Invalid or conflicting frozen research evaluation$"):
+        validate_pack(pack)
+    with pytest.raises(ValueError, match="^Invalid or conflicting frozen research evaluation$"):
+        evaluate_pack(pack)
+    assert pack == before
+
+
+@pytest.mark.parametrize("family", ["numeric_reviews", "evaluation_reviews"])
+@pytest.mark.parametrize("order", list(permutations(range(3))))
+def test_same_version_compatible_review_prefixes_accept_every_submission_order(
+    saved_review_case, family, order
+):
+    case, all_reviews = saved_review_case
+    reviews = all_reviews[family]
+    pack = history_cases_pack(case, [{family: items} for items in reviews["prefixes"]], order)
+    before = deepcopy(pack)
+    assert validate_pack(pack) == pack
+    result = evaluate_pack(pack)
+    assert result["summary"]["denominator"] == 3
+    assert [item["case_id"] for item in result["cases"]] == [
+        f"owned-history-case-{index}" for index in order
+    ]
+    assert validate_evaluation_result(result, pack) == result
+    assert pack == before
+
+
+@pytest.mark.parametrize("order", list(permutations(range(3))))
+def test_two_review_histories_can_grow_independently_in_every_submission_order(
+    saved_review_case, order
+):
+    case, reviews = saved_review_case
+    numeric, evaluation = (
+        reviews["numeric_reviews"]["prefixes"],
+        reviews["evaluation_reviews"]["prefixes"],
+    )
+    histories = [
+        {"numeric_reviews": numeric[2], "evaluation_reviews": evaluation[1]},
+        {"numeric_reviews": numeric[1], "evaluation_reviews": evaluation[2]},
+        {"numeric_reviews": numeric[0], "evaluation_reviews": evaluation[0]},
+    ]
+    pack = history_cases_pack(case, histories, order)
+    before = deepcopy(pack)
+    assert validate_pack(pack) == pack
+    result = evaluate_pack(pack)
+    assert result["summary"]["denominator"] == 3
+    assert validate_evaluation_result(result, pack) == result
+    assert pack == before
+
+
+@pytest.mark.parametrize("family", ["numeric_reviews", "evaluation_reviews"])
+@pytest.mark.parametrize("order", list(permutations(range(3))))
+def test_growing_other_history_cannot_discard_longest_prefix_and_hide_later_fork(
+    saved_review_case, family, order
+):
+    case, reviews = saved_review_case
+    other = "evaluation_reviews" if family == "numeric_reviews" else "numeric_reviews"
+    histories = [
+        {family: reviews[family]["prefixes"][2], other: reviews[other]["prefixes"][1]},
+        {family: reviews[family]["prefixes"][1], other: reviews[other]["prefixes"][2]},
+        {family: reviews[family]["other_tail"], other: reviews[other]["prefixes"][2]},
+    ]
+    pack = history_cases_pack(case, histories, order)
+    before = deepcopy(pack)
+    with pytest.raises(ValueError, match="^Invalid or conflicting frozen research evaluation$"):
+        validate_pack(pack)
+    with pytest.raises(ValueError, match="^Invalid or conflicting frozen research evaluation$"):
+        evaluate_pack(pack)
+    assert pack == before
 
 
 def test_independent_arithmetic_stratum_does_not_create_external_expert_acceptance():

@@ -3,3 +3,5 @@
 /docs/contracts/*.json text eol=lf
 /tests/fixtures/*.json text eol=lf
 /tests/fixtures/**/*.json text eol=lf
+/pyproject.toml text eol=lf
+/uv.lock text eol=lf

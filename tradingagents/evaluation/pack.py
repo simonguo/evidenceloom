@@ -143,6 +143,7 @@ def _histories_compatible(a, b):
 
 def _authorities(cases):
     versions, runs, decisions = {}, {}, {}
+    history_keys = ("numeric_reviews", "evaluation_reviews")
     for case in cases:
         value, report = case["research_report"], case["research_report"]["report"]
         completion = {
@@ -150,15 +151,22 @@ def _authorities(cases):
             for key, item in value.items()
             if key not in {"numeric_reviews", "evaluation_reviews"}
         }
+        histories = {history: value.get(history, []) for history in history_keys}
         key = report["id"]
         if key in versions:
             old = versions[key]
             if canonical_json(completion) != canonical_json(old[0]):
                 fail()
-            for history in ("numeric_reviews", "evaluation_reviews"):
-                _histories_compatible(value.get(history, []), old[1].get(history, []))
+            for history in history_keys:
+                previous, current = old[1][history], histories[history]
+                _histories_compatible(previous, current)
+                # Retain each history's longest compatible prefix separately.
+                # An earlier empty history must not hide later forks, and one
+                # history growing must not discard the other's saved prefix.
+                if len(current) > len(previous):
+                    old[1][history] = current
         else:
-            versions[key] = completion, value
+            versions[key] = completion, histories
         run = (value["evidence_bundle"] or {}).get("run_id") or (
             report.get("runId") if has_run_authority(report) else None
         )
