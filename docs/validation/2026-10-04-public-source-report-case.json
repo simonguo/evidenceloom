@@ -1,0 +1,1025 @@
+{
+  "recorded_at": "2026-10-04T13:24:04.539897+00:00",
+  "source_commit": "dc885b00b13673caae3fb64f46d83a0f262c2aa8",
+  "base_commit": "05fea22f92c221d397bf61a33aded2179c16031c",
+  "scope": "Separate offline engineering report/source-cell protocol; no stock/crypto, Evidence, Memory, Numeric, frozen-pack or public-corpus v1 schema change.",
+  "candidate_files": [
+    {
+      "path": "tradingagents/evaluation/public_source_reports.py",
+      "bytes": 12214,
+      "sha256": "2ef842d99b5d17d5d5793e7ed7831b09306bbcf2c46144215ed43785c81c6928",
+      "reviewed_sha256": "2ef842d99b5d17d5d5793e7ed7831b09306bbcf2c46144215ed43785c81c6928",
+      "same_as_independent_review": true
+    },
+    {
+      "path": "scripts/verify_public_source_report_case.py",
+      "bytes": 3167,
+      "sha256": "b502fd95e0475c4a512f1156f7664535ce24184ab1b2b7d843aae9d5f9ad1548",
+      "reviewed_sha256": "b502fd95e0475c4a512f1156f7664535ce24184ab1b2b7d843aae9d5f9ad1548",
+      "same_as_independent_review": true
+    },
+    {
+      "path": "tests/test_public_source_report_case.py",
+      "bytes": 17169,
+      "sha256": "1a6621e9c029551f87d2e268858b8b92ac9b28548cf771c93fb07a9b04b63e8a",
+      "reviewed_sha256": "1a6621e9c029551f87d2e268858b8b92ac9b28548cf771c93fb07a9b04b63e8a",
+      "same_as_independent_review": true
+    },
+    {
+      "path": "tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json",
+      "bytes": 3414,
+      "sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+      "reviewed_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+      "same_as_independent_review": true
+    },
+    {
+      "path": "tests/fixtures/public_source_reports/bls-current-snapshot/case_v1.json",
+      "bytes": 9400,
+      "sha256": "5749262a040c1f8d197c1767cc971b88960bb6c4545a95bcbb3dcf89b5b74622",
+      "reviewed_sha256": "5749262a040c1f8d197c1767cc971b88960bb6c4545a95bcbb3dcf89b5b74622",
+      "same_as_independent_review": true
+    },
+    {
+      "path": "docs/PUBLIC_SOURCE_REPORT_CASE.md",
+      "bytes": 7330,
+      "sha256": "6498552a1759f7aebd493363e52e871fb46b78252e39ca106810b4645ba6e4a8",
+      "reviewed_sha256": "c5e8d55296c9df2ebb1b70d6dc66b6ac2afec2049b541b8fe59463a7c09fc9e5",
+      "same_as_independent_review": false
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 404,
+      "sha256": "f587e9da77fe595b3ead70967a3feb75bc43deec7338bd36a163414e0493c8f3",
+      "reviewed_sha256": "f3a5e382fd814a01a1cee84246aa1f5776a9ccf21359b2965a3193d948ac4e77",
+      "same_as_independent_review": false
+    },
+    {
+      "path": ".github/workflows/sidecar-diagnostics.yml",
+      "bytes": 6772,
+      "sha256": "edd16d8bd3a3e49c086b13d2a7fdd6fe3dda86d0ac6e4e62bce7038e8dfe2c41",
+      "reviewed_sha256": "edd16d8bd3a3e49c086b13d2a7fdd6fe3dda86d0ac6e4e62bce7038e8dfe2c41",
+      "same_as_independent_review": true
+    }
+  ],
+  "protected_source_before_acceptance_docs": {
+    "base_tracked_count": 587,
+    "byte_identical_count": 585,
+    "changed_paths": [
+      ".gitattributes",
+      ".github/workflows/sidecar-diagnostics.yml"
+    ],
+    "method": "Immutable Git blobs compared with working bytes; exact append-only new report attribute and native pytest list entry."
+  },
+  "acceptance_documentation": {
+    "new": "docs/ANALYST_ACCEPTANCE.md",
+    "existing_updated": "docs/PROFESSIONAL_QUALITY.md",
+    "file_identities": [
+      {
+        "path": "docs/ANALYST_ACCEPTANCE.md",
+        "sha256": "dc73a8f72358bbc66dc8780e8f1bebfa2c5c10fd0914a570b266ad7cbcedd562"
+      },
+      {
+        "path": "docs/PROFESSIONAL_QUALITY.md",
+        "sha256": "d0c5ea1809b8a69dd4821724848cb460127afca1df761605d9915c2c3bd6e190"
+      }
+    ],
+    "external_participants": 0,
+    "external_expert_approved_claim_denominator": 0,
+    "status": "PROPOSED_NOT_EVALUATED",
+    "independent_engineering_method_findings_repaired": [
+      "Source attribution task distinguishes saved observed trace, declaration and unknown authority.",
+      "Four mutually exclusive primary outcomes sum to all attempts; assistance is a separate flag; non-submission elapsed ends at recorded stop with reasons."
+    ]
+  },
+  "independent_original_cell_reconstruction": {
+    "fixture_raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+    "report_raw_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+    "independent_observation_count": 48,
+    "independent_table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e",
+    "independent_cells": [
+      {
+        "claim_id": "CUSR0000SA0-2023-11",
+        "series_id": "CUSR0000SA0",
+        "year": "2023",
+        "period": "M11",
+        "literal": "308.148",
+        "span": {
+          "start_byte": 703,
+          "end_byte": 710,
+          "text": "308.148"
+        }
+      },
+      {
+        "claim_id": "CUSR0000SA0-2023-12",
+        "series_id": "CUSR0000SA0",
+        "year": "2023",
+        "period": "M12",
+        "literal": "308.741",
+        "span": {
+          "start_byte": 848,
+          "end_byte": 855,
+          "text": "308.741"
+        }
+      },
+      {
+        "claim_id": "CUUR0000SA0-2023-11",
+        "series_id": "CUUR0000SA0",
+        "year": "2023",
+        "period": "M11",
+        "literal": "307.051",
+        "span": {
+          "start_byte": 997,
+          "end_byte": 1004,
+          "text": "307.051"
+        }
+      },
+      {
+        "claim_id": "CUUR0000SA0-2023-12",
+        "series_id": "CUUR0000SA0",
+        "year": "2023",
+        "period": "M12",
+        "literal": "306.746",
+        "span": {
+          "start_byte": 1146,
+          "end_byte": 1153,
+          "text": "306.746"
+        }
+      }
+    ],
+    "baseline_counts": {
+      "submitted": 4,
+      "match": 4,
+      "mismatch": 0
+    },
+    "rejected_coherent_tamper_cases": [
+      "coherent-case-only-version-spoof",
+      "coherent-case-only-source-spoof",
+      "coherent-wrong-cell-source_series_index",
+      "coherent-wrong-cell-period",
+      "coherent-wrong-cell-units",
+      "coherent-wrong-cell-adjustment",
+      "coherent-stale-span",
+      "reserialized-report-raw-byte-identity",
+      "source-newline-byte-identity",
+      "coherent-result-counts",
+      "coherent-result-semantic_support",
+      "coherent-result-historical_authority"
+    ],
+    "valid_wrong_number_counts": {
+      "submitted": 4,
+      "match": 3,
+      "mismatch": 1
+    },
+    "expert_approved_claim_denominator": 0,
+    "limits": "Engineering raw-cell and span inspection only; no expert support, provider-origin, historical-vintage or production-research approval."
+  },
+  "independent_implementation_review": {
+    "groups_passed": 9,
+    "scope": "Engineering agent review, not external human expert adjudication.",
+    "documentation_finding_repaired": "Case/report/manifest UTF-8; raw inherits corpus UTF-16/UTF-32 encoding detection.",
+    "six_non_documentation_attribute_candidates_unchanged": true
+  },
+  "runtime_regression": {
+    "runs": [
+      {
+        "runtime_label": "python312_corrected",
+        "group": "combined_collection",
+        "test_files": [
+          "tests/test_public_source_report_case.py",
+          "tests/test_public_source_corpus.py",
+          "tests/test_numeric_review.py"
+        ],
+        "collect_only": true,
+        "started_at": "2026-10-04T13:15:28.892555+00:00",
+        "elapsed_seconds": 0.5608618329988531,
+        "exit_code": 0,
+        "junit": {
+          "tests": 0,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.12.10 (main, Apr  8 2025, 11:35:47) [Clang 17.0.0 (clang-1700.0.13.3)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 307,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/combined_collection/execution.json",
+            "sha256": "345031ff56f63c9e961274b003688b22b069b0034931eba6dbc7b18a1db49bf2"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/combined_collection/stdout.log",
+            "sha256": "94cdd5d030da9d0101290a6e3b4704b0fc76868040bb85ea34ba39dde6d9da74"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/combined_collection/junit.xml",
+            "sha256": "44aed94cfefb4e93ad7c94a15f5f356e9afd23d2a8caeebac936c38a4e726c29"
+          }
+        ]
+      },
+      {
+        "runtime_label": "python312_corrected",
+        "group": "new_report_case",
+        "test_files": [
+          "tests/test_public_source_report_case.py"
+        ],
+        "collect_only": false,
+        "started_at": "2026-10-04T13:15:29.455398+00:00",
+        "elapsed_seconds": 4.195486915999936,
+        "exit_code": 0,
+        "junit": {
+          "tests": 59,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.12.10 (main, Apr  8 2025, 11:35:47) [Clang 17.0.0 (clang-1700.0.13.3)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 59,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/new_report_case/execution.json",
+            "sha256": "0cfbf1b1168ebf01e676170155df92018fae6a9d6f941272820b2262e3019983"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/new_report_case/stdout.log",
+            "sha256": "a2becdc0735ce3ea936846f02e7f36cf9a03f7c7e9069aa43a2743fb19254304"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/new_report_case/junit.xml",
+            "sha256": "b7fdc905ef960a11be1c43db62885935648b630b079ead024c2db5e0aeb1d4be"
+          }
+        ]
+      },
+      {
+        "runtime_label": "python312_corrected",
+        "group": "existing_public_source_corpus",
+        "test_files": [
+          "tests/test_public_source_corpus.py"
+        ],
+        "collect_only": false,
+        "started_at": "2026-10-04T13:15:33.652966+00:00",
+        "elapsed_seconds": 4.351442541999859,
+        "exit_code": 0,
+        "junit": {
+          "tests": 137,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.12.10 (main, Apr  8 2025, 11:35:47) [Clang 17.0.0 (clang-1700.0.13.3)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 137,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/existing_public_source_corpus/execution.json",
+            "sha256": "7940fab45460f51d1204ed8472d4dc4b1f70da4ef30b91ca3751d75b885a0b3e"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/existing_public_source_corpus/stdout.log",
+            "sha256": "e8d9f8795e777cebbb097f3f9d19ec3fc8db2db5db7917672ee577ac9d0c9de7"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/existing_public_source_corpus/junit.xml",
+            "sha256": "947d204828d101e31f297e9b5450d10b9473a1b3eca0ca26a32038252547aee7"
+          }
+        ]
+      },
+      {
+        "runtime_label": "python312_corrected",
+        "group": "shared_numeric_review",
+        "test_files": [
+          "tests/test_numeric_review.py"
+        ],
+        "collect_only": false,
+        "started_at": "2026-10-04T13:15:38.006992+00:00",
+        "elapsed_seconds": 8.4425216669988,
+        "exit_code": 0,
+        "junit": {
+          "tests": 111,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.12.10 (main, Apr  8 2025, 11:35:47) [Clang 17.0.0 (clang-1700.0.13.3)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 111,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/shared_numeric_review/execution.json",
+            "sha256": "c0f072896ad9759a85940f4d7bd51de8d30853c9d24013f19673a8d599509e26"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/shared_numeric_review/stdout.log",
+            "sha256": "3baa4d7045bc2d9e98d04408111eeb0c100f93c8e6c6276e7b8c99814cd3f1f8"
+          },
+          {
+            "path": "independent-review/integrated-checks/python312_corrected/shared_numeric_review/junit.xml",
+            "sha256": "2ee6f46e7870bddb141a86afece4f95c2a6d3487769b677a8c0842d940c933c7"
+          }
+        ]
+      },
+      {
+        "runtime_label": "python310_corrected",
+        "group": "combined_collection",
+        "test_files": [
+          "tests/test_public_source_report_case.py",
+          "tests/test_public_source_corpus.py",
+          "tests/test_numeric_review.py"
+        ],
+        "collect_only": true,
+        "started_at": "2026-10-04T13:15:28.896579+00:00",
+        "elapsed_seconds": 0.656177666000076,
+        "exit_code": 0,
+        "junit": {
+          "tests": 0,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.10.4 (main, Mar 25 2022, 07:25:23) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 307,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/combined_collection/execution.json",
+            "sha256": "042097f36a8e5f8616f3da5cd825cead77451e50c0e65601617274da0d86ddc0"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/combined_collection/stdout.log",
+            "sha256": "98a3ed9d30373276a6218814b1c44b6097469316ef4bfecbf17d813410031410"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/combined_collection/junit.xml",
+            "sha256": "8f39c411d3d30f5cdcfd25590ad48ec9abc76c63f3d02166467e12afe3ae42ea"
+          }
+        ]
+      },
+      {
+        "runtime_label": "python310_corrected",
+        "group": "new_report_case",
+        "test_files": [
+          "tests/test_public_source_report_case.py"
+        ],
+        "collect_only": false,
+        "started_at": "2026-10-04T13:15:29.554365+00:00",
+        "elapsed_seconds": 6.316448790999857,
+        "exit_code": 0,
+        "junit": {
+          "tests": 59,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.10.4 (main, Mar 25 2022, 07:25:23) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 59,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/new_report_case/execution.json",
+            "sha256": "716a0480e96a216c3f511bc9114a19a6d42bd121d98d0ed749ebcba550bc52b4"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/new_report_case/stdout.log",
+            "sha256": "0f9856436ca80c6414ba2bcb1002ad201033d54ace6c0b2f9d97852cc631b738"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/new_report_case/junit.xml",
+            "sha256": "81beeb6b35a13eec09100c186e9e29db8d65be559a29da1fd296d8a968dcad91"
+          }
+        ]
+      },
+      {
+        "runtime_label": "python310_corrected",
+        "group": "existing_public_source_corpus",
+        "test_files": [
+          "tests/test_public_source_corpus.py"
+        ],
+        "collect_only": false,
+        "started_at": "2026-10-04T13:15:35.872568+00:00",
+        "elapsed_seconds": 4.880867583999134,
+        "exit_code": 0,
+        "junit": {
+          "tests": 137,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.10.4 (main, Mar 25 2022, 07:25:23) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 137,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/existing_public_source_corpus/execution.json",
+            "sha256": "2eaca81f579b70c8be2724d18bc3497b64a668360758bd7e26281af178652a20"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/existing_public_source_corpus/stdout.log",
+            "sha256": "fe557ecb715d68b9802baacef306f300dd14b92f4cae6a86cf1da45dfc2ccd51"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/existing_public_source_corpus/junit.xml",
+            "sha256": "5bdce1d4b03f452f4e8cd15a53bee66276db2828fda59935f42ad768c0164a2a"
+          }
+        ]
+      },
+      {
+        "runtime_label": "python310_corrected",
+        "group": "shared_numeric_review",
+        "test_files": [
+          "tests/test_numeric_review.py"
+        ],
+        "collect_only": false,
+        "started_at": "2026-10-04T13:15:40.756037+00:00",
+        "elapsed_seconds": 9.04576120800084,
+        "exit_code": 0,
+        "junit": {
+          "tests": 111,
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0
+        },
+        "python_version": "3.10.4 (main, Mar 25 2022, 07:25:23) [Clang 13.0.0 (clang-1300.0.29.30)]",
+        "pytest_version": "9.1.1",
+        "collected_count": 111,
+        "evidence": [
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/shared_numeric_review/execution.json",
+            "sha256": "8c04e092f58ff8a70de5d3280f396b9017807b0c53c777b765040c93fcdc5e93"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/shared_numeric_review/stdout.log",
+            "sha256": "007843cf2e1eeb29bdeb1cf41dd5e1a02156347230319855305409a711e0a796"
+          },
+          {
+            "path": "independent-review/integrated-checks/python310_corrected/shared_numeric_review/junit.xml",
+            "sha256": "f0dd975787a4ce4fbc6e82aa6b1eb64182117cb6ceb29105fc76f4e462e51b9d"
+          }
+        ]
+      }
+    ],
+    "tests_per_runtime": 307,
+    "total_test_executions": 614,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "collected_nodeids_identical": true,
+    "max_nodeid_utf16_units": 197,
+    "max_actual_teardown_current_test_utf16_units": 208,
+    "max_actual_teardown_environment_block_utf16_units": 1792,
+    "actual_teardown_samples": 614,
+    "windows_runtime": "NOT_EVALUATED_LOCALLY"
+  },
+  "static_checks": [
+    {
+      "name": "root-ruff-check",
+      "command": [
+        "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/frozen-claims-evaluation/.venv/bin/ruff",
+        "check",
+        "."
+      ],
+      "started_at": "2026-10-04T13:10:32.914278+00:00",
+      "completed_at": "2026-10-04T13:10:33.052920+00:00",
+      "elapsed_seconds": 0.13849904100061394,
+      "exit_code": 0,
+      "log_file": "root-ruff-check.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "name": "root-new-python-format",
+      "command": [
+        "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/frozen-claims-evaluation/.venv/bin/ruff",
+        "format",
+        "--check",
+        "tradingagents/evaluation/public_source_reports.py",
+        "scripts/verify_public_source_report_case.py",
+        "tests/test_public_source_report_case.py"
+      ],
+      "started_at": "2026-10-04T13:10:33.053247+00:00",
+      "completed_at": "2026-10-04T13:10:33.088630+00:00",
+      "elapsed_seconds": 0.03542720800032839,
+      "exit_code": 0,
+      "log_file": "root-new-python-format.log",
+      "log_sha256": "eee76f865de5a9f2456950f710ae5d5f9b5bd0ea02aa54f614c5eed6642a0bfd"
+    },
+    {
+      "name": "root-frozen-lock-offline",
+      "command": [
+        "/opt/anaconda3/bin/uv",
+        "lock",
+        "--check",
+        "--offline"
+      ],
+      "started_at": "2026-10-04T13:10:33.088887+00:00",
+      "completed_at": "2026-10-04T13:10:33.291863+00:00",
+      "elapsed_seconds": 0.20302287500089733,
+      "exit_code": 0,
+      "log_file": "root-frozen-lock-offline.log",
+      "log_sha256": "05ab035128978a0fd91170aca1c63545ea00d50e8b1be5c82a43a379f199a596"
+    },
+    {
+      "name": "root-diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "started_at": "2026-10-04T13:10:33.292086+00:00",
+      "completed_at": "2026-10-04T13:10:33.321646+00:00",
+      "elapsed_seconds": 0.029606000000057975,
+      "exit_code": 0,
+      "log_file": "root-diff-check.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "raw_byte_git_checks": {
+    "whitespace": {
+      "completed_at": "2026-10-04T13:15:27.736314+00:00",
+      "environment": "Owned local Git repository; system/global Git config disabled; core.autocrlf=true; no hooks, network, installed dependencies or candidate edits.",
+      "report_raw_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+      "attribute_sha256": "f587e9da77fe595b3ead70967a3feb75bc43deec7338bd36a163414e0493c8f3",
+      "results": [
+        {
+          "label": "owned init",
+          "command": [
+            "git",
+            "init",
+            "-q"
+          ],
+          "exit_code": 0
+        },
+        {
+          "label": "owned autocrlf",
+          "command": [
+            "git",
+            "config",
+            "--local",
+            "core.autocrlf",
+            "true"
+          ],
+          "exit_code": 0
+        },
+        {
+          "label": "stage original",
+          "command": [
+            "git",
+            "add",
+            "--",
+            ".gitattributes",
+            "tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json"
+          ],
+          "exit_code": 0
+        },
+        {
+          "label": "original CRLF passes",
+          "command": [
+            "git",
+            "diff",
+            "--cached",
+            "--check"
+          ],
+          "exit_code": 0
+        },
+        {
+          "label": "raw staged byte identity",
+          "command": [
+            "git",
+            "show",
+            ":tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json"
+          ],
+          "exit_code": 0
+        },
+        {
+          "label": "stage real trailing space",
+          "command": [
+            "git",
+            "add",
+            "--",
+            "tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json"
+          ],
+          "exit_code": 0
+        },
+        {
+          "label": "real trailing space rejects",
+          "command": [
+            "git",
+            "diff",
+            "--cached",
+            "--check"
+          ],
+          "exit_code": 2
+        },
+        {
+          "label": "restore original",
+          "command": [
+            "git",
+            "add",
+            "--",
+            "tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json"
+          ],
+          "exit_code": 0
+        },
+        {
+          "label": "restored CRLF passes",
+          "command": [
+            "git",
+            "diff",
+            "--cached",
+            "--check"
+          ],
+          "exit_code": 0
+        }
+      ],
+      "log_file": "root-whitespace-probe.log",
+      "log_sha256": "5bf361d320272811f3cc04c7c4f6cf170456442cef5d67cf47ae1384bede8519",
+      "crlf_bytes_retained": true,
+      "genuine_trailing_space_rejected": true,
+      "limit": "macOS Git whitespace/conversion observation, not a native Windows runtime check."
+    },
+    "checkout": {
+      "completed_at": "2026-10-04T13:19:31.818838+00:00",
+      "source_commit": "dc885b00b13673caae3fb64f46d83a0f262c2aa8",
+      "core_autocrlf": true,
+      "reused_owned_clone": true,
+      "owned_unconstrained_text_control_converted_to_crlf": true,
+      "checkout_file_identities": [
+        {
+          "path": "tests/fixtures/public_source_reports/bls-current-snapshot/case_v1.json",
+          "git_blob_sha256": "5749262a040c1f8d197c1767cc971b88960bb6c4545a95bcbb3dcf89b5b74622",
+          "checkout_sha256": "5749262a040c1f8d197c1767cc971b88960bb6c4545a95bcbb3dcf89b5b74622",
+          "raw_bytes_equal": true
+        },
+        {
+          "path": "tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json",
+          "git_blob_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+          "checkout_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+          "raw_bytes_equal": true
+        },
+        {
+          "path": "tests/fixtures/public_sources/bls-cpi-2023-2024/manifest_v1.json",
+          "git_blob_sha256": "992f3de577e8d50a3e28e5c3dc6e06dc2dac19d404b7f0f71a4b726a79516577",
+          "checkout_sha256": "992f3de577e8d50a3e28e5c3dc6e06dc2dac19d404b7f0f71a4b726a79516577",
+          "raw_bytes_equal": true
+        },
+        {
+          "path": "tests/fixtures/public_sources/bls-cpi-2023-2024/raw.json",
+          "git_blob_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+          "checkout_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+          "raw_bytes_equal": true
+        }
+      ],
+      "steps": [
+        {
+          "label": "set CRLF conversion",
+          "command": [
+            "git",
+            "config",
+            "--local",
+            "core.autocrlf",
+            "true"
+          ],
+          "started_at": "2026-10-04T13:19:31.084051+00:00",
+          "elapsed_seconds": 0.0364560830003029,
+          "exit_code": 0
+        },
+        {
+          "label": "checkout frozen source commit",
+          "command": [
+            "git",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "checkout",
+            "--detach",
+            "dc885b00b13673caae3fb64f46d83a0f262c2aa8"
+          ],
+          "started_at": "2026-10-04T13:19:31.120857+00:00",
+          "elapsed_seconds": 0.03372454100099276,
+          "exit_code": 0
+        },
+        {
+          "label": "stage owned conversion control",
+          "command": [
+            "git",
+            "add",
+            "--",
+            "owned_autocrlf_control.txt"
+          ],
+          "started_at": "2026-10-04T13:19:31.277948+00:00",
+          "elapsed_seconds": 0.028804042000047048,
+          "exit_code": 0
+        },
+        {
+          "label": "checkout owned conversion control",
+          "command": [
+            "git",
+            "checkout-index",
+            "--force",
+            "--",
+            "owned_autocrlf_control.txt"
+          ],
+          "started_at": "2026-10-04T13:19:31.306914+00:00",
+          "elapsed_seconds": 0.026635166001142352,
+          "exit_code": 0
+        },
+        {
+          "label": "remove owned conversion control from index",
+          "command": [
+            "git",
+            "reset",
+            "HEAD",
+            "--",
+            "owned_autocrlf_control.txt"
+          ],
+          "started_at": "2026-10-04T13:19:31.333660+00:00",
+          "elapsed_seconds": 0.02878733400029887,
+          "exit_code": 0
+        },
+        {
+          "label": "existing-cpython-3.12 isolated CLI",
+          "command": [
+            "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/frozen-claims-evaluation/.venv/bin/python",
+            "-B",
+            "-I",
+            "scripts/verify_public_source_report_case.py",
+            "tests/fixtures/public_source_reports/bls-current-snapshot/case_v1.json",
+            "tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json",
+            "tests/fixtures/public_sources/bls-cpi-2023-2024/manifest_v1.json",
+            "tests/fixtures/public_sources/bls-cpi-2023-2024/raw.json"
+          ],
+          "started_at": "2026-10-04T13:19:31.362581+00:00",
+          "elapsed_seconds": 0.20304933300030825,
+          "exit_code": 0
+        },
+        {
+          "label": "existing-cpython-3.10 isolated CLI",
+          "command": [
+            "/Users/apple/workspace/TradingAgents/evidenceloom/.venv/bin/python",
+            "-B",
+            "-I",
+            "scripts/verify_public_source_report_case.py",
+            "tests/fixtures/public_source_reports/bls-current-snapshot/case_v1.json",
+            "tests/fixtures/public_source_reports/bls-current-snapshot/report_v1.json",
+            "tests/fixtures/public_sources/bls-cpi-2023-2024/manifest_v1.json",
+            "tests/fixtures/public_sources/bls-cpi-2023-2024/raw.json"
+          ],
+          "started_at": "2026-10-04T13:19:31.566024+00:00",
+          "elapsed_seconds": 0.1904720830007136,
+          "exit_code": 0
+        },
+        {
+          "label": "source diff whitespace check",
+          "command": [
+            "git",
+            "diff",
+            "dc885b00b13673caae3fb64f46d83a0f262c2aa8^",
+            "dc885b00b13673caae3fb64f46d83a0f262c2aa8",
+            "--check"
+          ],
+          "started_at": "2026-10-04T13:19:31.756632+00:00",
+          "elapsed_seconds": 0.029201833000115585,
+          "exit_code": 0
+        },
+        {
+          "label": "clean checkout after both CLI calls",
+          "command": [
+            "git",
+            "status",
+            "--porcelain"
+          ],
+          "started_at": "2026-10-04T13:19:31.785876+00:00",
+          "elapsed_seconds": 0.03246341700105404,
+          "exit_code": 0
+        }
+      ],
+      "cli_results": [
+        {
+          "runtime": "existing-cpython-3.12",
+          "summary": {
+            "case_sha256": "d5a9cae5fc3f5479727d94e192484506d3cd27800e83567ff537015bac033932",
+            "counts": {
+              "match": 4,
+              "mismatch": 0,
+              "submitted": 4
+            },
+            "expert": "PENDING",
+            "expert_approved_claim_denominator": 0,
+            "first_public_availability": null,
+            "historical_authority": "UNAVAILABLE",
+            "historical_vintage": "unknown",
+            "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+            "metadata_authority": "manifest_declarations_only",
+            "observation_count": 48,
+            "provider_origin": "NOT_AUTHENTICATED",
+            "publication_time": null,
+            "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+            "report_raw_utf8_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+            "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95",
+            "result_sha256": "9478d74d392a5103f0119297ce191709c7bd44bf217be6aa0ff2363c081ea7ef",
+            "semantic_support": "NOT_EVALUATED",
+            "series_count": 2,
+            "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+          }
+        },
+        {
+          "runtime": "existing-cpython-3.10",
+          "summary": {
+            "case_sha256": "d5a9cae5fc3f5479727d94e192484506d3cd27800e83567ff537015bac033932",
+            "counts": {
+              "match": 4,
+              "mismatch": 0,
+              "submitted": 4
+            },
+            "expert": "PENDING",
+            "expert_approved_claim_denominator": 0,
+            "first_public_availability": null,
+            "historical_authority": "UNAVAILABLE",
+            "historical_vintage": "unknown",
+            "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+            "metadata_authority": "manifest_declarations_only",
+            "observation_count": 48,
+            "provider_origin": "NOT_AUTHENTICATED",
+            "publication_time": null,
+            "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+            "report_raw_utf8_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+            "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95",
+            "result_sha256": "9478d74d392a5103f0119297ce191709c7bd44bf217be6aa0ff2363c081ea7ef",
+            "semantic_support": "NOT_EVALUATED",
+            "series_count": 2,
+            "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+          }
+        }
+      ],
+      "all_four_checkout_files_unchanged": true,
+      "checkout_clean": true,
+      "log_file": "root-crlf-checkout-corrected-v2.log",
+      "log_sha256": "be407651cad7f7554df128e8f9f437c1aecd7b8c0fac1f4490d369e6daa74ad3",
+      "original_harness_failures": [
+        "root-crlf-checkout-first-failure.json",
+        "root-crlf-checkout-control-first-failure.json"
+      ],
+      "limits": [
+        "Local macOS Git conversion check, not Windows runtime evidence.",
+        "Existing read-only interpreter environments; no dependency install, provider, model or network call.",
+        "Hash-bound source literal matches retain NOT_AUTHENTICATED origin, unknown historical vintage and expert denominator zero."
+      ]
+    }
+  },
+  "contrary_evidence": [
+    "First root parent supervisor failed its bookkeeping assertion because it expected author edits after an already-edited baseline; child exit was not retained. Fresh run separately compared captured 587 files and immutable 585 protected Git blobs, retaining actual child exit 0.",
+    "First independent CLI audit harness incorrectly treated standard-library urllib.parse as forbidden provider/network import; original three group failures retained, corrected socket/http audit retained, nine groups pass.",
+    "First independent integration startup harness rejected macOS-injected LC_CTYPE and __CF_USER_TEXT_ENCODING before pytest; eight original startup failures retained. Corrected runner records and removes only those two keys before pytest.",
+    "Staged default Git whitespace check actually exited 2 on all 39 retained CRLF report lines; earlier unstaged checks excluded this untracked file. Exact-file cr-at-eol rule retains bytes and still rejects real trailing spaces.",
+    "First root checkout harness wrongly expected fixture case/manifest conversion despite existing eol=lf attributes. Its correction then assumed checkout-index rewrites an unchanged owned control. Both actual exit-1 records retained; corrected v2 removes only its own control before checkout, proves CRLF conversion is active and all four source/report fixtures remain byte-identical."
+  ],
+  "evidence_identities": [
+    {
+      "path": "candidate-source-freeze.json",
+      "bytes": 4690,
+      "sha256": "27c2f1ab72d482c4a6261c1a915a849bad0f5e6889ad49aa6ea917ab6a548bce"
+    },
+    {
+      "path": "targeted-tests.log",
+      "bytes": 99,
+      "sha256": "3e87c6d749ef9dc68190997c013e452e25038aaaac0f334c95501174be8d2a13"
+    },
+    {
+      "path": "root-independent-final-execution.json",
+      "bytes": 933,
+      "sha256": "8b5a0d8a1a956955e458acab793e84de33114698df9fb19ece2947b2d167ccca"
+    },
+    {
+      "path": "root-independent-public-case-final.log",
+      "bytes": 2268,
+      "sha256": "e8cd735a0a6a1dcc2468688623cbde46a75d1d1ab23421698b7675b54b7a0406"
+    },
+    {
+      "path": "root-independent-first-supervisor-failure.json",
+      "bytes": 1097,
+      "sha256": "0f4ce56984b6f4a063f73537525a61c4d881250199d91f4d2361a6a852be099c"
+    },
+    {
+      "path": "root-independent-public-case-first.log",
+      "bytes": 2131,
+      "sha256": "a1b4ad3c6e1d11be68311799b664133a71a123910d91334c9ad5c0f3450b0e18"
+    },
+    {
+      "path": "root-final-source-identity.json",
+      "bytes": 94355,
+      "sha256": "d14c8785ee761fbb115d426a100f050a63ecb16cc333de2983095bad02ba4c67"
+    },
+    {
+      "path": "root-static-execution.json",
+      "bytes": 2043,
+      "sha256": "2e0b6157a0900034384bf85adf0eb51a9f99953a78126165d186d31398d063fc"
+    },
+    {
+      "path": "root-staged-crlf-first.json",
+      "bytes": 569,
+      "sha256": "78d5a6c01de1af59dca2dfd4c67092ea92fc0ed381a74fb4cd88a3a781165256"
+    },
+    {
+      "path": "root-staged-crlf-first.log",
+      "bytes": 7266,
+      "sha256": "6a5beef947aebb26a4c26ec1b060610c0ec929d90effc0890fd8f9210b1cb9ad"
+    },
+    {
+      "path": "root-whitespace-probe.json",
+      "bytes": 2482,
+      "sha256": "40448c0176e4ea0d147fc1dbfcb7836d4068657f4d3d21c300725fa6ed9342d1"
+    },
+    {
+      "path": "root-whitespace-probe.log",
+      "bytes": 3802,
+      "sha256": "5bf361d320272811f3cc04c7c4f6cf170456442cef5d67cf47ae1384bede8519"
+    },
+    {
+      "path": "root-crlf-checkout.json",
+      "bytes": 8478,
+      "sha256": "5db128493e7df496b4d63e14685905ae2ab1eb113cde0b9d84adb2f1a29649cf"
+    },
+    {
+      "path": "root-crlf-checkout-corrected-v2.log",
+      "bytes": 2469,
+      "sha256": "be407651cad7f7554df128e8f9f437c1aecd7b8c0fac1f4490d369e6daa74ad3"
+    },
+    {
+      "path": "root-crlf-checkout-first-failure.json",
+      "bytes": 648,
+      "sha256": "8fc04329f06e2ee9d376da023c6de654d45b9586cfa98a40e6f644cbbcb0e86a"
+    },
+    {
+      "path": "root-crlf-checkout.log",
+      "bytes": 290,
+      "sha256": "26418ecf223840aeefbb0eba9b3de126c8dc353fd06d2708443e8406317b1fc0"
+    },
+    {
+      "path": "root-crlf-checkout-control-first-failure.json",
+      "bytes": 576,
+      "sha256": "5b594f08da1f2aa707655da868cebcc7b87771007257cb64592d3a61eced4ac3"
+    },
+    {
+      "path": "root-crlf-checkout-corrected.log",
+      "bytes": 329,
+      "sha256": "aa4dcaf20e67d2d30298d5e8d81c082c8dafa59d285b0189c491cc081cabf86b"
+    },
+    {
+      "path": "independent-review/independent-review-summary.json",
+      "bytes": 5964,
+      "sha256": "a016c3b8228dc96607eb370d474079594ddf8e73ed165aa041438abd208a677b"
+    },
+    {
+      "path": "independent-review/acceptance-and-contract-review.json",
+      "bytes": 5681,
+      "sha256": "6ed35e79c279a1d287d5a04f725123d266bb37de17e8dd0c03ef0ce7c66704be"
+    },
+    {
+      "path": "independent-review/probe-results.json",
+      "bytes": 11396,
+      "sha256": "a596f51edd4396afe8cd334e6e82a780457de85fbe7e933945429aad1bc2a0f1"
+    },
+    {
+      "path": "independent-review/probe-results-corrected.json",
+      "bytes": 7663,
+      "sha256": "83a6f29f5e4fa9ee6979b97e0c03bef5685fe90cd52ebbbe1807e277a8b3ef2a"
+    },
+    {
+      "path": "independent-review/harness-correction.json",
+      "bytes": 446,
+      "sha256": "1ede849ef599eff1b81847c1a8abdc017034e8b6557ed8f2664ffd7edea17f6d"
+    },
+    {
+      "path": "independent-review/raw-encoding-characterization.json",
+      "bytes": 1671,
+      "sha256": "273cbd6fdf2705dc52f5c5d0ddcc2a94ec245fa3664e1d593bf58ec64f164aea"
+    },
+    {
+      "path": "independent-review/integrated-checks/integrated-review-conclusion.json",
+      "bytes": 7812,
+      "sha256": "49647a0dda2584fb06b2a1a89ef274e8fc2d9652807803f19aa45ff44c13d671"
+    },
+    {
+      "path": "independent-review/integrated-checks/integrated-summary.json",
+      "bytes": 16579,
+      "sha256": "937a648f7145cc81f2176efa4549b5aa09d4e445bcfdedffd1268bf68640a47d"
+    },
+    {
+      "path": "independent-review/integrated-checks/integrated-summary-corrected.json",
+      "bytes": 20765,
+      "sha256": "eb77e1278d519beca757a629877635ab035d585d3d823ffa8ccabc0b6b0053f5"
+    }
+  ],
+  "remote_validation": {
+    "status": "PENDING_AT_RECORD",
+    "method": "All required checks must terminate on exact published PR head, including native source tests, packaged sidecar, Rust protocol/process fixtures, actual seeded storage and real packaged bridge on ARM Mac, Intel Mac and Windows.",
+    "source_tests_added_to_all_native_targets": true,
+    "timeouts_unchanged": true
+  },
+  "limits": [
+    "Actual local macOS CPython 3.10.4 and 3.12.10, not native Windows/Linux execution.",
+    "No dependency added/installed, paid/provider/model request, application storage write or production report run.",
+    "NumericPipeline graph/model cases and full repository regression are delegated to required remote CI rather than claimed as local checks.",
+    "Hashes bind supplied artifacts; provider origin remains NOT_AUTHENTICATED, historical vintage unknown, publication/first availability null and historical authority UNAVAILABLE.",
+    "Literal matches do not establish context semantics, statistical/economic truth or all-report factual accuracy. Expert PENDING, reviewer/time null, labels empty and approved claim denominator zero.",
+    "External analyst, screen-reader/physical-device, production-source completeness, historical/provider/calendar and clean-install/signing acceptance remain open."
+  ]
+}
