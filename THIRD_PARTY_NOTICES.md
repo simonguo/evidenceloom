@@ -831,6 +831,7 @@ uv run python scripts/generate_third_party_notices.py
 | `cfg-expr` | `0.15.8` | MIT OR Apache-2.0 | [link](https://github.com/EmbarkStudios/cfg-expr) |
 | `cfg-if` | `1.0.4` | MIT OR Apache-2.0 | [link](https://github.com/rust-lang/cfg-if) |
 | `chrono` | `0.4.45` | MIT OR Apache-2.0 | [link](https://github.com/chronotope/chrono) |
+| `chrono-tz` | `0.10.4` | MIT OR Apache-2.0 | [link](https://github.com/chronotope/chrono-tz) |
 | `cipher` | `0.4.4` | MIT OR Apache-2.0 | [link](https://github.com/RustCrypto/traits) |
 | `combine` | `4.6.7` | MIT | [link](https://github.com/Marwes/combine) |
 | `concurrent-queue` | `2.5.0` | Apache-2.0 OR MIT | [link](https://github.com/smol-rs/concurrent-queue) |
@@ -1031,10 +1032,12 @@ uv run python scripts/generate_third_party_notices.py
 | `parking_lot` | `0.12.5` | MIT OR Apache-2.0 | [link](https://github.com/Amanieu/parking_lot) |
 | `parking_lot_core` | `0.9.12` | MIT OR Apache-2.0 | [link](https://github.com/Amanieu/parking_lot) |
 | `percent-encoding` | `2.3.2` | MIT OR Apache-2.0 | [link](https://github.com/servo/rust-url/) |
+| `phf` | `0.12.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_codegen` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_generator` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_macros` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
+| `phf_shared` | `0.12.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_shared` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `pin-project-lite` | `0.2.17` | Apache-2.0 OR MIT | [link](https://github.com/taiki-e/pin-project-lite) |
 | `piper` | `0.2.5` | MIT OR Apache-2.0 | [link](https://github.com/smol-rs/piper) |
@@ -1178,6 +1181,7 @@ uv run python scripts/generate_third_party_notices.py
 | `unic-ucd-ident` | `0.9.0` | MIT/Apache-2.0 | [link](https://github.com/open-i18n/rust-unic/) |
 | `unic-ucd-version` | `0.9.0` | MIT/Apache-2.0 | [link](https://github.com/open-i18n/rust-unic/) |
 | `unicode-ident` | `1.0.24` | (MIT OR Apache-2.0) AND Unicode-3.0 | [link](https://github.com/dtolnay/unicode-ident) |
+| `unicode-normalization` | `0.1.25` | MIT OR Apache-2.0 | [link](https://github.com/unicode-rs/unicode-normalization) |
 | `unicode-segmentation` | `1.13.3` | MIT OR Apache-2.0 | [link](https://github.com/unicode-rs/unicode-segmentation) |
 | `universal-hash` | `0.5.1` | MIT OR Apache-2.0 | [link](https://github.com/RustCrypto/traits) |
 | `url` | `2.5.8` | MIT OR Apache-2.0 | [link](https://github.com/servo/rust-url) |
