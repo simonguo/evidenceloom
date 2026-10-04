@@ -175,13 +175,25 @@ class EvidenceSourceError(RuntimeError):
     """An unhandled source failure without the upstream response or endpoint."""
 
 
-def _collect_secrets(secrets=()):
-    return tuple(secrets) + tuple(
-        v
-        for k, v in os.environ.items()
-        if any(x in k.lower() for x in ("api_key", "access_token", "password", "secret"))
-        or k.upper().endswith("_TOKEN")
+def _secret_environment_key(key):
+    if type(key) is not str:
+        # Preserve repeated method calls for custom mapping keys whose lower()
+        # or upper() may have observable behavior.
+        return any(
+            x in key.lower() for x in ("api_key", "access_token", "password", "secret")
+        ) or key.upper().endswith("_TOKEN")
+    lowered = key.lower()
+    return (
+        "api_key" in lowered
+        or "access_token" in lowered
+        or "password" in lowered
+        or "secret" in lowered
+        or key.upper().endswith("_TOKEN")
     )
+
+
+def _collect_secrets(secrets=()):
+    return tuple(secrets) + tuple(v for k, v in os.environ.items() if _secret_environment_key(k))
 
 
 def sanitize_diagnostic(value, *, secrets=()):
