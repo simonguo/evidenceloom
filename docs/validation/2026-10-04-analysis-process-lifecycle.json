@@ -1,0 +1,1519 @@
+{
+  "created_at": "2026-10-04T17:23:52.539420+00:00",
+  "publication_base": "6e8400e5b9b93f415cbbd291521352c7be78182f",
+  "implementation_commit": "52381cc649b558b7b8be7f6d49ea0ec0e50e49d1",
+  "author_validation_base": "bd4f56f5fce757aaddcb8a1fc13e0569559ad54a",
+  "restack_scope": "Parent documentation changed; all frozen implementation bytes and dependency identities were compared to the implementation Git blobs.",
+  "source_rows": [
+    {
+      "path": "frontend/src/app/page.tsx",
+      "bytes": 7247,
+      "sha256": "7e7ad31d06787a60da8d5a50dadaab2a616f215b4f1aabb9d7d93b873056c3d1"
+    },
+    {
+      "path": "frontend/src/components/task-center/context.tsx",
+      "bytes": 26748,
+      "sha256": "2052b3c8d4b3bfc1abe0efdaca709907db5e515b6264e28528ed0a0d267fe69f"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/TaskQueuePanel.tsx",
+      "bytes": 5099,
+      "sha256": "9ebd33cc3f4ffdaece4deff0db5da4c584649c65d967b73bfc83642a153c03a5"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/useTaskQueueController.ts",
+      "bytes": 15169,
+      "sha256": "6aae95b85215720d5af813f0395901d0cef13b354d2d6a9e22da9813d91cbe10"
+    },
+    {
+      "path": "frontend/src/lib/i18n.ts",
+      "bytes": 30837,
+      "sha256": "5b6a0a672cc3ba57911b4355b5dcc284b25010960585fb655deb74616e7cd22d"
+    },
+    {
+      "path": "frontend/src/lib/runtime.test.ts",
+      "bytes": 18259,
+      "sha256": "49c8c8568d7d412da2d408b4badaac09212b7f5e69566278f5b88e9a921027da"
+    },
+    {
+      "path": "frontend/src/lib/runtime.ts",
+      "bytes": 10350,
+      "sha256": "1138eecf618d088404a2eafc85a66e27d54305e5b0dfa1796d23cbc0b20e5d13"
+    },
+    {
+      "path": "frontend/src/lib/desktop-analysis.ts",
+      "bytes": 8991,
+      "sha256": "af240e0e025b955c90df09777423f3c01eb50a58646bbc4cf65883598a3eda85"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/useTaskQueueController.test.ts",
+      "bytes": 9000,
+      "sha256": "eb7637d3d1771a50ac116cd9bdfd13455540a477c477d15939ef3188e4339671"
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "bytes": 55566,
+      "sha256": "11d4b6749f026cdcb6a4b5f9d401af9c2c5d4249fc5935da06b347f79dc24ded"
+    },
+    {
+      "path": "src-tauri/src/analysis_execution.rs",
+      "bytes": 11177,
+      "sha256": "792aa45f1c0d91d9af9901f6cbc274e52d1fcc3bcf544f85aa6ca621806a701b"
+    },
+    {
+      "path": "src-tauri/src/analysis_execution/tests.rs",
+      "bytes": 24602,
+      "sha256": "9835e0b51a30c6357bd7cf28dd5693c7f1938929fdc3e0eab05077899a3f8320"
+    },
+    {
+      "path": "src-tauri/src/analysis_execution/fixture.rs",
+      "bytes": 1882,
+      "sha256": "7adf497f1dc7048b41c787e3a5129cce7eaec83706b03dc8c6c6bd446522c30d"
+    },
+    {
+      "path": "src-tauri/src/owned_process.rs",
+      "bytes": 6258,
+      "sha256": "c2265302bb5bf64e158227ddcbe0b3a573b76232786f88bd1b360a20baef8687"
+    },
+    {
+      "path": "src-tauri/src/owned_process/windows_job.rs",
+      "bytes": 5686,
+      "sha256": "de7fe9c70b6c5ac526e409fdcb01e7bfddd27422902a5d9e408817142cbf3a99"
+    },
+    {
+      "path": "src-tauri/src/runtime_probe/process.rs",
+      "bytes": 60,
+      "sha256": "8201f9a47a8923aa577a964c3fa7ac361e81923b1a64e86f74f94b9aff6e6a49"
+    },
+    {
+      "path": ".github/workflows/sidecar-diagnostics.yml",
+      "bytes": 6986,
+      "sha256": "7ed865609a62fa9ad5f4587c2be4abb22032a7be150a08267d9d08aab2affb97"
+    },
+    {
+      "path": "src-tauri/src/runtime_probe.rs",
+      "bytes": 31949,
+      "sha256": "e685885c9d426fea16b02a99d1048be176df97fae331daf5cfa0eb282f142761"
+    },
+    {
+      "path": "src-tauri/src/runtime_probe/cleanup_fixture.rs",
+      "bytes": 1928,
+      "sha256": "b36db071596d94b7bf12df2b3cfdc5b8fc8f63b7e16e359b2bb30074098ac398"
+    }
+  ],
+  "removed_source_rows": [
+    {
+      "path": "src-tauri/src/runtime_probe/process/windows_job.rs",
+      "bytes": 5438,
+      "sha256": "fd3ad3843c5a621b17378b67f7220d1520ede0b5429bc57cd5425334a13c1f43",
+      "binding_revision": "6e8400e5b9b93f415cbbd291521352c7be78182f"
+    }
+  ],
+  "unchanged_dependency_rows": [
+    {
+      "path": "uv.lock",
+      "bytes": 529478,
+      "sha256": "6bd7a835544b346f8b3fe4ab553116240bd05a63497382bfc25a1b39143b88be"
+    },
+    {
+      "path": "pyproject.toml",
+      "bytes": 1834,
+      "sha256": "238d7870b6b585538a9857d6f77cdb5fa8015ddebb0c7605ad5334e30238a6c1"
+    },
+    {
+      "path": "frontend/package.json",
+      "bytes": 1529,
+      "sha256": "5b901a7a5f3f254bb64385f784dc2bd0d9983421a5ebe3a2e1317f442267b356"
+    },
+    {
+      "path": "frontend/package-lock.json",
+      "bytes": 348012,
+      "sha256": "49ebbdecb64fa39974a1946a66b2d93b2a0d4a751b45a6b69bf5994c3b0cf9e4"
+    },
+    {
+      "path": "src-tauri/Cargo.toml",
+      "bytes": 1082,
+      "sha256": "2489d1fd3f970a624a507826e69beca3b2deba4f8002a4f847040fc6f0a1551f"
+    },
+    {
+      "path": "src-tauri/Cargo.lock",
+      "bytes": 132742,
+      "sha256": "134c9370171418c1b4a3ee6381ac4f28c9019c787b7e11982530b3f553fb808d"
+    }
+  ],
+  "final_frontend_inventory_count": 218,
+  "frontend_summary": {
+    "base_frontend_files": 216,
+    "candidate_frontend_files": 218,
+    "unchanged": 209,
+    "changed": 7,
+    "added": 2
+  },
+  "frontend_executions": [
+    {
+      "name": "typecheck",
+      "argv": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "started_at": "2026-10-04T16:36:09.621618+00:00",
+      "ended_at": "2026-10-04T16:36:10.602528+00:00",
+      "elapsed_seconds": 0.9797381660000001,
+      "exit_code": 0,
+      "raw_log": "frontend-final-typecheck.log",
+      "raw_log_bytes": 65,
+      "raw_log_sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+    },
+    {
+      "name": "lint",
+      "argv": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "started_at": "2026-10-04T16:36:10.604977+00:00",
+      "ended_at": "2026-10-04T16:36:12.091719+00:00",
+      "elapsed_seconds": 1.4854918750000001,
+      "exit_code": 0,
+      "raw_log": "frontend-final-lint.log",
+      "raw_log_bytes": 56,
+      "raw_log_sha256": "64433d90eb0a53d21a047c1d717ff93fcf82ac583b21a1a700535929f3fe26a0"
+    },
+    {
+      "name": "full-tests",
+      "argv": [
+        "npm",
+        "test",
+        "--",
+        "--reporter=default",
+        "--reporter=junit",
+        "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-full-final-junit.xml"
+      ],
+      "started_at": "2026-10-04T16:36:12.093908+00:00",
+      "ended_at": "2026-10-04T16:36:16.073528+00:00",
+      "elapsed_seconds": 3.9784021669999996,
+      "exit_code": 0,
+      "raw_log": "frontend-final-full-tests.log",
+      "raw_log_bytes": 31200,
+      "raw_log_sha256": "e4f85fa84bf892b6ff502b715cd5cc572f3396a9c097b4a9e17e1f8b8bc0c8e1"
+    },
+    {
+      "name": "build",
+      "argv": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "started_at": "2026-10-04T16:36:16.075946+00:00",
+      "ended_at": "2026-10-04T16:36:30.629127+00:00",
+      "elapsed_seconds": 14.551892959,
+      "exit_code": 0,
+      "raw_log": "frontend-final-build.log",
+      "raw_log_bytes": 1679,
+      "raw_log_sha256": "df2bcd7ee2e9e2e47ba1b2e27217f729a5278de83054be63b914806ebf9ec093"
+    },
+    {
+      "name": "static-build",
+      "argv": [
+        "npm",
+        "run",
+        "build:tauri"
+      ],
+      "started_at": "2026-10-04T16:36:30.631795+00:00",
+      "ended_at": "2026-10-04T16:36:40.073416+00:00",
+      "elapsed_seconds": 9.439777249999999,
+      "exit_code": 0,
+      "raw_log": "frontend-final-static-build.log",
+      "raw_log_bytes": 1747,
+      "raw_log_sha256": "e57a26a765c537b2147d1c49baf6f9eec9f60c3d5d67f92866f036ac4b6a6f22"
+    },
+    {
+      "name": "generated-typecheck",
+      "argv": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "started_at": "2026-10-04T16:36:40.076241+00:00",
+      "ended_at": "2026-10-04T16:36:41.015024+00:00",
+      "elapsed_seconds": 0.9371826250000019,
+      "exit_code": 0,
+      "raw_log": "frontend-final-generated-typecheck.log",
+      "raw_log_bytes": 65,
+      "raw_log_sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+    },
+    {
+      "name": "targeted-frozen",
+      "argv": [
+        "npm",
+        "test",
+        "--",
+        "--reporter=default",
+        "--reporter=junit",
+        "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-targeted-frozen-junit.xml",
+        "src/lib/runtime.test.ts",
+        "src/components/task-center/queue/useTaskQueueController.test.ts"
+      ],
+      "started_at": "2026-10-04T16:38:33.920639+00:00",
+      "ended_at": "2026-10-04T16:38:35.330724+00:00",
+      "elapsed_seconds": 1.408527459,
+      "exit_code": 0,
+      "raw_log": "frontend-targeted-frozen.log",
+      "raw_log_bytes": 1147,
+      "raw_log_sha256": "61225e619e4a70e76eb88e2dafd40555559958f5d0a0f2036676e7b982dee1c3"
+    }
+  ],
+  "frontend_junit": [
+    {
+      "path": "frontend-full-final-junit.xml",
+      "tests": 644,
+      "failures": 0,
+      "errors": 0,
+      "suites": 45
+    },
+    {
+      "path": "frontend-targeted-frozen-junit.xml",
+      "tests": 26,
+      "failures": 0,
+      "errors": 0,
+      "suites": 2
+    }
+  ],
+  "frontend_warnings": {
+    "full_suite_act_occurrences": 41,
+    "test_context_count": 11,
+    "test_file_count": 5,
+    "component_name_count": 6,
+    "by_test_context": {
+      "src/features/source-identity/components/IdentityInspector.test.ts > scoped saved request review UI > shows every scoped stage without provider/entity certification and lazily renders the full receipt": 1,
+      "src/features/report-export/components/ReportVersionsPanel.test.ts > selected immutable report review > replaces the combined saved numeric panel on legacy selection and restores only the selected receipt": 2,
+      "src/features/source-identity/components/IdentityInspector.test.ts > scoped saved request review UI > blocks all actual export buttons for an invalid attachment": 6,
+      "src/features/numeric-review/components/NumericReviewPanel.test.ts > actual raw selection to retained task save and reload > does not publish or export an appended receipt after actual localStorage persistence failure": 3,
+      "src/features/numeric-review/components/NumericReviewPanel.test.ts > actual raw selection to retained task save and reload > binds displayed CRLF-normalized selection to exact original UTF8 bytes, appends through the provider and survives reload": 16,
+      "src/features/report-export/components/ReportVersionsPanel.test.ts > selected immutable report review > isolates selected v2 proxy memory and later facts from a legacy version and its export": 2,
+      "src/features/memory/hooks/saveEvaluationReviews.test.ts > durable saved evaluation reviews > rejects actual quota failure without publishing or replacing durable history": 2,
+      "src/features/source-identity/components/IdentityInspector.test.ts > scoped saved request review UI > actual selected-version JSON export freezes the attachment before awaiting hashes": 2,
+      "src/features/memory/hooks/saveEvaluationReviews.test.ts > durable saved evaluation reviews > saves only the selected version and restores exact frozen input and later facts after reload": 5,
+      "src/features/numeric-review/hooks/useNumericReview.test.ts > selected-version numeric request generation > ignores a delayed comparison after inputs invalidate its generation and permits a fresh request": 1,
+      "src/features/numeric-review/hooks/useNumericReview.test.ts > selected-version numeric request generation > resets pending after version selection and sends an in-flight save only to its original owner": 1
+    },
+    "by_test_file": {
+      "src/features/source-identity/components/IdentityInspector.test.ts": 9,
+      "src/features/report-export/components/ReportVersionsPanel.test.ts": 4,
+      "src/features/numeric-review/components/NumericReviewPanel.test.ts": 19,
+      "src/features/memory/hooks/saveEvaluationReviews.test.ts": 7,
+      "src/features/numeric-review/hooks/useNumericReview.test.ts": 2
+    },
+    "by_component_name": {
+      "IdentityInspector": 1,
+      "NumericReviewPanel": 14,
+      "ReportVersionsPanel": 8,
+      "TaskCenterProvider": 14,
+      "MemoryInspector": 2,
+      "Session": 2
+    },
+    "targeted_act_occurrences": 0,
+    "new_targeted_test_files_with_warning": [],
+    "classification_scope": "These are the observed complete final run counts; warning contexts are five existing test files. This does not claim the count/timing is identical to an immutable baseline.",
+    "build_plugin_warning": {
+      "count": 2,
+      "one_each_in": [
+        "frontend-final-build.log",
+        "frontend-final-static-build.log"
+      ],
+      "message": "The Next.js plugin was not detected in your ESLint configuration."
+    },
+    "dependency_audit": "Not rerun; no new audit result, no assertion of zero vulnerabilities. package.json/package-lock.json byte-identical to base."
+  },
+  "frontend_warning_scope_addendum": "The original freeze field full_suite_unique_act_warning_contexts lists six component names. This record uses the separately retained final log classification: 11 test contexts, five files and six components; the original freeze is unchanged.",
+  "rust_batch": {
+    "started_at": "2026-10-04T16:59:11.797686+00:00",
+    "completed_at": "2026-10-04T16:59:34.273290+00:00",
+    "source_stable": true,
+    "commands": [
+      {
+        "argv": [
+          "cargo",
+          "fmt",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--check"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.35370079099999996,
+        "logs": [
+          {
+            "path": "cargo-final-04-command-0.stdout.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "path": "cargo-final-04-command-0.stderr.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ]
+      },
+      {
+        "argv": [
+          "cargo",
+          "clippy",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 3.2966488750000003,
+        "logs": [
+          {
+            "path": "cargo-final-04-command-1.stdout.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "path": "cargo-final-04-command-1.stderr.log",
+            "bytes": 220,
+            "sha256": "2d857786f460214c6a08cfb7a68efd3cce57cd373ea9f086782728978794ed0a"
+          }
+        ]
+      },
+      {
+        "argv": [
+          "cargo",
+          "test",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "analysis_execution"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 9.438115083,
+        "logs": [
+          {
+            "path": "cargo-final-04-command-2.stdout.log",
+            "bytes": 2540,
+            "sha256": "dd311f0c3197aca0070cb4f0346c4deaeb2a79cf4f2ef57957e2e60bac5b0d99"
+          },
+          {
+            "path": "cargo-final-04-command-2.stderr.log",
+            "bytes": 408,
+            "sha256": "9acbfb7d2049e4e8922ee6b03b3cd31543883d63de14bda9788fa9b6d1018b6d"
+          }
+        ]
+      },
+      {
+        "argv": [
+          "cargo",
+          "test",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "runtime_probe"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 8.599502292,
+        "logs": [
+          {
+            "path": "cargo-final-04-command-3.stdout.log",
+            "bytes": 932,
+            "sha256": "5a6b31ac69eac9f2efda85e9c7c637218ec786b8498485f27da5ca353f430a7c"
+          },
+          {
+            "path": "cargo-final-04-command-3.stderr.log",
+            "bytes": 260,
+            "sha256": "0c883a544e52bc43c1e0abf260887df6c583f2e5609a328fbd1f555fce133448"
+          }
+        ]
+      },
+      {
+        "argv": [
+          "cargo",
+          "test",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "research_memory_inventory"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.6041404159999999,
+        "logs": [
+          {
+            "path": "cargo-final-04-command-4.stdout.log",
+            "bytes": 596,
+            "sha256": "e5a6230f61061d649af9338fc8e88f99fddb0ae8aed0804627ad1a125647691e"
+          },
+          {
+            "path": "cargo-final-04-command-4.stderr.log",
+            "bytes": 260,
+            "sha256": "5f5d0d7a8f5ce6853455f4b1c1185b4657afd2b7ec042b55861b5e182d870d7f"
+          }
+        ]
+      }
+    ],
+    "versions": {
+      "rustc": "rustc 1.95.0 (59807616e 2026-04-14)",
+      "cargo": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)"
+    },
+    "platform": "macOS-26.5.2-x86_64-i386-64bit"
+  },
+  "rust_test_results": [
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "src-tauri/Cargo.toml",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "analysis_execution"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 9.438115083,
+      "test_result_lines": [
+        "test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 109 filtered out; finished in 4.24s"
+      ]
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "src-tauri/Cargo.toml",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "runtime_probe"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 8.599502292,
+      "test_result_lines": [
+        "test result: ok. 8 passed; 0 failed; 1 ignored; 0 measured; 127 filtered out; finished in 8.26s"
+      ]
+    },
+    {
+      "argv": [
+        "cargo",
+        "test",
+        "--manifest-path",
+        "src-tauri/Cargo.toml",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "research_memory_inventory"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.6041404159999999,
+      "test_result_lines": [
+        "test result: ok. 3 passed; 0 failed; 1 ignored; 0 measured; 132 filtered out; finished in 0.29s"
+      ]
+    }
+  ],
+  "probe_fixture_scope": {
+    "old_cleanup_test_total_seconds": 1,
+    "old_cleanup_test_work_seconds": 0.75,
+    "new_cleanup_test_total_seconds": 5,
+    "startup_ack_seconds": 2,
+    "work_deadline_seconds": 3.75,
+    "cleanup_reserve_seconds": 1.25,
+    "optional_supervisor_retry_seconds": 2,
+    "supervisor_join_deadline_from_start_seconds": 8,
+    "fixture_fallback_seconds": 10,
+    "fallback_scope": "10s checks bound gate/work/leaf loops only; read_to_string(stdin) itself has no10s timeout. Actual probe supplies the short legacy request and closes stdin.",
+    "exactly_once_basis": "Observed cleanup Some proves a call occurred; the production callback is FnOnce, proving at most one call. Original result is retained even if a supervisor retry is attempted."
+  },
+  "probe_fixture_observations": [
+    {
+      "record": {
+        "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010183000/observations.json",
+        "bytes": 674,
+        "sha256": "82a6cf408812b3626b848bdaad685acf55acb4e9b0743a034fdd809eb90e4247"
+      },
+      "observed": {
+        "cleanup": {
+          "directChildReaped": true,
+          "directPid": 29467,
+          "originalCleanupCalled": 1,
+          "originalCleanupError": null,
+          "originalCleanupOk": true,
+          "originalCleanupSeconds": 0.005476,
+          "outcome": "Ok(())",
+          "supervisorRetry": null
+        },
+        "elapsedSeconds": 0.557442,
+        "fixtureBudgetSeconds": 5,
+        "gateWritten": true,
+        "heartbeatAdvanced": true,
+        "knownOwnedPids": [
+          29467,
+          29476
+        ],
+        "mode": "ready",
+        "scope": "Owned fixture activity and known handles; no all-descendants-exited or product/provider acceptance",
+        "startupAcknowledgementBudgetSeconds": 2,
+        "startupAcknowledgementSeconds": 0.533447334,
+        "workerJoined": true
+      },
+      "raw_markers": [
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010183000/pids",
+          "bytes": 12,
+          "sha256": "59821f58e5390248185d30726f3ce9353043390cc2365b26cd570dc5aa33e972"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010183000/heartbeat",
+          "bytes": 6,
+          "sha256": "b78a1987bcbdc0903ba6ba29ee3e1f4e7cc1ca868a60889beb141e26e06cb005"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010183000/gate",
+          "bytes": 7,
+          "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+        }
+      ]
+    },
+    {
+      "record": {
+        "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010186000/observations.json",
+        "bytes": 684,
+        "sha256": "47243c08d300c05a2f24208da5bb999fc9d4d7c7b092a314c1d8a24ae06d6eb4"
+      },
+      "observed": {
+        "cleanup": {
+          "directChildReaped": true,
+          "directPid": 29466,
+          "originalCleanupCalled": 1,
+          "originalCleanupError": null,
+          "originalCleanupOk": true,
+          "originalCleanupSeconds": 0.00753325,
+          "outcome": "Err(Timeout)",
+          "supervisorRetry": null
+        },
+        "elapsedSeconds": 3.762584541,
+        "fixtureBudgetSeconds": 5,
+        "gateWritten": true,
+        "heartbeatAdvanced": true,
+        "knownOwnedPids": [
+          29466,
+          29475
+        ],
+        "mode": "wait",
+        "scope": "Owned fixture activity and known handles; no all-descendants-exited or product/provider acceptance",
+        "startupAcknowledgementBudgetSeconds": 2,
+        "startupAcknowledgementSeconds": 0.535858458,
+        "workerJoined": true
+      },
+      "raw_markers": [
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010186000/pids",
+          "bytes": 12,
+          "sha256": "05f85a2b5decb12403392bff1d00972ff8c9dd680ae4599e04f265ee8591662d"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010186000/heartbeat",
+          "bytes": 830,
+          "sha256": "792e16c0ba6818a75da1c5dcf5cc103ef95277c34b1856e038d72308d66e7bd7"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133166010186000/gate",
+          "bytes": 7,
+          "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+        }
+      ]
+    },
+    {
+      "record": {
+        "path": "cargo-final-04-fixtures/probe-case-29373-1791133169797308000/observations.json",
+        "bytes": 689,
+        "sha256": "7dd301703f1d71817f8e41ed651bdb183e4d97364e96123882d4351087cbc8b6"
+      },
+      "observed": {
+        "cleanup": {
+          "directChildReaped": true,
+          "directPid": 29608,
+          "originalCleanupCalled": 1,
+          "originalCleanupError": null,
+          "originalCleanupOk": true,
+          "originalCleanupSeconds": 0.007548916,
+          "outcome": "Err(Timeout)",
+          "supervisorRetry": null
+        },
+        "elapsedSeconds": 3.7620424999999997,
+        "fixtureBudgetSeconds": 5,
+        "gateWritten": true,
+        "heartbeatAdvanced": true,
+        "knownOwnedPids": [
+          29608,
+          29610
+        ],
+        "mode": "exit0",
+        "scope": "Owned fixture activity and known handles; no all-descendants-exited or product/provider acceptance",
+        "startupAcknowledgementBudgetSeconds": 2,
+        "startupAcknowledgementSeconds": 0.03014,
+        "workerJoined": true
+      },
+      "raw_markers": [
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133169797308000/pids",
+          "bytes": 12,
+          "sha256": "5d94047f86fb6eea3beee9c147080ac7ef6f36b835201e3421678b4c7933e2c7"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133169797308000/heartbeat",
+          "bytes": 966,
+          "sha256": "bd392faffa54a6db089cbcd9d2c55936b882c39e75ef8096cc8a7c3492ac4601"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133169797308000/gate",
+          "bytes": 7,
+          "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+        }
+      ]
+    },
+    {
+      "record": {
+        "path": "cargo-final-04-fixtures/probe-case-29373-1791133173586547000/observations.json",
+        "bytes": 696,
+        "sha256": "3ccc80995bb4329c154d82066de5327bf430414d1f1faa9c7e409f772b7eabef"
+      },
+      "observed": {
+        "cleanup": {
+          "directChildReaped": true,
+          "directPid": 29755,
+          "originalCleanupCalled": 1,
+          "originalCleanupError": null,
+          "originalCleanupOk": true,
+          "originalCleanupSeconds": 0.00580875,
+          "outcome": "Err(RuntimeUnavailable)",
+          "supervisorRetry": null
+        },
+        "elapsedSeconds": 0.050605333,
+        "fixtureBudgetSeconds": 5,
+        "gateWritten": true,
+        "heartbeatAdvanced": true,
+        "knownOwnedPids": [
+          29755,
+          29756
+        ],
+        "mode": "exit1",
+        "scope": "Owned fixture activity and known handles; no all-descendants-exited or product/provider acceptance",
+        "startupAcknowledgementBudgetSeconds": 2,
+        "startupAcknowledgementSeconds": 0.027911833,
+        "workerJoined": true
+      },
+      "raw_markers": [
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133173586547000/pids",
+          "bytes": 12,
+          "sha256": "1f22f363d7ede483973846730837783c87eb9e3c9ff362eca552fcfb94f68a44"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133173586547000/heartbeat",
+          "bytes": 6,
+          "sha256": "b78a1987bcbdc0903ba6ba29ee3e1f4e7cc1ca868a60889beb141e26e06cb005"
+        },
+        {
+          "path": "cargo-final-04-fixtures/probe-case-29373-1791133173586547000/gate",
+          "bytes": 7,
+          "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+        }
+      ]
+    }
+  ],
+  "rust_environment_scope_addendum": {
+    "CARGO_TARGET_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-target",
+    "reason": "Runner actually sets this variable; execution JSON omitted it from its printed controlled-env subset. Existing target was APFS-cloned into this owned path, not installed or written into the original cache."
+  },
+  "contrary_evidence": [
+    "Initial local full compile lacked the ignored compile-time sidecar resource; owned placeholder setup was required.",
+    "The old task-deletion helper reference caused an actual E0425 compile failure before repair.",
+    "Transitional frontend contract/typecheck failures are not an immutable old implementation baseline.",
+    "An actual repeated-finish negative regression failed with unchanged old coordinator code; repaired identical test bytes passed.",
+    "Frozen Rust candidate 03 had runtime_probe 6 passed/1 failed/1 ignored (ENOENT startup marker), and inventory was not run. This was not attributed to host load or proven surviving descendants.",
+    "The new acknowledged fixture uses a 5-second test budget and 2-second startup acknowledgement. The original 1-second/750ms-work failure is retained. Production probe timeout and cleanup policy were not changed."
+  ],
+  "limitations": [
+    "Source/automated artifact reviews are agent engineering evidence, not external human or expert research approval.",
+    "Frontend validation mocks native transport and timers. Full frontend suite also includes inherited owned Node-reader subprocess fixtures.",
+    "Five-second frontend windows bound waiting/error presentation, not OS or IPC completion. The blocker and run ID map are in memory; page reload/remount recovery is not implemented or proven.",
+    "Owned containment cleanup confirms termination submission and known handles/readers. It is not an observation that all arbitrary or escaped descendants have exited.",
+    "Probe fixture 10-second fallback applies to gate/work/leaf loops; its blocking stdin read is not claimed to have a ten-second limit.",
+    "Local Cargo target and frontend dependencies are owned copies; neither is a clean installation. Local compilation uses a sidecar placeholder, and two packaged-sidecar tests are genuinely ignored.",
+    "Windows execution, three-platform final-head native packaging/real bridges, real desktop start/stop IPC and rendered native UI, screen-reader operation, shutdown, clean install/upgrade and signing require separate acceptance.",
+    "No model/provider/real research call, new frontend dependency audit, external participant completion, expert claim-label approval, or competitive ranking was established."
+  ],
+  "external_participants_completed": 0,
+  "expert_approved_claim_denominator": 0,
+  "goal_complete": false,
+  "merged": false,
+  "remote_exact_head_ci": "pending until separately observed",
+  "artifacts": [
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/backend-final-index-04.json",
+      "bytes": 19838,
+      "sha256": "48fb5d5397857881d1ecdfd3e206893ca5f12c326c5a10bfa04d05116cdce6a0"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-01.stderr.log",
+      "bytes": 1991,
+      "sha256": "85fa495e8ebdab6957eec9a5f07bc2fba3c909da236eaa6b3735dfd76ce6f36f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-01.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-02-command-0.stderr.log",
+      "bytes": 726,
+      "sha256": "61a1e31825380f0119e66f8cf730ee5e50d00339534992abab0f8c994bf0c2df"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-02-command-0.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-02-execution.json",
+      "bytes": 4332,
+      "sha256": "bc620994bfb9d4bab1a047fa4bf4bf4bb7d274e7207b380663a643e2f462b266"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-03-command-0.stderr.log",
+      "bytes": 408,
+      "sha256": "1faca2df5ab4269ffffcf3e5850b52bd5ceb27e4639628fad2487de49ab8a3a4"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-03-command-0.stdout.log",
+      "bytes": 1817,
+      "sha256": "f3be749db55523281c624bfdddd3c517bda5558f5006a775e027e6c7e033905c"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-03-command-1.stderr.log",
+      "bytes": 260,
+      "sha256": "0c883a544e52bc43c1e0abf260887df6c583f2e5609a328fbd1f555fce133448"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-03-command-1.stdout.log",
+      "bytes": 827,
+      "sha256": "ceba7420694f2cce6a42ca95c1756d9e6ddd908ed8416bc2058870096be0f5bc"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-03-command-2.stderr.log",
+      "bytes": 260,
+      "sha256": "5f5d0d7a8f5ce6853455f4b1c1185b4657afd2b7ec042b55861b5e182d870d7f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-03-command-2.stdout.log",
+      "bytes": 596,
+      "sha256": "5da5434ae2870fad5acea4da74734011664a225a2a520a6647dab4ef5e3d9cbf"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-03-execution.json",
+      "bytes": 5686,
+      "sha256": "175cdb32a84c029ff9071fa656d127c84c7947f164d190c5790e29139554c796"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-04-command-0.stderr.log",
+      "bytes": 408,
+      "sha256": "09b1794d88119fb4dfb6dcfcea0572e9e444412091a442a6b25eb4e57fae7b71"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-04-command-0.stdout.log",
+      "bytes": 2026,
+      "sha256": "477b43c4a9b7e4f605a82a57d7781133938055e323383502d7b9df1c4a325cda"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-04-command-1.stderr.log",
+      "bytes": 260,
+      "sha256": "5f5d0d7a8f5ce6853455f4b1c1185b4657afd2b7ec042b55861b5e182d870d7f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-04-command-1.stdout.log",
+      "bytes": 827,
+      "sha256": "f0f77ef6196c55748c6d2709b2a25baadf0d2610e868b46ab509fa7d862dbbbd"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-04-command-2.stderr.log",
+      "bytes": 260,
+      "sha256": "d52386cf9690b279d966e72cdaf9027892cdca71ae1d6edd1ae07dc42a7a8c78"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-04-command-2.stdout.log",
+      "bytes": 596,
+      "sha256": "2b4f66f8184e1bbb0dab006d1e81ce9113d0dd2de45ab5b479a7927783104e8a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-04-execution.json",
+      "bytes": 5692,
+      "sha256": "cc8f299a1172b54791e3c24a0ac52bd576a3e3a79171697da543c5c75e18088a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-0.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-0.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-1.stderr.log",
+      "bytes": 821,
+      "sha256": "7eff5daac371b49dc15f0121f2d2233be8f8ef76defbcdff7b8956d7391ea57c"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-1.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-2.stderr.log",
+      "bytes": 408,
+      "sha256": "2c10825b5c83d0dc2a9d56c4ca45f10d6295ff47e24b47a20b3397b13a0685b3"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-2.stdout.log",
+      "bytes": 2288,
+      "sha256": "b742bda30f71ed0fdfecfc995eb24679c79b8fc9ce7190d5cd0ff1462cce3fb7"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-3.stderr.log",
+      "bytes": 260,
+      "sha256": "5f5d0d7a8f5ce6853455f4b1c1185b4657afd2b7ec042b55861b5e182d870d7f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-3.stdout.log",
+      "bytes": 827,
+      "sha256": "f263a245ab553c91c435bcc9772820ea83f5757d9ac854cd5f12f36e6c2b622a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-4.stderr.log",
+      "bytes": 260,
+      "sha256": "5f5d0d7a8f5ce6853455f4b1c1185b4657afd2b7ec042b55861b5e182d870d7f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-command-4.stdout.log",
+      "bytes": 596,
+      "sha256": "d9dca63232cff895970d4359b5afbaa0f3a9d5df52cf354d74e8d9c05eed42ae"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-01-execution.json",
+      "bytes": 7672,
+      "sha256": "19cbcc8ead3f5836ae89c0b8fca731de95b95df3d8efa37cbb89cf12cebce57c"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-0.stderr.log",
+      "bytes": 408,
+      "sha256": "1a8b1f36c36510456699e6b7dc810135687024b73d45f510266feedb42fdf132"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-0.stdout.log",
+      "bytes": 205,
+      "sha256": "9f6821ab32acfd2e071807f5e02f9ff689770e7eed20b5aaa7b347c31cc4d33a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-1.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-2.stderr.log",
+      "bytes": 220,
+      "sha256": "6e600136c16c245137f7b9c02a090b1ca1b8d08fcef10b1441d77763ae8aa33e"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-2.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-3.stderr.log",
+      "bytes": 260,
+      "sha256": "20abe03c8c2e9d0541289fbad4ac2815b2002f4a99368851a9a663f4760f3314"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-3.stdout.log",
+      "bytes": 2379,
+      "sha256": "c8c834890d3932a8d34ff0f70d8ecf3f2a1636c56f72565ada23590d2fdebd9a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-4.stderr.log",
+      "bytes": 260,
+      "sha256": "0c883a544e52bc43c1e0abf260887df6c583f2e5609a328fbd1f555fce133448"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-4.stdout.log",
+      "bytes": 827,
+      "sha256": "f331cbba5a78038cbe9b451af2a7267e69e19b6b1858281738662c4320eebff1"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-5.stderr.log",
+      "bytes": 260,
+      "sha256": "d52386cf9690b279d966e72cdaf9027892cdca71ae1d6edd1ae07dc42a7a8c78"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-command-5.stdout.log",
+      "bytes": 596,
+      "sha256": "f374379cf63a5f2012988873cc194b907583d422686f838cd70b51f1855ea019"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-02-execution.json",
+      "bytes": 8449,
+      "sha256": "df9b96817f406af3978670cbfbaaa514a4016e9060018150a4fa2f210b856f3a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-0.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-0.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-1.stderr.log",
+      "bytes": 220,
+      "sha256": "0baee4aec842bf257d9000d835295ca16ec3f993bd8491601be4161ce6e7de6d"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-1.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-2.stderr.log",
+      "bytes": 408,
+      "sha256": "63c34a9cf95bc403805134ee35f033c7e860d1c9a58be207379475fb9d6b4cd0"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-2.stdout.log",
+      "bytes": 2540,
+      "sha256": "d83ddf53e1fea07b671878d846244ccbed4e19a768d6c65d26e2cbcf1ff4aacb"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-3.stderr.log",
+      "bytes": 323,
+      "sha256": "e78fd235bc4ee1547097fbfcf58a25f4803a07c0252476b956287a211b0018de"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-command-3.stdout.log",
+      "bytes": 1328,
+      "sha256": "4f4dafc7abf82239a15dff12e8bdd72b74aba6741f552ebb66e075f0e13fd2a7"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-03-execution.json",
+      "bytes": 6982,
+      "sha256": "5cc3f2b501931f3e87c6d7c9591c34813c9c56cad881699de377be141438e0ec"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-0.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-0.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-1.stderr.log",
+      "bytes": 220,
+      "sha256": "2d857786f460214c6a08cfb7a68efd3cce57cd373ea9f086782728978794ed0a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-1.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-2.stderr.log",
+      "bytes": 408,
+      "sha256": "9acbfb7d2049e4e8922ee6b03b3cd31543883d63de14bda9788fa9b6d1018b6d"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-2.stdout.log",
+      "bytes": 2540,
+      "sha256": "dd311f0c3197aca0070cb4f0346c4deaeb2a79cf4f2ef57957e2e60bac5b0d99"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-3.stderr.log",
+      "bytes": 260,
+      "sha256": "0c883a544e52bc43c1e0abf260887df6c583f2e5609a328fbd1f555fce133448"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-3.stdout.log",
+      "bytes": 932,
+      "sha256": "5a6b31ac69eac9f2efda85e9c7c637218ec786b8498485f27da5ca353f430a7c"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-4.stderr.log",
+      "bytes": 260,
+      "sha256": "5f5d0d7a8f5ce6853455f4b1c1185b4657afd2b7ec042b55861b5e182d870d7f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-command-4.stdout.log",
+      "bytes": 596,
+      "sha256": "e5a6230f61061d649af9338fc8e88f99fddb0ae8aed0804627ad1a125647691e"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-execution.json",
+      "bytes": 8368,
+      "sha256": "85dc65ac806aedc306b9e30caf26e58ab464ca36dcb17b9a3fa2c5b27b1e60b2"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010183000/gate",
+      "bytes": 7,
+      "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010183000/heartbeat",
+      "bytes": 6,
+      "sha256": "b78a1987bcbdc0903ba6ba29ee3e1f4e7cc1ca868a60889beb141e26e06cb005"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010183000/observations.json",
+      "bytes": 674,
+      "sha256": "82a6cf408812b3626b848bdaad685acf55acb4e9b0743a034fdd809eb90e4247"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010183000/pids",
+      "bytes": 12,
+      "sha256": "59821f58e5390248185d30726f3ce9353043390cc2365b26cd570dc5aa33e972"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010186000/gate",
+      "bytes": 7,
+      "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010186000/heartbeat",
+      "bytes": 830,
+      "sha256": "792e16c0ba6818a75da1c5dcf5cc103ef95277c34b1856e038d72308d66e7bd7"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010186000/observations.json",
+      "bytes": 684,
+      "sha256": "47243c08d300c05a2f24208da5bb999fc9d4d7c7b092a314c1d8a24ae06d6eb4"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133166010186000/pids",
+      "bytes": 12,
+      "sha256": "05f85a2b5decb12403392bff1d00972ff8c9dd680ae4599e04f265ee8591662d"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133169797308000/gate",
+      "bytes": 7,
+      "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133169797308000/heartbeat",
+      "bytes": 966,
+      "sha256": "bd392faffa54a6db089cbcd9d2c55936b882c39e75ef8096cc8a7c3492ac4601"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133169797308000/observations.json",
+      "bytes": 689,
+      "sha256": "7dd301703f1d71817f8e41ed651bdb183e4d97364e96123882d4351087cbc8b6"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133169797308000/pids",
+      "bytes": 12,
+      "sha256": "5d94047f86fb6eea3beee9c147080ac7ef6f36b835201e3421678b4c7933e2c7"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133173586547000/gate",
+      "bytes": 7,
+      "sha256": "a4d451ec23463726f72c43d64c710968f6b602cd653b4de8adee1b556240a829"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133173586547000/heartbeat",
+      "bytes": 6,
+      "sha256": "b78a1987bcbdc0903ba6ba29ee3e1f4e7cc1ca868a60889beb141e26e06cb005"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133173586547000/observations.json",
+      "bytes": 696,
+      "sha256": "3ccc80995bb4329c154d82066de5327bf430414d1f1faa9c7e409f772b7eabef"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/cargo-final-04-fixtures/probe-case-29373-1791133173586547000/pids",
+      "bytes": 12,
+      "sha256": "1f22f363d7ede483973846730837783c87eb9e3c9ff362eca552fcfb94f68a44"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/first-compile.stderr.log",
+      "bytes": 840,
+      "sha256": "14e5056297c822a9923b4088861f5c64d1362c3880a2ded2c208cc1444d1ef68"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/first-compile.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-build.log",
+      "bytes": 1679,
+      "sha256": "df2bcd7ee2e9e2e47ba1b2e27217f729a5278de83054be63b914806ebf9ec093"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-checks.py",
+      "bytes": 3080,
+      "sha256": "bc15a84a8ba4f9c6e58a0194acee524f3b56d6ea0f4cb9cceba32720b2ebd89a"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-executions.json",
+      "bytes": 38794,
+      "sha256": "b00d4c662f497ca6d2169fa05c9fa8028472f2950c7660087c8c4a09ba2a30fa"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-freeze.json",
+      "bytes": 78858,
+      "sha256": "a7ae9ffd2e7f0d19aed187604691aaa841f30ff7ed26082cf275fb3c47e83a84"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-full-tests.log",
+      "bytes": 31200,
+      "sha256": "e4f85fa84bf892b6ff502b715cd5cc572f3396a9c097b4a9e17e1f8b8bc0c8e1"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-generated-typecheck.log",
+      "bytes": 65,
+      "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-lint.log",
+      "bytes": 56,
+      "sha256": "64433d90eb0a53d21a047c1d717ff93fcf82ac583b21a1a700535929f3fe26a0"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-static-build.log",
+      "bytes": 1747,
+      "sha256": "e57a26a765c537b2147d1c49baf6f9eec9f60c3d5d67f92866f036ac4b6a6f22"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-final-typecheck.log",
+      "bytes": 65,
+      "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-freeze.py",
+      "bytes": 8702,
+      "sha256": "eff9dfcd85e906ba9e0cb8efd915e4f7fd8c9ecd08a178c17d5ecc1365c11fad"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-full-final-junit.xml",
+      "bytes": 176391,
+      "sha256": "4ee012817568d4b8d4ba1accb25be943b97d3e9f37c3255910777958d1371bcd"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-full-pre-whitespace-junit.xml",
+      "bytes": 175961,
+      "sha256": "cba0ddc9879759370ec16aaf90727e0b87e9cc8afe48d7ed047fbf86c7bed191"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-lifecycle-final-junit.xml",
+      "bytes": 6311,
+      "sha256": "e7e00fdb715fc234d0a6de87d964a60077bfee109634b25eb5eba4198f002ebb"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-lifecycle-final.log",
+      "bytes": 883,
+      "sha256": "dec16dee0f3bc87e0b9299843d6481af7c1b3d07ea46e11c16fb5d7860331d89"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-lifecycle-v3-junit.xml",
+      "bytes": 5844,
+      "sha256": "9fd3dfea8c4b2e994f39252a696166372c3a096e86d8ea1b02729bc8223dceb2"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-lifecycle-v3.log",
+      "bytes": 877,
+      "sha256": "8addf39616c935ad04957721bda44e318f71a7aa0137a8f6a1bb90470a4021d4"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-lint-v1.log",
+      "bytes": 56,
+      "sha256": "64433d90eb0a53d21a047c1d717ff93fcf82ac583b21a1a700535929f3fe26a0"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-pre-whitespace-build.log",
+      "bytes": 1810,
+      "sha256": "720d0be32ff3b49242c6e3fe6875bb0cc2d1d9669b9d0ecd892802ac904256ce"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-pre-whitespace-executions.json",
+      "bytes": 33860,
+      "sha256": "9eb3515fa2a7b5d190943a7392ca407eb77a2e0b422d63dfaa97fa4af937bce9"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-pre-whitespace-full-tests.log",
+      "bytes": 30418,
+      "sha256": "aaeb559df8dcf9d41719b9f0806cb3c329810fc158da997f1ee78e6e6c3065d4"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-pre-whitespace-generated-typecheck.log",
+      "bytes": 65,
+      "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-pre-whitespace-lint.log",
+      "bytes": 56,
+      "sha256": "64433d90eb0a53d21a047c1d717ff93fcf82ac583b21a1a700535929f3fe26a0"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-pre-whitespace-static-build.log",
+      "bytes": 1747,
+      "sha256": "3068940b2ba8054ee07940b0cfa33b13c2b0b819efd6412cc709c247f274a4db"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-pre-whitespace-typecheck.log",
+      "bytes": 65,
+      "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-root-draft-review-20261004T165041339404Z.json",
+      "bytes": 5479,
+      "sha256": "0b1f7935471e9109c7819b19047ffa6c6eba5b1e561109d7f978bacfdd8180b9"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-runtime-junit.xml",
+      "bytes": 4419,
+      "sha256": "468933cf05830b1a421d989cd953d9b59356a1172807cac59d52b4c265886877"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-runtime-v2-junit.xml",
+      "bytes": 4121,
+      "sha256": "a8fb709ccb521d59c39b0e4f1b77956dc9d9b7514d5829884575da63b4521d24"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-runtime-v2.log",
+      "bytes": 3003,
+      "sha256": "0dd991d505d66430928a404a8ddfca106b75fe817857b3aadeff40a2e56db1b3"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-runtime.log",
+      "bytes": 6821,
+      "sha256": "0476562a8ac42f9f37c00d8fc643942e5acd55bbbce2f4d07afbce1e4bbf48d9"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-targeted-frozen-junit.xml",
+      "bytes": 6308,
+      "sha256": "4d92554d815da0d4fd5b1e0a466a2798e1adce42cdc85dc6600362173597a532"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-targeted-frozen.log",
+      "bytes": 1147,
+      "sha256": "61225e619e4a70e76eb88e2dafd40555559958f5d0a0f2036676e7b982dee1c3"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-typecheck-v1.log",
+      "bytes": 399,
+      "sha256": "2acbe29b65d2b337f6d96e181d32c60af330ac36d36a0e6f72a0546bb540a109"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-typecheck-v2.log",
+      "bytes": 65,
+      "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-validation-fragment.md",
+      "bytes": 4062,
+      "sha256": "69de1c82a95de1cdd3ffc06bc0845879db1d21ea3e8227963f7968bde1feda87"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/frontend-validation-summary.json",
+      "bytes": 16597,
+      "sha256": "9b4c0709e43f2478d2ae3afd50fe5352c5798ab06525bd7a7ea34f9b0f08ad1e"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/independent-rust-review-freeze03/owned-probe-result-corrected.json",
+      "bytes": 8612,
+      "sha256": "a7125c6b7304a0a8e19e3414525ab3eae3ba9cd7995c7992b356588bfbff97c0"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/independent-rust-review-freeze04/final-freeze04-verification.json",
+      "bytes": 26238,
+      "sha256": "2b13e5a433b92dd67f8105e8aa1821412c292dbc7239f2f672da923b7dc892b7"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/independent-rust-review-freeze04/final-review-inventory.json",
+      "bytes": 4960,
+      "sha256": "80c86322d4473943157005ce5708c10939f5a0b5e5f3b209d55e6f5284eb7b7f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/independent-rust-review-freeze04/final-static-review.json",
+      "bytes": 13083,
+      "sha256": "52aec8adb64cae08d42f9761c0f23e9db7303d8e808663ff4c8de98359d53260"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/local-01-command-0.stderr.log",
+      "bytes": 840,
+      "sha256": "14e5056297c822a9923b4088861f5c64d1362c3880a2ded2c208cc1444d1ef68"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/local-01-command-0.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/local-01-command-1.stderr.log",
+      "bytes": 279,
+      "sha256": "f9ac8836be0aa2da716309afbd4a70ae1072f219f773e1c385a2a8e516593a04"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/local-01-command-1.stdout.log",
+      "bytes": 1441,
+      "sha256": "b19943866990db0b46ad1911ceb65e2a944e5dc74945f792492df1fa7c839c34"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/local-01-execution.json",
+      "bytes": 5105,
+      "sha256": "3174507e0f1ec0eef844ebc2a8ec529f0a3c02a92de8a0661723ccc351681acd"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/placeholder.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/placeholder.stdout.log",
+      "bytes": 178,
+      "sha256": "4219cfadb1e70193db8b3ba67a2551b3d3c9aea831d1bcf354b62d3d175e9571"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/probe-marker-failure-03-analysis.json",
+      "bytes": 1999,
+      "sha256": "cbc30e1b8b9d5b727e29c6ef689a56b8b9c215086f862adedce85c5a4a6f8ec3"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/repeat-finish-negative-01-command-0.stderr.log",
+      "bytes": 751,
+      "sha256": "5bdfbf6655da156cce9a0dd66ff4cbd30432b406183f522cb5671258fdc3727d"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/repeat-finish-negative-01-command-0.stdout.log",
+      "bytes": 318,
+      "sha256": "689748530b5238efab801f7feaf6b7ca1fca2f26993927ec8be254fc5c96ce79"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/repeat-finish-negative-01-execution.json",
+      "bytes": 5074,
+      "sha256": "b8449e08933cc0a6545277fd95d5d5218bbe592fc6a4a8dabcce599b1587dc92"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/root-frontend-independent-review.json",
+      "bytes": 6458,
+      "sha256": "6f291b1d1860ba00e9ee856c5f608f9ed3485300d10e8c6f9da7edaec66537e4"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/root-source-commit-restack-execution.json",
+      "bytes": 15265,
+      "sha256": "e0d0bc6f2785b5a1780d3168d231bb196f6bfb1b49f4da4877922e471eb68c72"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/run-repeat-finish-negative-01.py",
+      "bytes": 2974,
+      "sha256": "b558960a5a1ad93c2fcb4789dffdd099c2d92a5f540c652419a834222b1048a6"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/rust-freeze-01.json",
+      "bytes": 1996,
+      "sha256": "5cf499f902116ce00e4dd5eab20954656d1f084da3c86663e8eb45c882b32bc3"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/rust-freeze-02.json",
+      "bytes": 2035,
+      "sha256": "d35a4f5d696d164761d1d4f6e863bd8047bdc1599639c972f50ec24e8178ea77"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/rust-freeze-03.json",
+      "bytes": 2008,
+      "sha256": "0d4dcd18ca454ed0afa36ff6fe2ad0e363f1bedd0b32b0e97df65aae883f895b"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/analysis-process-lifecycle/rust-freeze-04.json",
+      "bytes": 2693,
+      "sha256": "ff4dcbfdaf7e8a6ed8ea4b50199148efd91a41583cb9a9aa4360cba2f8ab9ff0"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/baseline-extracted-runtime.rs",
+      "bytes": 1578,
+      "sha256": "97f1f490b205b4ff8f4158f4e0f2a0883ae90aa01fd1529c6dffdb6eb9d2e21f"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/baseline-main.rs",
+      "bytes": 51531,
+      "sha256": "5bf05ddd22ca6bd59405a9df2ac61aa19952d13efb85777595554d894de314d3"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/cleanup.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/compile.stderr.log",
+      "bytes": 492,
+      "sha256": "684dc8f849a2d69108a9d647dc3096a3a976cae765a787a6afffbd5acf28d0bc"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/compile.stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/owned-baseline-probe.rs",
+      "bytes": 4460,
+      "sha256": "d5377ce1976ce9e27b015bffeac6b4f17f93a5b7a979f2e311c115d9992a122e"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/owned-heartbeat.py",
+      "bytes": 131,
+      "sha256": "988254f3c475e91f2e4b7c1bcddf10e23870e65c427f1d1dcf67a47ef51570cc"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/owned-parent.py",
+      "bytes": 204,
+      "sha256": "c87f5c116de3bfa0d6dd1ff0b7561ca450bb008c03e15e98a4957af0744d6d20"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/probe.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/probe.stdout.log",
+      "bytes": 202,
+      "sha256": "903e8df3c430873cb4d43f54622b69b582e5d2ee8e302d07f077b03d05bccc3b"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/root-baseline-process-probe-scope-addendum.json",
+      "bytes": 906,
+      "sha256": "71e3e5b3afc5640dfe9a36b9ddfe2a540607df57f7b82a7ba8712223eda3e954"
+    },
+    {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/execution-control-preflight-v2/root-baseline-process-probe.json",
+      "bytes": 3313,
+      "sha256": "8d4c50cc611812e5cf6d97a48227021badc3b2a0683d107a8ad4ddfd8d52d651"
+    }
+  ]
+}
