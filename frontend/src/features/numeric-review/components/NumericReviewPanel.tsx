@@ -5,6 +5,7 @@ import type { NumericReview } from "../types";
 import { useNumericReview } from "../hooks/useNumericReview";
 import { NumericReviewForm } from "./NumericReviewForm";
 import { NumericResultView } from "./NumericResultView";
+import { SavedNumericContext } from "./SavedNumericContext";
 import { requestedIdentifierScope } from "../lib/presentation";
 const buttonClass = "rounded border border-zinc-700 px-3 py-2 text-xs text-zinc-300 disabled:opacity-40";
 export function NumericReviewPanel({ taskId, version, language, onSave, beginReview }: {
@@ -37,6 +38,7 @@ export function NumericReviewPanel({ taskId, version, language, onSave, beginRev
       <div className="mt-3 space-y-3">{(review.verified?.numericReviews ?? []).map((item) => <article key={item.review_id}>
     <p className="mb-1 text-xs text-zinc-500">{item.reviewed_at} · {item.target.section_key} · {item.review_id}</p>
     <NumericResultView review={item} zh={zh}/>
+    <SavedNumericContext current={review.displayOwner} parent={review.verifiedParent} reviewId={item.review_id} zh={zh}/>
     </article>)}</div>
     </>}
     {review.message && <p role="status" className="mt-3 text-xs text-zinc-400">{review.message}</p>}
