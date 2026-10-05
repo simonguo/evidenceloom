@@ -26,6 +26,7 @@ RUNNER_MODE="auto"
 TAURI_CONFIG=""
 SKIP_SIDECAR=0
 SKIP_TAURI=0
+BOUNDARY="$REPO_ROOT/scripts/check_desktop_acceptance_boundary.py"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -68,6 +69,12 @@ if [[ ! -x "$PYTHON" ]]; then
   exit 1
 fi
 echo "Python: $PYTHON"
+BASE_COMMIT="${GITHUB_SHA:-$(git -C "$REPO_ROOT" rev-parse HEAD)}"
+SIDECAR_BIN="$REPO_ROOT/src-tauri/binaries/evidenceloom-runner-$TARGET_TRIPLE"
+if [[ "$TARGET_TRIPLE" == *"windows"* ]]; then
+  SIDECAR_BIN="$SIDECAR_BIN.exe"
+fi
+SIDECAR_PROOF="$SIDECAR_BIN.shipping-proof.json"
 
 # ---------------------------------------------------------------------------
 # Step 1 – Build PyInstaller sidecar
@@ -82,18 +89,17 @@ if [[ "$SKIP_SIDECAR" -eq 0 ]]; then
     "$PYTHON" -m pip install pyinstaller
   fi
 
-  PYTHON="$PYTHON" bash "$REPO_ROOT/scripts/build_tauri_sidecar.sh" "$TARGET_TRIPLE"
+  "$PYTHON" "$BOUNDARY" build-shipping-sidecar --repo "$REPO_ROOT" \
+    --target "$TARGET_TRIPLE" --python "$PYTHON" --binary "$SIDECAR_BIN" \
+    --proof "$SIDECAR_PROOF" --base-commit "$BASE_COMMIT"
   echo "Sidecar built."
 else
+  "$PYTHON" "$BOUNDARY" sidecar-check --repo "$REPO_ROOT" \
+    --target "$TARGET_TRIPLE" --binary "$SIDECAR_BIN" --proof "$SIDECAR_PROOF"
   echo "==> Step 1: Skipped (--skip-sidecar)."
 fi
 
 # Verify sidecar is a real binary (not placeholder)
-SIDECAR_BIN="$REPO_ROOT/src-tauri/binaries/evidenceloom-runner-$TARGET_TRIPLE"
-if [[ "$TARGET_TRIPLE" == *"windows"* ]]; then
-  SIDECAR_BIN="$SIDECAR_BIN.exe"
-fi
-
 if [[ ! -f "$SIDECAR_BIN" ]]; then
   echo "ERROR: Sidecar binary not found at $SIDECAR_BIN" >&2
   exit 1
@@ -126,7 +132,9 @@ echo "==> Step 2: Checking sidecar bootstrap and research imports..."
 # Legacy-safe: older sidecars recognize smoke_test and cannot enter an analysis;
 # their plain ready response is insufficient and requires rebuilding.
 # Both sequential probes share one bounded 90-second deadline.
-"$PYTHON" "$REPO_ROOT/scripts/sidecar_probe.py" all "$SIDECAR_BIN"
+if [[ "$SKIP_SIDECAR" -eq 1 ]]; then
+  "$PYTHON" "$REPO_ROOT/scripts/sidecar_probe.py" all "$SIDECAR_BIN"
+fi
 
 # ---------------------------------------------------------------------------
 # Step 3 – Build Tauri app
@@ -134,12 +142,56 @@ echo "==> Step 2: Checking sidecar bootstrap and research imports..."
 if [[ "$SKIP_TAURI" -eq 0 ]]; then
   echo ""
   echo "==> Step 3: Building Tauri app (EVIDENCELOOM_RUNNER_MODE=$RUNNER_MODE)..."
+  PROOF_DIR="$REPO_ROOT/src-tauri/target/$TARGET_TRIPLE/release/desktop-shipping-proofs/$($PYTHON -c 'import uuid; print(uuid.uuid4().hex)')"
+  mkdir -p "$PROOF_DIR"
+  # The frontend is built exactly once. The subsequent CLI hook is removed from
+  # the effective overlay so Next's per-build identifier cannot invalidate proof.
   cd "$REPO_ROOT/frontend"
-  TAURI_ARGS=(--target "$TARGET_TRIPLE")
-  if [[ -n "$TAURI_CONFIG" ]]; then
-    TAURI_ARGS+=(--config "$TAURI_CONFIG")
+  npm run build:tauri
+  "$PYTHON" - "$TAURI_CONFIG" "$PROOF_DIR/tauri-overlay.json" <<'PY'
+import json
+from pathlib import Path
+import sys
+value = {}
+if sys.argv[1]:
+    value = json.loads(sys.argv[1]) if sys.argv[1].lstrip().startswith('{') else json.loads(Path(sys.argv[1]).read_text())
+value.setdefault('build', {})['beforeBuildCommand'] = None
+Path(sys.argv[2]).write_text(json.dumps(value, sort_keys=True, separators=(',', ':')) + '\n')
+PY
+  cd "$REPO_ROOT"
+  TAURI_CONFIG="$(cat "$PROOF_DIR/tauri-overlay.json")" \
+    cargo check --manifest-path src-tauri/Cargo.toml --bin evidenceloom-desktop \
+    --target "$TARGET_TRIPLE" --release --locked --message-format=json > "$PROOF_DIR/metadata.jsonl"
+  TYPED_CONFIG="$($PYTHON - "$PROOF_DIR/metadata.jsonl" <<'PY'
+import json
+from pathlib import Path
+import sys
+messages = [json.loads(line) for line in Path(sys.argv[1]).read_text().splitlines() if line.startswith('{')]
+directories = [item['out_dir'] for item in messages if item.get('reason') == 'build-script-executed' and 'evidenceloom-desktop' in item.get('package_id', '')]
+if len(directories) != 1:
+    raise SystemExit('desktop_proof_invalid')
+print(Path(directories[0]) / 'desktop-effective-config.json')
+PY
+  )"
+  "$PYTHON" "$BOUNDARY" prepare-shipping --repo "$REPO_ROOT" --target "$TARGET_TRIPLE" \
+    --binary "$SIDECAR_BIN" --proof "$SIDECAR_PROOF" --base-commit "$BASE_COMMIT" \
+    --directory "$PROOF_DIR/app-stage" --overlay "$PROOF_DIR/tauri-overlay.json" --typed-config "$TYPED_CONFIG"
+  cd "$REPO_ROOT/frontend"
+  EVIDENCELOOM_RUNNER_MODE="$RUNNER_MODE" \
+    EVIDENCELOOM_DESKTOP_BUILD_STAMP="$PROOF_DIR/app-stage/desktop-build-stamp.json" \
+    npm run tauri:build -- --target "$TARGET_TRIPLE" --config "$PROOF_DIR/tauri-overlay.json"
+  APP_EXECUTABLE="$REPO_ROOT/src-tauri/target/$TARGET_TRIPLE/release/evidenceloom-desktop"
+  if [[ "$TARGET_TRIPLE" == *"windows"* ]]; then APP_EXECUTABLE="$APP_EXECUTABLE.exe"; fi
+  SEAL_ARGS=(--directory "$PROOF_DIR/app-stage" --executable "$APP_EXECUTABLE")
+  if [[ "$TARGET_TRIPLE" == *"apple-darwin"* ]]; then
+    APP_BUNDLE="$REPO_ROOT/src-tauri/target/$TARGET_TRIPLE/release/bundle/macos/Evidence Loom.app"
+    SEAL_ARGS=(--directory "$PROOF_DIR/app-stage" --executable "$APP_BUNDLE/Contents/MacOS/evidenceloom-desktop" --bundle "$APP_BUNDLE")
   fi
-  EVIDENCELOOM_RUNNER_MODE="$RUNNER_MODE" npm run tauri:build -- "${TAURI_ARGS[@]}"
+  "$PYTHON" "$BOUNDARY" seal-build "${SEAL_ARGS[@]}"
+  # The current job consumes this path; proof files never enter public assets.
+  if [[ -n "${GITHUB_ENV:-}" ]]; then
+    printf 'EVIDENCELOOM_SHIPPING_BUILD_PROOF=%s\n' "$PROOF_DIR/app-stage/build-proof.json" >> "$GITHUB_ENV"
+  fi
 
   echo ""
   echo "==> Build complete. Artifacts:"

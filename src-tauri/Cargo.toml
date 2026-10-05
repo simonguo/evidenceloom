@@ -4,11 +4,29 @@ version = "0.1.0-beta.10"
 description = "Local-first multi-agent market research desktop application"
 authors = ["Evidence Loom contributors"]
 edition = "2021"
+default-run = "evidenceloom-desktop"
 license = "Apache-2.0"
 repository = "https://github.com/simonguo/evidenceloom"
 
+[features]
+default = []
+desktop-acceptance = []
+
+[[bin]]
+name = "evidenceloom-desktop"
+path = "src/main.rs"
+
+[[bin]]
+name = "evidenceloom-desktop-fixture"
+path = "src/desktop_acceptance/sidecar.rs"
+required-features = ["desktop-acceptance"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["float_roundtrip", "raw_value"] }
+sha2 = "0.10"
+tauri-utils = { version = "=2.9.3", default-features = false }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

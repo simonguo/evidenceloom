@@ -59,6 +59,8 @@ jobs:
           uv run ruff format --check .
       - name: Test
         run: uv run pytest
+      - name: Check desktop publication and acceptance boundaries
+        run: python -m unittest discover -s scripts/tests -p test_desktop_acceptance_boundary.py -v
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: matrix.python-version == '3.12'
         with:

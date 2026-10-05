@@ -83,7 +83,7 @@ pub(crate) fn configure_in_environment(
     Ok(())
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn read_with_timeout(command: Command, ids: &[String], timeout: Duration) -> Result<Value, String> {
     read_with_environment_and_timeout(command, ids, &ApplicationEnvironment::system(), timeout)
 }

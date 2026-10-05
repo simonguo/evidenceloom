@@ -1,7 +1,9 @@
 //! Immutable application dependencies. Shipping construction is System-only.
-//! Owned paths and an ephemeral credential backend are available only to tests.
+//! Owned routing is available to tests and the non-default validated acceptance feature.
 
-use crate::secrets::{self, CredentialStore, SystemCredentialStore};
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
+use crate::secrets::SystemCredentialStore;
+use crate::secrets::{self, CredentialStore};
 use std::{
     ffi::OsString,
     path::{Path, PathBuf},
@@ -20,15 +22,14 @@ pub(crate) struct ApplicationEnvironment {
 
 #[derive(Clone)]
 enum Scope {
+    #[cfg(any(test, not(feature = "desktop-acceptance")))]
     System,
-    #[cfg(test)]
-    Owned {
-        root: PathBuf,
-        runner: PathBuf,
-    },
+    #[cfg(any(test, feature = "desktop-acceptance"))]
+    Owned { root: PathBuf, runner: PathBuf },
 }
 
 impl ApplicationEnvironment {
+    #[cfg(any(test, not(feature = "desktop-acceptance")))]
     pub(crate) fn system() -> Self {
         Self {
             scope: Scope::System,
@@ -84,43 +85,47 @@ impl ApplicationEnvironment {
 
     pub(crate) fn app_data_dir(
         &self,
-        system: impl FnOnce() -> Result<PathBuf, String>,
+        _system: impl FnOnce() -> Result<PathBuf, String>,
     ) -> Result<PathBuf, String> {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { root, .. } => Ok(root.join("data")),
         }
     }
 
     pub(crate) fn database_candidates(
         &self,
-        app_data: &Path,
-        system: impl FnOnce(&Path) -> Vec<PathBuf>,
+        _app_data: &Path,
+        _system: impl FnOnce(&Path) -> Vec<PathBuf>,
     ) -> Vec<PathBuf> {
         match &self.scope {
-            Scope::System => system(app_data),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(_app_data),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { .. } => Vec::new(),
         }
     }
 
     pub(crate) fn legacy_key_candidates(
         &self,
-        app_data: &Path,
-        system: impl FnOnce(&Path) -> Vec<PathBuf>,
+        _app_data: &Path,
+        _system: impl FnOnce(&Path) -> Vec<PathBuf>,
     ) -> Vec<PathBuf> {
         match &self.scope {
-            Scope::System => system(app_data),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(_app_data),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { .. } => Vec::new(),
         }
     }
 
     pub(crate) fn var(&self, name: &str) -> Result<String, std::env::VarError> {
         match &self.scope {
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
             Scope::System => std::env::var(name),
-            #[cfg(test)]
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { root, .. } => match name {
                 "HOME" => Ok(root.to_string_lossy().into_owned()),
                 "TMP" | "TEMP" | "TMPDIR" => Ok(root.join("temp").to_string_lossy().into_owned()),
@@ -131,76 +136,85 @@ impl ApplicationEnvironment {
 
     pub(crate) fn environment_names(&self) -> Vec<OsString> {
         match &self.scope {
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
             Scope::System => std::env::vars_os().map(|(name, _)| name).collect(),
-            #[cfg(test)]
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { .. } => {
                 vec!["HOME".into(), "TMP".into(), "TEMP".into(), "TMPDIR".into()]
             }
         }
     }
 
-    pub(crate) fn sidecar(&self, system: impl FnOnce() -> Option<PathBuf>) -> Option<PathBuf> {
+    pub(crate) fn sidecar(&self, _system: impl FnOnce() -> Option<PathBuf>) -> Option<PathBuf> {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { runner, .. } => Some(runner.clone()),
         }
     }
 
-    pub(crate) fn sidecar_description(&self, system: impl FnOnce() -> String) -> String {
+    pub(crate) fn sidecar_description(&self, _system: impl FnOnce() -> String) -> String {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { runner, .. } => runner.to_string_lossy().into_owned(),
         }
     }
 
-    pub(crate) fn project_root(&self, system: impl FnOnce() -> PathBuf) -> PathBuf {
+    pub(crate) fn project_root(&self, _system: impl FnOnce() -> PathBuf) -> PathBuf {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { root, .. } => root.join("work"),
         }
     }
 
-    pub(crate) fn python_path(&self, system: impl FnOnce() -> PathBuf) -> PathBuf {
+    pub(crate) fn python_path(&self, _system: impl FnOnce() -> PathBuf) -> PathBuf {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { root, .. } => root.join("unavailable-python"),
         }
     }
 
-    pub(crate) fn runner_mode(&self, system: impl FnOnce() -> String) -> String {
+    pub(crate) fn runner_mode(&self, _system: impl FnOnce() -> String) -> String {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { .. } => "sidecar".into(),
         }
     }
 
-    pub(crate) fn external_runner_allowed(&self, system: impl FnOnce() -> bool) -> bool {
+    pub(crate) fn external_runner_allowed(&self, _system: impl FnOnce() -> bool) -> bool {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { .. } => false,
         }
     }
 
-    pub(crate) fn work_dir(&self, system: impl FnOnce() -> PathBuf) -> PathBuf {
+    pub(crate) fn work_dir(&self, _system: impl FnOnce() -> PathBuf) -> PathBuf {
         match &self.scope {
-            Scope::System => system(),
-            #[cfg(test)]
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
+            Scope::System => _system(),
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { root, .. } => root.join("work"),
         }
     }
 
     pub(crate) fn configure_command(&self, command: &mut Command) -> Result<(), String> {
         match &self.scope {
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
             Scope::System => {
                 let _ = command;
             }
-            #[cfg(test)]
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { root, runner } => {
                 if command.get_program() != runner.as_os_str() {
                     return Err(
@@ -244,11 +258,27 @@ impl ApplicationEnvironment {
 
     pub(crate) fn permit_native_dialog(&self) -> Result<(), String> {
         match &self.scope {
+            #[cfg(any(test, not(feature = "desktop-acceptance")))]
             Scope::System => Ok(()),
-            #[cfg(test)]
+            #[cfg(any(test, feature = "desktop-acceptance"))]
             Scope::Owned { .. } => {
                 Err("Native dialogs are unavailable in the owned environment.".into())
             }
+        }
+    }
+
+    #[cfg(feature = "desktop-acceptance")]
+    pub(crate) fn from_prepared_acceptance(
+        token: &crate::desktop_acceptance::PreparedAcceptance,
+    ) -> Self {
+        Self {
+            scope: Scope::Owned {
+                root: token.root().to_owned(),
+                runner: token.runner().to_owned(),
+            },
+            credentials: Arc::new(EphemeralCredentialStore::default()),
+            #[cfg(test)]
+            test_credentials: None,
         }
     }
 
@@ -332,3 +362,40 @@ impl CredentialStore for EmptyCredentialStore {
 #[cfg(test)]
 #[path = "application_environment/tests.rs"]
 mod tests;
+
+#[cfg(feature = "desktop-acceptance")]
+#[derive(Default)]
+struct EphemeralCredentialStore {
+    values: std::sync::Mutex<std::collections::HashMap<String, String>>,
+}
+#[cfg(feature = "desktop-acceptance")]
+impl CredentialStore for EphemeralCredentialStore {
+    fn get(&self, key: &str) -> Result<Option<String>, String> {
+        self.values
+            .lock()
+            .map(|values| values.get(key).cloned())
+            .map_err(|_| "Acceptance credentials are unavailable.".into())
+    }
+    fn set(&self, key: &str, value: &str) -> Result<(), String> {
+        if value.trim().is_empty() {
+            return Err("Refusing to store an empty API key".into());
+        }
+        self.values
+            .lock()
+            .map_err(|_| "Acceptance credentials are unavailable.")?
+            .insert(key.into(), value.into());
+        Ok(())
+    }
+    fn delete(&self, key: &str) -> Result<(), String> {
+        self.values
+            .lock()
+            .map_err(|_| "Acceptance credentials are unavailable.")?
+            .remove(key);
+        Ok(())
+    }
+    fn configured(&self, key: &str) -> bool {
+        self.values
+            .lock()
+            .is_ok_and(|values| values.contains_key(key))
+    }
+}

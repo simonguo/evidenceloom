@@ -1,8 +1,11 @@
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 use keyring::{Entry, Error as KeyringError};
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", any(test, not(feature = "desktop-acceptance"))))]
 use security_framework::item::{ItemClass, ItemSearchOptions};
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 const SERVICE_NAME: &str = "io.github.simonguo.evidenceloom";
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 const LEGACY_SERVICE_NAMES: &[&str] = &["io.github.simonguo.marketquorum"];
 pub const ALPHA_VANTAGE_SECRET_ID: &str = "alpha-vantage";
 const SUPPORTED_PROVIDERS: &[&str] = &[
@@ -30,8 +33,10 @@ pub trait CredentialStore {
     }
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 pub struct SystemCredentialStore;
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 impl CredentialStore for SystemCredentialStore {
     fn get(&self, secret_id: &str) -> Result<Option<String>, String> {
         get_system_secret(secret_id)
@@ -74,6 +79,7 @@ pub fn provider_secret_id(provider: &str) -> Result<String, String> {
 /// Checks only non-secret Keychain attributes and explicitly disables
 /// authentication UI. This lets an upgraded app preserve its "configured"
 /// indicator without reading a password during startup.
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn detect_secret_without_prompt(secret_id: &str) -> bool {
     let Ok(secret_id) = normalize_secret_id(secret_id) else {
         return false;
@@ -83,7 +89,7 @@ fn detect_secret_without_prompt(secret_id: &str) -> bool {
         .any(|service| keychain_item_exists_without_prompt(service, &secret_id))
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(all(target_os = "macos", any(test, not(feature = "desktop-acceptance"))))]
 fn keychain_item_exists_without_prompt(service: &str, secret_id: &str) -> bool {
     ItemSearchOptions::new()
         .class(ItemClass::generic_password())
@@ -95,21 +101,27 @@ fn keychain_item_exists_without_prompt(service: &str, secret_id: &str) -> bool {
         .is_ok_and(|items| !items.is_empty())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(
+    not(target_os = "macos"),
+    any(test, not(feature = "desktop-acceptance"))
+))]
 fn keychain_item_exists_without_prompt(_service: &str, _secret_id: &str) -> bool {
     false
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn entry(secret_id: &str) -> Result<Entry, String> {
     let secret_id = normalize_secret_id(secret_id)?;
     entry_for_service(SERVICE_NAME, &secret_id)
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn entry_for_service(service: &str, secret_id: &str) -> Result<Entry, String> {
     Entry::new(service, secret_id)
         .map_err(|error| format!("Failed to open the operating-system credential store: {error}"))
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn get_system_secret(secret_id: &str) -> Result<Option<String>, String> {
     let secret_id = normalize_secret_id(secret_id)?;
     let current = entry_for_service(SERVICE_NAME, &secret_id)?;
