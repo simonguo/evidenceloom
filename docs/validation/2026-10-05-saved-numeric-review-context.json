@@ -1,0 +1,593 @@
+{
+  "recorded_at_utc": "2026-10-05T06:51:59.780445+00:00",
+  "status": "local_candidate_validated_remote_publication_ci_pending",
+  "base_commit": "5112884947ca175ca5400c8f59a89a875bf0145f",
+  "implementation_commit": "e27a43902535cac995de75f688f1a5ffed64ce45",
+  "source_changed_file_count": 10,
+  "source_files": [
+    {
+      "path": "frontend/src/features/numeric-review/components/NumericReviewPanel.tsx",
+      "bytes": 4152,
+      "sha256": "bc55c216c5170196424aedc61c8ac06107dde3221c5483f1e48fdd02084f263c"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/SavedNumericContext.tsx",
+      "bytes": 7329,
+      "sha256": "208d2b99cb5e855c0b73fd8bf12167a1dd1277b6329973c8eabb1d71b710242a"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/hooks/useNumericReview.ts",
+      "bytes": 6391,
+      "sha256": "8c1aaef8c6786b7d3a5132bbfcdcebe14d88adcf597dd054601767c8d7f8f0bc"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/inspection.ts",
+      "bytes": 5398,
+      "sha256": "eb60982659e5c6078055fc19d45ae051005378e88fc4646ae17232ce41cb0a32"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/source.ts",
+      "bytes": 7937,
+      "sha256": "5de8ea52db0c741082763a3a1ab8bccb7ef9a0b643b3e7117484e8383f84174c"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/SavedNumericContext.test.ts",
+      "bytes": 10741,
+      "sha256": "5aa5c06060693c072381b13039334d88fd544c8916adc03ce51f311d36e3ea6f"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/NumericReviewPanel.test.ts",
+      "bytes": 8307,
+      "sha256": "e94b4d02d1e76d9fcdcdef266c6d801b50de98d5e2746ba1e0a6418cb87e824f"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/hooks/useNumericReview.test.ts",
+      "bytes": 10045,
+      "sha256": "c243afee6d4cc684a8d92c8521476c505e769b88d5745b0d67cf99e76827d719"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/inspection.test.ts",
+      "bytes": 4040,
+      "sha256": "c594659a03354f2c973f7604d4056efe9a3e5a48b4dd5d9f8c413ff8ca0aaa3d"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/lib/source.test.ts",
+      "bytes": 4252,
+      "sha256": "bd6c3031d135f82368ba49fdb6a9dc3e80e9da9833b37438b204a35c0d049224"
+    }
+  ],
+  "product_objective": {
+    "status": "open",
+    "audience": "Professional analysts and independent researchers",
+    "areas": [
+      {
+        "area": "Source provenance",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Historical validity",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Evidence coverage",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Claims and citations",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Reproducibility",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Model and provider reliability",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Analyst workflow",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Execution control",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Security and privacy",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Research evaluation",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Release and operations",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Competitive quality",
+        "status": "open; partial engineering evidence may exist"
+      }
+    ],
+    "actual_external_participant_completions": 0,
+    "expert_approved_claims": 0,
+    "participant_availability": "unknown; unanswered availability is not unavailability"
+  },
+  "frontend_inventory_count": 255,
+  "scope": {
+    "production_paths": 5,
+    "test_paths": 5,
+    "owner": "exact task ID and original selected ReportVersion object reference; complete verified detached version/core/history rechecked before expanded content",
+    "text": "original UTF8 byte partitions preserve BOM, CJK, emoji, combining marks, CRLF, repeated literals and complete section text",
+    "source": "shared existing whole-table validation, exact saved row/field; original numeric tokens displayed without JS number conversion",
+    "disclosure": "closed generic label is cheap; expanded content performs the full owner/data/history/selection guard",
+    "unchanged": [
+      "numeric policy and arithmetic",
+      "hashes and save packet",
+      "DTO/storage schemas",
+      "export protocol",
+      "dependencies",
+      "native/Python/runtime source"
+    ],
+    "external_runtime": "No production provider/model request or user database/Keychain/GUI/IPC operation was performed. Next web output announces telemetry; it does not prove a send or establish zero network activity."
+  },
+  "checks": [
+    {
+      "name": "final-01-focused",
+      "execution": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-01-focused/execution.json",
+        "bytes": 2160,
+        "sha256": "3c08b67e72ec16fee9df4cfd456b20305c45706dfa467f44458be65e5906c7d9"
+      },
+      "elapsedSeconds": 2.4864402920065913,
+      "exitCode": 0,
+      "sourceStable": true,
+      "sourceCount": 255,
+      "command": [
+        "npm",
+        "exec",
+        "--",
+        "vitest",
+        "run",
+        "src/features/numeric-review/components/SavedNumericContext.test.ts",
+        "src/features/numeric-review/components/NumericReviewPanel.test.ts",
+        "src/features/numeric-review/hooks/useNumericReview.test.ts",
+        "src/features/numeric-review/lib/inspection.test.ts",
+        "src/features/numeric-review/lib/source.test.ts",
+        "--reporter=default",
+        "--reporter=junit",
+        "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-01-focused/junit.xml"
+      ],
+      "artifacts": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-01-focused/source-before.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-01-focused/source-after.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-01-focused/raw.log",
+          "bytes": 14679,
+          "sha256": "edcd72951d6485faf4c5ba758bda430e7fd7f1da3a3195101838b49564c84522"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-01-focused/junit.xml",
+          "bytes": 20145,
+          "sha256": "127bdd109797f888960d77a6ec54c1e19959d19faf45a4fa32312cf8d1b48640"
+        }
+      ],
+      "junit": {
+        "tests": 30,
+        "pass": 30,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "fileSuites": 5,
+        "skippedCases": []
+      }
+    },
+    {
+      "name": "final-02-types",
+      "execution": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-02-types/execution.json",
+        "bytes": 1342,
+        "sha256": "d23f3010863b9c4cc7fdd17a64524fd4f7bbf9116d14db3a0a1a4e263ba58e80"
+      },
+      "elapsedSeconds": 2.23033416600083,
+      "exitCode": 0,
+      "sourceStable": true,
+      "sourceCount": 255,
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "artifacts": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-02-types/source-before.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-02-types/source-after.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-02-types/raw.log",
+          "bytes": 65,
+          "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+        }
+      ]
+    },
+    {
+      "name": "final-03-lint",
+      "execution": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-03-lint/execution.json",
+        "bytes": 1335,
+        "sha256": "58fe8ee9a09df54c9c40c30b55d394bfe913768621d2855acc63609c160ae8a2"
+      },
+      "elapsedSeconds": 2.442727041998296,
+      "exitCode": 0,
+      "sourceStable": true,
+      "sourceCount": 255,
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "artifacts": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-03-lint/source-before.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-03-lint/source-after.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-03-lint/raw.log",
+          "bytes": 56,
+          "sha256": "64433d90eb0a53d21a047c1d717ff93fcf82ac583b21a1a700535929f3fe26a0"
+        }
+      ]
+    },
+    {
+      "name": "final-04-full",
+      "execution": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-04-full/execution.json",
+        "bytes": 1820,
+        "sha256": "49705f73b722e3001dddd5fa2e2225a1ea6be1f9964af91843247cd95f33a221"
+      },
+      "elapsedSeconds": 7.121815874997992,
+      "exitCode": 0,
+      "sourceStable": true,
+      "sourceCount": 255,
+      "command": [
+        "npm",
+        "exec",
+        "--",
+        "vitest",
+        "run",
+        "--reporter=default",
+        "--reporter=junit",
+        "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-04-full/junit.xml"
+      ],
+      "artifacts": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-04-full/source-before.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-04-full/source-after.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-04-full/raw.log",
+          "bytes": 29732,
+          "sha256": "18b98acb483f01f38cd703bcac2c002f909f20cced6758b3c8d27120af8af7c6"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-04-full/junit.xml",
+          "bytes": 234474,
+          "sha256": "16d3be55dba47a6e7917b6423dfabe5e47a0ec465b4063dd49a99d5a6d7aee2f"
+        }
+      ],
+      "junit": {
+        "tests": 835,
+        "pass": 825,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 10,
+        "fileSuites": 65,
+        "skippedCases": [
+          {
+            "file": "src/features/analysis-recovery/lib/attachment-native-bridge.test.ts",
+            "name": "actual Provider same-realm-stop attaches the original native worker and admits B only after both gates"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/attachment-native-bridge.test.ts",
+            "name": "actual Provider fresh-realm-stop attaches the original native worker and admits B only after both gates"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/attachment-native-bridge.test.ts",
+            "name": "actual Provider completion-listener-gap attaches the original native worker and admits B only after both gates"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/native-bridge.test.ts",
+            "name": "two queued safe runs use actual native worker/journal/SQLite through the production Provider and consumer"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/native-bridge.test.ts",
+            "name": "two queued safe_float runs use actual native worker/journal/SQLite through the production Provider and consumer"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/native-bridge.test.ts",
+            "name": "two queued empty runs use actual native worker/journal/SQLite through the production Provider and consumer"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/native-bridge.test.ts",
+            "name": "two queued critical_then_safe runs use actual native worker/journal/SQLite through the production Provider and consumer"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/native-bridge.test.ts",
+            "name": "two queued no_terminal runs use actual native worker/journal/SQLite through the production Provider and consumer"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/native-bridge.test.ts",
+            "name": "two queued malformed runs use actual native worker/journal/SQLite through the production Provider and consumer"
+          },
+          {
+            "file": "src/features/analysis-recovery/lib/protocol.test.ts",
+            "name": "parses actual native SQL serializer pages including Float-to-JS numeric forms"
+          }
+        ]
+      }
+    },
+    {
+      "name": "final-05-web-build",
+      "execution": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-05-web-build/execution.json",
+        "bytes": 1353,
+        "sha256": "d6adc2d91b5274c339aa15b0fbecb79d9355d965873ee1d4355ae81aab6a0bd5"
+      },
+      "elapsedSeconds": 20.39691799999855,
+      "exitCode": 0,
+      "sourceStable": true,
+      "sourceCount": 255,
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "artifacts": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-05-web-build/source-before.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-05-web-build/source-after.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-05-web-build/raw.log",
+          "bytes": 2132,
+          "sha256": "c2e4339e198c9fb985fff1ef2f094a8dc068cced7b642b07f320ddfd360c71b4"
+        }
+      ]
+    },
+    {
+      "name": "final-06-static-build",
+      "execution": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-06-static-build/execution.json",
+        "bytes": 1368,
+        "sha256": "d52e5b965dea7feb04d5dc79d886fb70bf7eb28836ac96a7f6ffb3093579712f"
+      },
+      "elapsedSeconds": 10.09309850000136,
+      "exitCode": 0,
+      "sourceStable": true,
+      "sourceCount": 255,
+      "command": [
+        "npm",
+        "run",
+        "build:tauri"
+      ],
+      "artifacts": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-06-static-build/source-before.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-06-static-build/source-after.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-06-static-build/raw.log",
+          "bytes": 1747,
+          "sha256": "90b5bd267a975d0867f0d1a08c3a9467ffa91cc601c4f8a0a7871023991022c2"
+        }
+      ]
+    },
+    {
+      "name": "final-07-generated-types",
+      "execution": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-07-generated-types/execution.json",
+        "bytes": 1374,
+        "sha256": "1a0fac9c4fc35c125d0e7e1329181bcb4e5028760ce6b58d041ae6abb7c647aa"
+      },
+      "elapsedSeconds": 3.3285750420036493,
+      "exitCode": 0,
+      "sourceStable": true,
+      "sourceCount": 255,
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "artifacts": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-07-generated-types/source-before.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-07-generated-types/source-after.json",
+          "bytes": 50787,
+          "sha256": "87a2016c5b63484aec64a5156c0c73f90cf336ba08c40b0883a52e3b281d1486"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend/final-07-generated-types/raw.log",
+          "bytes": 65,
+          "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+        }
+      ]
+    }
+  ],
+  "warnings": {
+    "focusedAct": 25,
+    "fullAct": 44,
+    "historical103FullAct": 41,
+    "netCountDifference": 3,
+    "newSavedNumericContextCasesAct": 0,
+    "newHookCasesAct": 0,
+    "interpretation": "All current act warnings occur in existing test contexts, but the +3 aggregate count difference is retained; no claim every warning instance/count predates this change, and no per-instance stack causality inferred. No filtering or suppression. Existing provider/panel verification and callback timing remain visible.",
+    "webBuildWarnings": 2,
+    "staticBuildWarnings": 1,
+    "webTelemetry": "Raw output announces Next telemetry; no actual send proven. V3 helper explicitly disables telemetry for subsequent static build. No provider/model/API tool call made."
+  },
+  "final_byte_paired_baseline": {
+    "execution": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/baseline-final-02-owner-dom/execution.json",
+      "bytes": 2548,
+      "sha256": "cbe4d60853d41467b88f5254436b163bc6db090709490483b928d887b6b4b3d7"
+    },
+    "preparation": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/baseline-final-02-owner-dom/preparation.json",
+      "bytes": 57405,
+      "sha256": "b75c9b06b880e8169c4131eb7299d7fa343ccf8641cf80f1b991136eb59555dd"
+    },
+    "additionalExactBaseImports": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/baseline-final-02-owner-dom/dependency-source-addendum.json",
+      "bytes": 5967,
+      "sha256": "4b272d030a328d0f11ef75f506016702e396c00dc62de4ccb4e644938cf07811"
+    },
+    "raw": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/baseline-final-02-owner-dom/raw.log",
+      "bytes": 4124,
+      "sha256": "415885ecd758307863726fb15c11dee277c02b85c8c7edc362ce875086c3d53e"
+    },
+    "junit": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/baseline-final-02-owner-dom/junit.xml",
+      "bytes": 3358,
+      "sha256": "0bd79fb4bbd5a810909f8daa631b67378965eb4228a8626d52dacfc9c194a7c3"
+    },
+    "baselineProduction": "Exact M frontend Gitblobs in isolated non-Git owned copy; only the final hook test was overlaid. Dependencies physically cloned, no old repo edit.",
+    "exactFinalTestSha256": "c243afee6d4cc684a8d92c8521476c505e769b88d5745b0d67cf99e76827d719",
+    "testBytesEqualCandidate": true,
+    "baseline": {
+      "tests": 6,
+      "pass": 3,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    "candidateHook": {
+      "tests": 6,
+      "pass": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "failures": [
+      {
+        "name": "selected-version numeric request generation > hides the previous task verification and preview in the first committed DOM frame with the same version reference",
+        "message": "expected true to be false // Object.is equality",
+        "excerpt": "\nAssertionError: expected true to be false // Object.is equality\n\n- Expected\n+ Received\n\n- false\n+ true\n\n \u276f src/features/numeric-review/hooks/useNumericReview.test.ts:104:32\n            "
+      },
+      {
+        "name": "selected-version numeric request generation > withholds a late old-task comparison and save message after switching owner with the same version reference",
+        "message": "expected true to be false // Object.is equality",
+        "excerpt": "\nAssertionError: expected true to be false // Object.is equality\n\n- Expected\n+ Received\n\n- false\n+ true\n\n \u276f src/features/numeric-review/hooks/useNumericReview.test.ts:122:37\n            "
+      },
+      {
+        "name": "selected-version numeric request generation > keeps a delayed save bound to its original task and capture while withholding its late failure message",
+        "message": "expected { taskId: 'task-other', \u2026(4) } to match object { verified: false, \u2026(2) } (2 matching properties omitted from actual)",
+        "excerpt": "\nAssertionError: expected { taskId: 'task-other', \u2026(4) } to match object { verified: false, \u2026(2) }\n(2 matching properties omitted from actual)\n\n- Expected\n+ Received\n\n  {\n-   \"pending\": false,\n-   \"preview\": false,\n-   \"verified\": false,\n+   \"pending\": true,\n+   \"preview\": true,\n+   \"verified\": true,\n  }\n\n \u276f src/features/numeric-review/hooks/useNumericReview.test.ts:139:29\n            "
+      }
+    ],
+    "interpretation": "Three negative contexts expose the same first-committed-frame owner leak. Failed baseline cases stopped at first-frame assertions; they do not prove their later comparison/save branches failed. Original three controls passed. Hook/actual React DOM only, no full Provider/native/GUI baseline."
+  },
+  "baseline_interpretation": "The exact final six hook cases on original M yield three preservation passes and three first-frame failures. Candidate yields six passes. The failing old cases stop at first-frame assertions; later assertions were not reached. These are not three independent defects.",
+  "retained_attempts": [],
+  "retained_attempt_summary": [
+    "Initial old-source control comparison: three controls pass and one owner first-frame failure.",
+    "Draft targeted suite: 26 pass and one fixture failure; 1e127 was valid under the unchanged exponent policy. Fixture corrected to 1e-1025 using real saved hashes.",
+    "Draft typecheck: new test fixture union casts failed; production-copy fixture construction fixed without changing product behavior.",
+    "Draft lint unused import warning removed. Original raw outputs remain bound in the engineering receipt.",
+    "Independent source builder first attempt mishandled packed Git objects; corrected read-only inventory binding retained the original owned harness failure.",
+    "Independent source-only narrative miscounted hook/focused leaves as 7/31; the combined review corrects them to actual XML 6/30."
+  ],
+  "evidence_inputs": {
+    "root_local_acceptance": {
+      "path": "root-final-local-acceptance-01.json",
+      "bytes": 138068,
+      "sha256": "91c1b0d8a51fd3ee373631580784169ead6609ce6c5cb7bcca01b710b7b54d3c"
+    },
+    "source_commit": {
+      "path": "root-source-commit-20261005T065150759805Z/record.json",
+      "bytes": 14501,
+      "sha256": "8d92370441f019f6d92135a7c818017fe19406907766f70aa338dfe67890ffc3"
+    },
+    "engineering_effective_receipt": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend-final-engineering-01/frontend-engineering-receipt-effective-02.json",
+      "bytes": 28139,
+      "sha256": "1333f36631199deca61c83d0485f0fc0e5ef35fe425c6889cb9f76261e52d7f4"
+    },
+    "independent_combined_review": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/independent-104-combined-local-review-20261005T065013747104Z/review.json",
+      "bytes": 739103,
+      "sha256": "c54a446ab1c675a12231039171f09d712604127af896e74554f470360987cea7"
+    },
+    "source_freeze": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend-candidate-source-freeze-02/receipt.json",
+      "bytes": 49485,
+      "sha256": "26b4f20a90bc1d59c2409202f63542cc990c6414902437e03c3a5d2845c7e42c"
+    },
+    "final_source_inventory": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend-final-engineering-01/final-source-inventory.json",
+      "bytes": 45687,
+      "sha256": "0c51fb19bef2f9411cbf28ca59c4302c20d935547da487a66dee5f7c67b98eb5"
+    },
+    "warning_classification": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/frontend-final-engineering-01/warnings.json",
+      "bytes": 5718,
+      "sha256": "8c6318ae15d01b2f707a657de60d278a2fcb4b2dea3e18c75548c691c1d09dde"
+    }
+  },
+  "remote_gate": {
+    "status": "pending at documentation time",
+    "required": "Actual published-head terminal checks, fresh code reviews and relevant frontend/full raw CI evidence. Existing native jobs still must finish successfully, but this UI-only slice does not rerun unchanged local native/Rust suites."
+  },
+  "open_limits": [
+    "Actual packaged WebView/Tauri IPC and physical accessibility acceptance",
+    "External analyst workflow completion",
+    "Expert semantic, temporal, inference and abstention adjudication",
+    "Source completeness, historical vintage and provider entity validity",
+    "Automatic claim extraction, broader formulas and predictive value",
+    "Clean installs/upgrades, signing and release acceptance",
+    "All twelve professional quality areas remain open or partial"
+  ],
+  "merged": false
+}
