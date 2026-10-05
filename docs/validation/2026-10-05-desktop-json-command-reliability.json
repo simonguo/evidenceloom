@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "status": "LOCAL_RUST_VERIFIED_ACTUAL_GIT94_INPUT_BYTES_EQUAL; PUBLISHED_HEAD_CI_SEPARATE",
+  "recordedAtUtc": "2026-10-05T22:29:30.663811+00:00",
+  "baseCommit": "790386310f77efd67795d0797b5048de53a2d926",
+  "baseTree": "fec02ace78dabceaf0b0319c802acd9e06070631",
+  "actualIntegratedSourceCommit": "aed3aab8670f4f015be86ac7828d4731bcbbc9a2",
+  "actualIntegratedSourceTree": "b5757f168a75423442d0369c67a333240e716eb7",
+  "sourceInputCount": 94,
+  "originalPreservationGuardCount": 19,
+  "inertCompileOnlyMarkerCount": 2,
+  "source": {
+    "src-tauri/src/main.rs": {
+      "bytes": 79559,
+      "sha256": "832b63e447c7594058aa4c353722e115cf69ec0f71a9f01b4ee084070187174b"
+    },
+    "src-tauri/src/json_command.rs": {
+      "bytes": 19761,
+      "sha256": "e480f861429d500ee9eceeeb74c44ac2a22a24fb9794ff112f77449b9c212f26"
+    },
+    "src-tauri/src/json_command/tests.rs": {
+      "bytes": 43493,
+      "sha256": "f8fa3e28e01b79bf4170c61ce30ba2d4c9569cf7585b86454f0ef35b432a7c3f"
+    },
+    "src-tauri/src/json_command/fixture.rs": {
+      "bytes": 6476,
+      "sha256": "00a3377c0e30d16de4a8754e604afb2e44b6a04c352a58d249cf5bcae71fe4ca"
+    }
+  },
+  "sourceIntegration": {
+    "artifact": "root-final-d-rebase-01/actual-source-integration.json",
+    "bytes": 29665,
+    "sha256": "e5e82776da191c831aa44459b709891778d0991cb50ff970391d2386e13cba17"
+  },
+  "rootMatrixReview": {
+    "artifact": "root-diagnostic-positive-owned-01/root-final-matrix-review.json",
+    "bytes": 6395,
+    "sha256": "e2b8ad080c75f561809c277514c90d7b3fabea57c5e34a0ccc9bbf87005530f1"
+  },
+  "independentReviewFreeze": {
+    "artifact": "independent-diagnostic30-validation-review-20261005T221420Z/final-freeze.json",
+    "bytes": 2952,
+    "sha256": "a0190d67c0c71df793c06faef899ae6d094eb86d0deed4f28aecbb1f86681715"
+  },
+  "rustToolchain": "1.95.0",
+  "tauriVersion": "2.11.5",
+  "lockedOffline": true,
+  "results": [
+    {
+      "stage": "fmt",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 0.729270416,
+      "testSummaries": [],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/fmt-01/execution.json",
+        "bytes": 149850,
+        "sha256": "c09532de7822c7d9480a36748683944da5c28e3595f3e1fe69424ebd0e3e5640"
+      }
+    },
+    {
+      "stage": "default-check",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 11.033915333,
+      "testSummaries": [],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/default-check-01/execution.json",
+        "bytes": 367334,
+        "sha256": "0453995428c53b9906b6d041328f1d2881413c022721e7ea714f36b966b1f0fb"
+      }
+    },
+    {
+      "stage": "feature-check",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 12.092982917,
+      "testSummaries": [],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/feature-check-01/execution.json",
+        "bytes": 368465,
+        "sha256": "e3a44661220f8b23b658b48b2d60595748481f022e6dcb7d698b5aaea8ab3d1f"
+      }
+    },
+    {
+      "stage": "positive-focused",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 38.58679825,
+      "testSummaries": [
+        {
+          "running": 30,
+          "passed": 30,
+          "failed": 0,
+          "ignored": 0,
+          "summary": "test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 276 filtered out; finished in 17.37s"
+        }
+      ],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/positive-focused-01/execution.json",
+        "bytes": 442636,
+        "sha256": "5ada391f57fb0efb381fec302bdfe21590b77d727184e8349c319fb5686655a9"
+      }
+    },
+    {
+      "stage": "default-clippy",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 13.895933333,
+      "testSummaries": [],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/default-clippy-01/execution.json",
+        "bytes": 367395,
+        "sha256": "466ea32dff5acf6b03405a7abfb970db22dcaebc4b705beeb4e2ff5cdb5e86d1"
+      }
+    },
+    {
+      "stage": "feature-clippy",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 11.751457041,
+      "testSummaries": [],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/feature-clippy-01/execution.json",
+        "bytes": 368220,
+        "sha256": "c4d103a4524c564cd8e88f00a96cc9a36efc8691cd02b4f573ec7fbd4a56a611"
+      }
+    },
+    {
+      "stage": "default-full",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 114.82566104200001,
+      "testSummaries": [
+        {
+          "running": 306,
+          "passed": 303,
+          "failed": 0,
+          "ignored": 3,
+          "summary": "test result: ok. 303 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 114.08s"
+        }
+      ],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/default-full-01/execution.json",
+        "bytes": 522013,
+        "sha256": "f1898a6ad28baa9299eaea987a69e8d99900ce3314133bfd5d8c9a2c4c424695"
+      }
+    },
+    {
+      "stage": "feature-full",
+      "cargoActualExitCode": 0,
+      "harnessActualExitCode": 0,
+      "sourceStable": true,
+      "compilerDiagnosticCount": 0,
+      "elapsedSeconds": 137.178068167,
+      "testSummaries": [
+        {
+          "running": 316,
+          "passed": 313,
+          "failed": 0,
+          "ignored": 3,
+          "summary": "test result: ok. 313 passed; 0 failed; 3 ignored; 0 measured; 0 filtered out; finished in 114.01s"
+        },
+        {
+          "running": 5,
+          "passed": 5,
+          "failed": 0,
+          "ignored": 0,
+          "summary": "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+        }
+      ],
+      "receipt": {
+        "artifact": "root-diagnostic-positive-owned-01/execution/feature-full-01/execution.json",
+        "bytes": 526308,
+        "sha256": "2ac9dd26a0c7c4806d62639ce75104303c8bc48f536fccbe59ddd358a4cd2b00"
+      }
+    }
+  ],
+  "explicitLocalIgnores": [
+    "analysis_recovery::runtime::tests::analysis_recovery_command_bridge",
+    "research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory",
+    "runtime_probe::tests::packaged_artifact_verifies_actual_runtime"
+  ],
+  "preservedNegativeResults": [
+    {
+      "artifact": "root-decoded-negative-owned-03",
+      "scope": "four original generic decoded-JSON assertion failures",
+      "cargoActualExitCode": 101,
+      "verificationHarnessExitCode": 0
+    },
+    {
+      "artifact": "root-ohlcv-negative-owned-02",
+      "scope": "two original inline typed-parser extraction assertion failures; not final diagnostic source",
+      "cargoActualExitCode": 101,
+      "verificationHarnessExitCode": 0
+    }
+  ],
+  "preservedIntermediateFailure": {
+    "artifact": "root-ohlcv-positive-owned-02",
+    "passed": 28,
+    "failed": 1,
+    "cargoActualExitCode": 101,
+    "rootCause": "UNKNOWN: old original worker result not retained; final green run does not recover it"
+  },
+  "observationsNotCertified": [
+    "real App/WebView/Tauri IPC",
+    "production Python/provider/model",
+    "System credential store or user database",
+    "complete process-group physical death",
+    "signing/installers/releases",
+    "all twelve professional-quality areas"
+  ],
+  "externalParticipantCompletions": 0,
+  "expertApprovedClaims": 0,
+  "participantAvailability": "UNKNOWN",
+  "mutableTargetArtifactHashes": "completion-cut evidence only"
+}
