@@ -111,17 +111,17 @@
   "staticRecordCorrection": "freeze02 wrote13 test count; append-only correction records actual12/Windows11; old record unchanged.",
   "boundaryScope": "53-source before/after covers 13 of 15 frozen boundaries; two build scripts verified separately, not claimed as check-time snapshots",
   "shippingConstruction": "System only, selected before Builder; Owned factory and backend are cfg(test) only",
-  "publicContracts": "IPC DTOs, protocol, database schema13, CAS/journal/domain hashes, frontend, Python, dependencies and release configuration unchanged",
+  "publicContracts": "Native DTO/protocol/schema13/CAS/journal/domain hashes, Python, dependencies and release configuration unchanged; subsequent frontend confirmation addendum changes one consumer and two tests.",
   "remainingLimitations": [
     "Phase A shipping factory remains System only; owned factory/backend cfg(test), not a production acceptance feature or settings/env/URL/RPC activation.",
-    "No app Builder startup, window/WebView, real Tauri invoke/listen, GUI or packaged sidecar launch occurred.",
+    "No app Builder startup, window/WebView, real Tauri invoke/listen, GUI or packaged sidecar launch occurred in the local native routing/frontend checks; historical Windows CI separately executed two packaged bridge tests.",
     "No user database, System credential API/Keychain, real provider/model/API or user profile was touched by these checks.",
     "System path/credential default preservation is source-level plus pure-callback/owned-path control proof; no run against user state.",
     "No full OS sandbox/all OS writes owned claim, no post-construction hostile filesystem race guarantee.",
-    "Mac Intel local engineering only; native platform CI and actual packaged GUI/IPC remain separate later gates.",
-    "No frontend checks repeated; copied final104 frontend/out serves compile resource only.",
-    "Two packaged bridges and JSONL fixture entry remained actual ignored; compile-only exit127 placeholder never executed or packaged.",
-    "All twelve professional acceptance groups OPEN, zero analyst/human acceptance, broader readiness UNKNOWN."
+    "All twelve professional acceptance groups OPEN, zero analyst/human acceptance, broader readiness UNKNOWN.",
+    "Old-head CI is historical, failed and incomplete; next-head three-platform/native-packaged gates remain open.",
+    "Only the consumer and exact native integration checks below were run for the frontend fix; no new full frontend result is claimed.",
+    "Actual owned bridge uses a compiled unit-test executable/fictional workers, not App/Builder/WebView/real Tauri IPC. The inert compile marker was never executed or packaged."
   ],
   "previousMergedSlice": {
     "pr": "https://github.com/simonguo/evidenceloom/pull/104",
@@ -138,7 +138,7 @@
     },
     "scope": "Actual main-push jobs/stages; no new passing raw-log counts or native/release trigger claim"
   },
-  "publishedHeadCi": "pending at documentation creation; actual PR head is a separate gate",
+  "publishedHeadCi": "Old b875 has actual ARM failure and incomplete Intel cut; new confirmation source ea4e51e requires fresh publication/CI, not yet validated.",
   "professionalObjective": {
     "allTwelveAreasOpenOrPartial": true,
     "completedExternalParticipants": 0,
@@ -172,7 +172,8 @@
     "change": "Explicit application_environment Cargo filter on macOS ARM/Intel and Windows native jobs. Linux complete Rust already includes the cases. New-head CI remains pending.",
     "counts": "12 Unix/11 Windows declarations; actual platform execution not predeclared. At CI commit5e the seven native files were unchanged; final04 has the separate test-only canonical-root correction.",
     "snapshotBoundary": "Original 53-entry inventories and 15-boundary freeze predate this CI-only change. They do not describe check-time bytes of the new workflow.",
-    "totalChangedPaths": 11
+    "totalChangedPaths": 11,
+    "totalChangedPathsScope": "Historical CI-only addendum; final frontend addendum expands cumulative paths to14."
   },
   "implementationCommitScope": "Original six production modules and original test03; final test fixture portability commit is bound separately.",
   "initialNativeSourcePaths03": [
@@ -612,5 +613,165 @@
     "full272RerunFor04": false,
     "change": "Canonicalize the newly created test fixture root before creating the marker runner and retaining expected paths. No production code change.",
     "actualComparisonScope": "Owned Unix symlink alias, not an observed Windows extended-path or macOS /var execution. New publication-head platform CI pending."
+  },
+  "updatedAtUtc": "2026-10-05T10:13:56.242517Z",
+  "failedPublicationCiAddendum": {
+    "head": "b87515bb56425354c63a870d6e76849ab3aafbb0",
+    "base": "3a4a971ac1c436fb5883b479c86868c859fa06ed",
+    "finalApiCutAtUtc": "2026-10-05T09:56:28.154607+00:00",
+    "rootReview": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/final-head-ci-review/old-failed-head-monitor-stop-20261005T095636503559Z/final-review.json",
+      "bytes": 38205,
+      "sha256": "7044846f489437b36f510999a391f9c915739e6a970bcebe6281c7bdadda7eae"
+    },
+    "mandatory": {
+      "FAILURE": 1,
+      "SKIPPED": 1,
+      "SUCCESS": 15,
+      "IN_PROGRESS": 1
+    },
+    "allTerminal": false,
+    "mergeGateAccepted": false,
+    "fullChangedRustRawDownloads": 3,
+    "actualReadRawCounts": {
+      "linuxRustFull": {
+        "passed": 272,
+        "failed": 0,
+        "ignored": 3,
+        "applicationEnvironmentPassed": 12,
+        "printedPanic": 0,
+        "compilerDiagnostic": 0
+      },
+      "nativeArm": {
+        "applicationEnvironmentPassed": 12,
+        "nativeIntegrationPassed": 15,
+        "nativeIntegrationFailed": 1,
+        "failedCase": "critical_then_safe runningTask null assertion line38",
+        "laterSeedAndPackagedBridgeSkipped": true,
+        "compilerDiagnostic": 0,
+        "printedPanic": 0
+      },
+      "nativeWindows": {
+        "applicationEnvironmentPassed": 11,
+        "nativeIntegrationPassed": 16,
+        "nativeIntegrationFailed": 0,
+        "sevenCriticalStagesSuccess": true,
+        "packagedRuntimeExactPassed": 1,
+        "packagedMemoryExactPassed": 1,
+        "rustDeadCodeUniqueWarnings": 1,
+        "rustDeadCodePrintedOccurrences": 12,
+        "printedPanic": 0
+      }
+    },
+    "intelScope": "Source stage success; packaged build in progress at cut, no full raw or final pass claim.",
+    "localMonitorExit": 143,
+    "remoteCancelOrRerun": false,
+    "armCause": "Unknown: failure has no sufficient native request/reply trace.",
+    "unchangedLocalFocused": {
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-recovery-arm-failure-01/local-negative-critical-01/receipt.json",
+        "bytes": 6299,
+        "sha256": "31002bd3340e2293ecbffda6182df1f7a1c675e937d92bf79ecd6f28fdfe9b5f"
+      },
+      "passed": 1,
+      "exit": 0,
+      "reproducedArmFailure": false
+    },
+    "unchangedLocalThreeFile": {
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-recovery-arm-failure-01/local-three-file-combination-01/receipt.json",
+        "bytes": 9732,
+        "sha256": "74d6fa2237d935e9c2c07f6d684559a620d81100e999b27ab9004f0b5acfc001"
+      },
+      "passed": 16,
+      "suites": 3,
+      "exit": 0,
+      "reproducedArmFailure": false
+    }
+  },
+  "frontendConfirmationAddendum": {
+    "implementationCommit": "ea4e51e4165e78646971b072d344440f5c112286",
+    "parentFailedHead": "b87515bb56425354c63a870d6e76849ab3aafbb0",
+    "sourceCommitReceipt": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/root-frontend-confirmation-source-20261005T101135647200Z/record.json",
+      "bytes": 2348,
+      "sha256": "7767b9bce44bf8f88d7ea834c0e052e19c7e179d5c9615d5e8ad13f37f9068a6"
+    },
+    "authorReceipt": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-recovery-arm-failure-01/consumer-confirmation-gap/final-freeze-01/receipt.json",
+      "bytes": 38562,
+      "sha256": "067b6ff247aa4fdf132731d8fce147dc2fc291f1ab841505ee87daf21be6a2bb"
+    },
+    "queryBoundAddendum": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-recovery-arm-failure-01/consumer-confirmation-gap/final-freeze-01-query-bound-addendum.json",
+      "bytes": 967,
+      "sha256": "e0c6b699dcaaa08afbfb8f21bd31ae91a7d0adc1f718136f882e03da98e722b2"
+    },
+    "independentReview": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/independent-phase-a-frontend-confirmation-review-20261005T100954516274Z/review.json",
+      "bytes": 65460,
+      "sha256": "ea54a502d1af8b17f2585bb65a61598570cb065d9001a1593ec0e5494b9e8f47"
+    },
+    "sourcePaths": [
+      {
+        "path": "frontend/src/features/analysis-recovery/lib/consumer.ts",
+        "bytes": 21487,
+        "sha256": "683b0d9167cf9af68ff90d2e34a950aaf17d60fbfc00e850ab3b45807518df30"
+      },
+      {
+        "path": "frontend/src/features/analysis-recovery/lib/consumer.test.ts",
+        "bytes": 20811,
+        "sha256": "6e7534e568c1a6d7aed9cc924aced1cced87843b0dfcfe76c942aa1bb3d65c83"
+      },
+      {
+        "path": "frontend/src/features/analysis-recovery/lib/native-bridge.test.ts",
+        "bytes": 8947,
+        "sha256": "456928cfb0d17c062260e87c52693455561a8018960bbefb7c72e9a45d7c4997"
+      }
+    ],
+    "negative": {
+      "actualFailures": 2,
+      "oldConsumerGitBlobVerified": true,
+      "sameSelectedCaseBodies": true,
+      "filtered": 19
+    },
+    "positiveSelected": {
+      "actualPasses": 2,
+      "filtered": 19
+    },
+    "finalConsumer": {
+      "passed": 23,
+      "failed": 0,
+      "skipped": 0
+    },
+    "lintExit": 0,
+    "typecheckExit": 0,
+    "actualNative": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 3,
+      "bridgesClosedExit0": 9,
+      "projectionQueries": 0,
+      "scope": "Integration compatibility; unavailable follow-up is covered by fictional transport controls only."
+    },
+    "additionalFollowUpQueryLimit": 3,
+    "knownReceiptAloneDoesNotOpenGate": true,
+    "persistentUnavailableRemainsPending": true,
+    "writeReplayOrInputResend": false,
+    "coherentPublishOnlyExistingCaller": true,
+    "failureOnlyDiagnostics": "Validated bounded metadata only, at most16KiB/last12 replies/2task identities; original assertions and deadlines unchanged.",
+    "armCause": "Unknown, not attributed to separately proven confirmation gap.",
+    "newPublishedHeadCi": "pending",
+    "cumulativePathCounts": {
+      "total": 14,
+      "production": 7,
+      "tests": 3,
+      "ci": 1,
+      "docs": 3
+    },
+    "sixNativeProductionAndTest04Unchanged": true,
+    "maximumTotalQueriesForOneOutstandingProjectionConfirmationAttempt": 4,
+    "queryBoundScope": "One outstanding original projection confirmation attempt only; existing recovery entry query plus at most3 extra queries. Not a bound on a whole multi-projection run or across explicit retries."
   }
 }
