@@ -104,7 +104,7 @@ describe("desktop task mutation boundaries through the actual provider", () => {
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: { invoke: (name: string, args?: Record<string, unknown>) => ipc.invoke(name, args) }, configurable: true });
     ipc.listen.mockReset().mockImplementation(async (_channel, handler) => { listener = handler; return vi.fn(); });
     ipc.invoke.mockReset().mockImplementation(async (command, args) => {
-      if (command === "load_analysis_recovery") return { recoveryProtocolVersion: 1, storage: { ...store.current(), legacyTaskImportAllowed: false }, tasks: [...store.rows.values()], journals: [], clearBlockers: [], runtime: recoveryRuntime(), coherent: true };
+      if (command === "load_analysis_recovery") return { recoveryProtocolVersion: 1, storage: store.snapshot().storage, tasks: [...store.rows.values()], journals: [], clearBlockers: [], runtime: recoveryRuntime(), coherent: true };
       if (command === "reserve_analysis" && allowScriptedRun) {
         const request = JSON.parse(args.requestJson) as AdmissionRequest, task = store.rows.get(request.expectedHead.taskId)!;
         recovery = transportFixture({ captured: { packet: { request, requestJson: args.requestJson }, task, executionInputJson: "" } });
@@ -236,7 +236,7 @@ describe("desktop task mutation boundaries through the actual provider", () => {
     expect(center.tasks[0].id).toBe(legacy.id); expect(commands("import_legacy_desktop_tasks")).toHaveLength(1); expect(commands("query_desktop_task_mutation").map(([, args]) => args.request)).toEqual([original, original]);
   });
   it("resumes an unknown captured history repair without creating a replacement write", async () => {
-    const raw = JSON.parse(JSON.stringify(createEmptyTask(defaultTaskDraft(), "owned-bootstrap-repair"))); delete raw.origin; store = ownedStore([raw]); loseSaveBeforeCommit = true;
+    const raw = createEmptyTask(defaultTaskDraft(), "owned-bootstrap-repair"); raw.reportSections.final_trade_decision = "Final rating: BUY"; store = ownedStore([raw]); loseSaveBeforeCommit = true;
     await mount(); expect(center.storageState).not.toBe("ready"); const original = commands("save_desktop_task")[0][1].request; expect(original).toMatchObject({ operation: "update", protocolVersion: 1 }); store.apply(original);
     await act(async () => element.querySelector<HTMLButtonElement>('[role="alert"] button')!.click());
     await vi.waitFor(async () => { await act(async () => {}); expect(center.storageState).toBe("ready"); });

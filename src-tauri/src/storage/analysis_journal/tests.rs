@@ -316,6 +316,16 @@ fn analysis_journal_empty_completed_is_terminal_error_and_carries_across_pages()
         load_tasks_from_conn(&conn).unwrap()[0].report_versions,
         json!([])
     );
+    let cut = attachment_current(&conn, &s.journal_id).unwrap();
+    let anchor = cut.prefix.unwrap();
+    assert!(anchor.safe_terminal_through_applied);
+    assert!(!anchor.projection_completed);
+    assert_eq!(
+        anchor.projection_failure_code.as_deref(),
+        Some("analysis_empty_result")
+    );
+    assert_eq!(anchor.head, cut.current.head.unwrap());
+    assert_eq!(anchor.applied_seq, "3");
     assert_eq!(
         control(&conn, &s, "clean", "stop", None, "cleanup_confirmed")
             .receipt
@@ -598,6 +608,15 @@ fn analysis_journal_critical_prefix_keeps_earlier_version_and_original_later_com
         "publication_unavailable",
         json!({"sourceType":"completed","channels":[{"channel":"reportSections","reason":"unsafe_content"}],"outcome":"analysis_failed","code":"analysis_publication_unavailable","safeAnalysis":{"type":"completed","decision":"REVIEW"}}),
     );
+    // An appended critical suffix is not yet part of the acknowledged prefix.
+    let before = attachment_current(&conn, &s.journal_id)
+        .unwrap()
+        .prefix
+        .unwrap();
+    assert_eq!(before.applied_seq, "2");
+    assert!(before.safe_terminal_through_applied && before.projection_completed);
+    assert!(before.critical_failure.is_none());
+    assert!(before.projection_failure_code.is_none());
     let middle = page(&conn, &s, "2", 1);
     let task = failure_task(&conn, &unavailable, "analysis_publication_unavailable");
     assert!(project(
@@ -640,6 +659,12 @@ fn analysis_journal_critical_prefix_keeps_earlier_version_and_original_later_com
         frozen
     );
     assert_eq!(page(&conn, &s, "3", 1).rows[0].payload, later.payload);
+    let after = attachment_current(&conn, &s.journal_id).unwrap();
+    let anchor = after.prefix.unwrap();
+    assert_eq!(anchor.critical_failure.unwrap().seq, "3");
+    assert!(anchor.safe_terminal_through_applied);
+    assert!(!anchor.projection_completed);
+    assert_eq!(after.current.task.unwrap().report_versions, frozen);
 }
 
 #[test]
@@ -1307,4 +1332,257 @@ fn analysis_journal_seal_requires_the_original_validated_last_worker_envelope() 
             .sealed_through_seq
             .is_none());
     }
+}
+
+fn legacy_twelve_without_prefix(conn: &Connection) {
+    conn.execute_batch(
+        "ALTER TABLE analysis_journals DROP COLUMN projection_terminal_observed;
+        DELETE FROM schema_migrations WHERE version>=13;
+        INSERT OR IGNORE INTO schema_migrations(version) VALUES(12);",
+    )
+    .unwrap();
+}
+
+fn applied_terminal_with_many_rows(conn: &Connection) -> AdmissionSeed {
+    let (_, seed) = reserve(conn);
+    reset(conn, &seed);
+    let completion = publish(
+        conn,
+        &seed,
+        "analysis",
+        json!({"event":{"type":"completed","reportSections":{"market_report":"Original migration fixture"}}}),
+    );
+    for _ in 0..66 {
+        publish(
+            conn,
+            &seed,
+            "analysis",
+            json!({"event":{"type":"progress"}}),
+        );
+    }
+    let mut cursor = "1".to_owned();
+    let mut request = 0;
+    while cursor != summary(conn, &seed.journal_id).unwrap().latest_seq {
+        let page = page(conn, &seed, &cursor, 64);
+        let task = if request == 0 {
+            completed_task(conn, &completion)
+        } else {
+            load_tasks_from_conn(conn).unwrap().remove(0)
+        };
+        project(
+            conn,
+            &projection(conn, &page, &task, &format!("migration-page-{request}")),
+        )
+        .unwrap()
+        .receipt
+        .unwrap();
+        cursor = page.last_seq;
+        request += 1;
+    }
+    assert_eq!(request, 2);
+    seed
+}
+
+#[test]
+fn analysis_journal_schema_thirteen_derives_the_verified_applied_prefix_without_rewriting_history()
+{
+    let conn = db();
+    let seed = applied_terminal_with_many_rows(&conn);
+    let before_header = encoded(&header(&conn, &seed.journal_id).unwrap()).unwrap();
+    let before_task = encoded(&load_tasks_from_conn(&conn).unwrap()).unwrap();
+    let before_row: String = conn
+        .query_row(
+            "SELECT envelope_json FROM analysis_events WHERE journal_id=?1 AND seq=2",
+            [&seed.journal_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    legacy_twelve_without_prefix(&conn);
+    initialize_schema_with_origin(&conn, false).unwrap();
+    let cut = attachment_current(&conn, &seed.journal_id).unwrap();
+    assert!(cut.prefix.unwrap().safe_terminal_through_applied);
+    assert_eq!(
+        encoded(&header(&conn, &seed.journal_id).unwrap()).unwrap(),
+        before_header
+    );
+    assert_eq!(
+        encoded(&load_tasks_from_conn(&conn).unwrap()).unwrap(),
+        before_task
+    );
+    let after_row: String = conn
+        .query_row(
+            "SELECT envelope_json FROM analysis_events WHERE journal_id=?1 AND seq=2",
+            [&seed.journal_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(before_row, after_row);
+    assert_eq!(
+        conn.query_row("SELECT MAX(version) FROM schema_migrations", [], |row| row
+            .get::<_, i64>(
+            0
+        ))
+        .unwrap(),
+        13
+    );
+}
+
+#[test]
+fn analysis_journal_schema_thirteen_does_not_use_a_future_terminal_or_critical_suffix() {
+    let conn = db();
+    let (_, seed) = reserve(&conn);
+    reset(&conn, &seed);
+    publish(
+        &conn,
+        &seed,
+        "analysis",
+        json!({"event":{"type":"completed","reportSections":{}}}),
+    );
+    publish(
+        &conn,
+        &seed,
+        "publication_unavailable",
+        json!({"sourceType":"completed","channels":[{"channel":"reportSections","reason":"unsafe_content"}],"outcome":"analysis_failed","code":"analysis_publication_unavailable","safeAnalysis":null}),
+    );
+    assert!(terminal_observed(&conn, &seed.journal_id).unwrap());
+    legacy_twelve_without_prefix(&conn);
+    initialize_schema_with_origin(&conn, false).unwrap();
+    let anchor = attachment_current(&conn, &seed.journal_id)
+        .unwrap()
+        .prefix
+        .unwrap();
+    assert_eq!(anchor.applied_seq, "1");
+    assert!(!anchor.safe_terminal_through_applied && !anchor.projection_completed);
+    assert!(anchor.critical_failure.is_none() && anchor.projection_failure_code.is_none());
+}
+
+#[test]
+fn analysis_journal_schema_thirteen_checks_rows_after_a_terminal_and_rolls_back_a_gap() {
+    let conn = db();
+    let seed = applied_terminal_with_many_rows(&conn);
+    legacy_twelve_without_prefix(&conn);
+    conn.execute(
+        "DELETE FROM analysis_events WHERE journal_id=?1 AND seq=50",
+        [&seed.journal_id],
+    )
+    .unwrap();
+    assert!(initialize_schema_with_origin(&conn, false).is_err());
+    assert_eq!(
+        conn.query_row("SELECT MAX(version) FROM schema_migrations", [], |row| row
+            .get::<_, i64>(
+            0
+        ))
+        .unwrap(),
+        12
+    );
+    let has_column: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM pragma_table_info('analysis_journals') WHERE name='projection_terminal_observed')", [], |row| row.get(0)).unwrap();
+    assert!(!has_column);
+    assert_eq!(summary(&conn, &seed.journal_id).unwrap().applied_seq, "68");
+}
+
+#[test]
+fn analysis_journal_schema_thirteen_does_not_repair_a_missing_or_invalid_current_column() {
+    let conn = db();
+    reserve(&conn);
+    conn.execute(
+        "UPDATE analysis_journals SET projection_terminal_observed=NULL",
+        [],
+    )
+    .unwrap();
+    assert!(initialize_schema_with_origin(&conn, false).is_err());
+    conn.execute_batch("ALTER TABLE analysis_journals DROP COLUMN projection_terminal_observed;")
+        .unwrap();
+    assert!(initialize_schema_with_origin(&conn, false).is_err());
+    let has_column: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM pragma_table_info('analysis_journals') WHERE name='projection_terminal_observed')", [], |row| row.get(0)).unwrap();
+    assert!(!has_column);
+}
+
+#[test]
+fn analysis_journal_schema_thirteen_keeps_an_unavailable_prefix_unknown_and_nonprojectable() {
+    let conn = db();
+    let (_, seed) = reserve(&conn);
+    reset(&conn, &seed);
+    legacy_twelve_without_prefix(&conn);
+    conn.execute(
+        "UPDATE analysis_journals SET body_state='unavailable' WHERE journal_id=?1",
+        [&seed.journal_id],
+    )
+    .unwrap();
+    conn.execute(
+        "DELETE FROM analysis_events WHERE journal_id=?1",
+        [&seed.journal_id],
+    )
+    .unwrap();
+    initialize_schema_with_origin(&conn, false).unwrap();
+    let flag: Option<i64> = conn
+        .query_row(
+            "SELECT projection_terminal_observed FROM analysis_journals WHERE journal_id=?1",
+            [&seed.journal_id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(flag.is_none());
+    let cut = attachment_current(&conn, &seed.journal_id).unwrap();
+    assert!(cut.prefix.is_none() && cut.header.is_none());
+    assert_eq!(cut.current.journal.unwrap().body_state, "unavailable");
+    assert!(cut.current.task.is_some());
+    assert!(assert_removal_allowed(&conn, None).is_err());
+}
+
+#[test]
+fn analysis_journal_attachment_control_is_the_original_latest_receipt_in_the_same_cut() {
+    let conn = db();
+    let (_, seed) = reserve(&conn);
+    let first = control(
+        &conn,
+        &seed,
+        "control-first",
+        "stop",
+        None,
+        "cleanup_incomplete",
+    )
+    .receipt
+    .unwrap();
+    let second = control(
+        &conn,
+        &seed,
+        "control-second",
+        "retry_cleanup",
+        Some("1"),
+        "cleanup_confirmed",
+    )
+    .receipt
+    .unwrap();
+    let cut = attachment_current(&conn, &seed.journal_id).unwrap();
+    match cut.control {
+        ControlReconciliation::Known {
+            control_revision,
+            receipt,
+        } => {
+            assert_eq!(control_revision, "2");
+            assert_eq!(receipt.request_id, second.request_id);
+            assert_ne!(receipt.request_id, first.request_id);
+            assert_eq!(receipt.digest, second.digest);
+            assert_eq!(receipt.origin, cut.current.journal.as_ref().unwrap().origin);
+        }
+        _ => panic!("expected original latest control receipt"),
+    }
+    assert_eq!(cut.prefix.unwrap().head, cut.current.head.unwrap());
+    assert_eq!(cut.current.journal.unwrap().control_revision, "2");
+}
+
+#[test]
+fn analysis_journal_attachment_never_projects_an_original_binding_into_a_copied_collection() {
+    let conn = db();
+    let (_, seed) = reserve(&conn);
+    reset(&conn, &seed);
+    let original_header = encoded(&header(&conn, &seed.journal_id).unwrap()).unwrap();
+    rotate_for_supported_copy(&conn).unwrap();
+    let cut = attachment_current(&conn, &seed.journal_id).unwrap();
+    assert!(cut.prefix.is_none());
+    assert_eq!(encoded(&cut.header.unwrap()).unwrap(), original_header);
+    assert_ne!(
+        cut.current.storage.collection,
+        cut.current.journal.unwrap().binding.collection
+    );
 }

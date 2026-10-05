@@ -836,6 +836,30 @@ async fn load_analysis_recovery(
     .await
 }
 #[tauri::command]
+async fn attach_analysis_recovery(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::AttachReply, recovery_wire::RecoveryError> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let packet = recovery_parser::parse::<recovery_wire::AttachRequest>(&request_json)?;
+        recovery.attachment(&packet, true)
+    })
+    .await
+}
+#[tauri::command]
+async fn query_analysis_attachment(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::AttachReply, recovery_wire::RecoveryError> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let packet = recovery_parser::parse::<recovery_wire::AttachRequest>(&request_json)?;
+        recovery.attachment(&packet, false)
+    })
+    .await
+}
+#[tauri::command]
 async fn reserve_analysis(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -1768,6 +1792,8 @@ fn main() {
             test_llm_connection,
             query_analysis_runtime,
             load_analysis_recovery,
+            attach_analysis_recovery,
+            query_analysis_attachment,
             query_analysis_reservation,
             query_analysis_start,
             read_analysis_journal,

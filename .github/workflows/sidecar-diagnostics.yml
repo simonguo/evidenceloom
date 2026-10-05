@@ -111,7 +111,7 @@ jobs:
         run: |
           npm install --global npm@11.6.2
           npm ci
-      - name: Validate actual native recovery serialization and consecutive analysis runs
+      - name: Validate native recovery, consecutive runs, and frontend reattachment
         run: |
           cargo test --manifest-path src-tauri/Cargo.toml --locked --no-run --message-format=json > "$RUNNER_TEMP/analysis-recovery-build.jsonl"
           uv run --frozen python - <<'PY'
@@ -144,7 +144,7 @@ jobs:
           npm = shutil.which("npm")
           if npm is None:
               raise RuntimeError("Repository npm executable is required")
-          subprocess.run([npm, "test", "--", "src/features/analysis-recovery/lib/protocol.test.ts", "src/features/analysis-recovery/lib/native-bridge.test.ts"], cwd="frontend", env=environment, check=True)
+          subprocess.run([npm, "test", "--", "src/features/analysis-recovery/lib/protocol.test.ts", "src/features/analysis-recovery/lib/native-bridge.test.ts", "src/features/analysis-recovery/lib/attachment-native-bridge.test.ts"], cwd="frontend", env=environment, check=True)
           PY
       - name: Seed an owned saved-memory fixture store
         run: |

@@ -86,3 +86,45 @@ fn analysis_recovery_envelope_timestamp_and_accepted_sequence_are_bound() {
     refresh(&mut row);
     assert!(validate_envelope(&row).is_err());
 }
+
+#[test]
+fn analysis_recovery_attachment_raw_identity_and_nullable_fields_are_strict() {
+    let request = serde_json::json!({
+        "recoveryProtocolVersion":1,"requestId":"watch-original","runtimeEpoch":"a".repeat(64),
+        "expectedObservationRevision":"0","origin":{"runtimeEpoch":"a".repeat(64),"taskId":"owned","runId":"analysis-0"},
+        "journalId":"b".repeat(64),"binding":{"collection":{"collectionId":"c".repeat(64),"epoch":"0"},"taskId":"owned","generation":"1"},
+        "admissionRequestId":"admitted-original","admissionDigest":"d".repeat(64),"expectedHeaderDigest":null
+    });
+    assert!(parse::<AttachRequest>(&request.to_string()).is_ok());
+    let mut missing = request.clone();
+    missing
+        .as_object_mut()
+        .unwrap()
+        .remove("expectedHeaderDigest");
+    assert!(parse::<AttachRequest>(&missing.to_string()).is_err());
+    for (key, bad) in [
+        ("expectedObservationRevision", serde_json::json!("00")),
+        ("runtimeEpoch", serde_json::json!("b".repeat(64))),
+        ("expectedHeaderDigest", serde_json::json!("bad")),
+        ("admissionRequestId", serde_json::json!("contains space")),
+    ] {
+        let mut changed = request.clone();
+        changed[key] = bad;
+        assert!(
+            parse::<AttachRequest>(&changed.to_string()).is_err(),
+            "{key}"
+        );
+    }
+    let duplicate = request
+        .to_string()
+        .replacen("{", "{\"requestId\":\"duplicate\",", 1);
+    assert!(parse::<AttachRequest>(&duplicate).is_err());
+    let mut oversized = request;
+    oversized["requestId"] = "x".repeat(CONTROL_BYTES).into();
+    assert_eq!(
+        parse::<AttachRequest>(&oversized.to_string())
+            .unwrap_err()
+            .code,
+        "analysis_limit_exceeded"
+    );
+}

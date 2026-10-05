@@ -23,7 +23,7 @@ pub mod analysis_journal;
 pub mod task_mutation;
 pub use task_mutation::{MutationReply, Packet, QueryReply, StorageError};
 
-const SCHEMA_VERSION: i64 = 12;
+const SCHEMA_VERSION: i64 = 13;
 const SECRET_PREFIX: &str = "enc:v1:";
 static DATABASE_OPEN: std::sync::Mutex<()> = std::sync::Mutex::new(());
 static COPY_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
@@ -655,6 +655,13 @@ impl crate::analysis_recovery::runtime::JournalBackend for AppJournalBackend {
         id: &str,
     ) -> Result<analysis_journal::SqlCurrent, crate::analysis_recovery::wire::RecoveryError> {
         with_analysis_journal(&self.app, |c| analysis_journal::current(c, id))
+    }
+    fn attachment_current(
+        &self,
+        id: &str,
+    ) -> Result<analysis_journal::SqlAttachmentCut, crate::analysis_recovery::wire::RecoveryError>
+    {
+        with_analysis_journal(&self.app, |c| analysis_journal::attachment_current(c, id))
     }
     fn admit(
         &self,

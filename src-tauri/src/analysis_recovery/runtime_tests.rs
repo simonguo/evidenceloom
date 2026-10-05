@@ -77,6 +77,12 @@ impl JournalBackend for OwnedBackend {
             journal_id,
         )
     }
+    fn attachment_current(&self, journal_id: &str) -> Result<SqlAttachmentCut, RecoveryError> {
+        sql::attachment_current(
+            &self.conn.lock().unwrap_or_else(|e| e.into_inner()),
+            journal_id,
+        )
+    }
     fn admit(
         &self,
         packet: &ParsedRecoveryRequest<AdmissionRequest>,
@@ -165,7 +171,14 @@ struct Harness {
     coordinator: Arc<Coordinator>,
     backend: Arc<OwnedBackend>,
     workers: Arc<Mutex<Vec<thread::JoinHandle<()>>>>,
+    gates: Mutex<HashMap<String, FixtureGate>>,
 }
+struct FixtureGate {
+    origin: RunIdentity,
+    gate: PathBuf,
+    marker: PathBuf,
+}
+static FIXTURE_SEQUENCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 impl Harness {
     fn new() -> Self {
         let backend = Arc::new(OwnedBackend::new());
@@ -177,7 +190,60 @@ impl Harness {
             coordinator,
             backend,
             workers: Arc::new(Mutex::new(Vec::new())),
+            gates: Mutex::new(HashMap::new()),
         }
+    }
+    fn command(&self, publisher: &Publisher, mode: &str) -> Result<Command, RecoveryError> {
+        let mut command = Command::new(binary());
+        command.arg(mode);
+        if ["waiting", "controlled_safe"].contains(&mode) {
+            let sequence = FIXTURE_SEQUENCE.fetch_add(1, Ordering::SeqCst);
+            let directory =
+                fixture_root().join(format!("controlled-{}-{sequence}", std::process::id()));
+            fs::create_dir_all(fixture_root()).map_err(|_| RecoveryError::unavailable())?;
+            fs::create_dir(&directory).map_err(|_| RecoveryError::unavailable())?;
+            let gate = directory.join("release");
+            let marker = directory.join("started");
+            command
+                .arg(&gate)
+                .arg(&marker)
+                .arg(&publisher.run.journal_id);
+            self.gates.lock().unwrap().insert(
+                publisher.run.journal_id.clone(),
+                FixtureGate {
+                    origin: publisher.run.origin.clone(),
+                    gate,
+                    marker,
+                },
+            );
+        }
+        Ok(command)
+    }
+    fn release_worker(&self, origin: &RunIdentity, journal: &str) -> Result<Value, RecoveryError> {
+        self.coordinator.exact_session(origin, journal)?;
+        let gates = self.gates.lock().unwrap();
+        let gate = gates
+            .get(journal)
+            .filter(|g| g.origin == *origin)
+            .ok_or_else(RecoveryError::invalid)?;
+        if fs::read_to_string(&gate.marker).ok().as_deref() != Some(journal) {
+            return Err(RecoveryError::fixed("analysis_busy"));
+        }
+        use std::io::Write;
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&gate.gate)
+        {
+            Ok(mut file) => file
+                .write_all(journal.as_bytes())
+                .map_err(|_| RecoveryError::unavailable())?,
+            Err(error)
+                if error.kind() == std::io::ErrorKind::AlreadyExists
+                    && fs::read_to_string(&gate.gate).ok().as_deref() == Some(journal) => {}
+            Err(_) => return Err(RecoveryError::unavailable()),
+        }
+        Ok(json!({"released":true,"workerStarted":true}))
     }
     fn admission(&self, id: &str) -> ParsedRecoveryRequest<AdmissionRequest> {
         let cut = self.backend.bootstrap().unwrap();
@@ -286,14 +352,14 @@ impl Harness {
         }
         let workers = self.workers.clone();
         let mode = mode.to_owned();
+        let command_harness = self;
         self.coordinator
             .start(
                 packet,
                 input,
                 Arc::new(|_| {}),
                 move |execution, publisher, input| {
-                    let mut command = Command::new(binary());
-                    command.arg(mode);
+                    let command = command_harness.command(&publisher, &mode)?;
                     let worker = thread::spawn(move || {
                         run_owned_worker(execution, publisher, command, input.to_string())
                     });
@@ -666,6 +732,7 @@ fn analysis_recovery_command_bridge() {
                         "no_terminal",
                         "malformed",
                         "waiting",
+                        "controlled_safe",
                     ]
                     .contains(&next)
                     {
@@ -677,6 +744,26 @@ fn analysis_recovery_command_bridge() {
                 "fixture_wait" => Ok(
                     json!({"joined":harness.join_workers(),"runtime":harness.coordinator.observe()}),
                 ),
+                "fixture_release_worker" => {
+                    parser::exact(args, &["origin", "journalId"])?;
+                    let origin: RunIdentity = serde_json::from_value(args["origin"].clone())
+                        .map_err(|_| RecoveryError::invalid())?;
+                    parser::identity(&origin)?;
+                    let journal = args["journalId"]
+                        .as_str()
+                        .filter(|s| parser::hex(s))
+                        .ok_or_else(RecoveryError::invalid)?;
+                    harness.release_worker(&origin, journal)
+                }
+                "attach_analysis_recovery" | "query_analysis_attachment" => {
+                    let p = parser::parse::<AttachRequest>(raw)?;
+                    serde_json::to_value(fit_reply(
+                        harness
+                            .coordinator
+                            .attachment(&p, command == "attach_analysis_recovery")?,
+                    )?)
+                    .map_err(|_| RecoveryError::unavailable())
+                }
                 "query_analysis_runtime" => {
                     parser::parse::<ProtocolRequest>(raw)?;
                     serde_json::to_value(harness.coordinator.observe())
@@ -710,13 +797,13 @@ fn analysis_recovery_command_bridge() {
                     )?;
                     let workers = harness.workers.clone();
                     let mode = mode.clone();
+                    let command_harness = &harness;
                     serde_json::to_value(harness.coordinator.start(
                         p,
                         input,
                         wake,
                         move |execution, publisher, input| {
-                            let mut command = Command::new(binary());
-                            command.arg(mode);
+                            let command = command_harness.command(&publisher, &mode)?;
                             workers.lock().unwrap().push(thread::spawn(move || {
                                 run_owned_worker(execution, publisher, command, input.to_string())
                             }));
@@ -760,8 +847,12 @@ fn analysis_recovery_command_bridge() {
                 }
                 "query_analysis_control" => {
                     let p = parser::parse::<StopRequest>(raw)?;
+                    let result = harness.backend.query_control(&p)?;
+                    if let Some(receipt) = &result.receipt {
+                        harness.coordinator.reconcile_control(receipt);
+                    }
                     serde_json::to_value(harness.coordinator.outcome(
-                        harness.backend.query_control(&p)?,
+                        result,
                         "analysis_control",
                         &p.request.journal_id,
                     ))
@@ -968,6 +1059,9 @@ struct ControlledBackend {
     admit_unknown: AtomicBool,
     append_unknown: AtomicBool,
     worker_append_unknown: AtomicBool,
+    attachment_unavailable: AtomicBool,
+    attachment_hook: Mutex<Option<Box<dyn FnOnce() + Send>>>,
+    record_control_hook: Mutex<Option<Box<dyn FnOnce() + Send>>>,
     bootstrap_calls: std::sync::atomic::AtomicUsize,
     hook: Mutex<Option<Box<dyn FnOnce() + Send>>>,
 }
@@ -978,6 +1072,9 @@ impl ControlledBackend {
             admit_unknown: AtomicBool::new(false),
             append_unknown: AtomicBool::new(false),
             worker_append_unknown: AtomicBool::new(false),
+            attachment_unavailable: AtomicBool::new(false),
+            attachment_hook: Mutex::new(None),
+            record_control_hook: Mutex::new(None),
             bootstrap_calls: std::sync::atomic::AtomicUsize::new(0),
             hook: Mutex::new(None),
         }
@@ -1002,6 +1099,17 @@ impl JournalBackend for ControlledBackend {
     }
     fn current(&self, journal_id: &str) -> Result<SqlCurrent, RecoveryError> {
         self.inner.current(journal_id)
+    }
+    fn attachment_current(&self, journal_id: &str) -> Result<SqlAttachmentCut, RecoveryError> {
+        if self.attachment_unavailable.load(Ordering::SeqCst) {
+            return Err(RecoveryError::unavailable());
+        }
+        let cut = self.inner.attachment_current(journal_id)?;
+        let hook = self.attachment_hook.lock().unwrap().take();
+        if let Some(hook) = hook {
+            hook();
+        }
+        Ok(cut)
     }
     fn admit(
         &self,
@@ -1077,6 +1185,10 @@ impl JournalBackend for ControlledBackend {
         packet: &ParsedRecoveryRequest<StopRequest>,
         record: &ControlRecord,
     ) -> Result<SqlOutcome<ControlReceipt>, RecoveryError> {
+        let hook = self.record_control_hook.lock().unwrap().take();
+        if let Some(hook) = hook {
+            hook();
+        }
         self.inner.record_control(packet, record)
     }
     fn query_control(
@@ -1098,6 +1210,7 @@ fn analysis_recovery_committed_admission_lost_ack_preserves_original_credentials
         backend,
         coordinator,
         workers: Arc::new(Mutex::new(Vec::new())),
+        gates: Mutex::new(HashMap::new()),
     };
     controlled.admit_unknown.store(true, Ordering::SeqCst);
     let packet = harness.admission("lost-admission-ack");
@@ -1275,6 +1388,7 @@ fn analysis_recovery_actual_committed_completed_with_lost_append_ack_uses_sql_te
         backend,
         coordinator,
         workers: Arc::new(Mutex::new(Vec::new())),
+        gates: Mutex::new(HashMap::new()),
     };
     let receipt = harness.reserve("lost-append");
     let run = harness
@@ -1321,6 +1435,7 @@ fn analysis_recovery_worker_outcome_commit_then_unknown_reuses_original_tail_bef
         backend,
         coordinator,
         workers: Arc::new(Mutex::new(Vec::new())),
+        gates: Mutex::new(HashMap::new()),
     };
     let receipt = harness.reserve("lost-worker-tail");
     let run = harness
@@ -1385,5 +1500,812 @@ fn analysis_recovery_corrupt_current_header_does_not_discard_known_receipt_or_wi
     assert_eq!(query.receipt.unwrap().header_digest, receipt.header_digest);
     assert!(
         matches!(query.current,RecoveryCurrent::Unavailable{ref error,..} if error.code=="analysis_storage_unavailable")
+    );
+}
+
+fn attach_packet(
+    coordinator: &Coordinator,
+    receipt: &AdmissionReceipt,
+    id: &str,
+) -> ParsedRecoveryRequest<AttachRequest> {
+    parser::parse(&json!({"recoveryProtocolVersion":1,"requestId":id,"runtimeEpoch":receipt.origin.runtime_epoch,
+        "expectedObservationRevision":coordinator.observe().observation_revision,"origin":receipt.origin,
+        "journalId":receipt.journal_id,"binding":receipt.binding,"admissionRequestId":receipt.request_id,
+        "admissionDigest":receipt.digest,"expectedHeaderDigest":receipt.header_digest}).to_string()).unwrap()
+}
+fn stop_packet(receipt: &AdmissionReceipt, id: &str) -> ParsedRecoveryRequest<StopRequest> {
+    parser::parse(
+        &json!({"recoveryProtocolVersion":1,"requestId":id,"origin":receipt.origin,
+        "journalId":receipt.journal_id,"mode":"stop","expectedControlRevision":null})
+        .to_string(),
+    )
+    .unwrap()
+}
+#[test]
+fn analysis_recovery_attachment_progress_lower_bound_query_identity_and_historical_outcome() {
+    let harness = Harness::new();
+    let receipt = harness.reserve("attach-progress");
+    let original = attach_packet(&harness.coordinator, &receipt, "watch-progress");
+    let unknown = harness.coordinator.attachment(&original, false).unwrap();
+    assert!(
+        unknown.receipt.is_none() && unknown.rejection.is_none() && unknown.attachment.is_none()
+    );
+    assert!(harness
+        .coordinator
+        .state
+        .lock()
+        .unwrap()
+        .attachments
+        .is_empty());
+    harness.coordinator.changed();
+    let ack = harness.coordinator.attachment(&original, true).unwrap();
+    assert!(ack.receipt.is_some());
+    assert!(
+        matches!(ack.attachment, Some(CurrentAttachment::Durable { authority, .. }) if authority == "live")
+    );
+    let query = harness.coordinator.attachment(&original, false).unwrap();
+    assert_eq!(query.receipt.unwrap().digest, original.digest);
+    let mut conflict = original.original.clone();
+    conflict["expectedHeaderDigest"] = Value::Null;
+    assert_eq!(
+        harness
+            .coordinator
+            .attachment(&parser::parse(&conflict.to_string()).unwrap(), false)
+            .unwrap_err()
+            .code,
+        "analysis_request_conflict"
+    );
+    let mut future = original.original;
+    future["requestId"] = "watch-future".into();
+    future["expectedObservationRevision"] = MAX_COUNTER.to_string().into();
+    let future = harness
+        .coordinator
+        .attachment(&parser::parse(&future.to_string()).unwrap(), true)
+        .unwrap();
+    assert_eq!(future.rejection.unwrap().code, "analysis_stale_origin");
+    assert!(!harness
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap()
+        .cancelled
+        .load(Ordering::SeqCst));
+}
+#[test]
+fn analysis_recovery_attachment_applied_anchor_does_not_use_unprojected_terminal() {
+    let harness = Harness::new();
+    let receipt = harness.reserve("attach-prefix");
+    harness.reset(&receipt);
+    let run = harness
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap();
+    let publisher = Publisher::new(harness.coordinator.clone(), run, Arc::new(|_| {}));
+    publisher.event(&json!({"type":"completed","reportSections":{"market_report":"Owned unapplied terminal."}})).unwrap();
+    let packet = attach_packet(&harness.coordinator, &receipt, "watch-unapplied");
+    let reply = harness.coordinator.attachment(&packet, true).unwrap();
+    let Some(CurrentAttachment::Durable { header, prefix, .. }) = reply.attachment else {
+        panic!("available anchor required")
+    };
+    assert_eq!(header.header_digest, receipt.header_digest);
+    assert_eq!(prefix.applied_seq, "1");
+    assert!(!prefix.safe_terminal_through_applied && !prefix.projection_completed);
+    assert!(prefix.critical_failure.is_none());
+    assert!(
+        matches!(reply.current, RecoveryCurrent::Coherent { head: Some(head), journal: Some(journal), .. }
+        if head.revision == prefix.head.revision && journal.applied_seq == prefix.applied_seq && journal.latest_seq == "2")
+    );
+}
+#[test]
+fn analysis_recovery_attachment_preheader_witness_keeps_exact_cancel_identity() {
+    let harness = Harness::new();
+    let admission = harness.admission("pending-watch");
+    let run = harness.coordinator.begin(&admission).unwrap();
+    let packet = parser::parse(&json!({"recoveryProtocolVersion":1,"requestId":"watch-preheader","runtimeEpoch":run.origin.runtime_epoch,
+        "expectedObservationRevision":harness.coordinator.observe().observation_revision,"origin":run.origin,
+        "journalId":run.journal_id,"binding":run.binding,"admissionRequestId":admission.request.request_id,
+        "admissionDigest":admission.digest,"expectedHeaderDigest":null}).to_string()).unwrap();
+    let reply = harness.coordinator.attachment(&packet, true).unwrap();
+    assert!(reply.receipt.is_some());
+    assert!(
+        matches!(reply.attachment, Some(CurrentAttachment::Volatile { witness, .. }) if witness.reason == "header_pending" && witness.header_digest.is_none())
+    );
+    harness.coordinator.mark_cancel(&run);
+    run.preparing.store(false, Ordering::SeqCst);
+    harness.coordinator.finish_without_header(&run).unwrap();
+    let reply = harness.coordinator.attachment(&packet, false).unwrap();
+    assert!(reply.receipt.is_some() && reply.attachment.is_none());
+    assert!(harness.coordinator.observe().owner.is_none());
+}
+#[test]
+fn analysis_recovery_attachment_non_eviction_cap_precedes_new_intent_and_known_query_survives() {
+    let harness = Harness::new();
+    let receipt = harness.reserve("attachment-cap");
+    let mut first = None;
+    for i in 0..OUTCOME_CAP {
+        let packet = attach_packet(&harness.coordinator, &receipt, &format!("watch-{i}"));
+        assert!(harness
+            .coordinator
+            .attachment(&packet, true)
+            .unwrap()
+            .receipt
+            .is_some());
+        if i == 0 {
+            first = Some(packet);
+        }
+    }
+    assert_eq!(
+        harness
+            .coordinator
+            .attachment(
+                &attach_packet(&harness.coordinator, &receipt, "watch-over-cap"),
+                true
+            )
+            .unwrap_err()
+            .code,
+        "analysis_limit_exceeded"
+    );
+    assert!(harness
+        .coordinator
+        .attachment(&first.unwrap(), false)
+        .unwrap()
+        .receipt
+        .is_some());
+    let query = harness
+        .coordinator
+        .attachment(
+            &attach_packet(&harness.coordinator, &receipt, "never-observed"),
+            false,
+        )
+        .unwrap();
+    assert!(query.receipt.is_none() && query.rejection.is_none());
+    assert_eq!(
+        harness.coordinator.state.lock().unwrap().attachments.len(),
+        OUTCOME_CAP
+    );
+    assert!(!harness
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap()
+        .cancelled
+        .load(Ordering::SeqCst));
+}
+#[test]
+fn analysis_recovery_different_stop_ids_join_one_real_reader_cleanup_and_keep_own_receipts() {
+    let harness = Harness::new();
+    let receipt = harness.reserve("different-stop-flight");
+    let run = harness
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap();
+    let (release, reader_wait) = mpsc::channel();
+    let (reader_started, started) = mpsc::channel();
+    let completed = Arc::new(AtomicBool::new(false));
+    let done = completed.clone();
+    run.execution
+        .lock()
+        .unwrap()
+        .as_mut()
+        .unwrap()
+        .reader(thread::spawn(move || {
+            let _ = reader_started.send(());
+            let received = reader_wait.recv_timeout(Duration::from_secs(8));
+            done.store(received.is_ok(), Ordering::SeqCst);
+        }));
+    let started = started.recv_timeout(Duration::from_secs(2)).is_ok();
+    let first_coordinator = harness.coordinator.clone();
+    let first = stop_packet(&receipt, "stop-one");
+    let one = thread::spawn(move || first_coordinator.stop(first, Arc::new(|_| {})));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while run.cleanup_flight.lock().unwrap().is_none() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let flight = run.cleanup_flight.lock().unwrap().clone();
+    let second_coordinator = harness.coordinator.clone();
+    let second = stop_packet(&receipt, "stop-two");
+    let two = thread::spawn(move || second_coordinator.stop(second, Arc::new(|_| {})));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while !run.attempts.lock().unwrap().contains_key("stop-two") && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let both_pending = run.attempts.lock().unwrap().len() == 2;
+    let release_sent = release.send(()).is_ok();
+    // Release both before assertions; a successful path must consume both.
+    // Timeout fails without claiming a detached stuck thread was terminated.
+    let deadline = Instant::now() + Duration::from_secs(8);
+    while (!one.is_finished() || !two.is_finished()) && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let one = if one.is_finished() {
+        Some(one.join())
+    } else {
+        None
+    };
+    let two = if two.is_finished() {
+        Some(two.join())
+    } else {
+        None
+    };
+    let same_flight = flight
+        .zip(run.cleanup_flight.lock().unwrap().clone())
+        .is_some_and(|(a, b)| Arc::ptr_eq(&a, &b));
+    assert!(
+        started && both_pending && release_sent && completed.load(Ordering::SeqCst) && same_flight
+    );
+    let first = one
+        .expect("first Stop must be joined")
+        .unwrap()
+        .unwrap()
+        .receipt
+        .unwrap();
+    let second = two
+        .expect("second Stop must be joined")
+        .unwrap()
+        .unwrap()
+        .receipt
+        .unwrap();
+    assert_eq!(first.request_id, "stop-one");
+    assert_eq!(second.request_id, "stop-two");
+    assert_eq!(first.outcome, "cleanup_confirmed");
+    assert_eq!(second.outcome, "cleanup_confirmed");
+    assert_ne!(first.control_revision, second.control_revision);
+    assert_eq!(run.attempts.lock().unwrap().len(), 2);
+}
+
+#[test]
+fn analysis_recovery_known_failed_fresh_stop_never_retries_reader_and_explicit_current_retry_does()
+{
+    let harness = Harness::new();
+    let receipt = harness.reserve("failed-fresh-stop");
+    harness.reset(&receipt);
+    let run = harness
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap();
+    let mut execution = harness
+        .coordinator
+        .claim_start(
+            &run,
+            &StartRequest {
+                recovery_protocol_version: 1,
+                request_id: "failed-claim".into(),
+                origin: receipt.origin.clone(),
+                journal_id: receipt.journal_id.clone(),
+                binding: receipt.binding.clone(),
+                header_digest: receipt.header_digest.clone(),
+            },
+        )
+        .unwrap();
+    let (release, gate) = mpsc::channel();
+    let completed = Arc::new(AtomicBool::new(false));
+    let done = completed.clone();
+    execution.reader(thread::spawn(move || {
+        done.store(
+            gate.recv_timeout(Duration::from_secs(8)).is_ok(),
+            Ordering::SeqCst,
+        );
+    }));
+    let original = execution.finish(Instant::now() + Duration::from_millis(30));
+    harness.coordinator.set_worker_outcome(
+        &run,
+        WorkerOutcomePayload {
+            outcome: "failed".into(),
+            code: Some("analysis_worker_failed".into()),
+        },
+    );
+    harness.coordinator.automatic_cleanup(&run, false).unwrap();
+    let flight = run.cleanup_flight.lock().unwrap().clone().unwrap();
+    let fresh = harness.coordinator.stop(
+        stop_packet(&receipt, "fresh-known-failed"),
+        Arc::new(|_| {}),
+    );
+    let not_joined = !completed.load(Ordering::SeqCst);
+    let same = Arc::ptr_eq(
+        &flight,
+        run.cleanup_flight.lock().unwrap().as_ref().unwrap(),
+    );
+    let revision = run.state.lock().unwrap().control_revision.clone();
+    let retry = parser::parse(&json!({"recoveryProtocolVersion":1,"requestId":"retry-known-failed","origin":receipt.origin,
+        "journalId":receipt.journal_id,"mode":"retry_cleanup","expectedControlRevision":revision}).to_string()).unwrap();
+    let retry_coordinator = harness.coordinator.clone();
+    let retry_worker = thread::spawn(move || retry_coordinator.stop(retry, Arc::new(|_| {})));
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while !run
+        .attempts
+        .lock()
+        .unwrap()
+        .contains_key("retry-known-failed")
+        && Instant::now() < deadline
+    {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let attachment = harness.coordinator.attachment(
+        &attach_packet(&harness.coordinator, &receipt, "watch-retry-pending"),
+        true,
+    );
+    let released = release.send(()).is_ok();
+    let deadline = Instant::now() + Duration::from_secs(8);
+    while !retry_worker.is_finished() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let retried = if retry_worker.is_finished() {
+        Some(retry_worker.join())
+    } else {
+        None
+    };
+    assert!(original.is_err() && not_joined && same && released);
+    assert!(
+        matches!(attachment.unwrap().attachment, Some(CurrentAttachment::Durable {control: ControlReconciliation::Pending {attempt: Some(attempt), ..}, ..}) if attempt.request_id == "retry-known-failed")
+    );
+    assert_eq!(
+        fresh.unwrap().receipt.unwrap().outcome,
+        "cleanup_incomplete"
+    );
+    assert_eq!(
+        retried
+            .expect("retry must be joined")
+            .unwrap()
+            .unwrap()
+            .receipt
+            .unwrap()
+            .outcome,
+        "cleanup_confirmed"
+    );
+    assert!(completed.load(Ordering::SeqCst));
+    assert!(!Arc::ptr_eq(
+        &flight,
+        run.cleanup_flight.lock().unwrap().as_ref().unwrap()
+    ));
+}
+#[test]
+fn analysis_recovery_control_attempt_cap_rejects_before_new_cleanup_and_known_reply_reads_fresh_cut(
+) {
+    let harness = Harness::new();
+    let receipt = harness.reserve("control-cap");
+    let run = harness
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap();
+    let first = stop_packet(&receipt, "control-0");
+    let initial = harness
+        .coordinator
+        .stop(first.clone(), Arc::new(|_| {}))
+        .unwrap();
+    let flight = run.cleanup_flight.lock().unwrap().clone().unwrap();
+    for i in 1..OUTCOME_CAP {
+        let reply = harness
+            .coordinator
+            .stop(
+                stop_packet(&receipt, &format!("control-{i}")),
+                Arc::new(|_| {}),
+            )
+            .unwrap();
+        assert_eq!(reply.receipt.unwrap().outcome, "cleanup_confirmed");
+    }
+    let revision = run.state.lock().unwrap().control_revision.clone();
+    let rejected = harness
+        .coordinator
+        .stop(stop_packet(&receipt, "control-over-cap"), Arc::new(|_| {}))
+        .unwrap_err();
+    assert_eq!(rejected.code, "analysis_limit_exceeded");
+    assert_eq!(run.state.lock().unwrap().control_revision, revision);
+    assert!(Arc::ptr_eq(
+        &flight,
+        run.cleanup_flight.lock().unwrap().as_ref().unwrap()
+    ));
+    let known = harness.coordinator.stop(first, Arc::new(|_| {})).unwrap();
+    assert_eq!(
+        known.receipt.unwrap().control_revision,
+        initial.receipt.unwrap().control_revision
+    );
+    assert!(
+        matches!(known.current, RecoveryCurrent::Coherent {journal:Some(j),..} if j.control_revision == revision)
+    );
+    assert_eq!(run.attempts.lock().unwrap().len(), OUTCOME_CAP);
+}
+#[test]
+fn analysis_recovery_attachment_known_runtime_receipt_survives_sql_unavailable_and_corruption() {
+    let inner = Arc::new(OwnedBackend::new());
+    let backend = Arc::new(ControlledBackend::new(inner));
+    let coordinator = Arc::new(Coordinator::new(Arc::new(Registry::default())));
+    coordinator
+        .initialize(backend.clone(), "a".repeat(64))
+        .unwrap();
+    let harness = Harness {
+        coordinator,
+        backend: backend.inner.clone(),
+        workers: Arc::new(Mutex::new(Vec::new())),
+        gates: Mutex::new(HashMap::new()),
+    };
+    let receipt = harness.reserve("attach-unknown-current");
+    backend.attachment_unavailable.store(true, Ordering::SeqCst);
+    let packet = attach_packet(&harness.coordinator, &receipt, "watch-known-unknown");
+    let reply = harness.coordinator.attachment(&packet, true).unwrap();
+    assert!(reply.receipt.is_some());
+    assert!(
+        matches!(reply.current,RecoveryCurrent::Unavailable {error,..} if error.code == "analysis_storage_unavailable")
+    );
+    assert!(
+        matches!(reply.attachment,Some(CurrentAttachment::Volatile {witness,..}) if witness.reason == "storage_unavailable")
+    );
+    backend
+        .attachment_unavailable
+        .store(false, Ordering::SeqCst);
+    let restored = harness.coordinator.attachment(&packet, false).unwrap();
+    assert!(matches!(
+        restored.attachment,
+        Some(CurrentAttachment::Durable { .. })
+    ));
+    {
+        let conn = backend.inner.conn.lock().unwrap();
+        let raw: String = conn
+            .query_row(
+                "SELECT header_json FROM analysis_journals WHERE journal_id=?1",
+                [&receipt.journal_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let mut header: Value = serde_json::from_str(&raw).unwrap();
+        header["headerDigest"] = "e".repeat(64).into();
+        conn.execute(
+            "UPDATE analysis_journals SET header_json=?1 WHERE journal_id=?2",
+            rusqlite::params![header.to_string(), receipt.journal_id],
+        )
+        .unwrap();
+    }
+    let corrupt = harness.coordinator.attachment(&packet, false).unwrap();
+    assert!(corrupt.receipt.is_some());
+    assert!(
+        matches!(corrupt.current,RecoveryCurrent::Unavailable {error,..} if error.code == "analysis_storage_unavailable")
+    );
+    assert!(
+        matches!(corrupt.attachment,Some(CurrentAttachment::Volatile {witness,..}) if witness.reason == "storage_unavailable")
+    );
+}
+#[test]
+fn analysis_recovery_attachment_complete_reply_limit_keeps_known_ack_without_durable_parent() {
+    let harness = Harness::new();
+    let receipt = harness.reserve("attach-reply-limit");
+    let packet = attach_packet(&harness.coordinator, &receipt, "watch-limit");
+    let mut reply = harness.coordinator.attachment(&packet, true).unwrap();
+    if let RecoveryCurrent::Coherent {
+        task: Some(task), ..
+    } = &mut reply.current
+    {
+        task["ownedOversizedFictionalField"] = "x".repeat(16_384).into();
+    }
+    let fitted = reply.fit(8192).unwrap();
+    assert!(fitted.receipt.is_some());
+    assert!(
+        matches!(fitted.current,RecoveryCurrent::Unavailable {error,..} if error.code=="analysis_limit_exceeded")
+    );
+    assert!(
+        matches!(fitted.attachment,Some(CurrentAttachment::Volatile {witness,..}) if witness.reason=="storage_unavailable")
+    );
+}
+
+#[test]
+fn analysis_recovery_attachment_retired_receipt_cannot_adopt_replacement_owner() {
+    let harness = Harness::new();
+    let receipt = harness.reserve("old-attachment-run");
+    harness.reset(&receipt);
+    let packet = attach_packet(&harness.coordinator, &receipt, "watch-old-run");
+    assert!(harness
+        .coordinator
+        .attachment(&packet, true)
+        .unwrap()
+        .receipt
+        .is_some());
+    harness
+        .coordinator
+        .stop(stop_packet(&receipt, "stop-old-run"), Arc::new(|_| {}))
+        .unwrap();
+    let page = harness.read(&receipt, "1");
+    let mut task = serde_json::to_value(
+        harness
+            .backend
+            .current(&receipt.journal_id)
+            .unwrap()
+            .task
+            .unwrap(),
+    )
+    .unwrap();
+    task["status"] = "stopped".into();
+    assert!(harness
+        .project(&page, task, "project-old-stop")
+        .receipt
+        .is_some());
+    let retired = harness.coordinator.attachment(&packet, false).unwrap();
+    assert!(
+        matches!(retired.attachment,Some(CurrentAttachment::Durable {authority,..}) if authority=="retired")
+    );
+    let replacement = harness.reserve("replacement-owner");
+    assert_ne!(receipt.origin, replacement.origin);
+    let old = harness.coordinator.attachment(&packet, false).unwrap();
+    assert!(old.receipt.is_some() && old.attachment.is_none());
+    assert!(
+        matches!(old.current,RecoveryCurrent::Coherent {runtime,..} if runtime.owner.as_ref().is_some_and(|o|o.origin==replacement.origin))
+    );
+    assert!(!harness
+        .coordinator
+        .exact_session(&replacement.origin, &replacement.journal_id)
+        .unwrap()
+        .cancelled
+        .load(Ordering::SeqCst));
+}
+#[test]
+fn analysis_recovery_attachment_retries_observation_change_and_returns_one_winning_canonical_cut() {
+    let inner = Arc::new(OwnedBackend::new());
+    let backend = Arc::new(ControlledBackend::new(inner));
+    let coordinator = Arc::new(Coordinator::new(Arc::new(Registry::default())));
+    coordinator
+        .initialize(backend.clone(), "a".repeat(64))
+        .unwrap();
+    let harness = Harness {
+        coordinator,
+        backend: backend.inner.clone(),
+        workers: Arc::new(Mutex::new(Vec::new())),
+        gates: Mutex::new(HashMap::new()),
+    };
+    let receipt = harness.reserve("attach-cut-race");
+    let old_head = harness
+        .backend
+        .current(&receipt.journal_id)
+        .unwrap()
+        .head
+        .unwrap();
+    let changed_backend = backend.inner.clone();
+    let changed_coordinator = harness.coordinator.clone();
+    *backend.attachment_hook.lock().unwrap() = Some(Box::new(move || {
+        let conn = changed_backend.conn.lock().unwrap();
+        let authority = task_mutation::current(&conn).unwrap();
+        let mut task =
+            serde_json::to_value(sql::bootstrap(&conn).unwrap().tasks[0].clone()).unwrap();
+        task["error"] = "Owned newer canonical state.".into();
+        let packet=task_mutation::parse(json!({"protocolVersion":1,"requestId":"attach-cut-owned-update","operation":"update","collection":authority.collection,
+            "expectedHead":authority.heads[0],"task":task}),&["update"]).unwrap();
+        let receipt = task_mutation::execute(&conn, &packet).unwrap().receipt;
+        assert!(receipt.sql_committed);
+        assert_eq!(receipt.operation, "update");
+        drop(conn);
+        changed_coordinator.changed();
+    }));
+    let packet = attach_packet(&harness.coordinator, &receipt, "watch-cut-race");
+    let reply = harness.coordinator.attachment(&packet, true).unwrap();
+    let Some(CurrentAttachment::Durable { prefix, .. }) = reply.attachment else {
+        panic!("winning anchor required")
+    };
+    assert_ne!(prefix.head.revision, old_head.revision);
+    assert!(
+        matches!(reply.current,RecoveryCurrent::Coherent {task:Some(task),head:Some(head),journal:Some(journal),..}
+        if task["error"]=="Owned newer canonical state." && head.revision==prefix.head.revision && journal.applied_seq==prefix.applied_seq)
+    );
+}
+#[test]
+fn analysis_recovery_controlled_owned_worker_release_is_exact_and_terminal_is_actual_journal_data()
+{
+    let harness = Harness::new();
+    let receipt = harness.reserve("controlled-worker");
+    harness.reset(&receipt);
+    let started = harness.start(&receipt, "controlled_safe").receipt.is_some();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let mut marker = false;
+    while Instant::now() < deadline {
+        marker = harness
+            .gates
+            .lock()
+            .unwrap()
+            .get(&receipt.journal_id)
+            .is_some_and(|g| {
+                fs::read_to_string(&g.marker).ok().as_deref() == Some(receipt.journal_id.as_str())
+            });
+        if marker {
+            break;
+        }
+        thread::sleep(Duration::from_millis(5));
+    }
+    let mut wrong = receipt.origin.clone();
+    wrong.run_id = "analysis-999999".into();
+    let mismatch = harness.release_worker(&wrong, &receipt.journal_id);
+    let before_release = harness
+        .gates
+        .lock()
+        .unwrap()
+        .get(&receipt.journal_id)
+        .is_some_and(|g| !g.gate.exists());
+    let release = harness.release_worker(&receipt.origin, &receipt.journal_id);
+    let original_joined = harness.join_workers();
+    // Supervisor cleanup cannot turn a failed original release/join into a pass.
+    if !original_joined {
+        let _ = harness.coordinator.stop(
+            stop_packet(&receipt, "controlled-finally-stop"),
+            Arc::new(|_| {}),
+        );
+        let _ = harness.join_workers();
+    }
+    let page = harness.read(&receipt, "1");
+    assert!(
+        started
+            && marker
+            && mismatch.is_err()
+            && before_release
+            && release.is_ok()
+            && original_joined
+    );
+    assert_eq!(release.unwrap()["workerStarted"], true);
+    assert!(page.rows.iter().any(|r| r.kind == "analysis"
+        && r.payload["event"]["type"] == "completed"
+        && r.payload["event"]["reportSections"]["market_report"] == "Fictional owned research."));
+    assert_eq!(page.summary.cleanup_state, "confirmed");
+    assert_eq!(
+        page.summary.sealed_through_seq,
+        Some(page.summary.latest_seq.clone())
+    );
+    assert_eq!(harness.coordinator.observe().runtime_gate, "occupied");
+}
+
+#[test]
+fn analysis_recovery_late_failed_receipt_preserves_real_join_and_exact_sql_retry() {
+    let inner = Arc::new(OwnedBackend::new());
+    let backend = Arc::new(ControlledBackend::new(inner));
+    let coordinator = Arc::new(Coordinator::new(Arc::new(Registry::default())));
+    coordinator
+        .initialize(backend.clone(), "a".repeat(64))
+        .unwrap();
+    let harness = Harness {
+        coordinator,
+        backend: backend.inner.clone(),
+        workers: Arc::new(Mutex::new(Vec::new())),
+        gates: Mutex::new(HashMap::new()),
+    };
+    let receipt = harness.reserve("late-failed-control");
+    harness.reset(&receipt);
+    let run = harness
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap();
+    let mut execution = harness
+        .coordinator
+        .claim_start(
+            &run,
+            &StartRequest {
+                recovery_protocol_version: 1,
+                request_id: "claim-late-control".into(),
+                origin: receipt.origin.clone(),
+                journal_id: receipt.journal_id.clone(),
+                binding: receipt.binding.clone(),
+                header_digest: receipt.header_digest.clone(),
+            },
+        )
+        .unwrap();
+    let (release_reader, reader_gate) = mpsc::channel();
+    let reader_done = Arc::new(AtomicBool::new(false));
+    let completed = reader_done.clone();
+    execution.reader(thread::spawn(move || {
+        completed.store(
+            reader_gate.recv_timeout(Duration::from_secs(12)).is_ok(),
+            Ordering::SeqCst,
+        );
+    }));
+    let first_finish = execution.finish(Instant::now() + Duration::from_millis(30));
+    harness.coordinator.set_worker_outcome(
+        &run,
+        WorkerOutcomePayload {
+            outcome: "failed".into(),
+            code: Some("analysis_worker_failed".into()),
+        },
+    );
+    harness.coordinator.automatic_cleanup(&run, false).unwrap();
+    let original_revision = run.state.lock().unwrap().control_revision.clone();
+    let (record_entered, entered) = mpsc::channel();
+    let (release_record, record_gate) = mpsc::channel();
+    let record_released = Arc::new(AtomicBool::new(false));
+    let hook_released = record_released.clone();
+    *backend.record_control_hook.lock().unwrap() = Some(Box::new(move || {
+        let _ = record_entered.send(());
+        hook_released.store(
+            record_gate.recv_timeout(Duration::from_secs(8)).is_ok(),
+            Ordering::SeqCst,
+        );
+    }));
+    let retry = parser::parse(
+        &json!({"recoveryProtocolVersion":1,"requestId":"late-incomplete-retry",
+        "origin":receipt.origin,"journalId":receipt.journal_id,"mode":"retry_cleanup",
+        "expectedControlRevision":original_revision})
+        .to_string(),
+    )
+    .unwrap();
+    let retry_coordinator = harness.coordinator.clone();
+    let worker = thread::spawn(move || retry_coordinator.stop(retry, Arc::new(|_| {})));
+    // This witness occurs after the production cleanup deadline and before the
+    // actual SQL write of its incomplete observation; no fabricated receipt.
+    let at_record = entered.recv_timeout(Duration::from_secs(5)).is_ok();
+    let reader_released = release_reader.send(()).is_ok();
+    let joined = harness
+        .coordinator
+        .registry
+        .cancel(&run.origin.task_id, &run.origin.run_id)
+        .is_some_and(|cleanup| {
+            cleanup
+                .wait(Instant::now() + Duration::from_secs(3))
+                .is_ok()
+        });
+    let contributed = harness.coordinator.automatic_cleanup(&run, joined);
+    let observed_confirmed = run.state.lock().unwrap().cleanup_state == "confirmed";
+    let record_signalled = release_record.send(()).is_ok();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while !worker.is_finished() && Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(5));
+    }
+    let old_reply = if worker.is_finished() {
+        Some(worker.join())
+    } else {
+        None
+    };
+    // Both gates were released before assertions. Success requires consuming
+    // the caller and production joining the reader, not detached-thread claims.
+    assert!(
+        first_finish.is_err()
+            && at_record
+            && reader_released
+            && joined
+            && contributed.is_ok()
+            && observed_confirmed
+            && record_signalled
+            && record_released.load(Ordering::SeqCst)
+            && reader_done.load(Ordering::SeqCst)
+    );
+    let old_reply = old_reply
+        .expect("late control caller must be joined")
+        .unwrap()
+        .unwrap();
+    let old = old_reply.receipt.unwrap();
+    assert_eq!(old.outcome, "cleanup_incomplete");
+    assert!(
+        matches!(old_reply.current, RecoveryCurrent::Coherent {runtime,journal:Some(journal),..}
+        if runtime.owner.as_ref().is_some_and(|o|o.cleanup_state=="confirmed") && journal.cleanup_state=="failed")
+    );
+    assert_eq!(run.state.lock().unwrap().cleanup_state, "confirmed");
+    assert!(
+        harness
+            .coordinator
+            .registry
+            .cancel(&run.origin.task_id, &run.origin.run_id)
+            .is_none(),
+        "the actual known reader owner was retired after joining"
+    );
+    assert_eq!(harness.coordinator.observe().runtime_gate, "occupied");
+    let watch = harness
+        .coordinator
+        .attachment(
+            &attach_packet(&harness.coordinator, &receipt, "watch-physical-vs-sql"),
+            true,
+        )
+        .unwrap();
+    assert!(
+        matches!(watch.attachment, Some(CurrentAttachment::Durable {control:ControlReconciliation::Known {receipt,..},..})
+        if receipt.outcome=="cleanup_incomplete")
+    );
+    let retry = parser::parse(
+        &json!({"recoveryProtocolVersion":1,"requestId":"confirm-known-joined",
+        "origin":receipt.origin,"journalId":receipt.journal_id,"mode":"retry_cleanup",
+        "expectedControlRevision":old.control_revision})
+        .to_string(),
+    )
+    .unwrap();
+    let confirmed = harness.coordinator.stop(retry, Arc::new(|_| {})).unwrap();
+    assert_eq!(confirmed.receipt.unwrap().outcome, "cleanup_confirmed");
+    assert_eq!(run.state.lock().unwrap().cleanup_state, "confirmed");
+    let current = harness
+        .backend
+        .current(&receipt.journal_id)
+        .unwrap()
+        .journal
+        .unwrap();
+    assert_eq!(current.cleanup_state, "confirmed");
+    assert!(current.sealed_through_seq.is_some());
+    assert_eq!(
+        harness.coordinator.observe().runtime_gate,
+        "occupied",
+        "result cursor remains a separate gate"
     );
 }

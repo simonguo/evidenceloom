@@ -154,6 +154,89 @@ dto!(StopRequest {
     recovery_protocol_version: u8, request_id: String, origin: RunIdentity,
     journal_id: String, mode: String, expected_control_revision: Option<String>
 });
+dto!(AttachRequest {
+    recovery_protocol_version: u8, request_id: String, runtime_epoch: String,
+    expected_observation_revision: String, origin: RunIdentity, journal_id: String,
+    binding: RunBinding, admission_request_id: String, admission_digest: String,
+    expected_header_digest: Option<String>
+});
+dto!(AttachReceipt {
+    recovery_protocol_version: u8,
+    request_id: String,
+    digest: String,
+    origin: RunIdentity,
+    journal_id: String,
+    binding: RunBinding,
+    admission_request_id: String,
+    admission_digest: String,
+    matched_observation_revision: String,
+    confirmation: String,
+    permission: String,
+    may_start: bool
+});
+dto!(AppliedCriticalFailure {
+    seq: String,
+    code: String
+});
+dto!(AppliedPrefixAnchor {
+    recovery_protocol_version: u8, origin: RunIdentity, journal_id: String,
+    binding: RunBinding, header_digest: String, collection: CollectionToken,
+    head: TaskHead, applied_seq: String, safe_terminal_through_applied: bool,
+    critical_failure: Option<AppliedCriticalFailure>, projection_failure_code: Option<String>,
+    projection_completed: bool
+});
+dto!(ControlAttemptWitness {
+    request_id: String,
+    digest: String
+});
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(
+    tag = "state",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+pub enum ControlReconciliation {
+    None {
+        control_revision: String,
+    },
+    Pending {
+        control_revision: String,
+        attempt: Option<ControlAttemptWitness>,
+    },
+    Known {
+        control_revision: String,
+        receipt: ControlReceipt,
+    },
+    Unavailable {
+        control_revision: Option<String>,
+        error: RecoveryError,
+    },
+}
+dto!(VolatileWitness {
+    origin: RunIdentity, journal_id: String, binding: RunBinding,
+    admission_request_id: String, admission_digest: String,
+    header_digest: Option<String>, owner: NativeOwner, reason: String
+});
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum CurrentAttachment {
+    Durable {
+        authority: String,
+        header: Box<JournalHeader>,
+        prefix: Box<AppliedPrefixAnchor>,
+        control: ControlReconciliation,
+    },
+    Volatile {
+        witness: Box<VolatileWitness>,
+        control: ControlReconciliation,
+    },
+}
+dto!(AttachReply {
+    recovery_protocol_version: u8, scope: String, receipt: Option<AttachReceipt>,
+    rejection: Option<RecoveryError>, current: RecoveryCurrent,
+    attachment: Option<CurrentAttachment>
+});
 dto!(ControlReceipt {
     recovery_protocol_version: u8,
     request_id: String,
@@ -362,6 +445,52 @@ fn unavailable_limit(current: &RecoveryCurrent) -> RecoveryCurrent {
     RecoveryCurrent::Unavailable {
         error: RecoveryError::fixed("analysis_limit_exceeded"),
         runtime,
+    }
+}
+impl ReplyBoundary for AttachReply {
+    fn fit(mut self, limit: usize) -> Result<Self, RecoveryError> {
+        if check_reply_bytes(&self, limit).is_ok() {
+            return Ok(self);
+        }
+        let runtime = match &self.current {
+            RecoveryCurrent::Coherent { runtime, .. } => runtime.as_ref(),
+            RecoveryCurrent::Unavailable { runtime, .. } => runtime,
+        };
+        let volatile = self.receipt.as_ref().and_then(|receipt| {
+            let owner = runtime.owner.as_ref().filter(|o| {
+                o.origin == receipt.origin
+                    && o.binding == receipt.binding
+                    && o.journal_id == receipt.journal_id
+                    && o.admission_request_id == receipt.admission_request_id
+                    && o.admission_digest == receipt.admission_digest
+            })?;
+            let (header_digest, control) = match self.attachment.as_ref()? {
+                CurrentAttachment::Durable {
+                    header, control, ..
+                } => (Some(header.header_digest.clone()), control.clone()),
+                CurrentAttachment::Volatile { witness, control } => {
+                    (witness.header_digest.clone(), control.clone())
+                }
+            };
+            Some(CurrentAttachment::Volatile {
+                witness: Box::new(VolatileWitness {
+                    origin: owner.origin.clone(),
+                    journal_id: owner.journal_id.clone(),
+                    binding: owner.binding.clone(),
+                    admission_request_id: owner.admission_request_id.clone(),
+                    admission_digest: owner.admission_digest.clone(),
+                    header_digest,
+                    owner: owner.clone(),
+                    reason: "storage_unavailable".into(),
+                }),
+                control,
+            })
+        });
+        self.current = unavailable_limit(&self.current);
+        // No durable anchor survives without its matching canonical parent.
+        self.attachment = volatile;
+        check_reply_bytes(&self, limit)?;
+        Ok(self)
     }
 }
 impl<T: Serialize> ReplyBoundary for OutcomeReply<T> {

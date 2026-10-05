@@ -20,7 +20,8 @@ export async function runDesktopAnalysis(_api: unknown, _taskId: string, _payloa
 export async function runPreparedDesktopAnalysis(session: SameSessionConsumer, taskId: string, signal?: AbortSignal, retry = false): Promise<void> {
   requireWire(session.captured.task.id === taskId);
   const existing = sessions.get(taskId);
-  if (existing && existing !== session) throw new RecoveryPendingError("admission");
+  if (existing?.isDisposed && sessions.get(taskId) === existing) sessions.delete(taskId);
+  if (existing && !existing.isDisposed && existing !== session) throw new RecoveryPendingError("admission");
   sessions.set(taskId, session);
   let stop: Promise<void> | undefined;
   const abort = () => { stop ??= session.stop(); void stop.catch(() => undefined); };
@@ -30,7 +31,7 @@ export async function runPreparedDesktopAnalysis(session: SameSessionConsumer, t
   finally {
     signal?.removeEventListener("abort", abort);
     // Only actual native result+cleanup confirmation, never promise completion, retires.
-    if (session.phase === "ready" && sessions.get(taskId) === session) sessions.delete(taskId);
+    if ((session.phase === "ready" || session.isDisposed) && sessions.get(taskId) === session) sessions.delete(taskId);
   }
 }
 export async function stopDesktopAnalysis(taskId: string): Promise<void> {

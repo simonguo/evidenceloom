@@ -1,3 +1,4 @@
+import { runtime as recoveryRuntime } from "@/features/analysis-recovery/test-support/fixtures";
 import { webcrypto } from "node:crypto";
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -21,7 +22,7 @@ describe("acknowledged desktop task deletion through the actual provider", () =>
   let container: HTMLDivElement, root: Root, center: ReturnType<typeof useTaskCenter>;
   let initial: AnalysisTask[], language: SystemLanguage;
   const nativeHeads = new Map<string, { taskId: string; generation: string; revision: string; state: "live" | "tombstone" }>();
-  const collection = { collectionId: "owned-deletion-collection", epoch: "1" };
+  const collection = { collectionId: "a".repeat(64), epoch: "1" };
   const writes = new Map<string, ReturnType<typeof deferred>>();
   const actions: Promise<boolean | void>[] = [];
   function Consumer() {
@@ -48,6 +49,7 @@ describe("acknowledged desktop task deletion through the actual provider", () =>
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: { invoke: (command: string, args?: Record<string, unknown>) => transport.invoke(command, args) }, configurable: true }); localStorage.clear();
     transport.invoke.mockReset().mockImplementation(async (command, args) => {
+      if (command === "load_analysis_recovery") return { recoveryProtocolVersion: 1, storage: { collection, heads: [...nativeHeads.values()], legacyTaskImportAllowed: false }, tasks: structuredClone(initial), journals: [], clearBlockers: [], runtime: recoveryRuntime(), coherent: true };
       if (command === "delete_desktop_task" || command === "save_desktop_task") {
         const request = args.request;
         if (command === "delete_desktop_task") { const pending = writes.get(request.expectedHead.taskId); if (!pending) throw new Error("Owned fixture missing deletion acknowledgement"); await pending.promise; }

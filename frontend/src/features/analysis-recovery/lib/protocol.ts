@@ -1,3 +1,4 @@
+import type { AppliedPrefixAnchor, AttachReply, AttachRequest, ControlReconciliation } from "../attachment-types";
 import type { AnalysisTask, ReportTaskSnapshot, RunContext } from "@/lib/types";
 import { detached, readSnapshotStorage, sameCollection, sameHead } from "@/features/desktop-task-store/lib/protocol";
 import type { CollectionToken, StorageAuthority, TaskHead } from "@/features/desktop-task-store/types";
@@ -160,9 +161,10 @@ export function readOutcome(value: unknown, scope: Scope, request: AdmissionRequ
   bounded(o); return detached(o) as OutcomeReply | AdmissionReply;
 }
 export function readWake(value: unknown): WakeNotice { const o = object(value); exact(o, ["recoveryProtocolVersion", "journalId", "origin", "latestSeq", "controlRevision"]); version(o); hash(o.journalId); readOrigin(o.origin); counter(o.latestSeq); counter(o.controlRevision); return detached(o) as WakeNotice; }
-export function freezePacket<T extends AdmissionRequest | StartRequest | StopRequest | ReadRequest | ProjectionRequest | { recoveryProtocolVersion: 1 }>(request: T): FrozenPacket<T> {
+export function freezePacket<T extends AdmissionRequest | StartRequest | StopRequest | ReadRequest | ProjectionRequest | AttachRequest | { recoveryProtocolVersion: 1 }>(request: T): FrozenPacket<T> {
   const o = object(request); version(o); const isProjection = Object.hasOwn(o, "projection"); bounded(o, isProjection ? 256 * MB : 65536); if (o.requestId !== undefined) requestId(o.requestId);
-  if (o.context !== undefined) { exact(o, ["recoveryProtocolVersion", "requestId", "runtimeEpoch", "collection", "expectedHead", "context"]); hash(o.runtimeEpoch); readCollection(o.collection); requireWire(readHead(o.expectedHead).state === "live"); readContext(o.context); }
+  if (Object.hasOwn(o, "expectedObservationRevision")) readAttachRequest(o);
+  else if (o.context !== undefined) { exact(o, ["recoveryProtocolVersion", "requestId", "runtimeEpoch", "collection", "expectedHead", "context"]); hash(o.runtimeEpoch); readCollection(o.collection); requireWire(readHead(o.expectedHead).state === "live"); readContext(o.context); }
   else if (o.origin !== undefined) {
     readOrigin(o.origin); hash(o.journalId); if (o.binding !== undefined) identity({ origin: readOrigin(o.origin), binding: readBinding(o.binding) });
     if (isProjection) {
@@ -180,3 +182,76 @@ export function exactRun(owner: NativeOwner | null, origin: RunIdentity, journal
 export function gateReady(runtime: RuntimeObservation) { return runtime.initialization === "ready" && runtime.runtimeGate === "vacant" && runtime.journalGate === "ready" && runtime.owner === null && runtime.blockers.length === 0; }
 export function finished(summary: JournalSummary) { return summary.sealedThroughSeq !== null && summary.appliedSeq === summary.sealedThroughSeq && summary.cleanupState === "confirmed" && summary.resultState === "projected"; }
 export type { Receipt, MatchedReservation, UnavailablePayload, RunContext };
+
+export function readAttachRequest(value: unknown): AttachRequest {
+  const o = object(value); exact(o, ["recoveryProtocolVersion", "requestId", "runtimeEpoch", "expectedObservationRevision", "origin", "journalId", "binding", "admissionRequestId", "admissionDigest", "expectedHeaderDigest"]);
+  version(o); requestId(o.requestId); hash(o.runtimeEpoch); counter(o.expectedObservationRevision);
+  const origin = readOrigin(o.origin), binding = readBinding(o.binding); identity({ origin, binding });
+  requireWire(origin.runtimeEpoch === o.runtimeEpoch); hash(o.journalId); requestId(o.admissionRequestId); hash(o.admissionDigest);
+  if (o.expectedHeaderDigest !== null) hash(o.expectedHeaderDigest); bounded(o, 65536);
+  return detached(o) as AttachRequest;
+}
+function readControlView(value: unknown, origin: RunIdentity, journalId: string): ControlReconciliation {
+  const o = object(value);
+  if (o.state === "none") { exact(o, ["state", "controlRevision"]); requireWire(o.controlRevision === "0"); }
+  else if (o.state === "pending") { exact(o, ["state", "controlRevision", "attempt"]); counter(o.controlRevision); if (o.attempt !== null) { const a = object(o.attempt); exact(a, ["requestId", "digest"]); requestId(a.requestId); hash(a.digest); } }
+  else if (o.state === "known") {
+    exact(o, ["state", "controlRevision", "receipt"]); counter(o.controlRevision); const r = object(o.receipt);
+    exact(r, ["recoveryProtocolVersion", "requestId", "digest", "origin", "journalId", "controlRevision", "outcome", "sqlCommitted"]);
+    version(r); requestId(r.requestId); hash(r.digest); requireWire(sameOrigin(readOrigin(r.origin), origin) && r.journalId === journalId && r.controlRevision === o.controlRevision && r.sqlCommitted === true);
+    enumValue(r.outcome, ["cleanup_confirmed", "cleanup_incomplete"]);
+  } else { requireWire(o.state === "unavailable"); exact(o, ["state", "controlRevision", "error"]); if (o.controlRevision !== null) counter(o.controlRevision); readRecoveryError(o.error); }
+  return detached(o) as ControlReconciliation;
+}
+function readPrefix(value: unknown, current: RecoveryCurrent, header: JournalHeader): AppliedPrefixAnchor {
+  const o = object(value); exact(o, ["recoveryProtocolVersion", "origin", "journalId", "binding", "headerDigest", "collection", "head", "appliedSeq", "safeTerminalThroughApplied", "criticalFailure", "projectionFailureCode", "projectionCompleted"]);
+  version(o); requireWire(current.state === "coherent" && current.task !== null && current.head !== null && current.journal !== null);
+  const head = readHead(o.head), binding = readBinding(o.binding), origin = readOrigin(o.origin);
+  requireWire(sameOrigin(origin, header.origin) && sameBinding(binding, header.binding) && o.journalId === header.journalId && o.headerDigest === header.headerDigest);
+  requireWire(sameCollection(readCollection(o.collection), current.storage.collection) && sameCollection(current.storage.collection, binding.collection) && sameHead(head, current.head) && head.state === "live" && head.generation === binding.generation);
+  requireWire(counter(o.appliedSeq) === current.journal.appliedSeq && current.journal.bodyState === "available" && sameOrigin(current.journal.origin, origin) && sameBinding(current.journal.binding, binding) && current.journal.journalId === o.journalId);
+  requireWire(typeof o.safeTerminalThroughApplied === "boolean" && typeof o.projectionCompleted === "boolean");
+  if (o.criticalFailure !== null) { const c = object(o.criticalFailure); exact(c, ["seq", "code"]); requireWire(BigInt(positive(c.seq)) <= BigInt(String(o.appliedSeq)) && c.code === "analysis_publication_unavailable"); }
+  if (o.projectionFailureCode !== null) enumValue(o.projectionFailureCode, ["analysis_publication_unavailable", "analysis_reader_failed", "analysis_worker_failed", "analysis_start_failed", "analysis_reservation_expired", "analysis_missing_terminal", "analysis_empty_result"]);
+  requireWire(o.appliedSeq !== "0" || o.safeTerminalThroughApplied === false && o.criticalFailure === null && o.projectionFailureCode === null && o.projectionCompleted === false);
+  return detached(o) as AppliedPrefixAnchor;
+}
+export function readAttachmentReply(value: unknown, request: AttachRequest, query = false): AttachReply {
+  readAttachRequest(request); const o = object(value);
+  exact(o, ["recoveryProtocolVersion", "scope", "receipt", "rejection", "current", "attachment"]); version(o);
+  requireWire(o.scope === "analysis_attachment" && !(o.receipt !== null && o.rejection !== null) && (query || o.receipt !== null || o.rejection !== null));
+  if (o.rejection !== null) readRecoveryError(o.rejection); const current = readCurrent(o.current);
+  const match = (origin: RunIdentity, journalId: unknown, binding: RunBinding) => requireWire(sameOrigin(origin, request.origin) && journalId === request.journalId && sameBinding(binding, request.binding));
+  if (o.receipt !== null) {
+    const r = object(o.receipt); exact(r, ["recoveryProtocolVersion", "requestId", "digest", "origin", "journalId", "binding", "admissionRequestId", "admissionDigest", "matchedObservationRevision", "confirmation", "permission", "mayStart"]);
+    version(r); hash(r.digest); requireWire(r.requestId === request.requestId && r.admissionRequestId === request.admissionRequestId && r.admissionDigest === request.admissionDigest);
+    match(readOrigin(r.origin), r.journalId, readBinding(r.binding)); requireWire(BigInt(counter(r.matchedObservationRevision)) >= BigInt(request.expectedObservationRevision));
+    requireWire(current.runtime.runtimeEpoch === request.runtimeEpoch && BigInt(String(r.matchedObservationRevision)) <= BigInt(current.runtime.observationRevision));
+    requireWire(r.confirmation === "runtime" && r.permission === "same_runtime_watch_project_stop" && r.mayStart === false);
+  }
+  if (o.attachment !== null) {
+    requireWire(o.receipt !== null); const a = object(o.attachment);
+    if (a.kind === "durable") {
+      exact(a, ["kind", "authority", "header", "prefix", "control"]); enumValue(a.authority, ["live", "retired"]);
+      const header = readHeader(a.header); match(header.origin, header.journalId, header.binding);
+      requireWire(header.admissionRequestId === request.admissionRequestId && header.admissionDigest === request.admissionDigest && (request.expectedHeaderDigest === null || header.headerDigest === request.expectedHeaderDigest));
+      readPrefix(a.prefix, current, header); const control = readControlView(a.control, header.origin, header.journalId);
+      if (control.state === "known") requireWire(current.state === "coherent" && control.controlRevision === current.journal?.controlRevision);
+      if (a.authority === "live") requireWire(exactRun(current.runtime.owner, header.origin, header.journalId) && current.runtime.owner?.admissionRequestId === request.admissionRequestId && current.runtime.owner.admissionDigest === request.admissionDigest && sameBinding(current.runtime.owner.binding, header.binding));
+      else requireWire(current.runtime.owner === null);
+    } else {
+      requireWire(a.kind === "volatile"); exact(a, ["kind", "witness", "control"]); const w = object(a.witness);
+      exact(w, ["origin", "journalId", "binding", "admissionRequestId", "admissionDigest", "headerDigest", "owner", "reason"]);
+      match(readOrigin(w.origin), w.journalId, readBinding(w.binding)); requireWire(w.admissionRequestId === request.admissionRequestId && w.admissionDigest === request.admissionDigest);
+      if (w.headerDigest !== null) hash(w.headerDigest); enumValue(w.reason, ["header_pending", "storage_unavailable", "binding_mismatch", "body_unavailable"]);
+      const owner = object(w.owner); exact(owner, ["origin", "admissionRequestId", "admissionDigest", "journalId", "binding", "phase", "controlRevision", "cleanupState"]);
+      requireWire(exactRun(current.runtime.owner, request.origin, request.journalId) && sameOrigin(readOrigin(owner.origin), request.origin) && sameBinding(readBinding(owner.binding), request.binding));
+      requireWire(["admissionRequestId", "admissionDigest", "journalId", "phase", "controlRevision", "cleanupState"].every((key) => owner[key] === object(current.runtime.owner)[key]));
+      requireWire(current.runtime.owner?.admissionRequestId === request.admissionRequestId && current.runtime.owner.admissionDigest === request.admissionDigest && sameBinding(current.runtime.owner.binding, request.binding));
+      if (request.expectedHeaderDigest !== null && w.headerDigest !== null) requireWire(w.headerDigest === request.expectedHeaderDigest);
+      const control = readControlView(a.control, request.origin, request.journalId);
+      if (control.state === "known" && current.state === "coherent" && current.journal && current.journal.journalId === request.journalId && sameOrigin(current.journal.origin, request.origin)) requireWire(control.controlRevision === current.journal.controlRevision);
+    }
+  }
+  bounded(o); return detached(o) as AttachReply;
+}

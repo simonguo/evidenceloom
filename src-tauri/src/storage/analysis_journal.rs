@@ -22,6 +22,13 @@ pub struct SqlCurrent {
     pub head: Option<task_mutation::TaskHead>,
     pub journal: Option<JournalSummary>,
 }
+/// One SQL observation. Native ownership is checked separately by the caller.
+pub struct SqlAttachmentCut {
+    pub current: SqlCurrent,
+    pub header: Option<JournalHeader>,
+    pub prefix: Option<AppliedPrefixAnchor>,
+    pub control: ControlReconciliation,
+}
 pub struct SqlRecoveryCut {
     pub storage: task_mutation::SnapshotStorage,
     pub tasks: Vec<AnalysisTaskRecord>,
@@ -208,6 +215,75 @@ pub fn initialize(conn: &Connection, previous: u32, _pristine: bool) -> Result<(
     for s in summaries.iter().filter(|s| s.body_state == "available") {
         header(conn, &s.journal_id)?;
     }
+    initialize_projection_prefix(conn, previous)?;
+    Ok(())
+}
+
+fn safe_terminal(row: &JournalEnvelope) -> bool {
+    let event = match row.kind.as_str() {
+        "analysis" => row.payload.get("event"),
+        "publication_unavailable" if row.payload["outcome"] == "optional_unavailable" => {
+            row.payload.get("safeAnalysis")
+        }
+        _ => None,
+    };
+    event.is_some_and(|event| matches!(event["type"].as_str(), Some("completed" | "error")))
+}
+
+/// Called inside the existing schema transaction; no suffix or task body replay.
+fn initialize_projection_prefix(conn: &Connection, previous: u32) -> Result<(), RecoveryError> {
+    let present: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM pragma_table_info('analysis_journals') WHERE name='projection_terminal_observed')",
+        [], |row| row.get(0),
+    ).map_err(unavailable)?;
+    if !present {
+        if previous >= 13 {
+            return Err(error("analysis_journal_corrupt"));
+        }
+        conn.execute_batch("ALTER TABLE analysis_journals ADD COLUMN projection_terminal_observed INTEGER DEFAULT 0 CHECK(projection_terminal_observed IS NULL OR (typeof(projection_terminal_observed)='integer' AND projection_terminal_observed IN (0,1)))")
+            .map_err(unavailable)?;
+        for summary in summaries(conn)? {
+            let through = counter(&json!(summary.applied_seq))?;
+            let observed = if through == 0 || summary.body_state == "purged" {
+                Some(false)
+            } else if summary.body_state == "available" {
+                if through > RUN_ROWS + TERMINAL_ROWS {
+                    return Err(error("analysis_journal_corrupt"));
+                }
+                header(conn, &summary.journal_id)?;
+                let mut after = 0;
+                let mut observed = false;
+                while after < through {
+                    let rows = rows_in(conn, &summary, after, through, 64)?;
+                    observed |= rows.iter().any(safe_terminal);
+                    after = counter(&json!(
+                        rows.last()
+                            .ok_or_else(|| error("analysis_journal_gap"))?
+                            .seq
+                    ))?;
+                }
+                if after != through {
+                    return Err(error("analysis_journal_gap"));
+                }
+                Some(observed)
+            } else {
+                None
+            };
+            conn.execute(
+                "UPDATE analysis_journals SET projection_terminal_observed=?2 WHERE journal_id=?1",
+                params![summary.journal_id, observed.map(i64::from)],
+            )
+            .map_err(unavailable)?;
+        }
+    }
+    let corrupt: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM analysis_journals WHERE
+        (projection_terminal_observed IS NOT NULL AND (typeof(projection_terminal_observed)!='integer' OR projection_terminal_observed NOT IN (0,1))) OR
+        (body_state!='unavailable' AND projection_terminal_observed IS NULL) OR
+        (applied_seq=0 AND projection_terminal_observed IS NOT 0) OR
+        (body_state='purged' AND projection_terminal_observed IS NOT 0))", [], |row| row.get(0)).map_err(unavailable)?;
+    if corrupt {
+        return Err(error("analysis_journal_corrupt"));
+    }
     Ok(())
 }
 
@@ -361,6 +437,175 @@ fn current_for(
 }
 pub fn current(conn: &Connection, journal_id: &str) -> Result<SqlCurrent, RecoveryError> {
     current_cut(conn, Some(journal_id), None)
+}
+
+fn latest_control(
+    conn: &Connection,
+    s: &JournalSummary,
+) -> Result<ControlReconciliation, RecoveryError> {
+    if s.control_revision == "0" {
+        let any: bool = conn
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM analysis_controls WHERE journal_id=?1)",
+                [&s.journal_id],
+                |row| row.get(0),
+            )
+            .map_err(unavailable)?;
+        if any {
+            return Err(error("analysis_journal_corrupt"));
+        }
+        return Ok(ControlReconciliation::None {
+            control_revision: "0".into(),
+        });
+    }
+    if s.body_state == "purged" {
+        return Ok(ControlReconciliation::Unavailable {
+            control_revision: Some(s.control_revision.clone()),
+            error: error("analysis_journal_body_unavailable"),
+        });
+    }
+    let revision = counter(&json!(s.control_revision))?;
+    let outcome: String = conn
+        .query_row(
+            "SELECT outcome FROM analysis_controls WHERE journal_id=?1 AND revision=?2",
+            params![s.journal_id, revision],
+            |row| row.get(0),
+        )
+        .map_err(unavailable)?;
+    let mut statement = conn.prepare("SELECT request_id,digest,origin_json,binding_json,receipt_json FROM analysis_requests WHERE journal_id=?1 AND kind='control' AND outcome='committed' AND json_extract(receipt_json,'$.controlRevision')=?2").map_err(unavailable)?;
+    let mut rows = statement
+        .query(params![s.journal_id, s.control_revision])
+        .map_err(unavailable)?;
+    let row = rows
+        .next()
+        .map_err(unavailable)?
+        .ok_or_else(|| error("analysis_journal_corrupt"))?;
+    let request_id: String = row.get(0).map_err(unavailable)?;
+    let digest: String = row.get(1).map_err(unavailable)?;
+    let origin: String = row.get(2).map_err(unavailable)?;
+    let binding: String = row.get(3).map_err(unavailable)?;
+    let raw: String = row.get(4).map_err(unavailable)?;
+    let receipt: ControlReceipt = decode(crate::analysis_recovery::parser::raw_json(&raw, 65536)?)
+        .map_err(|_| error("analysis_journal_corrupt"))?;
+    let origin: RunIdentity = decode(crate::analysis_recovery::parser::raw_json(&origin, 65536)?)
+        .map_err(|_| error("analysis_journal_corrupt"))?;
+    let binding: RunBinding = decode(crate::analysis_recovery::parser::raw_json(&binding, 65536)?)
+        .map_err(|_| error("analysis_journal_corrupt"))?;
+    if rows.next().map_err(unavailable)?.is_some()
+        || receipt.recovery_protocol_version != 1
+        || receipt.request_id != request_id
+        || !crate::analysis_recovery::parser::request_id(&request_id)
+        || receipt.digest != digest
+        || !crate::analysis_recovery::parser::hex(&digest)
+        || receipt.origin != s.origin
+        || origin != s.origin
+        || binding != s.binding
+        || receipt.journal_id != s.journal_id
+        || receipt.control_revision != s.control_revision
+        || receipt.outcome != outcome
+        || !receipt.sql_committed
+        || !["cleanup_confirmed", "cleanup_incomplete"].contains(&outcome.as_str())
+        || (outcome == "cleanup_confirmed") != (s.cleanup_state == "confirmed")
+    {
+        return Err(error("analysis_journal_corrupt"));
+    }
+    Ok(ControlReconciliation::Known {
+        control_revision: s.control_revision.clone(),
+        receipt,
+    })
+}
+
+/// Canonical parent, original header, applied facts and control truth share one cut.
+/// It supplies no process permission; native must independently match its owner.
+pub fn attachment_current(
+    conn: &Connection,
+    journal_id: &str,
+) -> Result<SqlAttachmentCut, RecoveryError> {
+    let tx = deferred(conn)?;
+    let current = current_for(&tx, Some(journal_id), None)?;
+    let mut header_value = None;
+    let mut prefix = None;
+    let mut control = ControlReconciliation::Unavailable {
+        control_revision: None,
+        error: error("analysis_journal_body_unavailable"),
+    };
+    if let Some(s) = &current.journal {
+        control = latest_control(&tx, s)?;
+        if s.body_state == "available" {
+            let h = header(&tx, journal_id)?;
+            if let Some(head) = current.head.as_ref().filter(|head| {
+                head.state == "live"
+                    && head.generation == s.binding.generation
+                    && current.storage.collection == s.binding.collection
+                    && current
+                        .task
+                        .as_ref()
+                        .is_some_and(|task| task.id == s.binding.task_id)
+            }) {
+                let (critical, terminal, failure, completed): (Option<i64>, Option<i64>, Option<String>, i64) = tx.query_row(
+                    "SELECT critical_seq,projection_terminal_observed,projection_failure_code,projection_completed FROM analysis_journals WHERE journal_id=?1",
+                    [journal_id], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?))).map_err(unavailable)?;
+                let terminal = terminal.ok_or_else(|| error("analysis_journal_corrupt"))?;
+                if ![0, 1].contains(&terminal)
+                    || ![0, 1].contains(&completed)
+                    || failure.as_ref().is_some_and(|code| {
+                        ![
+                            "analysis_publication_unavailable",
+                            "analysis_reader_failed",
+                            "analysis_worker_failed",
+                            "analysis_start_failed",
+                            "analysis_reservation_expired",
+                            "analysis_missing_terminal",
+                            "analysis_empty_result",
+                        ]
+                        .contains(&code.as_str())
+                    })
+                {
+                    return Err(error("analysis_journal_corrupt"));
+                }
+                let applied = counter(&json!(s.applied_seq))?;
+                let critical_failure = match critical.filter(|seq| *seq <= applied) {
+                    Some(seq) if seq > 0 => {
+                        let rows = rows_in(&tx, s, seq - 1, seq, 1)?;
+                        let original = rows.first().ok_or_else(|| error("analysis_journal_gap"))?;
+                        if original.kind != "publication_unavailable"
+                            || original.payload["outcome"] != "analysis_failed"
+                        {
+                            return Err(error("analysis_journal_corrupt"));
+                        }
+                        Some(AppliedCriticalFailure {
+                            seq: seq.to_string(),
+                            code: "analysis_publication_unavailable".into(),
+                        })
+                    }
+                    Some(_) => return Err(error("analysis_journal_corrupt")),
+                    None => None,
+                };
+                prefix = Some(AppliedPrefixAnchor {
+                    recovery_protocol_version: 1,
+                    origin: s.origin.clone(),
+                    journal_id: s.journal_id.clone(),
+                    binding: s.binding.clone(),
+                    header_digest: h.header_digest.clone(),
+                    collection: current.storage.collection.clone(),
+                    head: head.clone(),
+                    applied_seq: s.applied_seq.clone(),
+                    safe_terminal_through_applied: terminal == 1,
+                    critical_failure,
+                    projection_failure_code: failure,
+                    projection_completed: completed == 1,
+                });
+            }
+            header_value = Some(h);
+        }
+    }
+    tx.commit().map_err(unavailable)?;
+    Ok(SqlAttachmentCut {
+        current,
+        header: header_value,
+        prefix,
+        control,
+    })
 }
 pub fn terminal_observed(conn: &Connection, journal_id: &str) -> Result<bool, RecoveryError> {
     let tx = deferred(conn)?;
@@ -1509,6 +1754,17 @@ pub fn project(
         let parent = captured.task.ok_or_else(|| error("analysis_conflict"))?;
         let task: AnalysisTaskRecord = decode(p["projection"]["task"].clone())?;
         let (failure, completed) = projection_truth(&tx, &s, &parent, &task, &rows)?;
+        let prior_terminal: Option<i64> = tx
+            .query_row(
+                "SELECT projection_terminal_observed FROM analysis_journals WHERE journal_id=?1",
+                [&s.journal_id],
+                |row| row.get(0),
+            )
+            .map_err(unavailable)?;
+        let prior_terminal = prior_terminal
+            .filter(|n| [0, 1].contains(n))
+            .ok_or_else(|| error("analysis_journal_corrupt"))?;
+        let terminal = prior_terminal == 1 || rows.iter().any(safe_terminal);
         let ordinary = json!({"protocolVersion":1,"requestId":p["requestId"],"collection":s.binding.collection,"operation":"update","expectedHead":p["expectedHead"],"task":p["projection"]["task"]});
         let ordinary = task_mutation::parse(ordinary, &["update"])
             .map_err(|_| error("analysis_invalid_request"))?;
@@ -1519,7 +1775,7 @@ pub fn project(
                 error("analysis_invalid_request")
             }
         })?;
-        tx.execute("UPDATE analysis_journals SET applied_seq=?2,result_state=CASE WHEN sealed_seq=?2 THEN 'projected' WHEN sealed_seq IS NULL THEN 'unsealed' ELSE 'pending' END,projection_failure_code=?3,projection_completed=?4 WHERE journal_id=?1",params![s.journal_id,through,failure,i64::from(completed)]).map_err(unavailable)?;
+        tx.execute("UPDATE analysis_journals SET applied_seq=?2,result_state=CASE WHEN sealed_seq=?2 THEN 'projected' WHEN sealed_seq IS NULL THEN 'unsealed' ELSE 'pending' END,projection_failure_code=?3,projection_completed=?4,projection_terminal_observed=?5 WHERE journal_id=?1",params![s.journal_id,through,failure,i64::from(completed),i64::from(terminal)]).map_err(unavailable)?;
         Ok(
             json!({"recoveryProtocolVersion":1,"requestId":p["requestId"],"digest":packet.digest,"journalId":s.journal_id,"origin":s.origin,"binding":s.binding,"fromSeq":from.to_string(),"throughSeq":through.to_string(),"rangeDigest":p["rangeDigest"],"head":heads[0],"sqlCommitted":true}),
         )
@@ -1655,7 +1911,7 @@ fn purge(conn: &Connection, task_id: Option<&str>) -> Result<(), RecoveryError> 
             [&s.journal_id],
         )
         .map_err(unavailable)?;
-        conn.execute("UPDATE analysis_journals SET header_json=NULL,body_state='purged',history_state='discarded',result_state='discarded',latest_seq=0,applied_seq=0,sealed_seq=NULL,payload_bytes=0,research_rows=0,terminal_rows=0,terminal_bytes=0,critical_seq=NULL,terminal_observed=0,projection_failure_code=NULL,projection_completed=0 WHERE journal_id=?1",[&s.journal_id]).map_err(unavailable)?;
+        conn.execute("UPDATE analysis_journals SET header_json=NULL,body_state='purged',history_state='discarded',result_state='discarded',latest_seq=0,applied_seq=0,sealed_seq=NULL,payload_bytes=0,research_rows=0,terminal_rows=0,terminal_bytes=0,critical_seq=NULL,terminal_observed=0,projection_failure_code=NULL,projection_completed=0,projection_terminal_observed=0 WHERE journal_id=?1",[&s.journal_id]).map_err(unavailable)?;
     }
     Ok(())
 }

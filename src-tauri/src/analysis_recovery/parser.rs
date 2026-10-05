@@ -213,6 +213,38 @@ pub fn parse<T: Request>(raw: &str) -> Result<ParsedRecoveryRequest<T>, Recovery
 fn common(version: u8, id: &str) -> Result<(), RecoveryError> {
     ensure(version == PROTOCOL_VERSION && request_id(id))
 }
+impl Request for AttachRequest {
+    const LIMIT: usize = CONTROL_BYTES;
+    fn validate(&self, original: &Value) -> Result<(), RecoveryError> {
+        exact(
+            original,
+            &[
+                "recoveryProtocolVersion",
+                "requestId",
+                "runtimeEpoch",
+                "expectedObservationRevision",
+                "origin",
+                "journalId",
+                "binding",
+                "admissionRequestId",
+                "admissionDigest",
+                "expectedHeaderDigest",
+            ],
+        )?;
+        common(self.recovery_protocol_version, &self.request_id)?;
+        binding(&self.binding, &self.origin)?;
+        ensure(
+            hex(&self.runtime_epoch)
+                && self.runtime_epoch == self.origin.runtime_epoch
+                && hex(&self.journal_id)
+                && request_id(&self.admission_request_id)
+                && hex(&self.admission_digest)
+                && self.expected_header_digest.as_ref().is_none_or(|s| hex(s)),
+        )?;
+        counter(&self.expected_observation_revision)?;
+        Ok(())
+    }
+}
 impl Request for ProtocolRequest {
     const LIMIT: usize = CONTROL_BYTES;
     fn validate(&self, v: &Value) -> Result<(), RecoveryError> {

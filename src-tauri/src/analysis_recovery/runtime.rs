@@ -6,8 +6,8 @@ use super::{
 use crate::{
     analysis_execution::{Registry, RunGuard},
     storage::analysis_journal::{
-        AdmissionSeed, ControlRecord, PublicationDraft, SealRecord, SqlCurrent, SqlOutcome,
-        SqlRecoveryCut,
+        AdmissionSeed, ControlRecord, PublicationDraft, SealRecord, SqlAttachmentCut, SqlCurrent,
+        SqlOutcome, SqlRecoveryCut,
     },
 };
 use serde_json::Value;
@@ -27,6 +27,7 @@ pub trait JournalBackend: Send + Sync {
     fn terminal_observed(&self, journal_id: &str) -> Result<bool, RecoveryError>;
     fn bootstrap(&self) -> Result<SqlRecoveryCut, RecoveryError>;
     fn current(&self, journal_id: &str) -> Result<SqlCurrent, RecoveryError>;
+    fn attachment_current(&self, journal_id: &str) -> Result<SqlAttachmentCut, RecoveryError>;
     fn admit(
         &self,
         packet: &ParsedRecoveryRequest<AdmissionRequest>,
@@ -94,7 +95,15 @@ struct CoordinatorState {
     removing: bool,
     journal_gate: String,
     blockers: Vec<RuntimeBlocker>,
+    attachments: HashMap<String, AttachmentOutcome>,
 }
+#[derive(Clone)]
+struct AttachmentOutcome {
+    digest: String,
+    receipt: Option<AttachReceipt>,
+    rejection: Option<RecoveryError>,
+}
+const OUTCOME_CAP: usize = 1024;
 pub struct Session {
     pub origin: RunIdentity,
     pub binding: RunBinding,
@@ -116,6 +125,8 @@ pub struct Session {
     state: Mutex<SessionState>,
     pub writer: Mutex<()>,
     attempts: Mutex<HashMap<String, Arc<ControlAttempt>>>,
+    cleanup_flight: Mutex<Option<Arc<CleanupFlight>>>,
+    control_record: Mutex<()>,
     expires: Instant,
 }
 struct SessionState {
@@ -124,10 +135,23 @@ struct SessionState {
     control_revision: String,
     cleanup_state: String,
     worker_outcome: Option<WorkerOutcomePayload>,
+    control_pending: Option<ControlAttemptWitness>,
+    control_unknown: bool,
+    latest_control: Option<ControlReceipt>,
 }
 struct ControlAttempt {
     digest: String,
-    result: Mutex<Option<Result<OutcomeReply<ControlReceipt>, RecoveryError>>>,
+    result: Mutex<Option<Result<ControlMetadata, RecoveryError>>>,
+    changed: Condvar,
+}
+#[derive(Clone)]
+struct ControlMetadata {
+    receipt: Option<ControlReceipt>,
+    rejection: Option<RecoveryError>,
+}
+struct CleanupFlight {
+    attempt: Option<ControlAttemptWitness>,
+    result: Mutex<Option<Result<bool, RecoveryError>>>,
     changed: Condvar,
 }
 impl Coordinator {
@@ -143,6 +167,7 @@ impl Coordinator {
                 removing: false,
                 journal_gate: "checking".into(),
                 blockers: Vec::new(),
+                attachments: HashMap::new(),
             }),
         }
     }
@@ -361,9 +386,14 @@ impl Coordinator {
                 control_revision: "0".into(),
                 cleanup_state: "pending".into(),
                 worker_outcome: None,
+                control_pending: None,
+                control_unknown: false,
+                latest_control: None,
             }),
             writer: Mutex::new(()),
             attempts: Mutex::new(HashMap::new()),
+            cleanup_flight: Mutex::new(None),
+            control_record: Mutex::new(()),
             expires: Instant::now() + Duration::from_secs(30),
         });
         s.owner = Some(owner.clone());
@@ -431,6 +461,10 @@ impl Coordinator {
     }
     pub fn record_cleanup(&self, run: &Arc<Session>, confirmed: bool) {
         let mut r = run.state.lock().unwrap_or_else(|e| e.into_inner());
+        // A late failed observation cannot revoke a completed owned-handle join.
+        if r.cleanup_state == "confirmed" && !confirmed {
+            return;
+        }
         r.cleanup_state = if confirmed { "confirmed" } else { "failed" }.into();
         r.phase = if confirmed {
             "result_pending"
@@ -451,22 +485,33 @@ impl Coordinator {
     pub fn reconcile_control(&self, receipt: &ControlReceipt) {
         if let Ok(run) = self.exact_session(&receipt.origin, &receipt.journal_id) {
             let mut state = run.state.lock().unwrap_or_else(|e| e.into_inner());
+            let resolved = state
+                .control_pending
+                .as_ref()
+                .is_some_and(|p| p.request_id == receipt.request_id && p.digest == receipt.digest);
+            if resolved {
+                state.control_unknown = false;
+                state.control_pending = None;
+            }
             if parser::counter(&receipt.control_revision).ok()
                 > parser::counter(&state.control_revision).ok()
             {
                 state.control_revision = receipt.control_revision.clone();
-                state.cleanup_state = if receipt.outcome == "cleanup_confirmed" {
-                    "confirmed"
-                } else {
-                    "failed"
-                }
-                .into();
-                state.phase = if receipt.outcome == "cleanup_confirmed" {
+                state.latest_control = Some(receipt.clone());
+                // SQL receipts describe their own earlier observation. A late
+                // failure cannot undo a subsequently joined owned handle set.
+                let confirmed =
+                    state.cleanup_state == "confirmed" || receipt.outcome == "cleanup_confirmed";
+                state.cleanup_state = if confirmed { "confirmed" } else { "failed" }.into();
+                state.phase = if confirmed {
                     "result_pending"
                 } else {
                     "cleanup_failed"
                 }
                 .into();
+                drop(state);
+                self.changed();
+            } else if resolved {
                 drop(state);
                 self.changed();
             }
@@ -478,6 +523,285 @@ impl Coordinator {
         journal: &str,
     ) -> RecoveryCurrent {
         self.current_reply_from(current, || self.backend()?.current(journal))
+    }
+    /// Attachment acknowledges a new watch intent. Query is lookup-only and
+    /// never turns an unrelated or unobserved request into an acknowledgement.
+    pub fn attachment(
+        &self,
+        packet: &ParsedRecoveryRequest<AttachRequest>,
+        admit: bool,
+    ) -> Result<AttachReply, RecoveryError> {
+        let outcome = {
+            let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(old) = state.attachments.get(&packet.request.request_id) {
+                if old.digest != packet.digest {
+                    return Err(RecoveryError::fixed("analysis_request_conflict"));
+                }
+                Some(old.clone())
+            } else if !admit {
+                None
+            } else {
+                if state.attachments.len() >= OUTCOME_CAP {
+                    return Err(RecoveryError::fixed("analysis_limit_exceeded"));
+                }
+                let request = &packet.request;
+                let matched = state.initialization == "ready"
+                    && state.epoch.as_deref() == Some(request.runtime_epoch.as_str())
+                    && parser::counter(&request.expected_observation_revision)? <= state.revision
+                    && state.owner.as_ref().is_some_and(|owner| {
+                        owner.origin == request.origin
+                            && owner.journal_id == request.journal_id
+                            && owner.binding == request.binding
+                            && owner.admission_request_id == request.admission_request_id
+                            && owner.admission_digest == request.admission_digest
+                            && request
+                                .expected_header_digest
+                                .as_ref()
+                                .is_none_or(|digest| {
+                                    owner
+                                        .state
+                                        .lock()
+                                        .unwrap_or_else(|e| e.into_inner())
+                                        .header_digest
+                                        .as_ref()
+                                        == Some(digest)
+                                })
+                    });
+                let outcome = AttachmentOutcome {
+                    digest: packet.digest.clone(),
+                    receipt: matched.then(|| AttachReceipt {
+                        recovery_protocol_version: PROTOCOL_VERSION,
+                        request_id: request.request_id.clone(),
+                        digest: packet.digest.clone(),
+                        origin: request.origin.clone(),
+                        journal_id: request.journal_id.clone(),
+                        binding: request.binding.clone(),
+                        admission_request_id: request.admission_request_id.clone(),
+                        admission_digest: request.admission_digest.clone(),
+                        matched_observation_revision: state.revision.to_string(),
+                        confirmation: "runtime".into(),
+                        permission: "same_runtime_watch_project_stop".into(),
+                        may_start: false,
+                    }),
+                    rejection: (!matched).then(|| RecoveryError::fixed("analysis_stale_origin")),
+                };
+                state
+                    .attachments
+                    .insert(request.request_id.clone(), outcome.clone());
+                Some(outcome)
+            }
+        };
+        let mut current = RecoveryCurrent::Unavailable {
+            error: RecoveryError::fixed("analysis_observation_changed"),
+            runtime: self.observe(),
+        };
+        let mut attachment = None;
+        for _ in 0..3 {
+            let before = self.observe();
+            let cut = self
+                .backend()
+                .and_then(|b| b.attachment_current(&packet.request.journal_id))
+                .and_then(|mut cut| {
+                    let task = cut
+                        .current
+                        .task
+                        .take()
+                        .map(serde_json::to_value)
+                        .transpose()
+                        .map_err(|_| RecoveryError::unavailable())?;
+                    Ok((cut, task))
+                });
+            let after = self.observe();
+            if before.observation_revision != after.observation_revision {
+                continue;
+            }
+            let observed_revision = after.observation_revision.clone();
+            let matched = outcome.as_ref().is_some_and(|o| o.receipt.is_some());
+            let owner = after.owner.as_ref().filter(|o| {
+                o.origin == packet.request.origin
+                    && o.journal_id == packet.request.journal_id
+                    && o.binding == packet.request.binding
+                    && o.admission_request_id == packet.request.admission_request_id
+                    && o.admission_digest == packet.request.admission_digest
+            });
+            match cut {
+                Ok((cut, task)) => {
+                    let projectable = cut.current.storage.collection
+                        == packet.request.binding.collection
+                        && task.is_some()
+                        && cut.current.head.as_ref().is_some_and(|h| {
+                            h.state == "live"
+                                && h.task_id == packet.request.binding.task_id
+                                && h.generation == packet.request.binding.generation
+                        })
+                        && cut.header.as_ref().is_some_and(|h| {
+                            h.origin == packet.request.origin
+                                && h.binding == packet.request.binding
+                                && h.journal_id == packet.request.journal_id
+                                && h.admission_request_id == packet.request.admission_request_id
+                                && h.admission_digest == packet.request.admission_digest
+                                && packet
+                                    .request
+                                    .expected_header_digest
+                                    .as_ref()
+                                    .is_none_or(|d| d == &h.header_digest)
+                        })
+                        && cut.prefix.is_some();
+                    if matched {
+                        let control = self.attachment_control(owner, cut.control);
+                        if projectable && (owner.is_some() || after.owner.is_none()) {
+                            attachment = Some(CurrentAttachment::Durable {
+                                authority: if owner.is_some() { "live" } else { "retired" }.into(),
+                                header: Box::new(cut.header.unwrap()),
+                                prefix: Box::new(cut.prefix.unwrap()),
+                                control,
+                            });
+                        } else if let Some(owner) = owner {
+                            let reason = if cut
+                                .current
+                                .journal
+                                .as_ref()
+                                .is_some_and(|j| j.body_state != "available")
+                            {
+                                "body_unavailable"
+                            } else if self
+                                .exact_session(&owner.origin, &owner.journal_id)
+                                .ok()
+                                .is_some_and(|s| {
+                                    s.state
+                                        .lock()
+                                        .unwrap_or_else(|e| e.into_inner())
+                                        .header_digest
+                                        .is_none()
+                                })
+                            {
+                                "header_pending"
+                            } else {
+                                "binding_mismatch"
+                            };
+                            attachment = Some(CurrentAttachment::Volatile {
+                                witness: Box::new(self.volatile_witness(owner, reason)),
+                                control,
+                            });
+                        }
+                    }
+                    current = RecoveryCurrent::Coherent {
+                        storage: cut.current.storage,
+                        task,
+                        head: cut.current.head,
+                        journal: cut.current.journal,
+                        runtime: Box::new(after),
+                    };
+                }
+                Err(error) => {
+                    if matched {
+                        if let Some(owner) = owner {
+                            attachment = Some(CurrentAttachment::Volatile {
+                                witness: Box::new(
+                                    self.volatile_witness(owner, "storage_unavailable"),
+                                ),
+                                control: self.attachment_control(
+                                    Some(owner),
+                                    ControlReconciliation::Unavailable {
+                                        control_revision: None,
+                                        error: current_read_error(error.clone()),
+                                    },
+                                ),
+                            });
+                        }
+                    }
+                    current = RecoveryCurrent::Unavailable {
+                        error: current_read_error(error),
+                        runtime: after,
+                    };
+                }
+            }
+            if self.observe().observation_revision != observed_revision {
+                attachment = None;
+                current = RecoveryCurrent::Unavailable {
+                    error: RecoveryError::fixed("analysis_observation_changed"),
+                    runtime: self.observe(),
+                };
+                continue;
+            }
+            break;
+        }
+        Ok(AttachReply {
+            recovery_protocol_version: PROTOCOL_VERSION,
+            scope: "analysis_attachment".into(),
+            receipt: outcome.as_ref().and_then(|o| o.receipt.clone()),
+            rejection: outcome.and_then(|o| o.rejection),
+            current,
+            attachment,
+        })
+    }
+    fn volatile_witness(&self, owner: &NativeOwner, reason: &str) -> VolatileWitness {
+        let header_digest = self
+            .exact_session(&owner.origin, &owner.journal_id)
+            .ok()
+            .and_then(|s| {
+                s.state
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .header_digest
+                    .clone()
+            });
+        VolatileWitness {
+            origin: owner.origin.clone(),
+            journal_id: owner.journal_id.clone(),
+            binding: owner.binding.clone(),
+            admission_request_id: owner.admission_request_id.clone(),
+            admission_digest: owner.admission_digest.clone(),
+            header_digest,
+            owner: owner.clone(),
+            reason: reason.into(),
+        }
+    }
+    fn attachment_control(
+        &self,
+        owner: Option<&NativeOwner>,
+        control: ControlReconciliation,
+    ) -> ControlReconciliation {
+        if let Some(run) = owner.and_then(|o| self.exact_session(&o.origin, &o.journal_id).ok()) {
+            let pending = {
+                let attempts = run.attempts.lock().unwrap_or_else(|e| e.into_inner());
+                attempts
+                    .iter()
+                    .filter(|(_, a)| a.result.lock().unwrap_or_else(|e| e.into_inner()).is_none())
+                    .min_by(|(a, _), (b, _)| a.cmp(b))
+                    .map(|(id, a)| ControlAttemptWitness {
+                        request_id: id.clone(),
+                        digest: a.digest.clone(),
+                    })
+            };
+            let state = run.state.lock().unwrap_or_else(|e| e.into_inner());
+            if pending.is_some() || state.control_unknown {
+                return ControlReconciliation::Pending {
+                    control_revision: state.control_revision.clone(),
+                    attempt: pending.or_else(|| state.control_pending.clone()),
+                };
+            }
+            drop(state);
+            let flight = run
+                .cleanup_flight
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone();
+            if let Some(flight) = flight {
+                if flight
+                    .result
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .is_none()
+                {
+                    return ControlReconciliation::Pending {
+                        control_revision: owner.unwrap().control_revision.clone(),
+                        attempt: flight.attempt.clone(),
+                    };
+                }
+            }
+        }
+        control
     }
     pub fn current_reply_from(
         &self,
@@ -1117,22 +1441,83 @@ impl Coordinator {
         }
         result
     }
+    fn control_reply(
+        &self,
+        metadata: ControlMetadata,
+        journal: &str,
+    ) -> OutcomeReply<ControlReceipt> {
+        OutcomeReply {
+            recovery_protocol_version: PROTOCOL_VERSION,
+            scope: "analysis_control".into(),
+            receipt: metadata.receipt,
+            rejection: metadata.rejection,
+            current: self.current_reply(self.backend().and_then(|b| b.current(journal)), journal),
+        }
+    }
+    fn has_pending_control(run: &Session) -> bool {
+        run.attempts
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .any(|a| a.result.lock().unwrap_or_else(|e| e.into_inner()).is_none())
+    }
+    fn perform_cleanup(self: &Arc<Self>, run: &Arc<Session>, wake: WakeSink) -> bool {
+        self.mark_cancel(run);
+        if !run.start_claimed.load(Ordering::SeqCst) && !run.preparing.load(Ordering::SeqCst) {
+            let _ = self.finish_prestart(run, wake.clone(), None);
+        }
+        let confirmed = if run
+            .state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .cleanup_state
+            == "confirmed"
+        {
+            true
+        } else if let Some(cleanup) = self
+            .registry
+            .cancel(&run.origin.task_id, &run.origin.run_id)
+        {
+            cleanup
+                .wait(Instant::now() + crate::analysis_execution::CLEANUP_TIMEOUT)
+                .is_ok()
+        } else {
+            false
+        };
+        self.record_cleanup(run, confirmed);
+        if confirmed && run.start_claimed.load(Ordering::SeqCst) {
+            let outcome = run
+                .state
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .worker_outcome
+                .clone();
+            if let Some(outcome) = outcome {
+                if Publisher::new(self.clone(), run.clone(), wake)
+                    .finish(outcome)
+                    .is_err()
+                {
+                    run.journal_failed.store(true, Ordering::SeqCst);
+                }
+            }
+        }
+        confirmed
+    }
     pub fn stop(
         self: &Arc<Self>,
         packet: ParsedRecoveryRequest<StopRequest>,
         wake: WakeSink,
     ) -> Result<OutcomeReply<ControlReceipt>, RecoveryError> {
         let backend = self.backend()?;
-        // A durable prior receipt remains true, including known failed cleanup.
+        // Durable binding conflicts are checked before cancellation or joining.
         match backend.query_control(&packet) {
-            Ok(prior) => {
-                if prior.receipt.is_some() || prior.rejection.is_some() {
-                    if let Some(receipt) = &prior.receipt {
-                        self.reconcile_control(receipt);
-                    }
-                    return Ok(self.outcome(prior, "analysis_control", &packet.request.journal_id));
+            Ok(prior) if prior.receipt.is_some() || prior.rejection.is_some() => {
+                if let Some(receipt) = &prior.receipt {
+                    self.reconcile_control(receipt);
                 }
+                return Ok(self.outcome(prior, "analysis_control", &packet.request.journal_id));
             }
+            Ok(_) => {}
             Err(error) if error.code == "analysis_storage_unavailable" => {}
             Err(error) => return Err(error),
         }
@@ -1149,7 +1534,12 @@ impl Coordinator {
                 while result.is_none() {
                     result = old.changed.wait(result).unwrap_or_else(|e| e.into_inner());
                 }
-                return result.as_ref().unwrap().clone();
+                let metadata = result.as_ref().unwrap().clone();
+                drop(result);
+                return metadata.map(|m| self.control_reply(m, &run.journal_id));
+            }
+            if attempts.len() >= OUTCOME_CAP {
+                return Err(RecoveryError::fixed("analysis_limit_exceeded"));
             }
             let attempt = Arc::new(ControlAttempt {
                 digest: packet.digest.clone(),
@@ -1159,51 +1549,65 @@ impl Coordinator {
             attempts.insert(packet.request.request_id.clone(), attempt.clone());
             attempt
         };
-        let result = (|| {
-            let revision = run
-                .state
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .control_revision
-                .clone();
-            if packet.request.mode == "retry_cleanup"
-                && packet.request.expected_control_revision.as_deref() != Some(revision.as_str())
-            {
-                return Err(RecoveryError::fixed("analysis_conflict"));
-            }
-            self.mark_cancel(&run);
-            let mut confirmed = false;
-            if !run.start_claimed.load(Ordering::SeqCst) && !run.preparing.load(Ordering::SeqCst) {
-                let _ = self.finish_prestart(&run, wake.clone(), None);
-            }
-            if let Some(cleanup) = self
-                .registry
-                .cancel(&run.origin.task_id, &run.origin.run_id)
-            {
-                confirmed = cleanup
-                    .wait(Instant::now() + crate::analysis_execution::CLEANUP_TIMEOUT)
-                    .is_ok();
-            } else if run
-                .state
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .cleanup_state
-                == "confirmed"
-            {
-                confirmed = true;
-            }
-            self.record_cleanup(&run, confirmed);
-            if confirmed && run.start_claimed.load(Ordering::SeqCst) {
-                let outcome = run
-                    .state
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .worker_outcome
-                    .clone();
-                if let Some(outcome) = outcome {
-                    Publisher::new(self.clone(), run.clone(), wake.clone()).finish(outcome)?;
+        let result: Result<ControlMetadata, RecoveryError> = (|| {
+            let (flight, leader) = {
+                let mut slot = run.cleanup_flight.lock().unwrap_or_else(|e| e.into_inner());
+                let state = run.state.lock().unwrap_or_else(|e| e.into_inner());
+                let retry = packet.request.mode == "retry_cleanup";
+                if retry
+                    && (packet.request.expected_control_revision.as_deref()
+                        != Some(state.control_revision.as_str())
+                        || state.control_unknown
+                        || state
+                            .latest_control
+                            .as_ref()
+                            .is_none_or(|r| r.outcome != "cleanup_incomplete")
+                        || slot.as_ref().is_some_and(|f| {
+                            f.result.lock().unwrap_or_else(|e| e.into_inner()).is_none()
+                        }))
+                {
+                    return Err(RecoveryError::fixed("analysis_conflict"));
                 }
+                if !retry && slot.is_some() {
+                    (slot.as_ref().unwrap().clone(), false)
+                } else {
+                    let flight = Arc::new(CleanupFlight {
+                        attempt: Some(ControlAttemptWitness {
+                            request_id: packet.request.request_id.clone(),
+                            digest: packet.digest.clone(),
+                        }),
+                        result: Mutex::new(None),
+                        changed: Condvar::new(),
+                    });
+                    *slot = Some(flight.clone());
+                    (flight, true)
+                }
+            };
+            if leader {
+                let confirmed = self.perform_cleanup(&run, wake);
+                *flight.result.lock().unwrap_or_else(|e| e.into_inner()) = Some(Ok(confirmed));
+                flight.changed.notify_all();
             }
+            let confirmed = {
+                let mut result = flight.result.lock().unwrap_or_else(|e| e.into_inner());
+                while result.is_none() {
+                    result = flight
+                        .changed
+                        .wait(result)
+                        .unwrap_or_else(|e| e.into_inner());
+                }
+                result.as_ref().unwrap().clone()?
+            };
+            let _record = run.control_record.lock().unwrap_or_else(|e| e.into_inner());
+            {
+                let mut state = run.state.lock().unwrap_or_else(|e| e.into_inner());
+                state.control_pending = Some(ControlAttemptWitness {
+                    request_id: packet.request.request_id.clone(),
+                    digest: packet.digest.clone(),
+                });
+                state.control_unknown = true;
+            }
+            self.changed();
             let result = backend.record_control(
                 &packet,
                 &ControlRecord {
@@ -1217,18 +1621,23 @@ impl Coordinator {
                 },
             )?;
             if let Some(receipt) = &result.receipt {
-                run.state
-                    .lock()
-                    .unwrap_or_else(|e| e.into_inner())
-                    .control_revision = receipt.control_revision.clone();
+                self.reconcile_control(receipt);
+            } else if result.rejection.is_some() {
+                let mut state = run.state.lock().unwrap_or_else(|e| e.into_inner());
+                state.control_pending = None;
+                state.control_unknown = false;
+                drop(state);
                 self.changed();
             }
-            let _ = self.refresh();
-            Ok(self.outcome(result, "analysis_control", &run.journal_id))
+            Ok(ControlMetadata {
+                receipt: result.receipt,
+                rejection: result.rejection,
+            })
         })();
         *attempt.result.lock().unwrap_or_else(|e| e.into_inner()) = Some(result.clone());
         attempt.changed.notify_all();
-        result
+        let _ = self.refresh();
+        result.map(|m| self.control_reply(m, &run.journal_id))
     }
     pub fn automatic_cleanup(
         self: &Arc<Self>,
@@ -1236,37 +1645,86 @@ impl Coordinator {
         confirmed: bool,
     ) -> Result<(), RecoveryError> {
         self.record_cleanup(run, confirmed);
-        let raw = serde_json::to_string(&StopRequest {
-            recovery_protocol_version: PROTOCOL_VERSION,
-            request_id: format!("cleanup:{}", run.journal_id),
-            origin: run.origin.clone(),
-            journal_id: run.journal_id.clone(),
-            mode: "stop".into(),
-            expected_control_revision: None,
-        })
-        .map_err(|_| RecoveryError::invalid())?;
-        let packet = parser::parse::<StopRequest>(&raw)?;
-        let result = self.backend()?.record_control(
-            &packet,
-            &ControlRecord {
-                outcome: if confirmed {
-                    "cleanup_confirmed"
-                } else {
-                    "cleanup_incomplete"
+        let confirmed = run
+            .state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .cleanup_state
+            == "confirmed";
+        // A worker/prestart finalizer contributes observed cleanup truth to an
+        // explicit pending flight. It must never join/wait on that caller: the
+        // caller can be waiting for this same worker's readers or finalization.
+        if Self::has_pending_control(run) {
+            return Ok(());
+        }
+        let (flight, leader) = {
+            let mut slot = run.cleanup_flight.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(flight) = slot.as_ref() {
+                if flight
+                    .result
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner())
+                    .is_none()
+                {
+                    return Ok(());
                 }
-                .into(),
-                observed_at: observed_at()?,
-            },
-        )?;
-        if let Some(receipt) = result.receipt {
-            run.state
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .control_revision = receipt.control_revision;
+                (flight.clone(), false)
+            } else {
+                let flight = Arc::new(CleanupFlight {
+                    attempt: None,
+                    result: Mutex::new(None),
+                    changed: Condvar::new(),
+                });
+                *slot = Some(flight.clone());
+                (flight, true)
+            }
+        };
+        let result: Result<bool, RecoveryError> = (|| {
+            let _record = run.control_record.lock().unwrap_or_else(|e| e.into_inner());
+            let raw = serde_json::to_string(&StopRequest {
+                recovery_protocol_version: PROTOCOL_VERSION,
+                request_id: format!("cleanup:{}", run.journal_id),
+                origin: run.origin.clone(),
+                journal_id: run.journal_id.clone(),
+                mode: "stop".into(),
+                expected_control_revision: None,
+            })
+            .map_err(|_| RecoveryError::invalid())?;
+            let packet = parser::parse::<StopRequest>(&raw)?;
+            {
+                let mut state = run.state.lock().unwrap_or_else(|e| e.into_inner());
+                state.control_pending = Some(ControlAttemptWitness {
+                    request_id: packet.request.request_id.clone(),
+                    digest: packet.digest.clone(),
+                });
+                state.control_unknown = true;
+            }
             self.changed();
+            let result = self.backend()?.record_control(
+                &packet,
+                &ControlRecord {
+                    outcome: if confirmed {
+                        "cleanup_confirmed"
+                    } else {
+                        "cleanup_incomplete"
+                    }
+                    .into(),
+                    observed_at: observed_at()?,
+                },
+            )?;
+            if let Some(receipt) = result.receipt {
+                self.reconcile_control(&receipt);
+            }
+            Ok(confirmed)
+        })();
+        if leader || confirmed {
+            // A completed owned-handle join can upgrade an earlier physical
+            // observation. Historical SQL failure receipts remain immutable.
+            *flight.result.lock().unwrap_or_else(|e| e.into_inner()) = Some(Ok(confirmed));
+            flight.changed.notify_all();
         }
         let _ = self.refresh();
-        Ok(())
+        result.map(|_| ())
     }
 }
 

@@ -23,6 +23,7 @@ export function captureAdmission(task: AnalysisTask, form: AnalysisForm, runCont
   return Object.freeze({ packet, executionInputJson, task: capturedTask });
 }
 export async function loadRecovery(api: RecoveryApi): Promise<RecoverySnapshot> { const packet = freezePacket({ recoveryProtocolVersion: 1 as const }); return readSnapshot(await waitForAcknowledgement(api.invoke("load_analysis_recovery", { requestJson: packet.requestJson }))); }
+export async function loadRuntimeObservation(api: RecoveryApi): Promise<RuntimeObservation> { const packet = freezePacket({ recoveryProtocolVersion: 1 as const }); return readRuntime(await waitForAcknowledgement(api.invoke("query_analysis_runtime", { requestJson: packet.requestJson }))); }
 
 /** One live frontend execution. It does not reconstruct a run on reload. */
 export class SameSessionConsumer {
@@ -253,6 +254,7 @@ export class SameSessionConsumer {
   }
   retryResult() { return this.run(true); }
   dispose() { this.disposed = true; this.woke?.(); this.unlisten?.(); this.unlisten = undefined; }
+  get isDisposed() { return this.disposed; }
   get runtime() { return this.current?.runtime; }
   get binding(): RunBinding | undefined { return this.witness?.binding; }
   get origin(): RunIdentity | undefined { return this.witness?.origin; }
