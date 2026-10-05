@@ -119,6 +119,9 @@ pub fn counter(value: &str) -> Result<u64, RecoveryError> {
         .filter(|n| *n <= MAX_COUNTER)
         .ok_or_else(RecoveryError::invalid)
 }
+// Boundary fixture helper; production increments belong to their SQL/registry
+// owner and are checked atomically with those owners' effects.
+#[cfg(test)]
 pub fn next_counter(value: &str) -> Result<String, RecoveryError> {
     counter(value)?
         .checked_add(1)

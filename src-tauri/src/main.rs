@@ -17,13 +17,18 @@ mod secrets;
 mod storage;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Map, Value};
+#[cfg(test)]
+use serde_json::json;
+use serde_json::{Map, Value};
 use std::{
     env, fs,
     io::{Read, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
     sync::Arc,
+};
+#[cfg(test)]
+use std::{
     thread,
     time::{Duration, Instant},
 };
@@ -1223,14 +1228,21 @@ fn prepare_analysis_credentials(
             Ok(((*name).to_owned(), value))
         })
         .collect::<Result<Vec<_>, recovery_wire::RecoveryError>>()?;
-    let inventory = analysis_recovery::publication::SecretInventory::new(
-        provider_secret
-            .iter()
-            .chain(alpha_secret.iter())
-            .cloned()
-            .chain(inherited.iter().filter_map(|(_, v)| v.clone()))
-            .collect(),
-    );
+    // Build the inventory from this original acquisition only. The shared
+    // collector never rereads Keychain/environment or changes child credentials.
+    let inventory = analysis_recovery::publication::SecretInventory::acquire(
+        |kind| match kind {
+            "provider" => Ok(provider_secret.clone()),
+            "alpha" => Ok(alpha_secret.clone()),
+            _ => Err(recovery_wire::RecoveryError::invalid()),
+        },
+        |name| {
+            Ok(inherited
+                .iter()
+                .find(|(key, _)| key == name)
+                .and_then(|(_, value)| value.clone()))
+        },
+    )?;
     Ok(recovery_runtime::CredentialSnapshot {
         provider,
         provider_secret,
@@ -1344,7 +1356,6 @@ fn runtime_work_dir(app: Option<&AppHandle>, repo_root: &Path) -> PathBuf {
 struct RunnerCommand {
     executable: PathBuf,
     args: Vec<String>,
-    description: String,
 }
 
 fn resolve_runner_command(
@@ -1358,17 +1369,12 @@ fn resolve_runner_command(
             return RunnerCommand {
                 executable: sidecar_path.clone(),
                 args: Vec::new(),
-                description: format!(
-                    "Starting packaged sidecar runner: {}",
-                    sidecar_path.to_string_lossy()
-                ),
             };
         }
         if mode == "sidecar" {
             return RunnerCommand {
                 executable: sidecar.map_or_else(|| runner.to_path_buf(), Clone::clone),
                 args: Vec::new(),
-                description: "Starting sidecar runner, but only a placeholder or missing sidecar was found. Build the real PyInstaller sidecar or use EVIDENCELOOM_RUNNER_MODE=python.".to_string(),
             };
         }
     }
@@ -1376,7 +1382,6 @@ fn resolve_runner_command(
     RunnerCommand {
         executable: python.to_path_buf(),
         args: vec![runner.to_string_lossy().to_string()],
-        description: format!("Starting local Python runner: {}", python.to_string_lossy()),
     }
 }
 

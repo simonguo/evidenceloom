@@ -7,7 +7,6 @@ pub const CONTROL_BYTES: usize = 64 * 1024;
 pub const CONTEXT_BYTES: usize = 64 * 1024;
 pub const INPUT_BYTES: usize = 512 * 1024;
 pub const PACKET_BYTES: usize = 256 * 1024 * 1024;
-pub const ENVELOPE_BYTES: usize = 240 * 1024 * 1024;
 pub const TEXT_BYTES: usize = 8 * 1024 * 1024;
 pub const SCALAR_BYTES: usize = 4096;
 pub const MAX_DEPTH: usize = 64;
@@ -181,8 +180,6 @@ dto!(JournalEnvelope {
     seed: EventSeed,
     payload_digest: String
 });
-dto!(AcceptedPayload { reset_version: u8 });
-dto!(AnalysisPayload { event: Value });
 dto!(PublicationIssue {
     channel: String,
     reason: String
@@ -224,7 +221,7 @@ pub enum RecoveryCurrent {
         task: Option<Value>,
         head: Option<TaskHead>,
         journal: Option<JournalSummary>,
-        runtime: RuntimeObservation,
+        runtime: Box<RuntimeObservation>,
     },
     Unavailable {
         error: RecoveryError,
@@ -255,7 +252,6 @@ dto!(RangeProof {
     through_seq: String,
     digest: String
 });
-pub type ReadRangeProof = RangeProof;
 dto!(ReadReply {
     recovery_protocol_version: u8, header: JournalHeader, summary: JournalSummary,
     after_seq: String, through_seq: String, last_seq: String, has_more: bool,
@@ -360,8 +356,8 @@ impl ReplyBoundary for ReadReply {}
 impl ReplyBoundary for () {}
 fn unavailable_limit(current: &RecoveryCurrent) -> RecoveryCurrent {
     let runtime = match current {
-        RecoveryCurrent::Coherent { runtime, .. }
-        | RecoveryCurrent::Unavailable { runtime, .. } => runtime.clone(),
+        RecoveryCurrent::Coherent { runtime, .. } => runtime.as_ref().clone(),
+        RecoveryCurrent::Unavailable { runtime, .. } => runtime.clone(),
     };
     RecoveryCurrent::Unavailable {
         error: RecoveryError::fixed("analysis_limit_exceeded"),

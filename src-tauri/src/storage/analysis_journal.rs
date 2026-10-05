@@ -1,6 +1,7 @@
 //! Durable research output authority. Every effect is fenced by the original
 //! SQL incarnation and packet; this module never acquires a process mutex.
 use super::*;
+use crate::analysis_recovery::publication;
 use crate::analysis_recovery::wire::*;
 use rusqlite::{Transaction, TransactionBehavior};
 use serde::de::DeserializeOwned;
@@ -141,7 +142,7 @@ pub fn initialize(conn: &Connection, previous: u32, _pristine: bool) -> Result<(
             .map_err(unavailable)?;
         present += usize::from(exists);
     }
-    if (previous >= 12 && present != 4) || (present != 0 && present != 4) {
+    if (present != 0 || previous >= 12) && present != 4 {
         return Err(error("analysis_storage_unavailable"));
     }
     if present == 0 {
@@ -416,7 +417,7 @@ pub fn bootstrap(conn: &Connection) -> Result<SqlRecoveryCut, RecoveryError> {
             row.map_err(unavailable)?;
         let partial = rejection
             .as_deref()
-            .map(|r| serde_json::from_str::<Value>(r))
+            .map(serde_json::from_str::<Value>)
             .transpose()
             .map_err(unavailable)?
             .is_some_and(|r| r["code"] == "storage_partial_clear");
@@ -1144,8 +1145,13 @@ pub fn read(conn: &Connection, request: &ReadRequest) -> Result<ReadReply, Recov
 
 /// Match JavaScript String.trim exactly; Rust's Unicode whitespace set differs.
 fn has_content(sections: &Value) -> bool {
-    sections.as_object().is_some_and(|m|m.values().any(|v|v.as_str().is_some_and(|s|s.chars().any(|c|!matches!(c,
-        '\u{0009}'..='\u{000D}'|'\u{0020}'|'\u{00A0}'|'\u{1680}'|'\u{2000}'..='\u{200A}'|'\u{2028}'|'\u{2029}'|'\u{202F}'|'\u{205F}'|'\u{3000}'|'\u{FEFF}')))))
+    sections.as_object().is_some_and(|sections| {
+        sections.values().any(|value| {
+            value
+                .as_str()
+                .is_some_and(|text| !publication::ecmascript_blank(text))
+        })
+    })
 }
 fn immutable_version(v: &Value) -> Value {
     let mut v = v.clone();
@@ -1274,8 +1280,8 @@ fn projection_truth(
                 json!({"llmCalls":0,"toolCalls":0,"tokensIn":0,"tokensOut":0,"elapsedSeconds":0});
             logs.clear();
             if rows.len() == 1
-                && (proposed.decision != ""
-                    || proposed.error != ""
+                && (!proposed.decision.is_empty()
+                    || !proposed.error.is_empty()
                     || !proposed.queued_at.is_empty()
                     || proposed.queue_order.is_some()
                     || !["running", "stopped"].contains(&proposed.status.as_str())

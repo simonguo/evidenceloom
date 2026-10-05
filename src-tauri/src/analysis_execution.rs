@@ -258,6 +258,9 @@ impl CleanupRequest {
     }
 }
 
+// The former live event-forwarding transport is replaced by the durable
+// journal. Keep this query-only guard for the legacy ownership controls.
+#[cfg(test)]
 #[derive(Clone)]
 pub struct EventGuard {
     registry: Arc<Registry>,
@@ -275,6 +278,7 @@ impl OwnershipObservation {
         self.registry.owns(&self.owner)
     }
 }
+#[cfg(test)]
 impl EventGuard {
     pub fn allows_events(&self) -> bool {
         !self.owner.cancelled.load(Ordering::SeqCst) && self.registry.owns(&self.owner)
@@ -296,6 +300,7 @@ impl RunGuard {
     pub fn cancelled(&self) -> bool {
         self.owner.cancelled.load(Ordering::SeqCst)
     }
+    #[cfg(test)]
     pub fn events(&self) -> EventGuard {
         EventGuard {
             registry: self.registry.clone(),

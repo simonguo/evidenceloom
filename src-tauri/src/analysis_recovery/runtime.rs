@@ -502,7 +502,7 @@ impl Coordinator {
                             task,
                             head: c.head,
                             journal: c.journal,
-                            runtime: after,
+                            runtime: Box::new(after),
                         },
                         Err(_) => RecoveryCurrent::Unavailable {
                             error: RecoveryError::unavailable(),
@@ -1462,10 +1462,8 @@ pub fn run_owned_worker(
     publisher
         .coordinator
         .set_worker_outcome(&publisher.run, outcome.clone());
-    if confirmed {
-        if publisher.finish(outcome).is_err() {
-            publisher.run.journal_failed.store(true, Ordering::SeqCst);
-        }
+    if confirmed && publisher.finish(outcome).is_err() {
+        publisher.run.journal_failed.store(true, Ordering::SeqCst);
     }
     let _ = publisher
         .coordinator

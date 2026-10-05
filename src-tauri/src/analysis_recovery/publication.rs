@@ -174,6 +174,7 @@ impl SecretInventory {
         }
         Ok(Self::new(values))
     }
+    #[cfg(test)]
     pub fn values(&self) -> &[String] {
         &self.values
     }
@@ -660,7 +661,6 @@ pub fn is_critical(channel: &str) -> bool {
 pub struct PreparedPublication {
     pub kind: String,
     pub payload: Value,
-    pub critical: bool,
 }
 pub fn prepare_event(raw: &Value, inventory: &SecretInventory) -> PreparedPublication {
     let typ = raw
@@ -723,14 +723,12 @@ pub fn prepare_event(raw: &Value, inventory: &SecretInventory) -> PreparedPublic
         PreparedPublication {
             kind: "analysis".into(),
             payload: json!({"event":safe}),
-            critical: false,
         }
     } else {
         let critical = issues.keys().any(|k| is_critical(k));
         PreparedPublication {
             kind: "publication_unavailable".into(),
             payload: json!({"sourceType":typ,"channels":issues.iter().map(|(channel,reason)|json!({"channel":channel,"reason":reason})).collect::<Vec<_>>(),"outcome":if critical{"analysis_failed"}else{"optional_unavailable"},"code":"analysis_publication_unavailable","safeAnalysis":safe}),
-            critical,
         }
     }
 }
@@ -738,7 +736,6 @@ pub fn unavailable(source_type: Option<&str>, channel: &str, reason: &str) -> Pr
     PreparedPublication {
         kind: "publication_unavailable".into(),
         payload: json!({"sourceType":source_type,"channels":[{"channel":channel,"reason":reason}],"outcome":"analysis_failed","code":"analysis_publication_unavailable","safeAnalysis":null}),
-        critical: true,
     }
 }
 pub fn validate_payload(kind: &str, payload: &Value) -> Result<(), RecoveryError> {
@@ -817,18 +814,19 @@ pub fn validate_payload(kind: &str, payload: &Value) -> Result<(), RecoveryError
             parser::exact(payload, &["outcome", "code"])?;
             let p: WorkerOutcomePayload =
                 serde_json::from_value(payload.clone()).map_err(|_| RecoveryError::invalid())?;
-            parser::ensure(match (p.outcome.as_str(), p.code.as_deref()) {
+            parser::ensure(matches!(
+                (p.outcome.as_str(), p.code.as_deref()),
                 ("succeeded", None | Some("analysis_missing_terminal"))
-                | ("cancelled", None)
-                | (
-                    "not_started",
-                    None | Some("analysis_start_failed") | Some("analysis_reservation_expired"),
-                )
-                | ("failed", Some("analysis_worker_failed") | Some("analysis_start_failed")) => {
-                    true
-                }
-                _ => false,
-            })
+                    | ("cancelled", None)
+                    | (
+                        "not_started",
+                        None | Some("analysis_start_failed") | Some("analysis_reservation_expired"),
+                    )
+                    | (
+                        "failed",
+                        Some("analysis_worker_failed") | Some("analysis_start_failed")
+                    )
+            ))
         }
         _ => Err(RecoveryError::invalid()),
     }

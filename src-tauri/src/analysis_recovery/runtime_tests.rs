@@ -315,10 +315,13 @@ impl Harness {
             thread::sleep(Duration::from_millis(5));
         }
         let workers = std::mem::take(&mut *self.workers.lock().unwrap());
-        workers
-            .into_iter()
-            .map(|w| w.join().is_ok())
-            .fold(true, |a, b| a && b)
+        let mut joined = true;
+        // Every worker must be consumed even if an earlier join failed.
+        for worker in workers {
+            let result = worker.join().is_ok();
+            joined &= result;
+        }
+        joined
     }
 }
 impl Drop for Harness {
@@ -850,9 +853,8 @@ fn analysis_recovery_sql_future_first_poll_yields_while_actual_owned_connection_
     } else {
         None
     };
-    assert_eq!(
+    assert!(
         yielded.unwrap_or(false),
-        true,
         "real helper must yield before the supervisor releases the SQL lock"
     );
     assert!(matches!(joined,Some(Ok(Ok(_)))),"successful path requires consuming the owned worker; a stuck Rust thread cannot be force-killed");

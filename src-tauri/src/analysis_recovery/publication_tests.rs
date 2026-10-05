@@ -15,12 +15,11 @@ fn analysis_recovery_known_credential_inventory_is_acquired_before_publication()
         &json!({"type":"completed","reportSections":{"market_report":"owned-fictional-private-value"}}),
         &inventory,
     );
-    assert!(event.critical);
+    assert_eq!(event.payload["outcome"], "analysis_failed");
     assert!(!event
         .payload
         .to_string()
         .contains("owned-fictional-private-value"));
-    assert_eq!(event.payload["outcome"], "analysis_failed");
 }
 #[test]
 fn analysis_recovery_safe_report_and_optional_unavailable_preserve_exact_siblings() {
@@ -29,7 +28,7 @@ fn analysis_recovery_safe_report_and_optional_unavailable_preserve_exact_sibling
         &json!({"type":"completed","timestamp":"","reportSections":{"market_report":report,"empty":"","missing":null},"memoryBundle":{"unknown_private":"discard me"}}),
         &SecretInventory::default(),
     );
-    assert!(!event.critical);
+    assert_eq!(event.payload["outcome"], "optional_unavailable");
     assert_eq!(event.kind, "publication_unavailable");
     assert_eq!(
         event.payload["safeAnalysis"]["reportSections"]["market_report"],
@@ -45,7 +44,7 @@ fn analysis_recovery_null_report_is_critical_without_prior_report_fallback() {
         &json!({"type":"completed","reportSections":null}),
         &SecretInventory::default(),
     );
-    assert!(event.critical);
+    assert_eq!(event.payload["outcome"], "analysis_failed");
     assert_eq!(event.payload["channels"][0]["channel"], "reportSections");
     assert!(!has_completion_seed(&event.kind, &event.payload));
     assert!(event.payload["safeAnalysis"]
