@@ -85,5 +85,13 @@ describe("actual raw selection to retained task save and reload", () => {
         await mount();
         await vi.waitFor(async () => { await act(async () => { }); expect(container.textContent).toContain(receipt.review_id); });
         expect(container.querySelector("textarea")).toBeNull();
+        const storedBeforeDisclosure = window.localStorage.getItem("evidenceloom.analysisTasks.v1");
+        const disclosure = [...container.querySelectorAll("details")].find((element) => element.querySelector("summary")?.textContent === "定位保存原文与数据行")!;
+        await act(async () => { disclosure.open = true; disclosure.dispatchEvent(new Event("toggle")); });
+        expect(disclosure.querySelector("pre")?.textContent).toBe(original!.report_sections.market_report);
+        expect(disclosure.querySelector("td[data-selected-cell] code")?.textContent).toBe(receipt.operand.raw_number_lexeme);
+        expect(window.localStorage.getItem("evidenceloom.analysisTasks.v1")).toBe(storedBeforeDisclosure);
+        expect(center.tasks[0].reportTextSnapshot).toEqual(original);
+        expect(center.tasks[0].evidenceBundle!.artifacts).toEqual(artifacts);
     });
 });
