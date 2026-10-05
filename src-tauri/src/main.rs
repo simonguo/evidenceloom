@@ -6,6 +6,7 @@ mod desktop_acceptance;
 mod effective_request_identity;
 mod effective_request_identity_storage;
 mod evidence;
+mod json_command;
 mod numeric_review;
 mod numeric_review_storage;
 mod output_quality;
@@ -26,9 +27,9 @@ use serde_json::json;
 use serde_json::{Map, Value};
 use std::{
     env, fs,
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
+    process::Command,
     sync::Arc,
 };
 #[cfg(test)]
@@ -42,6 +43,7 @@ use tauri_plugin_dialog::DialogExt;
 struct AppState {
     runtime: Arc<RuntimeState>,
     recovery: Arc<analysis_recovery::runtime::Coordinator>,
+    auxiliary: Arc<json_command::Supervisor>,
 }
 impl Default for AppState {
     fn default() -> Self {
@@ -51,6 +53,7 @@ impl Default for AppState {
                 runtime.clone(),
             )),
             runtime,
+            auxiliary: Arc::new(json_command::Supervisor::default()),
         }
     }
 }
@@ -415,6 +418,12 @@ fn load_ohlcv_chart_data_process(
     payload_json: String,
 ) -> Result<Vec<OhlcvBar>, String> {
     let dependencies = ApplicationEnvironment::selected(&app);
+    let auxiliary = app.state::<AppState>().auxiliary.clone();
+    let context = JsonCommandContext {
+        dependencies: &dependencies,
+        supervisor: &auxiliary,
+        kind: json_command::CommandKind::Chart,
+    };
     let payload =
         serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
     let configured_project_root = if allow_external_runner_paths(&dependencies) {
@@ -446,7 +455,7 @@ fn load_ohlcv_chart_data_process(
     if matches!(runner_mode(&dependencies).as_str(), "sidecar" | "auto") {
         if let Some(sidecar_path) = sidecar.as_ref().filter(|path| is_real_sidecar(path)) {
             let value = run_json_command(
-                &dependencies,
+                &context,
                 sidecar_path,
                 &[],
                 &safe_payload,
@@ -499,7 +508,15 @@ fn load_ohlcv_chart_data_process(
         .current_dir(&repo_root);
     child_environment.apply(&mut command);
     dependencies.configure_command(&mut command)?;
-    let output = command.output().map_err(|error| error.to_string())?;
+    let output = context
+        .supervisor
+        .execute(context.kind, command, None)
+        .map_err(|error| {
+            redact_text(
+                &format!("OHLCV chart loader: {}", error.message()),
+                &child_environment.secrets,
+            )
+        })?;
 
     let stdout = redact_text(
         String::from_utf8_lossy(&output.stdout).trim(),
@@ -540,6 +557,12 @@ fn resolve_instrument_process(
     payload_json: String,
 ) -> Result<Value, String> {
     let dependencies = ApplicationEnvironment::selected(&app);
+    let auxiliary = app.state::<AppState>().auxiliary.clone();
+    let context = JsonCommandContext {
+        dependencies: &dependencies,
+        supervisor: &auxiliary,
+        kind: json_command::CommandKind::Instrument,
+    };
     let payload =
         serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
     let configured_project_root = if allow_external_runner_paths(&dependencies) {
@@ -561,7 +584,7 @@ fn resolve_instrument_process(
     if matches!(runner_mode(&dependencies).as_str(), "sidecar" | "auto") {
         if let Some(sidecar_path) = sidecar.as_ref().filter(|path| is_real_sidecar(path)) {
             return run_json_command(
-                &dependencies,
+                &context,
                 sidecar_path,
                 &[],
                 &safe_payload,
@@ -607,7 +630,7 @@ fn resolve_instrument_process(
 
     let args = vec![resolver.to_string_lossy().to_string()];
     run_json_command(
-        &dependencies,
+        &context,
         &python,
         &args,
         &safe_payload,
@@ -626,6 +649,12 @@ async fn test_llm_connection(app: AppHandle, payload_json: String) -> Result<Val
 
 fn test_llm_connection_process(app: AppHandle, payload_json: String) -> Result<Value, String> {
     let dependencies = ApplicationEnvironment::selected(&app);
+    let auxiliary = app.state::<AppState>().auxiliary.clone();
+    let context = JsonCommandContext {
+        dependencies: &dependencies,
+        supervisor: &auxiliary,
+        kind: json_command::CommandKind::ConnectionTest,
+    };
     let payload =
         serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
     let configured_project_root = if allow_external_runner_paths(&dependencies) {
@@ -646,7 +675,7 @@ fn test_llm_connection_process(app: AppHandle, payload_json: String) -> Result<V
     if matches!(runner_mode(&dependencies).as_str(), "sidecar" | "auto") {
         if let Some(sidecar_path) = sidecar.as_ref().filter(|path| is_real_sidecar(path)) {
             return run_json_command(
-                &dependencies,
+                &context,
                 sidecar_path,
                 &[],
                 &safe_payload,
@@ -692,7 +721,7 @@ fn test_llm_connection_process(app: AppHandle, payload_json: String) -> Result<V
 
     let args = vec![runner.to_string_lossy().to_string()];
     run_json_command(
-        &dependencies,
+        &context,
         &python,
         &args,
         &safe_payload,
@@ -702,8 +731,14 @@ fn test_llm_connection_process(app: AppHandle, payload_json: String) -> Result<V
     )
 }
 
+struct JsonCommandContext<'a> {
+    dependencies: &'a ApplicationEnvironment,
+    supervisor: &'a json_command::Supervisor,
+    kind: json_command::CommandKind,
+}
+
 fn run_json_command(
-    dependencies: &ApplicationEnvironment,
+    context: &JsonCommandContext<'_>,
     executable: &Path,
     args: &[String],
     payload: &Value,
@@ -712,30 +747,18 @@ fn run_json_command(
     label: &str,
 ) -> Result<Value, String> {
     let mut command = Command::new(executable);
-    command
-        .args(args)
-        .current_dir(work_dir)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+    command.args(args).current_dir(work_dir);
     child_environment.apply(&mut command);
-    dependencies.configure_command(&mut command)?;
-    let mut child = command.spawn().map_err(|error| {
-        format!(
-            "failed to start {label} at {}: {error}",
-            executable.to_string_lossy()
-        )
-    })?;
-
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(payload.to_string().as_bytes())
-            .map_err(|error| error.to_string())?;
-    }
-
-    let output = child
-        .wait_with_output()
-        .map_err(|error| error.to_string())?;
+    context.dependencies.configure_command(&mut command)?;
+    let output = context
+        .supervisor
+        .execute(context.kind, command, Some(payload))
+        .map_err(|error| {
+            redact_text(
+                &format!("{label}: {}", error.message()),
+                &child_environment.secrets,
+            )
+        })?;
     let stdout = redact_text(
         String::from_utf8_lossy(&output.stdout).trim(),
         &child_environment.secrets,
