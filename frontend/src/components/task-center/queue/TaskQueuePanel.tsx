@@ -9,6 +9,10 @@ type TaskQueuePanelProps = {
   queuedTasks: AnalysisTask[];
   cleanupFailedTask: AnalysisTask | null;
   cleanupRetrying: boolean;
+  cleanupUnconfirmed?: boolean;
+  resultPendingTask?: AnalysisTask | null;
+  resultRetrying?: boolean;
+  onRetryResult?: () => void;
   stopping: boolean;
   onRetryCleanup: () => void;
   language: SystemLanguage;
@@ -17,7 +21,7 @@ type TaskQueuePanelProps = {
   onMove: (taskId: string, direction: "up" | "down", task?: AnalysisTask) => void;
 };
 
-export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, stopping, onRetryCleanup, language, onStop, onCancel, onMove }: TaskQueuePanelProps) {
+export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, cleanupUnconfirmed = false, resultPendingTask = null, resultRetrying = false, onRetryResult, stopping, onRetryCleanup, language, onStop, onCancel, onMove }: TaskQueuePanelProps) {
   const t = createTranslator(language);
 
   return (
@@ -33,10 +37,18 @@ export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cl
       {cleanupFailedTask && (
         <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-zinc-900 px-5 py-3 text-sm text-rose-200">
           <Link href={taskDetailHref(cleanupFailedTask.id)} className="font-medium">{cleanupFailedTask.ticker}</Link>
-          <span className="min-w-0 flex-1">{t("analysisCleanupFailed")}</span>
+          <span className="min-w-0 flex-1">{t(cleanupUnconfirmed ? "analysisCleanupUnconfirmed" : "analysisCleanupFailed")}</span>
           <button type="button" disabled={cleanupRetrying} onClick={onRetryCleanup} className="vercel-button disabled:opacity-50">
             {cleanupRetrying ? t("analysisStopping") : t("retryAnalysisCleanup")}
           </button>
+        </div>
+      )}
+
+      {resultPendingTask && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-zinc-900 px-5 py-3 text-sm text-amber-200">
+          <Link href={taskDetailHref(resultPendingTask.id)} className="font-medium">{resultPendingTask.ticker}</Link>
+          <span className="min-w-0 flex-1">{t("analysisResultPending")}</span>
+          <button type="button" disabled={resultRetrying} onClick={onRetryResult} className="vercel-button disabled:opacity-50">{t("retryAnalysisResult")}</button>
         </div>
       )}
 

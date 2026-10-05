@@ -42,6 +42,7 @@ export function appendCompletedReportVersion(
   event: AnalysisEvent,
   runContext: RunContext,
   createdAt = new Date().toISOString(),
+  versionId?: string,
 ): AnalysisTask {
   if (event.type !== "completed" || task.origin === "demo") return task;
   const evidenceTask = normalizeTaskEvidence({ ...task, evidenceBundle: task.evidenceValidation ? undefined : event.evidenceBundle ?? task.evidenceBundle });
@@ -59,7 +60,7 @@ export function appendCompletedReportVersion(
     0,
   ) + 1;
   const version: ReportVersion = {
-    id: crypto.randomUUID(),
+    id: versionId ?? crypto.randomUUID(),
     runId,
     versionNumber: nextVersionNumber,
     createdAt,
@@ -125,7 +126,7 @@ export function hasReportContent(sections: Record<string, string | null | undefi
   return Object.values(sections).some((content) => Boolean(content?.trim()));
 }
 
-function taskSnapshot(task: AnalysisTask): ReportTaskSnapshot {
+export function taskSnapshot(task: AnalysisTask): ReportTaskSnapshot {
   return {
     ticker: task.ticker,
     instrumentName: task.instrumentName,

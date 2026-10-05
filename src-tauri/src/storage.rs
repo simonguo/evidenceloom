@@ -19,10 +19,11 @@ use crate::{numeric_review as numeric, numeric_review_storage as numeric_store};
 use crate::{research_memory as memory, research_memory_storage as memory_store};
 use crate::{research_readiness as readiness, research_readiness_storage as readiness_store};
 
+pub mod analysis_journal;
 pub mod task_mutation;
 pub use task_mutation::{MutationReply, Packet, QueryReply, StorageError};
 
-const SCHEMA_VERSION: i64 = 11;
+const SCHEMA_VERSION: i64 = 12;
 const SECRET_PREFIX: &str = "enc:v1:";
 static DATABASE_OPEN: std::sync::Mutex<()> = std::sync::Mutex::new(());
 static COPY_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
@@ -109,7 +110,7 @@ fn default_concurrency() -> i64 {
     1
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnalysisTaskRecord {
     pub id: String,
@@ -307,6 +308,7 @@ pub fn clear_data(app: &AppHandle, packet: &Packet) -> Result<MutationReply, Sto
 }
 
 fn clear_sql(conn: &Connection) -> Result<(), String> {
+    analysis_journal::purge_projected_collection(conn).map_err(|error| error.message)?;
     memory_store::clear(conn)?;
     readiness_store::clear(conn)?;
     identity_store::clear(conn)?;
@@ -505,6 +507,13 @@ fn initialize_schema(conn: &Connection) -> Result<(), String> {
     initialize_schema_with_origin(conn, false)
 }
 
+/// Owned native-command fixtures use the production migration without an
+/// AppHandle, user database, settings hydration, or credential access.
+#[cfg(test)]
+pub(crate) fn initialize_analysis_journal_fixture(conn: &Connection) -> Result<(), String> {
+    initialize_schema_with_origin(conn, true)
+}
+
 fn initialize_schema_with_origin(conn: &Connection, pristine: bool) -> Result<(), String> {
     initialize_schema_with_origin_kind(conn, pristine, false)
 }
@@ -537,16 +546,48 @@ fn initialize_schema_with_origin_kind(
             |row| row.get(0),
         )
         .map_err(|e| e.to_string())?;
+    // Version 11 introduced native mutation authority. Raising the current
+    // version must never authorize reconstruction of damaged version-11 data.
+    if previous.is_some_and(|version| version >= 11) {
+        for table in [
+            "task_store_metadata",
+            "task_store_heads",
+            "task_mutation_requests",
+        ] {
+            let exists: bool = tx
+                .query_row(
+                    "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name=?1)",
+                    [table],
+                    |row| row.get(0),
+                )
+                .map_err(|e| e.to_string())?;
+            if !exists {
+                return Err("Task-store authority is missing.".into());
+            }
+        }
+        tx.prepare("SELECT request_id,digest,operation,collection_id,epoch,outcome,receipt_json,rejection_json FROM task_mutation_requests")
+            .map_err(|_| "Task-store authority is invalid.")?;
+    }
     initialize_tables(&tx)?;
     let has_metadata: bool = tx.query_row("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='task_store_metadata')", [], |row|row.get(0)).map_err(|e|e.to_string())?;
     if !has_metadata {
-        if previous == Some(SCHEMA_VERSION) {
+        if previous.is_some_and(|version| version >= 11) {
             return Err("Task-store authority is missing.".into());
         }
         backfill_legacy_report_versions(&tx)?;
         task_mutation::initialize(&tx, pristine && previous.is_none() && existing_tables == 0)?;
     }
+    task_mutation::current(&tx).map_err(|_| "Task-store authority is invalid.")?;
+    // A missing/corrupt journal at version 12 is unavailable, not a new empty
+    // history. Migration and validation share this existing transaction.
+    analysis_journal::initialize(
+        &tx,
+        previous.unwrap_or(0) as u32,
+        pristine && previous.is_none() && existing_tables == 0,
+    )
+    .map_err(|error| error.message)?;
     if copied {
+        analysis_journal::rotate_for_supported_copy(&tx).map_err(|error| error.message)?;
         tx.execute(
             "UPDATE task_store_metadata SET legacy_import_closed=1 WHERE id=1",
             [],
@@ -559,6 +600,194 @@ fn initialize_schema_with_origin_kind(
     )
     .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())
+}
+
+/// Call from blocking work. SQL never acquires a runtime/process mutex.
+pub fn with_analysis_journal<T, F>(
+    app: &AppHandle,
+    operation: F,
+) -> Result<T, crate::analysis_recovery::wire::RecoveryError>
+where
+    F: FnOnce(&Connection) -> Result<T, crate::analysis_recovery::wire::RecoveryError>,
+{
+    let _mutation = task_mutation::coordinator();
+    let conn =
+        open_database(app).map_err(|_| analysis_journal::error("analysis_storage_unavailable"))?;
+    operation(&conn)
+}
+
+/// Production backing store for the shared native coordinator. The caller
+/// schedules blocking work; the SQL adapter performs no credential or IPC work.
+#[derive(Clone)]
+pub struct AppJournalBackend {
+    app: AppHandle,
+}
+impl AppJournalBackend {
+    pub fn new(app: AppHandle) -> Self {
+        Self { app }
+    }
+}
+impl crate::analysis_recovery::runtime::JournalBackend for AppJournalBackend {
+    fn terminal_observed(
+        &self,
+        journal_id: &str,
+    ) -> Result<bool, crate::analysis_recovery::wire::RecoveryError> {
+        with_analysis_journal(&self.app, |c| {
+            analysis_journal::terminal_observed(c, journal_id)
+        })
+    }
+    fn interrupt_prior_epochs(
+        &self,
+        epoch: &str,
+    ) -> Result<(), crate::analysis_recovery::wire::RecoveryError> {
+        with_analysis_journal(&self.app, |c| {
+            analysis_journal::interrupt_prior_epochs(c, epoch)
+        })
+    }
+    fn bootstrap(
+        &self,
+    ) -> Result<analysis_journal::SqlRecoveryCut, crate::analysis_recovery::wire::RecoveryError>
+    {
+        with_analysis_journal(&self.app, analysis_journal::bootstrap)
+    }
+    fn current(
+        &self,
+        id: &str,
+    ) -> Result<analysis_journal::SqlCurrent, crate::analysis_recovery::wire::RecoveryError> {
+        with_analysis_journal(&self.app, |c| analysis_journal::current(c, id))
+    }
+    fn admit(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::AdmissionRequest,
+        >,
+        s: &analysis_journal::AdmissionSeed,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::AdmissionReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::admit(c, p, s))
+    }
+    fn reject_admission(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::AdmissionRequest,
+        >,
+        s: &analysis_journal::AdmissionSeed,
+        e: &crate::analysis_recovery::wire::RecoveryError,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::AdmissionReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| {
+            analysis_journal::reject_admission(c, p, s, e)
+        })
+    }
+    fn query_admission(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::AdmissionRequest,
+        >,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::AdmissionReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::query_admission(c, p))
+    }
+    fn accept_start(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::StartRequest,
+        >,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::StartReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::accept_start(c, p))
+    }
+    fn query_start(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::StartRequest,
+        >,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::StartReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::query_start(c, p))
+    }
+    fn append(
+        &self,
+        d: &analysis_journal::PublicationDraft,
+    ) -> Result<
+        crate::analysis_recovery::wire::JournalEnvelope,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::append(c, d))
+    }
+    fn seal(
+        &self,
+        r: &analysis_journal::SealRecord,
+    ) -> Result<
+        crate::analysis_recovery::wire::JournalSummary,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::seal(c, r))
+    }
+    fn read(
+        &self,
+        r: &crate::analysis_recovery::wire::ReadRequest,
+    ) -> Result<
+        crate::analysis_recovery::wire::ReadReply,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::read(c, r))
+    }
+    fn project(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::ProjectionRequest,
+        >,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::ProjectionReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::project(c, p))
+    }
+    fn query_projection(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::ProjectionRequest,
+        >,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::ProjectionReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::query_projection(c, p))
+    }
+    fn record_control(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::StopRequest,
+        >,
+        r: &analysis_journal::ControlRecord,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::ControlReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::record_control(c, p, r))
+    }
+    fn query_control(
+        &self,
+        p: &crate::analysis_recovery::wire::ParsedRecoveryRequest<
+            crate::analysis_recovery::wire::StopRequest,
+        >,
+    ) -> Result<
+        analysis_journal::SqlOutcome<crate::analysis_recovery::wire::ControlReceipt>,
+        crate::analysis_recovery::wire::RecoveryError,
+    > {
+        with_analysis_journal(&self.app, |c| analysis_journal::query_control(c, p))
+    }
 }
 
 fn initialize_tables(conn: &Connection) -> Result<(), String> {
@@ -2214,7 +2443,7 @@ fn upsert_task(conn: &Connection, task: &AnalysisTaskRecord) -> Result<(), Strin
                     .as_object_mut()
                     .ok_or(numeric::ERROR)?
                     .remove("numericReviews");
-                if saved != frozen
+                if !analysis_journal::same_version_core(&saved, &frozen)
                     || hash != evidence_hash
                     || saved_memory_hash != memory_hash
                     || saved_readiness_hash != readiness_hash
@@ -2944,6 +3173,8 @@ mod tests {
             ALTER TABLE tasks DROP COLUMN identity_validation;
             ALTER TABLE task_report_versions DROP COLUMN identity_assessment_sha256;
             DELETE FROM schema_migrations WHERE version>=10;
+            DROP TABLE analysis_events; DROP TABLE analysis_controls; DROP TABLE analysis_requests; DROP TABLE analysis_journals;
+            DROP TABLE task_mutation_requests; DROP TABLE task_store_heads; DROP TABLE task_store_metadata;
             INSERT OR IGNORE INTO schema_migrations(version) VALUES(9);",
         )
         .unwrap();
@@ -3080,7 +3311,9 @@ mod tests {
             ALTER TABLE tasks DROP COLUMN numeric_snapshot_sha256;
             ALTER TABLE tasks DROP COLUMN numeric_validation;
             ALTER TABLE task_report_versions DROP COLUMN numeric_snapshot_sha256;
-            DELETE FROM schema_migrations WHERE version=9;").unwrap();
+            DELETE FROM schema_migrations WHERE version>=9;
+            DROP TABLE analysis_events; DROP TABLE analysis_controls; DROP TABLE analysis_requests; DROP TABLE analysis_journals;
+            DROP TABLE task_mutation_requests; DROP TABLE task_store_heads; DROP TABLE task_store_metadata;").unwrap();
         initialize_schema(&conn).unwrap();
         initialize_schema(&conn).unwrap();
         let loaded = load_tasks_from_conn(&conn).unwrap();
@@ -3405,7 +3638,9 @@ mod tests {
             ALTER TABLE tasks DROP COLUMN readiness_assessment_sha256;
             ALTER TABLE tasks DROP COLUMN readiness_validation;
             ALTER TABLE task_report_versions DROP COLUMN readiness_assessment_sha256;
-            DELETE FROM schema_migrations WHERE version=8;
+            DELETE FROM schema_migrations WHERE version>=8;
+            DROP TABLE analysis_events; DROP TABLE analysis_controls; DROP TABLE analysis_requests; DROP TABLE analysis_journals;
+            DROP TABLE task_mutation_requests; DROP TABLE task_store_heads; DROP TABLE task_store_metadata;
             INSERT OR IGNORE INTO schema_migrations(version) VALUES(7);",
         )
         .unwrap();

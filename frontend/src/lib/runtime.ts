@@ -1,5 +1,7 @@
 import { streamAnalysis } from "./analysis";
-import { runDesktopAnalysis, stopDesktopAnalysis } from "./desktop-analysis";
+import { runDesktopAnalysis, runPreparedDesktopAnalysis, stopDesktopAnalysis } from "./desktop-analysis";
+import type { SameSessionConsumer } from "@/features/analysis-recovery/lib/consumer";
+import type { RecoveryApi } from "@/features/analysis-recovery/types";
 import { createTranslator } from "./i18n";
 import { stripSecretFields } from "@/features/persistence/local-storage";
 import type { MemoryInventory } from "@/features/memory/types";
@@ -71,6 +73,8 @@ export type LegacyDesktopData = {
 };
 
 export type RuntimeAdapter = {
+  getAnalysisRecoveryApi?: () => Promise<RecoveryApi>;
+  runPreparedAnalysis?: (session: SameSessionConsumer, taskId: string, signal?: AbortSignal, retry?: boolean) => Promise<void>;
   getResearchMemoryInventory: (request: { decisionIds: string[]; pythonPath?: string; projectRoot?: string }) => Promise<MemoryInventory>;
   loadDesktopData: (legacy?: LegacyDesktopData) => Promise<DesktopSnapshot>;
   saveDesktopSettings: (settings: GlobalSettings) => Promise<void>;
@@ -190,6 +194,11 @@ export const webRuntimeAdapter: RuntimeAdapter = {
 };
 
 export const tauriRuntimeAdapter: RuntimeAdapter = {
+  getAnalysisRecoveryApi: async () => {
+    const api = await getTauriApi();
+    return { invoke: (command, args) => api.invoke(command, args), listen: (channel, handler) => api.listen(channel, handler) };
+  },
+  runPreparedAnalysis: runPreparedDesktopAnalysis,
   async getResearchMemoryInventory({ decisionIds, pythonPath, projectRoot }) {
     const { invoke } = await getTauriApi();
     return verifyMemoryInventory(await invoke("get_research_memory_inventory", { decisionIds, pythonPath, projectRoot }), decisionIds);

@@ -15,7 +15,7 @@ import { useTaskFilters } from "@/components/task-center/task-list/useTaskFilter
 
 export default function Page() {
   const router = useRouter();
-  const { settings, sortedTasks, runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, retryCleanup, stopping, getQueuePosition, stopRunningTask, cancelQueuedTask, moveQueuedTask } = useTaskCenter();
+  const { settings, sortedTasks, runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, cleanupUnconfirmed, retryCleanup, resultPendingTask, resultRetrying, retryResult, stopping, getQueuePosition, stopRunningTask, cancelQueuedTask, moveQueuedTask } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const completed = sortedTasks.filter((task) => task.status === "completed").length;
   const failed = sortedTasks.filter((task) => task.status === "error").length;
@@ -32,12 +32,16 @@ export default function Page() {
         <SummaryTile label={t("failed")} value={failed.toString()} />
       </section>
 
-      {(runningTask || cleanupFailedTask || queuedTasks.length > 0) && (
+      {(runningTask || cleanupFailedTask || resultPendingTask || queuedTasks.length > 0) && (
         <TaskQueuePanel
           runningTask={runningTask}
           queuedTasks={queuedTasks}
           cleanupFailedTask={cleanupFailedTask}
           cleanupRetrying={cleanupRetrying}
+          cleanupUnconfirmed={cleanupUnconfirmed}
+          resultPendingTask={resultPendingTask}
+          resultRetrying={resultRetrying}
+          onRetryResult={() => { void retryResult(); }}
           stopping={stopping}
           onRetryCleanup={() => { void retryCleanup(); }}
           language={settings.systemLanguage}

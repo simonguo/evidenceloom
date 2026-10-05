@@ -52,6 +52,9 @@ import { useTaskQueueController } from "./queue/useTaskQueueController";
 import { DesktopTaskMutations } from "@/features/desktop-task-store/lib/mutations";
 import { detached } from "@/features/desktop-task-store/lib/protocol";
 import type { RunOwner, TaskAction, TaskStoreState } from "@/features/desktop-task-store/types";
+import { captureAdmission, loadRecovery, SameSessionConsumer } from "@/features/analysis-recovery/lib/consumer";
+import { finished, gateReady } from "@/features/analysis-recovery/lib/protocol";
+import type { RuntimeObservation } from "@/features/analysis-recovery/types";
 
 type TaskCenterContextValue = {
   settings: GlobalSettings;
@@ -62,6 +65,10 @@ type TaskCenterContextValue = {
   queuedTasks: AnalysisTask[];
   cleanupFailedTask: AnalysisTask | null;
   cleanupRetrying: boolean;
+  cleanupUnconfirmed: boolean;
+  resultPendingTask: AnalysisTask | null;
+  resultRetrying: boolean;
+  retryResult: () => Promise<void>;
   stopping: boolean;
   retryCleanup: () => Promise<void>;
   activeTaskId: string;
@@ -112,7 +119,21 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const bootstrapRetryRef = useRef<(() => Promise<void>) | null>(null);
   const [storageState, setStorageState] = useState<TaskStoreState>("unavailable");
   const [runtimeInfo, setRuntimeInfo] = useState<RuntimeInfo>(() => defaultRuntimeInfo());
+  const recoveryRuntimeRef = useRef<RuntimeObservation | null>(null);
+  const recoverySessionsRef = useRef<Set<SameSessionConsumer>>(new Set());
+  const [recoveryReady, setRecoveryReady] = useState(false);
   const t = createTranslator(settings.systemLanguage);
+
+  const refreshAnalysisRecovery = useCallback(async () => {
+    const adapter = runtimeAdapterRef.current, mutations = mutationsRef.current;
+    setRecoveryReady(false);
+    if (!adapter?.getAnalysisRecoveryApi || !mutations) throw new Error("Native analysis authority is unavailable.");
+    const snapshot = await loadRecovery(await adapter.getAnalysisRecoveryApi());
+    if (mutationsRef.current !== mutations || !mutations.initialized) return;
+    recoveryRuntimeRef.current = snapshot.runtime;
+    const ready = gateReady(snapshot.runtime) && snapshot.clearBlockers.length === 0 && snapshot.journals.every((journal) => journal.historyState === "discarded" || finished(journal));
+    setRecoveryReady(ready); return ready;
+  }, []);
 
   useEffect(() => {
     const adapter = getRuntimeAdapter();
@@ -178,6 +199,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
             }
           }
           tasksRef.current = normalizedTasks; setTasks(normalizedTasks); mutations.seal();
+          try { await refreshAnalysisRecovery(); } catch { setNotice("Native analysis state could not be confirmed. Dispatch remains paused."); }
           if (snapshot.secretMigrationError) setNotice(snapshot.secretMigrationError);
           else if (!legacy.tasks?.length || legacyImported || snapshot.storage?.legacyTaskImportAllowed) clearLegacyDesktopData();
         }
@@ -205,7 +227,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     }
     bootstrapRetryRef.current = bootstrap;
     void bootstrap();
-    return () => { mutations.dispose(); if (mutationsRef.current === mutations) mutationsRef.current = null; };
+    return () => { recoverySessionsRef.current.forEach((session) => session.dispose()); recoverySessionsRef.current.clear(); mutations.dispose(); if (mutationsRef.current === mutations) mutationsRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -375,7 +397,11 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     executionActive,
     cleanupFailedTask,
     cleanupRetrying,
+    cleanupUnconfirmed,
     retryCleanup,
+    resultPendingTask,
+    resultRetrying,
+    retryResult,
     stopping,
   } = useTaskQueueController({
     hydrated,
@@ -384,7 +410,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     settings,
     runtimeAdapterRef,
     persistTask,
-    storageReady: !isTauriRuntime() || storageState === "ready" || storageState === "pending",
+    storageReady: !isTauriRuntime() || recoveryReady && (storageState === "ready" || storageState === "pending"),
     mutateDesktopTask,
     beginDesktopRun: async (task) => {
       const mutations = mutationsRef.current;
@@ -395,6 +421,36 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     },
     confirmDesktopAction: confirmTaskAction,
     retireDesktopRun: (owner) => mutationsRef.current?.retireRun(owner),
+    prepareDesktopRun: (task, form, runContext) => {
+      const mutations = mutationsRef.current, adapter = runtimeAdapterRef.current, runtime = recoveryRuntimeRef.current;
+      if (!mutations || !adapter?.getAnalysisRecoveryApi || !runtime?.runtimeEpoch || !gateReady(runtime)) throw new Error("Native analysis authority is unavailable.");
+      const action = mutations.capture(task), parent = mutations.recoveryParent(action);
+      const captured = captureAdmission(task, form, runContext, parent.collection, parent.head, runtime.runtimeEpoch);
+      let retiring = false;
+      const session = new SameSessionConsumer(captured, adapter.getAnalysisRecoveryApi, {
+        relevant: () => mutationsRef.current === mutations && (retiring || mutations.recoveryRelevant(action)),
+        publish: (current) => {
+          if (current.state !== "coherent" || !current.task || !current.head || mutationsRef.current !== mutations) return false;
+          const canonical = detached(current.task);
+          if (!mutations.adoptRecovery(action, current.storage, canonical, current.head)) return false;
+          tasksRef.current = tasksRef.current.map((item) => item.id === canonical.id && mutations.identity(item) === parent.birth ? canonical : item);
+          setTasks(tasksRef.current); return true;
+        },
+        retire: async (current) => {
+          if (current.state !== "coherent" || mutationsRef.current !== mutations || !mutations.retireRecovery(action, current.storage)) return false;
+          retiring = true; setRecoveryReady(false);
+          await bootstrapRetryRef.current?.();
+          if (mutationsRef.current !== mutations || !mutations.ready) return false;
+          return await refreshAnalysisRecovery() === true;
+        },
+        changed: (phase, observed) => {
+          if (mutationsRef.current !== mutations || !retiring && !mutations.recoveryRelevant(action)) return;
+          if (observed) recoveryRuntimeRef.current = observed;
+          setRecoveryReady(phase === "ready" && !!observed && gateReady(observed));
+        },
+      });
+      recoverySessionsRef.current.add(session); setRecoveryReady(false); return session;
+    },
     onEvent: handleTaskEvent,
     setNotice,
   });
@@ -725,6 +781,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     queuedTasks,
     cleanupFailedTask,
     cleanupRetrying,
+    cleanupUnconfirmed,
+    resultPendingTask,
+    resultRetrying,
+    retryResult,
     retryCleanup,
     stopping,
     activeTaskId,
@@ -753,6 +813,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     beginReview,
     storageState,
     retryTaskStorage: async () => {
+      if (isTauriRuntime()) { try { await refreshAnalysisRecovery(); } catch { setRecoveryReady(false); } }
       if (!unknownActionsRef.current.size && storageState !== "ready" && storageState !== "pending") { await bootstrapRetryRef.current?.(); return; }
       for (const action of [...unknownActionsRef.current]) {
         try {

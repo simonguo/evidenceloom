@@ -1,4 +1,5 @@
 mod analysis_execution;
+mod analysis_recovery;
 mod effective_request_identity;
 mod effective_request_identity_storage;
 mod evidence;
@@ -19,22 +20,30 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
     env, fs,
-    io::{BufRead, BufReader, Read, Write},
+    io::{Read, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
+    sync::Arc,
     thread,
     time::{Duration, Instant},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
-#[derive(Default)]
 struct AppState {
     runtime: Arc<RuntimeState>,
+    recovery: Arc<analysis_recovery::runtime::Coordinator>,
+}
+impl Default for AppState {
+    fn default() -> Self {
+        let runtime = Arc::new(RuntimeState::default());
+        Self {
+            recovery: Arc::new(analysis_recovery::runtime::Coordinator::new(
+                runtime.clone(),
+            )),
+            runtime,
+        }
+    }
 }
 
 type RuntimeState = analysis_execution::Registry;
@@ -157,6 +166,7 @@ async fn save_desktop_task(
 fn guarded_task_removal(
     app: &AppHandle,
     runtime: &RuntimeState,
+    recovery: &Arc<analysis_recovery::runtime::Coordinator>,
     request: Value,
     clear: bool,
 ) -> Result<storage::MutationReply, storage::StorageError> {
@@ -165,6 +175,17 @@ fn guarded_task_removal(
     if let Some(reply) = storage::replay_task_mutation(app, &packet)? {
         return Ok(reply);
     }
+    let task_id = if clear { None } else { packet.task_id() };
+    let _permit = match recovery.removal_permit(task_id) {
+        Ok(permit) => permit,
+        Err(_) => {
+            return storage::reject_owned_task_mutation(
+                app,
+                &packet,
+                "Stop the active task before removing saved data.".into(),
+            )
+        }
+    };
     guard_task_sql(
         runtime,
         if clear {
@@ -212,7 +233,8 @@ async fn delete_desktop_task(
     request: Value,
 ) -> Result<storage::MutationReply, storage::StorageError> {
     let runtime = state.runtime.clone();
-    storage_blocking(move || guarded_task_removal(&app, &runtime, request, false)).await
+    let recovery = state.recovery.clone();
+    storage_blocking(move || guarded_task_removal(&app, &runtime, &recovery, request, false)).await
 }
 
 #[tauri::command]
@@ -222,7 +244,8 @@ async fn clear_desktop_data(
     request: Value,
 ) -> Result<storage::MutationReply, storage::StorageError> {
     let runtime = state.runtime.clone();
-    storage_blocking(move || guarded_task_removal(&app, &runtime, request, true)).await
+    let recovery = state.recovery.clone();
+    storage_blocking(move || guarded_task_removal(&app, &runtime, &recovery, request, true)).await
 }
 
 #[tauri::command]
@@ -730,12 +753,14 @@ fn readable_runner_error(stdout: &str, stderr: &str) -> String {
     "Runner exited without an error message.".to_string()
 }
 
+#[cfg(test)]
 #[derive(Serialize)]
 struct AnalysisCommandError {
     code: &'static str,
     message: String,
 }
 
+#[cfg(test)]
 impl From<String> for AnalysisCommandError {
     fn from(message: String) -> Self {
         Self {
@@ -749,6 +774,7 @@ impl From<String> for AnalysisCommandError {
     }
 }
 
+#[cfg(test)]
 fn analysis_worker_join_error(
     owner: &analysis_execution::OwnershipObservation,
 ) -> AnalysisCommandError {
@@ -759,14 +785,202 @@ fn analysis_worker_join_error(
     }
 }
 
+use analysis_recovery::{
+    parser as recovery_parser, runtime as recovery_runtime, wire as recovery_wire,
+};
+
+async fn recovery_blocking<T: Send + recovery_wire::ReplyBoundary + 'static>(
+    work: impl FnOnce() -> Result<T, recovery_wire::RecoveryError> + Send + 'static,
+) -> Result<T, recovery_wire::RecoveryError> {
+    tauri::async_runtime::spawn_blocking(move || recovery_wire::fit_reply(work()?))
+        .await
+        .map_err(|_| recovery_wire::RecoveryError::unavailable())?
+}
+fn recovery_wake(app: &AppHandle) -> recovery_runtime::WakeSink {
+    let app = app.clone();
+    Arc::new(move |notice| {
+        let channel = format!(
+            "analysis-journal:{}:{}",
+            notice.origin.runtime_epoch, notice.origin.run_id
+        );
+        let _ = app.emit(&channel, notice);
+    })
+}
+#[tauri::command]
+async fn query_analysis_runtime(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::RuntimeObservation, recovery_wire::RecoveryError> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        recovery_parser::parse::<recovery_wire::ProtocolRequest>(&request_json)?;
+        Ok(recovery.observe())
+    })
+    .await
+}
+#[tauri::command]
+async fn load_analysis_recovery(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::RecoverySnapshot, recovery_wire::RecoveryError> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        recovery_parser::parse::<recovery_wire::ProtocolRequest>(&request_json)?;
+        recovery.snapshot()
+    })
+    .await
+}
 #[tauri::command]
 async fn reserve_analysis(
+    app: AppHandle,
     state: State<'_, AppState>,
-    task_id: String,
-) -> Result<String, AnalysisCommandError> {
-    reserve_analysis_owner(state.runtime.clone(), task_id).await
+    request_json: String,
+) -> Result<recovery_wire::AdmissionOutcomeReply, recovery_wire::RecoveryError> {
+    let recovery = state.recovery.clone();
+    let wake = recovery_wake(&app);
+    recovery_blocking(move || {
+        let packet = recovery_parser::parse::<recovery_wire::AdmissionRequest>(&request_json)?;
+        recovery.reserve(packet, prepare_analysis_credentials, wake)
+    })
+    .await
+}
+#[tauri::command]
+async fn query_analysis_reservation(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::AdmissionOutcomeReply, recovery_wire::RecoveryError> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let packet = recovery_parser::parse::<recovery_wire::AdmissionRequest>(&request_json)?;
+        recovery.query_reservation(&packet)
+    })
+    .await
+}
+#[tauri::command]
+async fn start_analysis(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request_json: String,
+    execution_input_json: String,
+) -> Result<recovery_wire::OutcomeReply<recovery_wire::StartReceipt>, recovery_wire::RecoveryError>
+{
+    let recovery = state.recovery.clone();
+    let wake = recovery_wake(&app);
+    recovery_blocking(move || {
+        let packet = recovery_parser::parse::<recovery_wire::StartRequest>(&request_json)?;
+        let input = recovery_parser::execution_input(&execution_input_json)?;
+        recovery.start(packet, input, wake, move |execution, publisher, input| {
+            let observation = execution.ownership();
+            let supervising = publisher.clone();
+            let worker = tauri::async_runtime::spawn_blocking(move || {
+                run_recovery_process(app, execution, publisher, input)
+            });
+            tauri::async_runtime::spawn(async move {
+                if worker.await.is_err() {
+                    let _ = recovery_blocking(move || {
+                        recovery_runtime::joined_worker_failed(supervising, observation);
+                        Ok(())
+                    })
+                    .await;
+                }
+            });
+            Ok(())
+        })
+    })
+    .await
+}
+#[tauri::command]
+async fn query_analysis_start(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::OutcomeReply<recovery_wire::StartReceipt>, recovery_wire::RecoveryError>
+{
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let p = recovery_parser::parse::<recovery_wire::StartRequest>(&request_json)?;
+        let result = recovery.backend()?.query_start(&p)?;
+        Ok(recovery.outcome(result, "analysis_start", &p.request.journal_id))
+    })
+    .await
+}
+#[tauri::command]
+async fn read_analysis_journal(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::ReadReply, recovery_wire::RecoveryError> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let p = recovery_parser::parse::<recovery_wire::ReadRequest>(&request_json)?;
+        recovery.backend()?.read(&p.request)
+    })
+    .await
+}
+#[tauri::command]
+async fn commit_analysis_projection(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<
+    recovery_wire::OutcomeReply<recovery_wire::ProjectionReceipt>,
+    recovery_wire::RecoveryError,
+> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let p = recovery_parser::parse::<recovery_wire::ProjectionRequest>(&request_json)?;
+        recovery.project(p)
+    })
+    .await
+}
+#[tauri::command]
+async fn query_analysis_projection(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<
+    recovery_wire::OutcomeReply<recovery_wire::ProjectionReceipt>,
+    recovery_wire::RecoveryError,
+> {
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let p = recovery_parser::parse::<recovery_wire::ProjectionRequest>(&request_json)?;
+        let result = recovery.backend()?.query_projection(&p)?;
+        let _ = recovery.refresh();
+        Ok(recovery.outcome(result, "analysis_projection_sql", &p.request.journal_id))
+    })
+    .await
+}
+#[tauri::command]
+async fn stop_analysis(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::OutcomeReply<recovery_wire::ControlReceipt>, recovery_wire::RecoveryError>
+{
+    let p = recovery_parser::parse::<recovery_wire::StopRequest>(&request_json)?;
+    let recovery = state.recovery.clone();
+    // The blocking helper rejects known request-ID conflicts before marking
+    // this exact owner, then marks before its bounded cleanup work.
+    let wake = recovery_wake(&app);
+    recovery_blocking(move || recovery.stop(p, wake)).await
+}
+#[tauri::command]
+async fn query_analysis_control(
+    state: State<'_, AppState>,
+    request_json: String,
+) -> Result<recovery_wire::OutcomeReply<recovery_wire::ControlReceipt>, recovery_wire::RecoveryError>
+{
+    let recovery = state.recovery.clone();
+    recovery_blocking(move || {
+        let p = recovery_parser::parse::<recovery_wire::StopRequest>(&request_json)?;
+        let result = recovery.backend()?.query_control(&p)?;
+        if let Some(receipt) = &result.receipt {
+            recovery.reconcile_control(receipt);
+        }
+        let _ = recovery.refresh();
+        Ok(recovery.outcome(result, "analysis_control", &p.request.journal_id))
+    })
+    .await
 }
 
+#[cfg(test)]
 async fn reserve_analysis_owner(
     runtime: Arc<RuntimeState>,
     task_id: String,
@@ -775,24 +989,6 @@ async fn reserve_analysis_owner(
         .await
         .map_err(|_| AnalysisCommandError::from("Analysis reservation failed.".to_string()))?
         .map_err(Into::into)
-}
-
-#[tauri::command]
-async fn start_analysis(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    task_id: String,
-    run_id: String,
-    payload_json: String,
-) -> Result<(), AnalysisCommandError> {
-    let execution = state.runtime.start(&task_id, &run_id)?;
-    let owner = execution.ownership();
-    tauri::async_runtime::spawn_blocking(move || {
-        run_analysis_process(app, execution, task_id, run_id, payload_json)
-    })
-    .await
-    .map_err(|_| analysis_worker_join_error(&owner))?
-    .map_err(Into::into)
 }
 
 #[tauri::command]
@@ -1000,241 +1196,127 @@ fn check_runtime_process(
     }
 }
 
-#[tauri::command]
-async fn stop_analysis(
-    state: State<'_, AppState>,
-    task_id: String,
-    run_id: String,
-) -> Result<(), AnalysisCommandError> {
-    let Some(request) = state.runtime.cancel(&task_id, &run_id) else {
-        return Ok(());
+fn prepare_analysis_credentials(
+    request: &recovery_wire::AdmissionRequest,
+) -> Result<recovery_runtime::CredentialSnapshot, recovery_wire::RecoveryError> {
+    let provider = request.context["requestedSettings"]["llmProvider"]
+        .as_str()
+        .ok_or_else(recovery_wire::RecoveryError::invalid)?
+        .trim()
+        .to_lowercase();
+    let provider_secret = secrets::get_provider_secret(&provider)
+        .map_err(|_| recovery_wire::RecoveryError::fixed("analysis_identity_unavailable"))?;
+    let alpha_secret = secrets::get_alpha_vantage_secret()
+        .map_err(|_| recovery_wire::RecoveryError::fixed("analysis_identity_unavailable"))?;
+    let inherited = analysis_recovery::publication::CREDENTIAL_ENV
+        .iter()
+        .map(|name| {
+            let value = match env::var(name) {
+                Ok(value) => Some(value),
+                Err(env::VarError::NotPresent) => None,
+                Err(env::VarError::NotUnicode(_)) => {
+                    return Err(recovery_wire::RecoveryError::fixed(
+                        "analysis_identity_unavailable",
+                    ))
+                }
+            };
+            Ok(((*name).to_owned(), value))
+        })
+        .collect::<Result<Vec<_>, recovery_wire::RecoveryError>>()?;
+    let inventory = analysis_recovery::publication::SecretInventory::new(
+        provider_secret
+            .iter()
+            .chain(alpha_secret.iter())
+            .cloned()
+            .chain(inherited.iter().filter_map(|(_, v)| v.clone()))
+            .collect(),
+    );
+    Ok(recovery_runtime::CredentialSnapshot {
+        provider,
+        provider_secret,
+        alpha_secret,
+        inherited,
+        inventory: Arc::new(inventory),
+    })
+}
+fn prepared_child_env(
+    root: &Path,
+    snapshot: &recovery_runtime::CredentialSnapshot,
+) -> ChildEnvironment {
+    let mut environment = ChildEnvironment::default();
+    environment.push_public("PYTHONPATH", build_pythonpath(root));
+    for name in analysis_recovery::publication::CREDENTIAL_ENV {
+        environment.remove(name);
+    }
+    environment.push_public("EVIDENCELOOM_LLM_PROVIDER", snapshot.provider.clone());
+    environment.push_public("TRADINGAGENTS_LLM_PROVIDER", snapshot.provider.clone());
+    let inherited = |name: &str| {
+        snapshot
+            .inherited
+            .iter()
+            .find(|(key, _)| key == name)
+            .and_then(|(_, value)| value.clone())
     };
-    let deadline = Instant::now() + analysis_execution::CLEANUP_TIMEOUT;
-    tauri::async_runtime::spawn_blocking(move || request.wait(deadline))
-        .await
-        .map_err(|_| AnalysisCommandError::from(analysis_execution::CLEANUP_ERROR.to_string()))?
-        .map_err(Into::into)
-}
-
-fn run_analysis_process(
-    app: AppHandle,
-    mut execution: analysis_execution::RunGuard,
-    task_id: String,
-    run_id: String,
-    payload_json: String,
-) -> Result<(), String> {
-    let stderr_lines = Arc::new(Mutex::new(Vec::<String>::new()));
-    let python_error_emitted = Arc::new(AtomicBool::new(false));
-    let events = execution.events();
-    let result = (|| {
-        if execution.cancelled() {
-            return Ok(None);
-        }
-        let payload =
-            serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
-        let configured_project_root = if allow_external_runner_paths() {
-            payload.get("projectRoot").and_then(Value::as_str)
-        } else {
-            None
-        };
-        let repo_root = effective_repo_root(configured_project_root);
-        let python = resolve_python_path(
-            &repo_root,
-            if allow_external_runner_paths() {
-                payload.get("pythonPath").and_then(Value::as_str)
-            } else {
-                None
-            },
-        );
-        let runner = runner_path(&repo_root);
-        let sidecar = sidecar_path(Some(&app));
-        let safe_payload = sanitize_payload(&payload);
-        let runner_command = resolve_runner_command(&python, &runner, sidecar.as_ref());
-        emit_event(
-            &app,
-            &task_id,
-            &run_id,
-            &events,
-            json!({
-                "type": "message", "messageType": "runtime", "message": runner_command.description
-            }),
-        );
-        let work_dir = runtime_work_dir(Some(&app), &repo_root);
-        let child_environment = child_env(&app, &repo_root, &payload)?;
-        if execution.cancelled() {
-            return Ok(None);
-        }
-        let mut command = Command::new(&runner_command.executable);
-        command
-            .args(&runner_command.args)
-            .current_dir(&work_dir)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        child_environment.apply(&mut command);
-        let redactions = Arc::new(child_environment.secrets);
-        let mut process = match owned_process::OwnedProcess::spawn_owned(
-            command,
-            Instant::now() + analysis_execution::CLEANUP_TIMEOUT,
-        ) {
-            Ok(process) => process,
-            Err(failure) => {
-                if let Some(pending) = failure.pending {
-                    execution.attach(pending)?;
-                }
-                return Err("Failed to start analysis runner.".to_string());
-            }
-        };
-        let stdin = process.child.stdin.take();
-        let stdout = process.child.stdout.take();
-        let stderr = process.child.stderr.take();
-        execution.attach(process)?;
-        if let Some(stdout) = stdout {
-            execution.reader(spawn_stdout_forwarder(
-                app.clone(),
-                task_id.clone(),
-                run_id.clone(),
-                events.clone(),
-                stdout,
-                python_error_emitted.clone(),
-                redactions.clone(),
-            ));
-        }
-        if let Some(stderr) = stderr {
-            execution.reader(spawn_stderr_forwarder(
-                app.clone(),
-                task_id.clone(),
-                run_id.clone(),
-                events.clone(),
-                stderr,
-                stderr_lines.clone(),
-                redactions,
-            ));
-        }
-        if execution.cancelled() {
-            return Ok(None);
-        }
-        let mut stdin = stdin.ok_or("Analysis input is unavailable.")?;
-        // The pipe is outside the process mutex: stop can kill a blocked writer.
-        stdin
-            .write_all(safe_payload.to_string().as_bytes())
-            .map_err(|_| "Failed to send analysis input.")?;
-        drop(stdin);
-        loop {
-            if execution.cancelled() {
-                return Ok(None);
-            }
-            if let Some(status) = execution.try_wait()? {
-                return Ok(Some(status));
-            }
-            thread::sleep(Duration::from_millis(25));
-        }
-    })();
-    execution.finish(Instant::now() + analysis_execution::CLEANUP_TIMEOUT)?;
-    let status = result?;
-    if !execution.cancelled()
-        && status.is_some_and(|status| !status.success())
-        && !python_error_emitted.load(Ordering::SeqCst)
+    let provider_secret = snapshot
+        .provider_secret
+        .clone()
+        .or_else(|| provider_api_key_env(&snapshot.provider).and_then(inherited));
+    inject_provider_secret(&mut environment, &snapshot.provider, provider_secret);
+    if let Some(value) = snapshot
+        .alpha_secret
+        .clone()
+        .or_else(|| inherited("ALPHA_VANTAGE_API_KEY"))
     {
-        let stderr_tail = stderr_lines
-            .lock()
-            .map(|lines| lines.join("\n"))
-            .unwrap_or_default();
-        return Err(if stderr_tail.trim().is_empty() {
-            "Analysis runner exited unsuccessfully.".to_string()
-        } else {
-            format!(
-                "Analysis runner exited unsuccessfully: {}",
-                tail_text(&stderr_tail, 2000)
-            )
-        });
+        environment.push_secret("ALPHA_VANTAGE_API_KEY", value);
     }
-    Ok(())
+    environment
 }
-
-fn spawn_stdout_forwarder(
+fn run_recovery_process(
     app: AppHandle,
-    task_id: String,
-    run_id: String,
-    events: analysis_execution::EventGuard,
-    stdout: impl std::io::Read + Send + 'static,
-    python_error_emitted: Arc<AtomicBool>,
-    redactions: Arc<Vec<String>>,
-) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for raw_line in reader.lines().map_while(Result::ok) {
-            let line = redact_text(&raw_line, &redactions);
-            if line.trim().is_empty() {
-                continue;
-            }
-            let payload = serde_json::from_str::<Value>(&line).unwrap_or_else(
-                |_| json!({ "type": "message", "messageType": "stdout", "message": line }),
-            );
-            if payload.get("type").and_then(Value::as_str) == Some("error") {
-                python_error_emitted.store(true, Ordering::SeqCst);
-            }
-            emit_event(&app, &task_id, &run_id, &events, payload);
-        }
-    })
-}
-
-fn spawn_stderr_forwarder(
-    app: AppHandle,
-    task_id: String,
-    run_id: String,
-    events: analysis_execution::EventGuard,
-    stderr: impl std::io::Read + Send + 'static,
-    stderr_lines: Arc<Mutex<Vec<String>>>,
-    redactions: Arc<Vec<String>>,
-) -> thread::JoinHandle<()> {
-    thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        for raw_line in reader.lines().map_while(Result::ok) {
-            let line = redact_text(&raw_line, &redactions);
-            if line.trim().is_empty() {
-                continue;
-            }
-            if let Ok(mut lines) = stderr_lines.lock() {
-                lines.push(line.clone());
-                if lines.len() > 80 {
-                    lines.remove(0);
-                }
-            }
-            emit_event(
-                &app,
-                &task_id,
-                &run_id,
-                &events,
-                json!({
-                    "type": "message",
-                    "messageType": "stderr",
-                    "message": line
-                }),
-            );
-        }
-    })
-}
-
-fn tail_text(text: &str, max_chars: usize) -> String {
-    let char_count = text.chars().count();
-    if char_count <= max_chars {
-        return text.to_string();
-    }
-    text.chars().skip(char_count - max_chars).collect()
-}
-
-fn emit_event(
-    app: &AppHandle,
-    task_id: &str,
-    run_id: &str,
-    events: &analysis_execution::EventGuard,
+    execution: analysis_execution::RunGuard,
+    publisher: recovery_runtime::Publisher,
     payload: Value,
 ) {
-    if !events.allows_events() {
+    let configured_root = if allow_external_runner_paths() {
+        payload.get("projectRoot").and_then(Value::as_str)
+    } else {
+        None
+    };
+    let root = effective_repo_root(configured_root);
+    let python = resolve_python_path(
+        &root,
+        if allow_external_runner_paths() {
+            payload.get("pythonPath").and_then(Value::as_str)
+        } else {
+            None
+        },
+    );
+    let runner = resolve_runner_command(
+        &python,
+        &runner_path(&root),
+        sidecar_path(Some(&app)).as_ref(),
+    );
+    let mut command = Command::new(&runner.executable);
+    command
+        .args(&runner.args)
+        .current_dir(runtime_work_dir(Some(&app), &root));
+    let snapshot = publisher
+        .run
+        .credentials
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    let Some(snapshot) = snapshot else {
+        recovery_runtime::worker_failed_before_spawn(execution, publisher, "analysis_start_failed");
         return;
-    }
-    let _ = app.emit(&format!("analysis-event:{task_id}:{run_id}"), payload);
+    };
+    prepared_child_env(&root, &snapshot).apply(&mut command);
+    recovery_runtime::run_owned_worker(
+        execution,
+        publisher,
+        command,
+        sanitize_payload(&payload).to_string(),
+    );
 }
 
 fn repo_root() -> PathBuf {
@@ -1653,6 +1735,23 @@ fn path_delimiter() -> &'static str {
 
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            let coordinator = app.state::<AppState>().recovery.clone();
+            let backend = Arc::new(storage::AppJournalBackend::new(app.handle().clone()));
+            let initializing = coordinator.clone();
+            let work = tauri::async_runtime::spawn_blocking(move || {
+                let epoch = recovery_runtime::entropy_epoch()?;
+                initializing.initialize(backend, epoch)
+            });
+            tauri::async_runtime::spawn(async move {
+                match work.await {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) => coordinator.initialization_failed(&error.code),
+                    Err(_) => coordinator.initialization_failed("analysis_identity_unavailable"),
+                }
+            });
+            Ok(())
+        })
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
@@ -1662,6 +1761,14 @@ fn main() {
             load_ohlcv_chart_data,
             resolve_instrument,
             test_llm_connection,
+            query_analysis_runtime,
+            load_analysis_recovery,
+            query_analysis_reservation,
+            query_analysis_start,
+            read_analysis_journal,
+            commit_analysis_projection,
+            query_analysis_projection,
+            query_analysis_control,
             reserve_analysis,
             start_analysis,
             stop_analysis,

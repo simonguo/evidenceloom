@@ -59,7 +59,7 @@ function TaskDetailRouteContent() {
 
 function TaskDetailPage({ taskId }: { taskId: string }) {
   const router = useRouter();
-  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews, beginReview, getTaskIdentity } = useTaskCenter();
+  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, runningTask, cleanupFailedTask, retryCleanup, resultPendingTask, retryResult, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews, beginReview, getTaskIdentity } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const task = getTask(taskId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -216,7 +216,11 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {task.origin === "demo" ? null : task.status === "running" ? (
+            {task.origin === "demo" ? null : cleanupFailedTask?.id === task.id ? (
+              <button type="button" onClick={() => { void retryCleanup(); }} className="vercel-button">{t("retryAnalysisCleanup")}</button>
+            ) : resultPendingTask?.id === task.id ? (
+              <button type="button" onClick={() => { void retryResult(); }} className="vercel-button">{t("retryAnalysisResult")}</button>
+            ) : task.status === "running" || runningTask?.id === task.id ? (
               <button type="button" onClick={() => stopRunningTask()} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-red-300 transition hover:border-zinc-600 hover:bg-red-950/40">
                 <Square className="size-4" /> {t("stopTask")}
               </button>

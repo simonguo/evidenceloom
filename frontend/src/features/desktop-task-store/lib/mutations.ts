@@ -104,6 +104,42 @@ export class DesktopTaskMutations {
     const handle = Object.freeze({ token: {} }), run = { owner: node.owner, tail: node, active: true };
     node.owner.runs.add(run); this.runs.set(handle.token, run); return handle;
   }
+  /** A confirmed causal parent, captured synchronously before recovery transport awaits. */
+  recoveryParent(action: TaskAction) {
+    const original = this.resolve(action), owner = original.owner, node = owner?.tail;
+    if (!this.ready || !owner || !node || owner.deleting || owner.blocked) throw new Error(conflict.message);
+    const head = node.operation === "snapshot" ? node.head : node.outcome?.kind === "committed" && node.outcome.publishable ? node.outcome.reply.receipt?.heads.find((item) => item.taskId === owner.id) : undefined;
+    if (!head || !sameHead(head, this.authority?.heads.find((item) => item.taskId === owner.id))) throw new Error(conflict.message);
+    return { action: this.action(node), collection: detached(node.collection), head: detached(head), task: node.projection, birth: owner.birth };
+  }
+  recoveryRelevant(action: TaskAction) { const node = this.actions.get(action.token); return !!node && this.valid(node) && !!node.owner && !node.owner.deleting; }
+  /** A native discarded journal proves this exact former SQL incarnation was retired. */
+  retireRecovery(action: TaskAction, authority: StorageAuthority) {
+    const original = this.actions.get(action.token), owner = original?.owner;
+    const initial = original?.head ?? (original?.outcome?.kind === "committed" ? original.outcome.reply.receipt?.heads.find((head) => head.taskId === owner?.id) : undefined);
+    if (!this.active || !original || !owner || !initial || this.clearing || authority.collection.collectionId !== original.collection.collectionId || BigInt(authority.collection.epoch) < BigInt(original.collection.epoch)) return false;
+    const head = authority.heads.find((head) => head.taskId === owner.id);
+    if (sameCollection(authority.collection, original.collection) && (!head || head.state === "live" && head.generation === initial.generation)) return false;
+    if (!this.observe(authority)) return false;
+    owner.alive = false; owner.runs.forEach((run) => { run.active = false; });
+    if (this.owners.get(owner.id) === owner) this.owners.delete(owner.id);
+    this.pending.forEach((node) => { if (node.owner === owner) { if (!node.sent) node.cancelled = true; this.pending.delete(node); } });
+    this.refreshState(); return true;
+  }
+  /** Adopt a winning native projection, never overwrite an unresolved local causal child. */
+  adoptRecovery(action: TaskAction, authority: StorageAuthority, task: AnalysisTask, head: TaskHead): TaskAction | undefined {
+    const original = this.actions.get(action.token), owner = original?.owner;
+    const initialHead = original?.head ?? (original?.outcome?.kind === "committed" ? original.outcome.reply.receipt?.heads.find((item) => item.taskId === owner?.id) : undefined);
+    if (!original || !owner || !this.valid(original) || owner.deleting || !sameCollection(original.collection, authority.collection) || head.state !== "live" || head.taskId !== owner.id || head.generation !== initialHead?.generation) return;
+    const tail = owner.tail;
+    if (tail.operation !== "snapshot" && (!tail.outcome || tail.outcome.kind === "unknown")) return;
+    this.observe(authority);
+    if (!this.valid(original) || !sameHead(head, this.authority?.heads.find((item) => item.taskId === owner.id))) return;
+    const node = this.node("snapshot", authority.collection, Promise.resolve(detached(task)));
+    node.owner = owner; node.head = detached(head); owner.tail = node; owner.published = node.serial; owner.blocked = false;
+    this.pending.forEach((pending) => { if (pending.owner === owner && pending.outcome && pending.outcome.kind !== "unknown") this.pending.delete(pending); });
+    owner.runs.forEach((run) => { if (run.active) run.tail = node; }); this.bindings.set(task, node); this.refreshState(); return this.action(node);
+  }
   retireRun(handle: RunOwner) { const run = this.runs.get(handle.token); if (run) { run.active = false; run.owner.runs.delete(run); } }
   prepareRunUpdate(handle: RunOwner, transform: (original: AnalysisTask) => AnalysisTask | Promise<AnalysisTask>): TaskAction {
     const run = this.runs.get(handle.token);
@@ -253,7 +289,7 @@ export class DesktopTaskMutations {
   intent(action: TaskAction) { const node = this.actions.get(action.token); if (!node || !this.active) throw new Error(conflict.message); return { operation: node.operation, taskId: node.owner?.id }; }
   needsConfirmation(action: TaskAction) {
     const node = this.actions.get(action.token);
-    return !!node && this.active && (node === this.clearNode && this.clearing || this.valid(node) && (node.outcome?.kind === "unknown" || node.outcome?.kind === "committed" && !node.outcome.publishable));
+    return !!node && this.active && (node === this.clearNode && this.clearing || this.valid(node) && this.inTail(node) && (node.outcome?.kind === "unknown" || node.outcome?.kind === "committed" && !node.outcome.publishable));
   }
   relevant(action: TaskAction) { const node = this.actions.get(action.token); return !!node && this.active && (this.valid(node) || node === this.clearNode && this.clearing); }
   async confirm(action: TaskAction) {

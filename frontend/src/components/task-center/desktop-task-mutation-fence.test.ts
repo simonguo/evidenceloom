@@ -7,6 +7,10 @@ import { createEmptyTask, defaultGlobalSettings, defaultTaskDraft } from "@/lib/
 import { FICTIONAL_DEMO_TASK_ID } from "@/features/report-export/fixtures/fictional-demo";
 import * as runtime from "@/lib/runtime";
 import type { AnalysisEvent, AnalysisTask } from "@/lib/types";
+import { transportFixture } from "@/features/analysis-recovery/test-support/transport-fixture";
+import { runtime as recoveryRuntime } from "@/features/analysis-recovery/test-support/fixtures";
+import type { AdmissionRequest, RecoveryCurrent } from "@/features/analysis-recovery/types";
+import { recoveryMessages } from "@/features/analysis-recovery/lib/protocol";
 
 const ipc = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: ipc.invoke }));
@@ -29,7 +33,7 @@ function ownedStore(initial: AnalysisTask[], legacyAllowed = false) {
   const rows = new Map(initial.map((task) => [task.id, structuredClone(task)]));
   const heads = new Map(initial.map((task) => [task.id, { taskId: task.id, generation: "1", revision: "1", state: "live" } as Head]));
   const receipts = new Map<string, { packet: string; receipt: Receipt }>();
-  const collection = () => ({ collectionId: "owned-native-collection", epoch });
+  const collection = () => ({ collectionId: "a".repeat(64), epoch });
   const current = () => ({ collection: collection(), heads: structuredClone([...heads.values()]) });
   function head(id: string): Head { return heads.get(id) ?? { taskId: id, generation: "0", revision: "0", state: "never_seen" }; }
   function apply(request: Request) {
@@ -85,6 +89,7 @@ describe("desktop task mutation boundaries through the actual provider", () => {
   let queryGate: ReturnType<typeof deferred<ReturnType<ReturnType<typeof ownedStore>["query"]>>> | undefined;
   let listener: ((event: { payload: AnalysisEvent }) => void) | undefined;
   let saveGate: ReturnType<typeof deferred> | undefined, saveEntered: ReturnType<typeof deferred>;
+  let recovery: ReturnType<typeof transportFixture> | undefined;
   const actions: Promise<unknown>[] = [];
   function Consumer() { center = useTaskCenter(); return createElement("p", { "data-notice": true }, center.notice); }
   function commands(command: string) { return ipc.invoke.mock.calls.filter(([name]) => name === command); }
@@ -93,12 +98,23 @@ describe("desktop task mutation boundaries through the actual provider", () => {
     await vi.waitFor(async () => { await act(async () => {}); expect(center.hydrated).toBe(true); });
   }
   beforeEach(() => {
-    store = ownedStore([]); failBootstrap = false; loseDeleteAck = false; loseDeleteBeforeCommit = false; loseSaveBeforeCommit = false; loseImportBeforeCommit = false; sqlOnlyClear = false; allowScriptedRun = false; listener = undefined; queryGate = undefined;
+    store = ownedStore([]); recovery = undefined; failBootstrap = false; loseDeleteAck = false; loseDeleteBeforeCommit = false; loseSaveBeforeCommit = false; loseImportBeforeCommit = false; sqlOnlyClear = false; allowScriptedRun = false; listener = undefined; queryGate = undefined;
     saveGate = undefined; saveEntered = deferred(); actions.length = 0;
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); localStorage.clear();
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: { invoke: (name: string, args?: Record<string, unknown>) => ipc.invoke(name, args) }, configurable: true });
     ipc.listen.mockReset().mockImplementation(async (_channel, handler) => { listener = handler; return vi.fn(); });
     ipc.invoke.mockReset().mockImplementation(async (command, args) => {
+      if (command === "load_analysis_recovery") return { recoveryProtocolVersion: 1, storage: { ...store.current(), legacyTaskImportAllowed: false }, tasks: [...store.rows.values()], journals: [], clearBlockers: [], runtime: recoveryRuntime(), coherent: true };
+      if (command === "reserve_analysis" && allowScriptedRun) {
+        const request = JSON.parse(args.requestJson) as AdmissionRequest, task = store.rows.get(request.expectedHead.taskId)!;
+        recovery = transportFixture({ captured: { packet: { request, requestJson: args.requestJson }, task, executionInputJson: "" } });
+      }
+      if (recovery && typeof args?.requestJson === "string") {
+        const reply = await recovery.api.invoke(command, args);
+        const current = (reply as { current?: RecoveryCurrent }).current;
+        if (current?.state === "coherent" && current.task && current.head) { store.rows.set(current.task.id, structuredClone(current.task)); store.heads.set(current.head.taskId, structuredClone(current.head)); }
+        return reply;
+      }
       if (command === "load_desktop_data") { if (failBootstrap) throw new Error("Owned bootstrap unavailable"); return store.snapshot(); }
       if (command === "save_desktop_task") {
         saveEntered.resolve(); const captured = structuredClone(args); if (saveGate) await saveGate.promise;
@@ -118,9 +134,8 @@ describe("desktop task mutation boundaries through the actual provider", () => {
         if (args?.request) { const reply = store.apply(args.request); return sqlOnlyClear ? reply : { ...reply, scope: "desktop_clear" }; }
         store.legacyClear(); return { scope: "sql", receipt: null, rejection: null, current: store.current() };
       }
-      if (command === "reserve_analysis") { if (allowScriptedRun) return "owned-scripted-run"; throw { code: "analysis_failed", message: "Owned dispatch observation; no runner" }; }
-      if (command === "start_analysis") { queueMicrotask(() => listener?.({ payload: { type: "completed", reportSections: {} } })); return; }
-      if (command === "stop_analysis") return;
+      if (command === "reserve_analysis") throw { code: "analysis_conflict", message: recoveryMessages.analysis_conflict };
+      if (command === "query_analysis_reservation") return { recoveryProtocolVersion: 1, scope: "analysis_admission", receipt: null, rejection: { code: "analysis_conflict", message: recoveryMessages.analysis_conflict }, matchedReservation: null, current: { state: "coherent", storage: store.current(), task: null, head: null, journal: null, runtime: recoveryRuntime() } };
       throw new Error(`Unexpected owned command ${command}`);
     });
     vi.spyOn(runtime, "getRuntimeAdapter").mockReturnValue({ ...runtime.tauriRuntimeAdapter,

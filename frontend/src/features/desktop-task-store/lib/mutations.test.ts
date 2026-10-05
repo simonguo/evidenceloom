@@ -155,4 +155,15 @@ describe("operation-local native task causal intents with fictional transport", 
     const clear = store.prepareClear(); expect(store.publishable(clear, await store.commit(clear))).toBe(true); query.mockImplementation(async (request) => ack(request, [], "sql"));
     const result = await store.retry(clear); expect(result.kind).toBe("committed"); if (result.kind !== "committed") throw new Error(); expect(result.reply.scope).toBe("desktop_clear"); expect(store.publishable(clear, result)).toBe(false); expect(execute).toHaveBeenCalledTimes(1);
   });
+  it("invalidates only the retired recovery incarnation and accepts a canonical same-ID recreation", () => {
+    const old = makeTask("a"), other = makeTask("b"), { store } = setup([old, other]), action = store.capture(old), replacement = makeTask("a");
+    const newer = { ...live("a"), generation: "2" };
+    expect(store.retireRecovery(action, { collection, heads: [newer, live("b")] })).toBe(true); expect(store.recoveryRelevant(action)).toBe(false); expect(store.identity(other)).toBeDefined();
+    store.initialize({ collection, heads: [newer, live("b")], legacyTaskImportAllowed: false }, [replacement, other]); store.seal(); expect(store.recoveryParent(store.capture(replacement)).head.generation).toBe("2"); expect(() => store.prepareUpdate(action, (body) => body)).toThrow();
+  });
+  it("refuses retirement while the same live generation remains or broad clear is unresolved", () => {
+    const old = makeTask("a"), { store } = setup([old]), action = store.capture(old);
+    expect(store.retireRecovery(action, { collection, heads: [live("a", "2")] })).toBe(false); expect(store.recoveryRelevant(action)).toBe(true);
+    store.prepareClear(); expect(store.retireRecovery(action, { collection: { ...collection, epoch: "2" }, heads: [] })).toBe(false);
+  });
 });

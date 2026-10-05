@@ -684,7 +684,7 @@ fn next_heads(packet: &Packet) -> Result<Vec<TaskHead>, StorageError> {
     Ok(heads)
 }
 
-fn effects(conn: &Connection, packet: &Packet) -> Result<Vec<TaskHead>, StorageError> {
+pub(super) fn effects(conn: &Connection, packet: &Packet) -> Result<Vec<TaskHead>, StorageError> {
     check_authority(conn, packet)?;
     if packet.operation == "import" {
         let closed: bool = conn
@@ -711,6 +711,13 @@ fn effects(conn: &Connection, packet: &Packet) -> Result<Vec<TaskHead>, StorageE
         })?;
     }
     if packet.operation == "delete" {
+        super::analysis_journal::purge_projected_task(conn, &packet.expected_heads[0].task_id)
+            .map_err(|_| {
+                StorageError::new(
+                    "storage_owned",
+                    "Unconfirmed research output prevents removing this task.",
+                )
+            })?;
         conn.execute(
             "DELETE FROM tasks WHERE id=?1",
             [&packet.expected_heads[0].task_id],
@@ -835,6 +842,16 @@ where
             return Err(error);
         }
     };
+    if super::analysis_journal::assert_removal_allowed(&tx, None).is_err() {
+        let error = safe_rejection(StorageError::new(
+            "storage_owned",
+            "Unconfirmed research output prevents clearing data.",
+        ));
+        reject(&tx, packet, &error)?;
+        tx.commit()
+            .map_err(|e| StorageError::unknown(e.to_string()))?;
+        return Err(error);
+    }
     tx.commit()
         .map_err(|e| StorageError::unknown(e.to_string()))?;
     if external().is_err() {

@@ -156,7 +156,8 @@ fn task_mutation_failed_legacy_copy_removes_only_owned_temporary_file() {
 }
 
 #[test]
-fn task_mutation_copy_of_pristine_schema_eleven_closes_import_without_changing_source() {
+fn task_mutation_copy_of_pristine_schema_rotates_collection_and_closes_import_without_changing_source(
+) {
     let directory = fixture_directory("schema-eleven-copy");
     let source = directory.join("source.db");
     let target = directory.join("copied.db");
@@ -169,7 +170,8 @@ fn task_mutation_copy_of_pristine_schema_eleven_closes_import_without_changing_s
     let identity = current(&original).unwrap().collection;
     copy_legacy_database(&source, &target).unwrap();
     let copied = file_database(&target, false);
-    assert_eq!(current(&copied).unwrap().collection, identity);
+    assert_ne!(current(&copied).unwrap().collection, identity);
+    assert_eq!(current(&original).unwrap().collection, identity);
     assert!(
         !snapshot_storage(&copied, &[])
             .unwrap()
@@ -471,8 +473,11 @@ fn task_mutation_missing_authority_and_future_schema_fail_closed() {
         .unwrap();
     assert!(initialize_schema_with_origin(&conn, true).is_err());
     let conn = db(true);
-    conn.execute("INSERT INTO schema_migrations(version) VALUES(12)", [])
-        .unwrap();
+    conn.execute(
+        "INSERT INTO schema_migrations(version) VALUES(?1)",
+        [SCHEMA_VERSION + 1],
+    )
+    .unwrap();
     assert!(initialize_schema_with_origin(&conn, false).is_err());
 }
 

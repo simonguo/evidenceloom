@@ -16,6 +16,11 @@ export function prependLog(logs: AnalysisTask["logs"], type: string, message: st
   return [{ id: crypto.randomUUID(), type, message, timestamp, agent }, ...logs].slice(0, 100);
 }
 
+/** Journal identities and display literals are committed before desktop replay. */
+export function prependSeededLog(logs: AnalysisTask["logs"], id: string, type: string, message: string, timestamp: string, agent?: string) {
+  return [{ id, type, message, timestamp, ...(agent === undefined ? {} : { agent }) }, ...logs.filter((log) => log.id !== id)].slice(0, 100);
+}
+
 export function compactNumber(value: number) {
   if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
   return value.toString();

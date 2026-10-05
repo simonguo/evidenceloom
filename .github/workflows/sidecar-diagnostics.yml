@@ -99,6 +99,53 @@ jobs:
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked numeric
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked identity
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked task_mutation
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_journal
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_recovery
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frozen frontend dependencies for native recovery fixtures
+        working-directory: frontend
+        run: |
+          npm install --global npm@11.6.2
+          npm ci
+      - name: Validate actual native recovery serialization and consecutive analysis runs
+        run: |
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --no-run --message-format=json > "$RUNNER_TEMP/analysis-recovery-build.jsonl"
+          uv run --frozen python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import subprocess
+
+          temporary = Path(os.environ["RUNNER_TEMP"])
+          artifacts = [json.loads(line) for line in (temporary / "analysis-recovery-build.jsonl").read_text(encoding="utf-8").splitlines() if line.startswith("{")]
+          executables = {item["executable"] for item in artifacts if item.get("reason") == "compiler-artifact" and item.get("profile", {}).get("test") and item.get("executable")}
+          if len(executables) != 1:
+              raise RuntimeError("Exactly one compiled native test executable is required")
+          executable = executables.pop()
+          directory = temporary / ("analysis-recovery-" + os.environ["GITHUB_RUN_ID"] + "-" + os.environ["GITHUB_RUN_ATTEMPT"])
+          directory.mkdir()
+          corpus = directory / "actual-sql-corpus.json"
+          environment = dict(os.environ)
+          environment["EVIDENCELOOM_RECOVERY_CORPUS_OUTPUT"] = str(corpus)
+          subprocess.run([executable, "storage::analysis_journal::tests::analysis_journal_actual_sql_wire_corpus_serializes_original_publication_and_number_forms", "--exact", "--nocapture"], env=environment, check=True)
+          if json.loads(corpus.read_text(encoding="utf-8")).get("producer") != "actual-native-sql-read-v1":
+              raise RuntimeError("Actual SQL serialization corpus is required")
+          rustc = subprocess.check_output(["rustup", "which", "rustc"], text=True).strip()
+          environment.pop("EVIDENCELOOM_RECOVERY_CORPUS_OUTPUT")
+          environment["EVIDENCELOOM_RECOVERY_CORPUS_INPUT"] = str(corpus)
+          environment["EVIDENCELOOM_RECOVERY_BRIDGE_EXE"] = executable
+          environment["EVIDENCELOOM_RECOVERY_BRIDGE_ARTIFACTS"] = str(directory)
+          environment["EVIDENCELOOM_RECOVERY_RUSTC_DIRECTORY"] = str(Path(rustc).parent)
+          npm = shutil.which("npm")
+          if npm is None:
+              raise RuntimeError("Repository npm executable is required")
+          subprocess.run([npm, "test", "--", "src/features/analysis-recovery/lib/protocol.test.ts", "src/features/analysis-recovery/lib/native-bridge.test.ts"], cwd="frontend", env=environment, check=True)
+          PY
       - name: Seed an owned saved-memory fixture store
         run: |
           uv run --frozen python - <<'PY'

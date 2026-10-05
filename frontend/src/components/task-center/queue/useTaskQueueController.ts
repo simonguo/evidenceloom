@@ -12,8 +12,10 @@ import type { AgentStatus, AnalysisEvent, AnalysisTask, GlobalSettings, RunConte
 import { prependLog } from "../utils";
 import { highestQueueOrder, queuePositionMap, sortQueuedTasks } from "./queue-utils";
 import type { RunOwner, TaskAction } from "@/features/desktop-task-store/types";
+import type { SameSessionConsumer } from "@/features/analysis-recovery/lib/consumer";
+import { RecoveryAdmissionRejectedError } from "@/features/analysis-recovery/lib/transport";
 
-type Execution = { taskId: string; controller: AbortController; adapter: RuntimeAdapter; stopPromise?: Promise<void>; owner?: RunOwner };
+type Execution = { taskId: string; controller: AbortController; adapter: RuntimeAdapter; stopPromise?: Promise<void>; owner?: RunOwner; recovery?: SameSessionConsumer };
 
 type TaskQueueControllerOptions = {
   hydrated: boolean;
@@ -28,6 +30,7 @@ type TaskQueueControllerOptions = {
   beginDesktopRun?: (task: AnalysisTask) => Promise<RunOwner | undefined>;
   confirmDesktopAction?: (action: TaskAction) => Promise<unknown>;
   retireDesktopRun?: (owner: RunOwner) => void;
+  prepareDesktopRun?: (task: AnalysisTask, form: ReturnType<typeof buildRunForm>, context: RunContext) => SameSessionConsumer;
   setNotice: (notice: string) => void;
 };
 
@@ -42,9 +45,8 @@ export function useTaskQueueController({
   setNotice,
   storageReady = true,
   mutateDesktopTask,
-  beginDesktopRun,
-  confirmDesktopAction,
   retireDesktopRun,
+  prepareDesktopRun,
 }: TaskQueueControllerOptions) {
   const activeExecutionRef = useRef<Execution | null>(null);
   const cleanupBlockedRef = useRef<Execution | null>(null);
@@ -52,9 +54,13 @@ export function useTaskQueueController({
   const [cleanupRetrying, setCleanupRetrying] = useState(false);
   const cleanupRetryingRef = useRef(false);
   const [stopping, setStopping] = useState(false);
+  const [resultTaskId, setResultTaskId] = useState<string | null>(null);
+  const [resultRetrying, setResultRetrying] = useState(false);
+  const resultRetryingRef = useRef(false);
   const activeTaskIdRef = useRef<string | null>(null);
   const stoppingTaskIdRef = useRef<string | null>(null);
   const dispatchingRef = useRef(false);
+  const rejectedAdmissionsRef = useRef(new Map<string, AnalysisTask>());
   const tasksRef = useRef(tasks);
   const queueSequenceRef = useRef(highestQueueOrder(tasks));
   const queueInitializedRef = useRef(false);
@@ -129,17 +135,16 @@ export function useTaskQueueController({
     if (!isTauriRuntime()) saveGlobalSettings(settings);
     const execution: Execution = { taskId, controller: new AbortController(), adapter: runtimeAdapterRef.current ?? getRuntimeAdapter() };
     activeExecutionRef.current = execution;
-    if (!isTauriRuntime() || !beginDesktopRun) patchTask(taskId, (current) => resetTaskForRun(current));
+    if (!isTauriRuntime()) patchTask(taskId, (current) => resetTaskForRun(current));
     setNotice("");
 
     try {
-      if (isTauriRuntime() && beginDesktopRun) {
-        execution.owner = await beginDesktopRun(task);
-        if (!execution.owner || execution.controller.signal.aborted || activeExecutionRef.current !== execution) return false;
-        const action = mutateDesktopTask?.(task, (current) => resetTaskForRun(current), execution.owner);
-        if (!action || !confirmDesktopAction) return false;
-        await confirmDesktopAction(action);
-        if (execution.controller.signal.aborted || activeExecutionRef.current !== execution) return false;
+      if (isTauriRuntime()) {
+        if (!prepareDesktopRun || !execution.adapter.runPreparedAnalysis) throw new Error("Native analysis authority is unavailable.");
+        // Admission packet and transient execution input are captured before this first await.
+        execution.recovery = prepareDesktopRun(task, runForm, runContext);
+        await execution.adapter.runPreparedAnalysis(execution.recovery, taskId, execution.controller.signal);
+        return execution.recovery.phase === "ready";
       }
       await execution.adapter.runAnalysis(taskId, runForm, (event) => {
         if (activeExecutionRef.current !== execution || stoppingTaskIdRef.current === taskId) return;
@@ -161,6 +166,13 @@ export function useTaskQueueController({
       return true;
     } catch (error) {
       if (activeExecutionRef.current !== execution) return false;
+      if (execution.recovery) {
+        setStopping(false);
+        if (error instanceof RecoveryAdmissionRejectedError && execution.recovery.phase === "ready") { rejectedAdmissionsRef.current.set(taskId, task); setNotice(t("analysisAdmissionRejected")); }
+        else if (execution.recovery.phase === "cleanup_failed" || isAnalysisCleanupError(error)) { cleanupBlockedRef.current = execution; setCleanupTaskId(taskId); setNotice(t("analysisCleanupUnconfirmed")); }
+        else { setResultTaskId(taskId); setNotice(t("analysisResultPending")); }
+        return false;
+      }
       if (isAnalysisCleanupError(error) || cleanupBlockedRef.current === execution) {
         cleanupBlockedRef.current = execution;
         setCleanupTaskId(taskId);
@@ -186,7 +198,7 @@ export function useTaskQueueController({
       }
       return false;
     } finally {
-      if (activeExecutionRef.current === execution && cleanupBlockedRef.current !== execution) {
+      if (activeExecutionRef.current === execution && cleanupBlockedRef.current !== execution && (!execution.recovery || execution.recovery.phase === "ready")) {
         if (execution.owner) retireDesktopRun?.(execution.owner);
         activeExecutionRef.current = null;
         activeTaskIdRef.current = null;
@@ -197,7 +209,7 @@ export function useTaskQueueController({
         setSchedulerVersion((version) => version + 1);
       }
     }
-  }, [beginDesktopRun, confirmDesktopAction, failTask, mutateDesktopTask, onEvent, patchTask, retireDesktopRun, runtimeAdapterRef, setNotice, settings, storageReady]);
+  }, [failTask, onEvent, patchTask, prepareDesktopRun, retireDesktopRun, runtimeAdapterRef, setNotice, settings, storageReady]);
 
   useEffect(() => {
     if (!hydrated || !storageReady || queueInitializedRef.current) return;
@@ -215,7 +227,7 @@ export function useTaskQueueController({
   useEffect(() => {
     if (!hydrated || !storageReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
     if (tasks.some((task) => task.status === "running")) return;
-    const nextTask = sortQueuedTasks(tasks)[0];
+    const nextTask = sortQueuedTasks(tasks).find((task) => rejectedAdmissionsRef.current.get(task.id) !== task);
     if (nextTask) void startQueuedTask(nextTask.id);
   }, [hydrated, schedulerVersion, startQueuedTask, storageReady, tasks]);
 
@@ -231,7 +243,7 @@ export function useTaskQueueController({
       setNotice(createTranslator(settings.systemLanguage)("demoCannotRun"));
       return false;
     }
-    if (task.status === "queued") return true;
+    if (task.status === "queued") { rejectedAdmissionsRef.current.delete(taskId); setSchedulerVersion((version) => version + 1); return true; }
 
     const runForm = buildRunForm(task, settings);
     const validationErrors = validateTaskDraft(
@@ -289,13 +301,14 @@ export function useTaskQueueController({
     stoppingTaskIdRef.current = execution.taskId;
     setStopping(true);
     execution.controller.abort();
-    execution.stopPromise = execution.adapter.stopAnalysis(execution.taskId);
+    execution.stopPromise = execution.recovery ? execution.recovery.stop() : execution.adapter.stopAnalysis(execution.taskId);
     void execution.stopPromise.catch(() => {
       if (activeExecutionRef.current !== execution) return;
       cleanupBlockedRef.current = execution;
       setCleanupTaskId(execution.taskId);
       setStopping(false);
-      failTask(execution.taskId, createTranslator(settings.systemLanguage)("analysisCleanupFailed"));
+      if (execution.recovery) setNotice(createTranslator(settings.systemLanguage)("analysisCleanupUnconfirmed"));
+      else failTask(execution.taskId, createTranslator(settings.systemLanguage)("analysisCleanupFailed"));
     });
   }, [failTask, settings.systemLanguage]);
 
@@ -305,12 +318,18 @@ export function useTaskQueueController({
     cleanupRetryingRef.current = true;
     setCleanupRetrying(true);
     try {
+      if (execution.recovery) {
+        await execution.recovery.stop(true);
+        await execution.adapter.runPreparedAnalysis?.(execution.recovery, execution.taskId, undefined, true);
+        if (execution.recovery.phase !== "ready") throw new Error("Analysis gates remain unconfirmed.");
+      } else {
       await execution.adapter.stopAnalysis(execution.taskId);
       if (cleanupBlockedRef.current !== execution) return;
       patchTask(execution.taskId, (task) => ({
         ...task, status: "stopped", error: "", updatedAt: new Date().toISOString(),
         logs: prependLog(task.logs, createTranslator(settings.systemLanguage)("system"), createTranslator(settings.systemLanguage)("taskStopped")),
       }));
+      }
       cleanupBlockedRef.current = null;
       setCleanupTaskId(null);
       if (activeExecutionRef.current === execution) {
@@ -323,13 +342,31 @@ export function useTaskQueueController({
         setExecutionActive(false);
       }
       setSchedulerVersion((version) => version + 1);
-    } catch {
-      setNotice(createTranslator(settings.systemLanguage)("analysisCleanupFailed"));
+    } catch (error) {
+      if (execution.recovery && (execution.recovery.phase === "cleanup_failed" || isAnalysisCleanupError(error))) { cleanupBlockedRef.current = execution; setCleanupTaskId(execution.taskId); setNotice(createTranslator(settings.systemLanguage)("analysisCleanupUnconfirmed")); }
+      else if (execution.recovery) { cleanupBlockedRef.current = null; setCleanupTaskId(null); setResultTaskId(execution.taskId); setNotice(createTranslator(settings.systemLanguage)("analysisResultPending")); }
+      else setNotice(createTranslator(settings.systemLanguage)("analysisCleanupFailed"));
     } finally {
       cleanupRetryingRef.current = false;
       setCleanupRetrying(false);
     }
   }, [patchTask, retireDesktopRun, setNotice, settings.systemLanguage]);
+
+  const retryResult = useCallback(async () => {
+    const execution = activeExecutionRef.current;
+    if (!execution?.recovery || resultRetryingRef.current) return;
+    resultRetryingRef.current = true; setResultRetrying(true);
+    try {
+      await execution.adapter.runPreparedAnalysis?.(execution.recovery, execution.taskId, undefined, true);
+      if (activeExecutionRef.current !== execution || execution.recovery.phase !== "ready") return;
+      setResultTaskId(null); setCleanupTaskId(null); cleanupBlockedRef.current = null;
+      activeExecutionRef.current = null; activeTaskIdRef.current = null; stoppingTaskIdRef.current = null; dispatchingRef.current = false;
+      setStopping(false); setExecutionActive(false); setSchedulerVersion((version) => version + 1);
+    } catch (error) {
+      if (execution.recovery.phase === "cleanup_failed" || isAnalysisCleanupError(error)) { cleanupBlockedRef.current = execution; setCleanupTaskId(execution.taskId); setResultTaskId(null); }
+      setNotice(createTranslator(settings.systemLanguage)("analysisResultPending"));
+    } finally { resultRetryingRef.current = false; setResultRetrying(false); }
+  }, [setNotice, settings.systemLanguage]);
 
   const getQueuePosition = useCallback((taskId: string) => positions.get(taskId) ?? null, [positions]);
 
@@ -344,7 +381,11 @@ export function useTaskQueueController({
     executionActive,
     cleanupFailedTask: tasks.find((task) => task.id === cleanupTaskId) ?? null,
     cleanupRetrying,
+    cleanupUnconfirmed: activeExecutionRef.current?.recovery?.phase === "unknown",
     retryCleanup,
+    resultPendingTask: tasks.find((task) => task.id === resultTaskId) ?? null,
+    resultRetrying,
+    retryResult,
     stopping,
   };
 }

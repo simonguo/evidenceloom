@@ -639,14 +639,16 @@ fn main() {
 
     #[cfg(unix)]
     fn assert_tree_cleanup(mode: &str, expected: Result<(), ProbeFailure>, detached: bool) {
+        static CASE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         let binary = cleanup_fixture_binary();
         let directory = cleanup_fixture_root().join(format!(
-            "probe-case-{}-{}",
+            "probe-case-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            CASE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
         ));
         std::fs::create_dir(&directory).unwrap();
         let marker = directory.join("pids");
