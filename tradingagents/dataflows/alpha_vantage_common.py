@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from datetime import datetime
 from io import StringIO
 
@@ -8,6 +9,7 @@ import requests
 
 from tradingagents.dataflows.errors import VendorNotConfiguredError, VendorUnavailableError
 from tradingagents.dataflows.net import get_scrubbed
+from tradingagents.dataflows.evidence_utils import source_attempt
 
 API_BASE_URL = "https://www.alphavantage.co/query"
 
@@ -77,7 +79,11 @@ def _make_api_request(function_name: str, params: dict) -> dict | str:
         AlphaVantageRateLimitError: When API rate limit is exceeded
     """
     # Create a copy of params to avoid modifying the original
-    api_key = get_api_key()
+    try:
+        api_key = get_api_key()
+    except VendorNotConfiguredError:
+        source_attempt("alpha_vantage", "not_configured")
+        raise
     api_params = params.copy()
     api_params.update(
         {
@@ -97,12 +103,14 @@ def _make_api_request(function_name: str, params: dict) -> dict | str:
         # Remove entitlement if it's None or empty
         api_params.pop("entitlement", None)
 
+    started = time.monotonic()
     try:
         response = get_scrubbed(
             API_BASE_URL, params=api_params, timeout=REQUEST_TIMEOUT, secret=api_key
         )
-    except requests.RequestException as exc:
-        error = VendorUnavailableError(f"Alpha Vantage request failed: {exc}")
+    except requests.RequestException:
+        source_attempt("alpha_vantage", "unavailable", (time.monotonic() - started) * 1000)
+        error = VendorUnavailableError("Alpha Vantage request failed")
     else:
         error = None
     if error is not None:
@@ -115,6 +123,7 @@ def _make_api_request(function_name: str, params: dict) -> dict | str:
     try:
         response_json = json.loads(response_text)
     except json.JSONDecodeError:
+        source_attempt("alpha_vantage", "available", (time.monotonic() - started) * 1000)
         return response_text
 
     # Alpha Vantage reports problems via "Information" / "Note". Classify so a
@@ -122,24 +131,31 @@ def _make_api_request(function_name: str, params: dict) -> dict | str:
     # rate-limit phrasing is checked first because those notices also mention
     # "API key" ("your API key ... 25 requests per day").
     if not isinstance(response_json, dict):
+        source_attempt("alpha_vantage", "unavailable", (time.monotonic() - started) * 1000)
         raise VendorUnavailableError("Alpha Vantage returned an unexpected response")
     notice = response_json.get("Information") or response_json.get("Note")
     if notice:
         notice = str(notice).replace(api_key, "***")
         low = notice.lower()
         if any(m in low for m in ("rate limit", "requests per day", "call frequency", "premium")):
-            raise AlphaVantageRateLimitError(f"Alpha Vantage rate limit exceeded: {notice}")
+            source_attempt("alpha_vantage", "unavailable", (time.monotonic() - started) * 1000)
+            raise AlphaVantageRateLimitError("Alpha Vantage rate limit exceeded")
         if "api key" in low or "apikey" in low:
             # Reuse the existing "not configured" error so a bad key surfaces as
             # a real, actionable failure rather than a mislabeled rate limit (#991).
-            raise AlphaVantageNotConfiguredError(
-                f"Alpha Vantage API key invalid or missing: {notice}"
-            )
-        raise VendorUnavailableError(f"Alpha Vantage could not serve the request: {notice}")
+            source_attempt("alpha_vantage", "not_configured", (time.monotonic() - started) * 1000)
+            raise AlphaVantageNotConfiguredError("Alpha Vantage API key invalid or missing")
+        source_attempt("alpha_vantage", "unavailable", (time.monotonic() - started) * 1000)
+        raise VendorUnavailableError("Alpha Vantage could not serve the request")
     if response_json.get("Error Message"):
-        message = str(response_json["Error Message"]).replace(api_key, "***")
-        raise VendorUnavailableError(f"Alpha Vantage rejected the request: {message}")
+        source_attempt("alpha_vantage", "unavailable", (time.monotonic() - started) * 1000)
+        raise VendorUnavailableError("Alpha Vantage rejected the request")
 
+    source_attempt(
+        "alpha_vantage",
+        "available" if response_json else "empty",
+        (time.monotonic() - started) * 1000,
+    )
     return response_text
 
 

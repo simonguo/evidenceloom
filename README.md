@@ -24,9 +24,15 @@ https://github.com/user-attachments/assets/3cc1cd5a-ddfe-4f01-99f7-02a1f7069bd8
 
 - Coordinates market, sentiment, news, fundamentals, research, trading, and risk agents.
 - Runs locally through a packaged sidecar on desktop; no Evidence Loom cloud account is required.
-- Keeps task history and reports on the device.
+- Keeps task history and reports on the device, with frozen report versions for review and export.
+- Shows output-format validation and text fallback in reports; legacy reports retain an explicit unknown status.
+- Saves the exact sanitized research inputs, actual provider attempts, full-precision normalized data, and citation IDs with each run; report versions and HTML/Markdown/JSON exports retain the evidence bundle and content hashes.
 - Stores desktop API keys in macOS Keychain or Windows Credential Manager.
 - Supports OpenAI-compatible APIs, Anthropic, Google, Azure OpenAI, DeepSeek, Qwen, GLM, MiniMax, OpenRouter, and local/custom endpoints.
+
+Research quality, evidence provenance, reproducibility, and analyst acceptance remain active development work. See the [professional quality criteria and evidence](docs/PROFESSIONAL_QUALITY.md).
+
+Saved citation IDs identify captured sources; they do not prove factual support. Unknown publication dates and historical content vintages remain explicit. See the [evidence bundle contract](docs/EVIDENCE_BUNDLE.md) for retention and cutoff limits.
 
 ## Supported platforms
 
@@ -51,11 +57,13 @@ uv sync --locked --group dev
 npm --prefix frontend ci
 ```
 
-Start the browser development UI at `http://localhost:31741`:
+Start the browser development UI at `http://127.0.0.1:31741`:
 
 ```bash
 npm --prefix frontend run dev
 ```
+
+The browser development server and `npm --prefix frontend run start` bind to `127.0.0.1` by default. Use Next.js's `--hostname` option after npm's `--` separator to choose another listening address explicitly. Tauri continues to use the local development server on port 31741.
 
 Start the Tauri development app:
 
@@ -116,11 +124,14 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked
 
 `uv run pytest` uses dummy credentials, temporary storage, and blocked network access. Tests marked `integration` are excluded by default. Run them explicitly with `uv run pytest -m integration` only when external provider calls are intended and the required credentials are configured.
 
+The scheduled and pull-request security checks also audit the exported, hash-pinned Python runtime dependencies. Frontend production auditing remains separate from the full development-tool audit. See the [dependency security record](docs/DEPENDENCY_SECURITY.md) for commands and the remaining unpatched development dependency.
+
 Build outputs and architecture-specific sidecars are generated locally and must not be committed. See [frontend/SIDECAR.md](frontend/SIDECAR.md) and [frontend/DESKTOP_DISTRIBUTION.md](frontend/DESKTOP_DISTRIBUTION.md) for packaging details.
 
 ## Troubleshooting
 
 - **The desktop app reports a missing sidecar:** build the runner for the same Rust target as the app by following [frontend/SIDECAR.md](frontend/SIDECAR.md); never rename a runner built for another architecture.
+- **The runtime check fails or reports an outdated sidecar:** rebuild with a Python interpreter matching the app's target. The check requires actual research imports; a bootstrap `ready` response alone is insufficient. Packaged cold-import checks have a 90-second deadline, and full analysis startup latency remains under investigation.
 - **A provider is still shown as unconfigured:** save its key again and approve the macOS Keychain or Windows Credential Manager prompt. Evidence Loom deliberately does not fall back to plaintext storage.
 - **Port 31741 is already in use:** stop the conflicting process or set a different development port consistently in the frontend and Tauri development configuration.
 - **A clean install fails:** confirm the supported Python, Node, npm, and Rust versions above, then run the commands with `--locked`/`npm ci`; do not regenerate lockfiles as a workaround.

@@ -20,9 +20,15 @@ https://github.com/user-attachments/assets/3cc1cd5a-ddfe-4f01-99f7-02a1f7069bd8
 
 - 协调行情、情绪、新闻、基本面、研究、交易和风险智能体。
 - 桌面端通过随应用打包的 sidecar 本地运行，无需 Evidence Loom 云账户。
-- 任务历史和报告保存在本机。
+- 任务历史和报告保存在本机；报告版本冻结保存，支持审阅与导出。
+- 报告展示输出格式验证和文本回退状态；旧报告明确标为未记录。
+- 每次运行保存经过脱敏的确切研究输入、实际来源尝试、完整精度的标准化数据与引用 ID；报告版本和 HTML/Markdown/JSON 导出保留证据包及内容哈希。
 - 桌面 API Key 保存到 macOS Keychain 或 Windows Credential Manager。
 - 支持 OpenAI 兼容接口、Anthropic、Google、Azure OpenAI、DeepSeek、通义千问、智谱、MiniMax、OpenRouter 与本地/自定义端点。
+
+研究准确性、证据追溯、可复现性及分析师验收仍在持续建设，见[专业化质量标准与验证证据](docs/PROFESSIONAL_QUALITY.md)。
+
+引用 ID 只能确认来源已保存，不能证明它支持报告事实。未知发表时间及历史内容版本会明确保留，保存与截止时间限制见[证据包契约](docs/EVIDENCE_BUNDLE.md)。
 
 ## 支持平台
 
@@ -117,6 +123,7 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked
 ## 故障排查
 
 - **桌面应用提示缺少 sidecar：** 按 [frontend/SIDECAR.md](frontend/SIDECAR.md) 为与桌面应用相同的 Rust target 构建 runner；不要给其他架构的产物改名冒充。
+- **运行环境检查失败或提示 sidecar 过旧：** 使用与应用 target 一致的 Python 解释器重新构建。检查要求实际研究依赖成功导入，仅返回启动事件 `ready` 不足以通过。打包版的冷启动导入检查设有 90 秒期限，完整分析的启动延迟仍在排查。
 - **Provider 仍显示未配置：** 重新保存 Key，并允许 macOS Keychain 或 Windows Credential Manager 的系统提示。Evidence Loom 不会降级到明文存储。
 - **31741 端口被占用：** 停止冲突进程，或同时修改前端与 Tauri 开发配置中的端口。
 - **干净安装失败：** 核对上文列出的 Python、Node、npm、Rust 版本，并使用带 `--locked` 的命令或 `npm ci`；不要用重建锁文件掩盖问题。

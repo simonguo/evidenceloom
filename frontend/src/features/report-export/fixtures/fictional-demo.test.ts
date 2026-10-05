@@ -12,7 +12,7 @@ describe("fictional demo task", () => {
 
     const first = getOrCreateFictionalDemoTask([], "zh");
     const repeated = getOrCreateFictionalDemoTask([first], "zh");
-    const independentlyCreated = createFictionalDemoTask("zh");
+    const independentlyCreated = createFictionalDemoTask("zh", true);
 
     expect(first.id).toBe(FICTIONAL_DEMO_TASK_ID);
     expect(repeated).toBe(first);

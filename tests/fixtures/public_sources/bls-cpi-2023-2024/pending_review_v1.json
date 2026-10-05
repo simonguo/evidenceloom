@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "kind": "public_source_pending_review",
+  "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+  "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+  "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+  "engineering_expectations": {
+    "provenance": "engineering",
+    "method_record": "Direct inspection of saved BLS response string cells and original response ordering; no independent expert approval or report-claim evaluation.",
+    "series_count": 2,
+    "observation_count": 48,
+    "values_remain_decimal_strings": true,
+    "selected_cells": [
+      {
+        "series_id": "CUSR0000SA0",
+        "year": "2023",
+        "period": "M12",
+        "value": "308.741",
+        "series_index": 0,
+        "observation_index": 12
+      },
+      {
+        "series_id": "CUSR0000SA0",
+        "year": "2023",
+        "period": "M11",
+        "value": "308.148",
+        "series_index": 0,
+        "observation_index": 13
+      },
+      {
+        "series_id": "CUUR0000SA0",
+        "year": "2023",
+        "period": "M12",
+        "value": "306.746",
+        "series_index": 1,
+        "observation_index": 12
+      },
+      {
+        "series_id": "CUUR0000SA0",
+        "year": "2023",
+        "period": "M11",
+        "value": "307.051",
+        "series_index": 1,
+        "observation_index": 13
+      }
+    ],
+    "historical_reference_status": "reference_metadata_only_no_numeric_authority",
+    "historical_positive_numeric_case_count": 0,
+    "historical_vintage": "unknown",
+    "first_public_availability_status": "unknown"
+  },
+  "expert_review": {
+    "status": "PENDING",
+    "reviewer": null,
+    "reviewed_at": null,
+    "approved_claim_denominator": 0,
+    "dimensions": {
+      "semantic_support": "PENDING",
+      "temporal_validity": "PENDING",
+      "inference_classification": "PENDING",
+      "abstention_appropriateness": "PENDING"
+    },
+    "labels": [],
+    "instructions": [
+      "Review exact saved current snapshot values, series subject, units, adjustment and monthly reference periods independently.",
+      "Do not treat today's API snapshot or the two release-reference notes as proof of historical numerical vintage or first public availability.",
+      "Record independently sourced labels, reviewer provenance, blinded method and disagreements in a separate future review artifact; this pending package has no approved expert labels."
+    ]
+  },
+  "pending_review_sha256": "714a424b7d49db3005fb780592b2e0b7b4589caab88334f0aefa9b2e53f2b75b"
+}

@@ -5,6 +5,9 @@ import pandas as pd
 
 from .alpha_vantage_common import _make_api_request, _filter_csv_by_date_range
 from .errors import NoMarketDataError
+from .evidence_utils import frame_data, observed_window
+from .alpha_vantage_common import API_BASE_URL
+from tradingagents.evidence import observe_source
 
 
 def get_stock(symbol: str, start_date: str, end_date: str) -> str:
@@ -38,8 +41,31 @@ def get_stock(symbol: str, start_date: str, end_date: str) -> str:
     response = _make_api_request("TIME_SERIES_DAILY_ADJUSTED", params)
 
     filtered = _filter_csv_by_date_range(response, start_date, end_date)
-    if not filtered.strip() or pd.read_csv(StringIO(filtered)).empty:
+    frame = pd.read_csv(StringIO(filtered)) if filtered.strip() else pd.DataFrame()
+    allowed = {
+        "timestamp",
+        "open",
+        "high",
+        "low",
+        "close",
+        "adjusted_close",
+        "volume",
+        "dividend_amount",
+        "split_coefficient",
+    }
+    frame = frame[[column for column in frame.columns if column in allowed]]
+    if frame.empty:
         raise NoMarketDataError(
             symbol, detail=f"no Alpha Vantage rows within {start_date}..{end_date}"
         )
-    return filtered
+    observe_source(
+        "alpha_vantage",
+        url=API_BASE_URL,
+        normalized_data=frame_data(frame),
+        observed_window=observed_window(frame, frame.columns[0]),
+        adjustments="Separately supplied adjusted_close column; OHLC fields left as supplied"
+        if "adjusted_close" in frame.columns
+        else None,
+        transformations=("Requested inclusive date window enforced",),
+    )
+    return frame.to_csv(index=False)

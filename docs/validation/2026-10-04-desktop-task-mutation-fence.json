@@ -1,0 +1,1869 @@
+{
+  "recorded_at_utc": "2026-10-04T21:13:01.022847+00:00",
+  "status": "local_candidate_validated_remote_native_ci_pending",
+  "base_commit": "cb234ece0613eff82df64d5bd47cb71f419cb2a8",
+  "implementation_commit": "8f6b2ee5674a3f331b73908934f3e2f7d7536306",
+  "source_changed_file_count": 30,
+  "source_files": [
+    {
+      "path": ".github/workflows/sidecar-diagnostics.yml",
+      "bytes": 7081,
+      "sha256": "7a8bf0038a2923699d9dc04b7179258c212fa87425caabfbca7ae61597555a15"
+    },
+    {
+      "path": "frontend/src/app/tasks/detail/page-deletion.test.ts",
+      "bytes": 6603,
+      "sha256": "3063b8145bf099bf1c8257879e05ceb33fce520e4bccd51aa340286c0c7a31ca"
+    },
+    {
+      "path": "frontend/src/app/tasks/detail/page.tsx",
+      "bytes": 16910,
+      "sha256": "5fadfae358f76cd7f868568f45d3cbf824ef5a03fd6ecad346d9a23b4dc995f9"
+    },
+    {
+      "path": "frontend/src/app/tasks/new/NewTaskFlow.test.ts",
+      "bytes": 2626,
+      "sha256": "65724e10fff72b77f25cfbe95a6c6da1a6f01f47b4ca8e6e12ce4441a1394fe0"
+    },
+    {
+      "path": "frontend/src/app/tasks/new/NewTaskFlow.tsx",
+      "bytes": 12688,
+      "sha256": "0d26954bd8222066bbf240de0ae28352b06c33d6db981593b78e092a4f036a09"
+    },
+    {
+      "path": "frontend/src/components/task-center/context.tsx",
+      "bytes": 41393,
+      "sha256": "e4794736d17ccdaa7477a3c35bb1a80d084a9873d009f3b1d6e9bb7710831829"
+    },
+    {
+      "path": "frontend/src/components/task-center/desktop-task-deletion.test.ts",
+      "bytes": 10036,
+      "sha256": "86ab2506a9665738e54686c9a72c51ccc70cefb1842edce67bbcd03b7a33741f"
+    },
+    {
+      "path": "frontend/src/components/task-center/desktop-task-mutation-fence.test.ts",
+      "bytes": 21684,
+      "sha256": "c30745dcd5d473bedbe77fdc35aa6877b035446ab94c0312b6a75952128281c9"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/TaskQueuePanel.test.ts",
+      "bytes": 1465,
+      "sha256": "7427431997ac59b6271190428810826014824ff19bce735d0c1f3df4411ccd74"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/TaskQueuePanel.tsx",
+      "bytes": 5159,
+      "sha256": "14e34f8d740c8f1c92b9b91c264f4970fc7f89a9dcef59b9d68d67c952ac2162"
+    },
+    {
+      "path": "frontend/src/components/task-center/queue/useTaskQueueController.ts",
+      "bytes": 18067,
+      "sha256": "5e698a729f9f9432b46c98dc95f1574de42e03081aec87c14d4d5da183a1a8c3"
+    },
+    {
+      "path": "frontend/src/features/desktop-task-store/lib/mutations.test.ts",
+      "bytes": 19415,
+      "sha256": "799d79a59f7ba1b8dd94b5bed629887121f01bc773bb6482c1ee893af7fbf8fc"
+    },
+    {
+      "path": "frontend/src/features/desktop-task-store/lib/mutations.ts",
+      "bytes": 22473,
+      "sha256": "28fe7cd429298556e768a16830cb2e60bfe56ac3392522306fdb3bb8454977e2"
+    },
+    {
+      "path": "frontend/src/features/desktop-task-store/lib/protocol.test.ts",
+      "bytes": 5551,
+      "sha256": "c9b463c631e308a27e0b01ea82d06ae2b207468fc960cdff0d27a0db5e043c0e"
+    },
+    {
+      "path": "frontend/src/features/desktop-task-store/lib/protocol.ts",
+      "bytes": 8069,
+      "sha256": "cece5e4edf9df781dd44a51897f69b705a873af22cad3264cf854aee3cefe394"
+    },
+    {
+      "path": "frontend/src/features/desktop-task-store/types.ts",
+      "bytes": 2105,
+      "sha256": "4ad0321ca26ebeba4efcde7a2740bd762ead2e62c67be589e44869c5df59b93e"
+    },
+    {
+      "path": "frontend/src/features/memory/hooks/useEvaluationReview.test.ts",
+      "bytes": 7163,
+      "sha256": "0789fc0d870d22b747d9f485e44bf8d2b0459c58bf46d2dd4439e8b7cb7d79c4"
+    },
+    {
+      "path": "frontend/src/features/memory/hooks/useEvaluationReview.ts",
+      "bytes": 2751,
+      "sha256": "eca76c3d02f133b06892954ab0c2ad9c0852763eb36b148271652b26e709a713"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/components/NumericReviewPanel.tsx",
+      "bytes": 3969,
+      "sha256": "80f98eb740712847ec2d5c5c2cd7c033b3b02392628d591a292c093f4408c930"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/hooks/useNumericReview.test.ts",
+      "bytes": 5549,
+      "sha256": "66e066930fe0304c8dc17387a0576f32b299e7e3ebd1c63392a53f8401a3413b"
+    },
+    {
+      "path": "frontend/src/features/numeric-review/hooks/useNumericReview.ts",
+      "bytes": 5219,
+      "sha256": "3e27bb0f97631877509716c16285f4bdf64e8a62fbc491398e60db7bbeb67ab8"
+    },
+    {
+      "path": "frontend/src/features/report-export/components/ReportVersionsPanel.tsx",
+      "bytes": 9216,
+      "sha256": "89f2cd5525b997989797c8c1bc75d7cc1331448faf635a4b1cbd7592cc6e855f"
+    },
+    {
+      "path": "frontend/src/lib/i18n.ts",
+      "bytes": 32186,
+      "sha256": "0b49626e4ed8f4786787c1afd8cf07492dd7fe8fbe9a944a150f0cecb0cbe60f"
+    },
+    {
+      "path": "frontend/src/lib/runtime.test.ts",
+      "bytes": 20978,
+      "sha256": "7a2905fd9bd838708db5a65e44bbc10f726af6e352337a937fc1e51bc339a52b"
+    },
+    {
+      "path": "frontend/src/lib/runtime.ts",
+      "bytes": 11265,
+      "sha256": "7698ed07a83e2cebcbb9b5cf71112a2e4b7cfe2ae630b6bbd2ffdc99c7ebece8"
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "bytes": 63488,
+      "sha256": "8798f8596139549fbd72866e34e4fa960a55b8c2e8a21a07b8ba62191df669b2"
+    },
+    {
+      "path": "src-tauri/src/storage.rs",
+      "bytes": 173191,
+      "sha256": "d0bc4b7f9695ecda6e1a296f9cd151d9d7e2f59596615d7cfdda57bd882ad68e"
+    },
+    {
+      "path": "src-tauri/src/storage/task_mutation.rs",
+      "bytes": 31614,
+      "sha256": "169a6e73b4e959ba4e6b585bde1eb2d7f8b7c981410ee5e47a96e170411fa3c1"
+    },
+    {
+      "path": "src-tauri/src/storage/task_mutation/tests.rs",
+      "bytes": 52790,
+      "sha256": "aeb6aa9d2e9ce856db64fd7bad98d0985d6f0e75e5bae8715d101f7ebd5c76be"
+    },
+    {
+      "path": "tests/fixtures/desktop_task_store_wire_v1.json",
+      "bytes": 11303,
+      "sha256": "5622468ce5e0a145d5bc9a887f6a4c78710e35b3ada9cc5c72bcfd19e108ee61"
+    }
+  ],
+  "product_objective": {
+    "status": "open",
+    "audience": "Professional analysts and independent researchers",
+    "areas": [
+      {
+        "area": "Source provenance",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Historical validity",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Evidence coverage",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Claims and citations",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Reproducibility",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Model and provider reliability",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Analyst workflow",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Execution control",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Security and privacy",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Research evaluation",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Release and operations",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Competitive quality",
+        "status": "open; partial engineering evidence may exist"
+      }
+    ],
+    "recorded_external_participant_completions": 0,
+    "expert_approved_claim_count": 0,
+    "participant_availability": "unknown"
+  },
+  "frontend": {
+    "inventory_count": 228,
+    "base_tracked_count": 220,
+    "new_count": 8,
+    "changed_count": 24,
+    "unchanged_tracked_count": 204,
+    "final_checks": {
+      "successful_required_checks": 7,
+      "actual_invocations": 8,
+      "failed_invocations": 1,
+      "rows": [
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/typescript/bin/tsc",
+            "--noEmit"
+          ],
+          "started_at": "2026-10-04T20:50:02.321347+00:00",
+          "ended_at": "2026-10-04T20:50:03.618385+00:00",
+          "elapsed_seconds": 1.296936333,
+          "exit_code": 0,
+          "source_equal": true,
+          "label": "frontend-final01-typecheck",
+          "execution": {
+            "path": "frontend-final01-typecheck-execution.json",
+            "bytes": 86392,
+            "sha256": "d0d931a11c180c7064a905bf05fe7c4d1b4981412d7c970ffe6f002a145c29bf"
+          },
+          "raw_log": {
+            "path": "frontend-final01-typecheck.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "matches_intended_freeze": true,
+          "classification": "successful final check"
+        },
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/eslint/bin/eslint.js",
+            "."
+          ],
+          "started_at": "2026-10-04T20:51:45.254351+00:00",
+          "ended_at": "2026-10-04T20:51:47.012960+00:00",
+          "elapsed_seconds": 1.758463375,
+          "exit_code": 0,
+          "source_equal": true,
+          "label": "frontend-final02-lint",
+          "execution": {
+            "path": "frontend-final02-lint-execution.json",
+            "bytes": 86382,
+            "sha256": "45d5b304a096bd3ab129f828e1a158adb2d212dbe5050650103c7753aa62d471"
+          },
+          "raw_log": {
+            "path": "frontend-final02-lint.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "matches_intended_freeze": true,
+          "classification": "successful final check"
+        },
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/vitest/vitest.mjs",
+            "run",
+            "--reporter=default",
+            "--reporter=junit",
+            "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/frontend/frontend-final03-full-junit.xml"
+          ],
+          "started_at": "2026-10-04T20:52:35.561373+00:00",
+          "ended_at": "2026-10-04T20:52:39.737631+00:00",
+          "elapsed_seconds": 4.176130583999999,
+          "exit_code": 0,
+          "source_equal": true,
+          "label": "frontend-final03-full",
+          "execution": {
+            "path": "frontend-final03-full-execution.json",
+            "bytes": 86597,
+            "sha256": "9ab780772fa22cd0f27e06f817763899b5d8635f5dad85125283169863ed3d0a"
+          },
+          "raw_log": {
+            "path": "frontend-final03-full.log",
+            "bytes": 31863,
+            "sha256": "da58002b4d9ec4ea4a73a28197d7bb6a7efd267a30978babb0dd00d939abe9cf"
+          },
+          "matches_intended_freeze": true,
+          "junit": {
+            "path": "frontend-final03-full-junit.xml",
+            "bytes": 202879,
+            "sha256": "ff0452bc2a9a80c10fe0c41c45b181481362090b2ab7e904fe69832a7be86b57"
+          },
+          "result": {
+            "tests": 737,
+            "passed": 737,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "suites": 52,
+            "suite_rows": [
+              {
+                "path": "src/lib/runtime.test.ts",
+                "tests": 26,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/decisions.test.ts",
+                "tests": 30,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/desktop-task-deletion.test.ts",
+                "tests": 7,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/desktop-task-mutation-fence.test.ts",
+                "tests": 13,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/persistence/local-storage.test.ts",
+                "tests": 9,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/app/api/_lib/runner-env.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/app/api/memory/route.test.ts",
+                "tests": 49,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/app/tasks/detail/page-deletion.test.ts",
+                "tests": 7,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/app/tasks/new/NewTaskFlow.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/queue/TaskQueuePanel.test.ts",
+                "tests": 1,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/queue/useTaskQueueController.test.ts",
+                "tests": 6,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/components/MemoryInspector.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/hooks/saveEvaluationReviews.test.ts",
+                "tests": 2,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/hooks/useEvaluationReview.test.ts",
+                "tests": 5,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/components/NumericReviewPanel.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/lib/export.test.ts",
+                "tests": 6,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/lib/persistence.test.ts",
+                "tests": 8,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/lib/target-persistence.test.ts",
+                "tests": 10,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/lib/targets.test.ts",
+                "tests": 39,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/lib/validation.test.ts",
+                "tests": 29,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/hooks/useNumericReview.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/desktop-task-store/lib/mutations.test.ts",
+                "tests": 24,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/desktop-task-store/lib/protocol.test.ts",
+                "tests": 30,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/evidence/components/EvidenceInspector.test.ts",
+                "tests": 1,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/lib/batch.test.ts",
+                "tests": 11,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/lib/decimal.test.ts",
+                "tests": 61,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/lib/export.test.ts",
+                "tests": 2,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/lib/persistence.test.ts",
+                "tests": 8,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/lib/validation.test.ts",
+                "tests": 16,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/evidence/lib/evidence.test.ts",
+                "tests": 22,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/output-quality/lib/quality.test.ts",
+                "tests": 7,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/components/ReportVersionComparison.test.ts",
+                "tests": 10,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/components/ReportVersionsPanel.test.ts",
+                "tests": 6,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/fixtures/fictional-demo.test.ts",
+                "tests": 2,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/hooks/useReportExport.test.ts",
+                "tests": 23,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/lib/comparison-metadata.test.ts",
+                "tests": 8,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/lib/comparison.test.ts",
+                "tests": 32,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/lib/renderers.test.ts",
+                "tests": 7,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/lib/runtime-settings.test.ts",
+                "tests": 4,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/lib/versioning.test.ts",
+                "tests": 5,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/settings/lib/normalize-settings.test.ts",
+                "tests": 1,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/source-identity/components/IdentityInspector.test.ts",
+                "tests": 4,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/source-identity/lib/export.test.ts",
+                "tests": 9,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/source-identity/lib/inherited-owner.test.ts",
+                "tests": 4,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/source-identity/lib/persistence.test.ts",
+                "tests": 9,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/source-identity/lib/validation.test.ts",
+                "tests": 80,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/source-identity/lib/versioning.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/research-readiness/components/ReadinessInspector.test.ts",
+                "tests": 2,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/research-readiness/lib/export.test.ts",
+                "tests": 10,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/research-readiness/lib/market-inputs.test.ts",
+                "tests": 29,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/research-readiness/lib/persistence.test.ts",
+                "tests": 10,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/research-readiness/lib/validation.test.ts",
+                "tests": 35,
+                "failures": 0,
+                "errors": 0
+              }
+            ]
+          },
+          "classification": "successful final check"
+        },
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/next/dist/bin/next",
+            "build"
+          ],
+          "started_at": "2026-10-04T20:53:01.794275+00:00",
+          "ended_at": "2026-10-04T20:53:19.555156+00:00",
+          "elapsed_seconds": 17.760810708999998,
+          "exit_code": 0,
+          "source_equal": true,
+          "label": "frontend-final04-web-build",
+          "execution": {
+            "path": "frontend-final04-web-build-execution.json",
+            "bytes": 86399,
+            "sha256": "7b797db0790d2009aa67aa76fd4ee00a594774e749296726a1fb08f8f9885d4a"
+          },
+          "raw_log": {
+            "path": "frontend-final04-web-build.log",
+            "bytes": 1751,
+            "sha256": "2fb646c159f7562d3d353b23913553a9caeb0249de83dc2c1f5d237369df4440"
+          },
+          "matches_intended_freeze": true,
+          "classification": "successful final check"
+        },
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/cross-env/src/bin/cross-env.js",
+            "TAURI=1",
+            "node",
+            "node_modules/next/dist/bin/next",
+            "build"
+          ],
+          "started_at": "2026-10-04T20:54:15.098890+00:00",
+          "ended_at": "2026-10-04T20:54:15.126742+00:00",
+          "elapsed_seconds": 0.02773875,
+          "exit_code": 1,
+          "source_equal": true,
+          "label": "frontend-final05-tauri-static-build",
+          "execution": {
+            "path": "frontend-final05-tauri-static-build-execution.json",
+            "bytes": 86477,
+            "sha256": "748155a7175a9c91d970c829280af0fc13f25c60e3fb689d4fb06de21c06af79"
+          },
+          "raw_log": {
+            "path": "frontend-final05-tauri-static-build.log",
+            "bytes": 779,
+            "sha256": "e90d5fc9d272232299f17db7feb9bf0a03d57da448c77655825c3943c082b07c"
+          },
+          "matches_intended_freeze": true,
+          "classification": "owned CLI path error before build; installed cross-env 10.1 bin is dist/bin/cross-env.js, not src/bin/cross-env.js; no source changes or build failure inferred"
+        },
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/cross-env/dist/bin/cross-env.js",
+            "TAURI=1",
+            "node",
+            "node_modules/next/dist/bin/next",
+            "build"
+          ],
+          "started_at": "2026-10-04T20:54:34.850121+00:00",
+          "ended_at": "2026-10-04T20:54:44.191854+00:00",
+          "elapsed_seconds": 9.341648916999999,
+          "exit_code": 0,
+          "source_equal": true,
+          "label": "frontend-final05b-tauri-static-build",
+          "execution": {
+            "path": "frontend-final05b-tauri-static-build-execution.json",
+            "bytes": 86487,
+            "sha256": "1eb6ab03376d20259642cd15ce6daf8c7adcffb6f7baaa7bc1ff4fcad0606eac"
+          },
+          "raw_log": {
+            "path": "frontend-final05b-tauri-static-build.log",
+            "bytes": 1664,
+            "sha256": "28fdf48fb1738c2d34801e0d992f340953d100b2834045d0e117ab23ab9650fd"
+          },
+          "matches_intended_freeze": true,
+          "classification": "successful final check"
+        },
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/typescript/bin/tsc",
+            "--noEmit"
+          ],
+          "started_at": "2026-10-04T20:59:15.005381+00:00",
+          "ended_at": "2026-10-04T20:59:17.535773+00:00",
+          "elapsed_seconds": 2.53031125,
+          "exit_code": 0,
+          "source_equal": true,
+          "label": "frontend-final06-generated-typecheck",
+          "execution": {
+            "path": "frontend-final06-generated-typecheck-execution.json",
+            "bytes": 86401,
+            "sha256": "04733e10dfb681d54c546c1faa1e9cfcde0d214c9651248f2dd7230d70b50a55"
+          },
+          "raw_log": {
+            "path": "frontend-final06-generated-typecheck.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          "matches_intended_freeze": true,
+          "classification": "successful final check"
+        },
+        {
+          "command": [
+            "/Users/apple/.nvm/versions/node/v22.22.3/bin/node",
+            "node_modules/vitest/vitest.mjs",
+            "run",
+            "src/lib/runtime.test.ts",
+            "src/features/desktop-task-store/lib/protocol.test.ts",
+            "src/features/desktop-task-store/lib/mutations.test.ts",
+            "src/components/task-center/desktop-task-mutation-fence.test.ts",
+            "src/components/task-center/desktop-task-deletion.test.ts",
+            "src/app/tasks/detail/page-deletion.test.ts",
+            "src/components/task-center/queue/useTaskQueueController.test.ts",
+            "src/components/task-center/queue/TaskQueuePanel.test.ts",
+            "src/app/tasks/new/NewTaskFlow.test.ts",
+            "src/features/memory/hooks/useEvaluationReview.test.ts",
+            "src/features/numeric-review/hooks/useNumericReview.test.ts",
+            "src/features/numeric-review/components/NumericReviewPanel.test.ts",
+            "src/features/report-export/components/ReportVersionsPanel.test.ts",
+            "--reporter=default",
+            "--reporter=junit",
+            "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/frontend/frontend-final07-targeted-junit.xml"
+          ],
+          "started_at": "2026-10-04T20:59:37.404388+00:00",
+          "ended_at": "2026-10-04T20:59:39.140124+00:00",
+          "elapsed_seconds": 1.735652834,
+          "exit_code": 0,
+          "source_equal": true,
+          "label": "frontend-final07-targeted",
+          "execution": {
+            "path": "frontend-final07-targeted-execution.json",
+            "bytes": 87387,
+            "sha256": "abca47f9c3bef3b1411ceb143442491b0efd5b99038bd912806b9a222b0e0554"
+          },
+          "raw_log": {
+            "path": "frontend-final07-targeted.log",
+            "bytes": 18053,
+            "sha256": "1167bcc9704de0baae9e108b9a29632363cf0b62ad0a407c44391ec50099d68d"
+          },
+          "matches_intended_freeze": true,
+          "junit": {
+            "path": "frontend-final07-targeted-junit.xml",
+            "bytes": 48414,
+            "sha256": "28a9c2877b3730d20c8382cfabd73ad95c5b473e668c2b71b9930049fa4190e0"
+          },
+          "result": {
+            "tests": 134,
+            "passed": 134,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0,
+            "suites": 13,
+            "suite_rows": [
+              {
+                "path": "src/lib/runtime.test.ts",
+                "tests": 26,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/desktop-task-deletion.test.ts",
+                "tests": 7,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/desktop-task-mutation-fence.test.ts",
+                "tests": 13,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/app/tasks/detail/page-deletion.test.ts",
+                "tests": 7,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/app/tasks/new/NewTaskFlow.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/queue/TaskQueuePanel.test.ts",
+                "tests": 1,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/components/task-center/queue/useTaskQueueController.test.ts",
+                "tests": 6,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/desktop-task-store/lib/mutations.test.ts",
+                "tests": 24,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/desktop-task-store/lib/protocol.test.ts",
+                "tests": 30,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/components/NumericReviewPanel.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/numeric-review/hooks/useNumericReview.test.ts",
+                "tests": 3,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/memory/hooks/useEvaluationReview.test.ts",
+                "tests": 5,
+                "failures": 0,
+                "errors": 0
+              },
+              {
+                "path": "src/features/report-export/components/ReportVersionsPanel.test.ts",
+                "tests": 6,
+                "failures": 0,
+                "errors": 0
+              }
+            ]
+          },
+          "classification": "successful final check"
+        }
+      ],
+      "full_result": {
+        "tests": 737,
+        "passed": 737,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "suites": 52,
+        "suite_rows": [
+          {
+            "path": "src/lib/runtime.test.ts",
+            "tests": 26,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/decisions.test.ts",
+            "tests": 30,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/desktop-task-deletion.test.ts",
+            "tests": 7,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/desktop-task-mutation-fence.test.ts",
+            "tests": 13,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/persistence/local-storage.test.ts",
+            "tests": 9,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/app/api/_lib/runner-env.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/app/api/memory/route.test.ts",
+            "tests": 49,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/app/tasks/detail/page-deletion.test.ts",
+            "tests": 7,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/app/tasks/new/NewTaskFlow.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/queue/TaskQueuePanel.test.ts",
+            "tests": 1,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/queue/useTaskQueueController.test.ts",
+            "tests": 6,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/components/MemoryInspector.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/hooks/saveEvaluationReviews.test.ts",
+            "tests": 2,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/hooks/useEvaluationReview.test.ts",
+            "tests": 5,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/components/NumericReviewPanel.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/lib/export.test.ts",
+            "tests": 6,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/lib/persistence.test.ts",
+            "tests": 8,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/lib/target-persistence.test.ts",
+            "tests": 10,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/lib/targets.test.ts",
+            "tests": 39,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/lib/validation.test.ts",
+            "tests": 29,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/hooks/useNumericReview.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/desktop-task-store/lib/mutations.test.ts",
+            "tests": 24,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/desktop-task-store/lib/protocol.test.ts",
+            "tests": 30,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/evidence/components/EvidenceInspector.test.ts",
+            "tests": 1,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/lib/batch.test.ts",
+            "tests": 11,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/lib/decimal.test.ts",
+            "tests": 61,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/lib/export.test.ts",
+            "tests": 2,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/lib/persistence.test.ts",
+            "tests": 8,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/lib/validation.test.ts",
+            "tests": 16,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/evidence/lib/evidence.test.ts",
+            "tests": 22,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/output-quality/lib/quality.test.ts",
+            "tests": 7,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/components/ReportVersionComparison.test.ts",
+            "tests": 10,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/components/ReportVersionsPanel.test.ts",
+            "tests": 6,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/fixtures/fictional-demo.test.ts",
+            "tests": 2,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/hooks/useReportExport.test.ts",
+            "tests": 23,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/lib/comparison-metadata.test.ts",
+            "tests": 8,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/lib/comparison.test.ts",
+            "tests": 32,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/lib/renderers.test.ts",
+            "tests": 7,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/lib/runtime-settings.test.ts",
+            "tests": 4,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/lib/versioning.test.ts",
+            "tests": 5,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/settings/lib/normalize-settings.test.ts",
+            "tests": 1,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/source-identity/components/IdentityInspector.test.ts",
+            "tests": 4,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/source-identity/lib/export.test.ts",
+            "tests": 9,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/source-identity/lib/inherited-owner.test.ts",
+            "tests": 4,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/source-identity/lib/persistence.test.ts",
+            "tests": 9,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/source-identity/lib/validation.test.ts",
+            "tests": 80,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/source-identity/lib/versioning.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/research-readiness/components/ReadinessInspector.test.ts",
+            "tests": 2,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/research-readiness/lib/export.test.ts",
+            "tests": 10,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/research-readiness/lib/market-inputs.test.ts",
+            "tests": 29,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/research-readiness/lib/persistence.test.ts",
+            "tests": 10,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/research-readiness/lib/validation.test.ts",
+            "tests": 35,
+            "failures": 0,
+            "errors": 0
+          }
+        ]
+      },
+      "targeted_result": {
+        "tests": 134,
+        "passed": 134,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "suites": 13,
+        "suite_rows": [
+          {
+            "path": "src/lib/runtime.test.ts",
+            "tests": 26,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/desktop-task-deletion.test.ts",
+            "tests": 7,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/desktop-task-mutation-fence.test.ts",
+            "tests": 13,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/app/tasks/detail/page-deletion.test.ts",
+            "tests": 7,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/app/tasks/new/NewTaskFlow.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/queue/TaskQueuePanel.test.ts",
+            "tests": 1,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/queue/useTaskQueueController.test.ts",
+            "tests": 6,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/desktop-task-store/lib/mutations.test.ts",
+            "tests": 24,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/desktop-task-store/lib/protocol.test.ts",
+            "tests": 30,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/components/NumericReviewPanel.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/hooks/useNumericReview.test.ts",
+            "tests": 3,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/hooks/useEvaluationReview.test.ts",
+            "tests": 5,
+            "failures": 0,
+            "errors": 0
+          },
+          {
+            "path": "src/features/report-export/components/ReportVersionsPanel.test.ts",
+            "tests": 6,
+            "failures": 0,
+            "errors": 0
+          }
+        ]
+      }
+    },
+    "matching_baseline": {
+      "actual_immutable_base": "cb234ece0613eff82df64d5bd47cb71f419cb2a8",
+      "product_method": "read-only git archive; exact six final test overlays, no base product edits; owned dependencies symlinked",
+      "base_frontend_paths_equal_base_gitblob_excluding_three_overlaid_existing_tests": 217,
+      "overlaid_test_rows": [
+        {
+          "path": "frontend/src/components/task-center/desktop-task-mutation-fence.test.ts",
+          "bytes": 21684,
+          "sha256": "c30745dcd5d473bedbe77fdc35aa6877b035446ab94c0312b6a75952128281c9"
+        },
+        {
+          "path": "frontend/src/features/memory/hooks/useEvaluationReview.test.ts",
+          "bytes": 7163,
+          "sha256": "0789fc0d870d22b747d9f485e44bf8d2b0459c58bf46d2dd4439e8b7cb7d79c4"
+        },
+        {
+          "path": "frontend/src/features/numeric-review/hooks/useNumericReview.test.ts",
+          "bytes": 5549,
+          "sha256": "66e066930fe0304c8dc17387a0576f32b299e7e3ebd1c63392a53f8401a3413b"
+        },
+        {
+          "path": "frontend/src/components/task-center/queue/TaskQueuePanel.test.ts",
+          "bytes": 1465,
+          "sha256": "7427431997ac59b6271190428810826014824ff19bce735d0c1f3df4411ccd74"
+        },
+        {
+          "path": "frontend/src/app/tasks/new/NewTaskFlow.test.ts",
+          "bytes": 2626,
+          "sha256": "65724e10fff72b77f25cfbe95a6c6da1a6f01f47b4ca8e6e12ce4441a1394fe0"
+        },
+        {
+          "path": "frontend/src/app/tasks/detail/page-deletion.test.ts",
+          "bytes": 6603,
+          "sha256": "3063b8145bf099bf1c8257879e05ceb33fce520e4bccd51aa340286c0c7a31ca"
+        }
+      ],
+      "all_six_overlay_bytes_equal_final_candidate": true,
+      "baseline_result": {
+        "tests": 32,
+        "passed": 11,
+        "failures": 21,
+        "errors": 0,
+        "skipped": 0,
+        "suites": 6,
+        "suite_rows": [
+          {
+            "path": "src/components/task-center/desktop-task-mutation-fence.test.ts",
+            "tests": 13,
+            "failures": 12,
+            "errors": 0
+          },
+          {
+            "path": "src/app/tasks/new/NewTaskFlow.test.ts",
+            "tests": 3,
+            "failures": 3,
+            "errors": 0
+          },
+          {
+            "path": "src/components/task-center/queue/TaskQueuePanel.test.ts",
+            "tests": 1,
+            "failures": 1,
+            "errors": 0
+          },
+          {
+            "path": "src/features/memory/hooks/useEvaluationReview.test.ts",
+            "tests": 5,
+            "failures": 1,
+            "errors": 0
+          },
+          {
+            "path": "src/app/tasks/detail/page-deletion.test.ts",
+            "tests": 7,
+            "failures": 3,
+            "errors": 0
+          },
+          {
+            "path": "src/features/numeric-review/hooks/useNumericReview.test.ts",
+            "tests": 3,
+            "failures": 1,
+            "errors": 0
+          }
+        ]
+      },
+      "candidate_same_suites": [
+        {
+          "path": "frontend/src/app/tasks/detail/page-deletion.test.ts",
+          "tests": 7,
+          "candidate_failures": 0
+        },
+        {
+          "path": "frontend/src/app/tasks/new/NewTaskFlow.test.ts",
+          "tests": 3,
+          "candidate_failures": 0
+        },
+        {
+          "path": "frontend/src/components/task-center/desktop-task-mutation-fence.test.ts",
+          "tests": 13,
+          "candidate_failures": 0
+        },
+        {
+          "path": "frontend/src/components/task-center/queue/TaskQueuePanel.test.ts",
+          "tests": 1,
+          "candidate_failures": 0
+        },
+        {
+          "path": "frontend/src/features/memory/hooks/useEvaluationReview.test.ts",
+          "tests": 5,
+          "candidate_failures": 0
+        },
+        {
+          "path": "frontend/src/features/numeric-review/hooks/useNumericReview.test.ts",
+          "tests": 3,
+          "candidate_failures": 0
+        }
+      ],
+      "artifacts": [
+        {
+          "path": "baseline-final-cb234-01/capture.json",
+          "bytes": 1679,
+          "sha256": "cb8e5e02f2a914f6bb2fcb758e6632619ed7b1d80d4fa051cf52708755d49c16"
+        },
+        {
+          "path": "baseline-final-cb234-01/execution.json",
+          "bytes": 85316,
+          "sha256": "844dbafec339c2819d9a018b06f637cf293eb90c01a3243eb31db5515052a1d8"
+        },
+        {
+          "path": "baseline-final-cb234-01/raw.log",
+          "bytes": 127328,
+          "sha256": "8ac0c18f6ccd96fa8b1bda1bdacd3574da5a081afbafd29c9c07bab0fa3773d0"
+        },
+        {
+          "path": "baseline-final-cb234-01/junit.xml",
+          "bytes": 152506,
+          "sha256": "8d5091bb36a7d4e361f2e781534383ead20b7314b65939c99ea5966d4eac4ec4"
+        }
+      ],
+      "interpretation": "21 assertion failures are not 21 independent old production/native bugs. Three NewTaskFlow tests use the newly asynchronous creator contract against formerly synchronous base API; queue/page call-arity assertions enforce new original-object provenance. Same-ID changed-identity old-ack navigation, pending SQL creation/dispatch, failed bootstrap, original-request confirmation, and review first-await capture are scoped actual old-source observations. Original adapter stale-listener control already passes on base. Golden/service/new wire adapter and modified legacy CRUD fixture cases are candidate-only, not paired base tests."
+    },
+    "full_act_warning_phrases": 41,
+    "targeted_act_warning_phrases": 26,
+    "warning_delta": "40 original full-suite phrases at matching prior contexts plus one new numeric-hook context; no suppression",
+    "warning_cause": "Test synchronization limitation. A possible asynchronous export-verification effect explanation is an inference, not a measured trace.",
+    "web_build_warning_marks": 2,
+    "static_build_warning_marks": 1,
+    "history": "Earlier draft baseline bytes differ. Preserve 01/02/11 and other original failures. First final static CLI-path error occurred before build; corrected installed dist bin succeeded with unchanged source."
+  },
+  "backend": {
+    "full_result": {
+      "passed": 183,
+      "failed": 0,
+      "ignored": 2,
+      "measured": 0,
+      "filtered": 0,
+      "test_seconds": 46.7
+    },
+    "targeted_result": [
+      "test result: ok. 43 passed; 0 failed; 0 ignored; 0 measured; 142 filtered out; finished in 1.82s"
+    ],
+    "executions": [
+      {
+        "receipt": {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-fmt-02.execution.json",
+          "bytes": 9587,
+          "sha256": "c8704e847abb71034ac18f491c099c5516255b311b3ef18749e9c14039db6ad5"
+        },
+        "name": "final-fmt-02",
+        "argv": [
+          "cargo",
+          "fmt",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--check"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 0.368108416,
+        "source_stable": true,
+        "versions": {
+          "cargo": {
+            "exit_code": 0,
+            "stdout": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)\n",
+            "stderr": ""
+          },
+          "rustc": {
+            "exit_code": 0,
+            "stdout": "rustc 1.95.0 (59807616e 2026-04-14)\n",
+            "stderr": ""
+          }
+        },
+        "env": {
+          "PATH": "/Users/apple/.codex/tmp/arg0/codex-arg0hf3Rbq:/Users/apple/.local/bin:/Users/apple/.catpawai/bin:/opt/homebrew/bin:/usr/local/opt/php@8.2/sbin:/usr/local/opt/php@8.2/bin:/Users/apple/.codeium/windsurf/bin:/usr/local/opt/php@7.4/sbin:/usr/local/opt/php@7.4/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/.nvm/versions/node/v22.22.3/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/Library/pnpm:/Users/apple/.bun/bin:/usr/local/opt/ruby/bin:/opt/anaconda3/bin:/opt/anaconda3/condabin:/Users/apple/development/flutter/bin:/Users/apple/.local/bin:/opt/local/bin:/opt/local/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/usr/local/go/bin:/Users/apple/.cargo/bin:/usr/local/sonar/sonar-scanner-4.6.0.2311-macosx/bin:/Users/apple/.rvm/bin:/Users/apple/.rvm/bin:/Users/apple/.vscode/extensions/openai.chatgpt-26.930.41038-darwin-arm64/bin/macos-aarch64",
+          "HOME": "/Users/apple",
+          "EVIDENCELOOM_TASK_FENCE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-fixtures",
+          "EVIDENCELOOM_LIFECYCLE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/lifecycle-fixtures",
+          "CARGO_TARGET_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-baseline-01/cargo-target",
+          "CARGO_MANIFEST_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/desktop-task-mutation-fence/src-tauri",
+          "LANGSMITH_TRACING": "false",
+          "LANGCHAIN_TRACING_V2": "false",
+          "PYTHON_DOTENV_DISABLED": "1"
+        },
+        "started_at": "2026-10-04T20:39:55.625500+00:00",
+        "ended_at": "2026-10-04T20:39:56.125727+00:00",
+        "logs": [
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-fmt-02.stdout.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-fmt-02.stderr.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ]
+      },
+      {
+        "receipt": {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/task-mutation-03.execution.json",
+          "bytes": 9718,
+          "sha256": "a7d5a061f3eb595a5a1a5d085ebd8e482d0c69af97996558d1700fac8798fcc8"
+        },
+        "name": "task-mutation-03",
+        "argv": [
+          "cargo",
+          "test",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "task_mutation",
+          "--",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 5.794757625,
+        "source_stable": true,
+        "versions": {
+          "cargo": {
+            "exit_code": 0,
+            "stdout": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)\n",
+            "stderr": ""
+          },
+          "rustc": {
+            "exit_code": 0,
+            "stdout": "rustc 1.95.0 (59807616e 2026-04-14)\n",
+            "stderr": ""
+          }
+        },
+        "env": {
+          "PATH": "/Users/apple/.codex/tmp/arg0/codex-arg0hf3Rbq:/Users/apple/.local/bin:/Users/apple/.catpawai/bin:/opt/homebrew/bin:/usr/local/opt/php@8.2/sbin:/usr/local/opt/php@8.2/bin:/Users/apple/.codeium/windsurf/bin:/usr/local/opt/php@7.4/sbin:/usr/local/opt/php@7.4/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/.nvm/versions/node/v22.22.3/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/Library/pnpm:/Users/apple/.bun/bin:/usr/local/opt/ruby/bin:/opt/anaconda3/bin:/opt/anaconda3/condabin:/Users/apple/development/flutter/bin:/Users/apple/.local/bin:/opt/local/bin:/opt/local/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/usr/local/go/bin:/Users/apple/.cargo/bin:/usr/local/sonar/sonar-scanner-4.6.0.2311-macosx/bin:/Users/apple/.rvm/bin:/Users/apple/.rvm/bin:/Users/apple/.vscode/extensions/openai.chatgpt-26.930.41038-darwin-arm64/bin/macos-aarch64",
+          "HOME": "/Users/apple",
+          "EVIDENCELOOM_TASK_FENCE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-fixtures",
+          "EVIDENCELOOM_LIFECYCLE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/lifecycle-fixtures",
+          "CARGO_TARGET_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-baseline-01/cargo-target",
+          "CARGO_MANIFEST_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/desktop-task-mutation-fence/src-tauri",
+          "LANGSMITH_TRACING": "false",
+          "LANGCHAIN_TRACING_V2": "false",
+          "PYTHON_DOTENV_DISABLED": "1"
+        },
+        "started_at": "2026-10-04T20:39:55.625629+00:00",
+        "ended_at": "2026-10-04T20:40:01.552360+00:00",
+        "logs": [
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/task-mutation-03.stdout.log",
+            "bytes": 5114,
+            "sha256": "ff555440fe007ca06f161ff85c3e59d5453d7b721be4fe6c9360baf49b3cdff4"
+          },
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/task-mutation-03.stderr.log",
+            "bytes": 426,
+            "sha256": "74fcfe3abdeac32e3f21213a90e436daa9f88bedb3df6ad50192942f6c3ffeec"
+          }
+        ]
+      },
+      {
+        "receipt": {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-clippy-02.execution.json",
+          "bytes": 9676,
+          "sha256": "8e1762c311ddfdd2b119da8b38ec5616d4ffaea40a48376dbf564402be23fa80"
+        },
+        "name": "final-clippy-02",
+        "argv": [
+          "cargo",
+          "clippy",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "-D",
+          "warnings"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 2.801835166,
+        "source_stable": true,
+        "versions": {
+          "cargo": {
+            "exit_code": 0,
+            "stdout": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)\n",
+            "stderr": ""
+          },
+          "rustc": {
+            "exit_code": 0,
+            "stdout": "rustc 1.95.0 (59807616e 2026-04-14)\n",
+            "stderr": ""
+          }
+        },
+        "env": {
+          "PATH": "/Users/apple/.codex/tmp/arg0/codex-arg0hf3Rbq:/Users/apple/.local/bin:/Users/apple/.catpawai/bin:/opt/homebrew/bin:/usr/local/opt/php@8.2/sbin:/usr/local/opt/php@8.2/bin:/Users/apple/.codeium/windsurf/bin:/usr/local/opt/php@7.4/sbin:/usr/local/opt/php@7.4/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/.nvm/versions/node/v22.22.3/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/Library/pnpm:/Users/apple/.bun/bin:/usr/local/opt/ruby/bin:/opt/anaconda3/bin:/opt/anaconda3/condabin:/Users/apple/development/flutter/bin:/Users/apple/.local/bin:/opt/local/bin:/opt/local/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/usr/local/go/bin:/Users/apple/.cargo/bin:/usr/local/sonar/sonar-scanner-4.6.0.2311-macosx/bin:/Users/apple/.rvm/bin:/Users/apple/.rvm/bin:/Users/apple/.vscode/extensions/openai.chatgpt-26.930.41038-darwin-arm64/bin/macos-aarch64",
+          "HOME": "/Users/apple",
+          "EVIDENCELOOM_TASK_FENCE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-fixtures",
+          "EVIDENCELOOM_LIFECYCLE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/lifecycle-fixtures",
+          "CARGO_TARGET_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-baseline-01/cargo-target",
+          "CARGO_MANIFEST_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/desktop-task-mutation-fence/src-tauri",
+          "LANGSMITH_TRACING": "false",
+          "LANGCHAIN_TRACING_V2": "false",
+          "PYTHON_DOTENV_DISABLED": "1"
+        },
+        "started_at": "2026-10-04T20:40:10.331257+00:00",
+        "ended_at": "2026-10-04T20:40:13.249158+00:00",
+        "logs": [
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-clippy-02.stdout.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-clippy-02.stderr.log",
+            "bytes": 221,
+            "sha256": "2fee7543615875eb1f5ff409448fd8b2ac534ec979ba7c93f83ddf91840bcda8"
+          }
+        ]
+      },
+      {
+        "receipt": {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-full-rust-02.execution.json",
+          "bytes": 9705,
+          "sha256": "ba7a980c77b82f84cd0e9b533cf5ceec26717fcde8c2e511801f06847178fc6f"
+        },
+        "name": "final-full-rust-02",
+        "argv": [
+          "cargo",
+          "test",
+          "--manifest-path",
+          "src-tauri/Cargo.toml",
+          "--all-targets",
+          "--locked",
+          "--offline",
+          "--",
+          "--nocapture",
+          "--test-threads=1"
+        ],
+        "exit_code": 0,
+        "elapsed_seconds": 47.067638625,
+        "source_stable": true,
+        "versions": {
+          "cargo": {
+            "exit_code": 0,
+            "stdout": "cargo 1.95.0 (f2d3ce0bd 2026-03-21)\n",
+            "stderr": ""
+          },
+          "rustc": {
+            "exit_code": 0,
+            "stdout": "rustc 1.95.0 (59807616e 2026-04-14)\n",
+            "stderr": ""
+          }
+        },
+        "env": {
+          "PATH": "/Users/apple/.codex/tmp/arg0/codex-arg0hf3Rbq:/Users/apple/.local/bin:/Users/apple/.catpawai/bin:/opt/homebrew/bin:/usr/local/opt/php@8.2/sbin:/usr/local/opt/php@8.2/bin:/Users/apple/.codeium/windsurf/bin:/usr/local/opt/php@7.4/sbin:/usr/local/opt/php@7.4/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/.nvm/versions/node/v22.22.3/bin:/Users/apple/.codeium/windsurf/bin:/Users/apple/Library/pnpm:/Users/apple/.bun/bin:/usr/local/opt/ruby/bin:/opt/anaconda3/bin:/opt/anaconda3/condabin:/Users/apple/development/flutter/bin:/Users/apple/.local/bin:/opt/local/bin:/opt/local/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/usr/local/go/bin:/Users/apple/.cargo/bin:/usr/local/sonar/sonar-scanner-4.6.0.2311-macosx/bin:/Users/apple/.rvm/bin:/Users/apple/.rvm/bin:/Users/apple/.vscode/extensions/openai.chatgpt-26.930.41038-darwin-arm64/bin/macos-aarch64",
+          "HOME": "/Users/apple",
+          "EVIDENCELOOM_TASK_FENCE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-fixtures",
+          "EVIDENCELOOM_LIFECYCLE_FIXTURE_ROOT": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/lifecycle-fixtures",
+          "CARGO_TARGET_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/sql-baseline-01/cargo-target",
+          "CARGO_MANIFEST_DIR": "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/desktop-task-mutation-fence/src-tauri",
+          "LANGSMITH_TRACING": "false",
+          "LANGCHAIN_TRACING_V2": "false",
+          "PYTHON_DOTENV_DISABLED": "1"
+        },
+        "started_at": "2026-10-04T20:41:23.161205+00:00",
+        "ended_at": "2026-10-04T20:42:10.352431+00:00",
+        "logs": [
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-full-rust-02.stdout.log",
+            "bytes": 19216,
+            "sha256": "1c1a5abf38f4aaca02024f3c936d96783d9c349523839d7a6cce3c6db8e081b0"
+          },
+          {
+            "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-task-mutation-fence/backend-checks-03/final-full-rust-02.stderr.log",
+            "bytes": 907,
+            "sha256": "5a2ae83f0c19466a1ee386e3433efc9a41701fd289d2f1b2940bcba51a9b58bb"
+          }
+        ]
+      }
+    ],
+    "compiler_warning_count": 0,
+    "intentional_injection_panic_count": 5,
+    "unexpected_panic_count": 0,
+    "ignored_tests": [
+      {
+        "line": 68,
+        "text": "test research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory ... ignored, requires explicitly built sidecar and fixture memory store"
+      },
+      {
+        "line": 90,
+        "text": "test runtime_probe::tests::packaged_artifact_verifies_actual_runtime ... ignored, requires explicitly built sidecar"
+      }
+    ],
+    "freeze2_scope": "Only append one serializer-corpus test and new shared fixture; three production paths plus thirteen protected boundaries equal frozen1. All original 47683 test bytes retained.",
+    "history": "Preserve compilation, rejected reused-ID fixture, Clippy, placeholder generation and artifact-builder assumption failures; no original receipt overwritten."
+  },
+  "shared_wire": {
+    "path": "tests/fixtures/desktop_task_store_wire_v1.json",
+    "bytes": 11303,
+    "sha256": "5622468ce5e0a145d5bc9a887f6a4c78710e35b3ada9cc5c72bcfd19e108ee61",
+    "serialized_reply_cases": 8,
+    "full_snapshot": true,
+    "production_paths": "Rust owned SQLite helper and serde output reproduced exactly; TypeScript production parser consumes identical strings in permanent tests.",
+    "limits": "No native IPC/UI/real OS clear acceptance; client does not recompute the server digest."
+  },
+  "sql_baseline_scope": "Four observations using old production SQL helpers in owned SQLite demonstrate restoration after deletion/SQL clear, legacy-loop restoration and late initial creation. Instrumented tests restored all baseline tracked source; not an identical-new-protocol-test negative pair or full OS-clear proof.",
+  "root_positive_probe_scope": "Owned copies of mutable candidate service/parser and fictional transport. Positive observations retain original bytes; initial missing-esbuild harness error ran no tests. They are historical positives, not final whole-source or IPC acceptance.",
+  "ci_change": {
+    "workflow": ".github/workflows/sidecar-diagnostics.yml",
+    "change": "One added task_mutation Rust filter in all three native jobs; original workflow bytes recovered by removing this line.",
+    "local_filter_passed": 43,
+    "remote_status": "not yet verified for a published candidate",
+    "required_future_gates": "Final published head Python jobs and all three complete native source, package, Rust, fixture, two real packaged bridge and cleanup stages."
+  },
+  "scope_limits": [
+    "Frontend intent, run owner and retry state last for one mounted UI lifetime; no task IPC deadline added.",
+    "No full native runtime/event journal, refresh/remount recovery, original run-context replay or shutdown acceptance.",
+    "No browser localStorage CAS, settings/Keychain atomicity, cross-store rollback or external database rollback detection.",
+    "Owned SQLite, process fixtures and mocked Provider/hooks/DOM/adapter transport do not establish real native IPC/UI, clean installs, signing or release acceptance.",
+    "No provider/model request, supplied key use, dependency install or fresh audit in this slice.",
+    "No expert semantic labels, external analyst completion, factual research quality, predictive value or competitive ranking established.",
+    "Two real packaged bridges are ignored locally because only an owned compile placeholder is present; real packaged gates remain required remotely.",
+    "Matching baseline includes API-adoption/provenance assertions; 21 failures are not 21 independent old bugs. Old-listener control already passed on base."
+  ],
+  "evidence_artifacts": [
+    {
+      "artifact": "desktop-task-mutation-fence/root-source-commit-20261004T210727195033Z.json",
+      "bytes": 56474,
+      "sha256": "e28600091af091ee20cff54dc1e0bb9058fc4a1c9dc4147a0dbb83e2f66d374e"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/frontend/frontend-intended-final-source-freeze-01.json",
+      "bytes": 50357,
+      "sha256": "5267612824c36b715b0f96dfc16bed622828eb049d730ed07e6be7ea4525b133"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/frontend/frontend-final-validation-summary.json",
+      "bytes": 169439,
+      "sha256": "ab68939207da6d3f07960d0627ada1dd08801dc759cd167bbfee75cd17e6f36e"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/frontend/frontend-final-writer-closure.json",
+      "bytes": 8628,
+      "sha256": "2715c7c5c1fd73bbb3f92e180e1d07f4a845d5ca5b25508eb485b641c885a6ea"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/frontend/baseline-final-cb234-01/execution.json",
+      "bytes": 85316,
+      "sha256": "844dbafec339c2819d9a018b06f637cf293eb90c01a3243eb31db5515052a1d8"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/backend-source-freeze-01.json",
+      "bytes": 6505,
+      "sha256": "42134a59e8e04374312b4ac4b2a6f94bb83169d02184b548f65c3d1ad121933c"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/backend-final-verification-01.json",
+      "bytes": 36054,
+      "sha256": "a9546da51a9a6bacb7d72637e85e7e3bf0bef597dfdbe3c7c85b41b9ff952290"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/backend-source-freeze-02.json",
+      "bytes": 8358,
+      "sha256": "e46076a560a14c990ee861f2b6d9403a1869afa55ef76f7b82b90f06443d4cf5"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/backend-final-verification-02.json",
+      "bytes": 25337,
+      "sha256": "e681dd5cde199cbfeeda916c30eabf7f8f38ea858c42bd52a8a511d7bf961b30"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/sql-baseline-01/execution.json",
+      "bytes": 226397,
+      "sha256": "2b1e83a2db05e196eb3dec99983c50a26a655264b6aea6691a1a93b624d46293"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-service-confirmation-probe-01/execution.json",
+      "bytes": 1039,
+      "sha256": "af32142eb923bb94c6ab29a9c9e0c6620268f748bb9bdef75d86e0d8a538176d"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-service-confirmation-probe-02/execution.json",
+      "bytes": 2136,
+      "sha256": "3a630ad3c4117c741cb6ad3fbb6d74d4f1530ce20c6042363e2457c22b117591"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-service-epoch-clear-probe-01/execution.json",
+      "bytes": 2084,
+      "sha256": "b1e16e18138672850cdb6f628fa7c0a858feb62fbe786b43461eff3daec1082b"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-shared-wire-parser-probe-01/execution.json",
+      "bytes": 1636,
+      "sha256": "23930d265b4affc302709cdfd8196ba74c645c987dd10654baf7cb69eb807be7"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-current-repository-state-20261004T204306591858Z.json",
+      "bytes": 6571,
+      "sha256": "52645f3c63a88e71d8b946e9d906c4c138a65a4d9f69ce2d1130eccd2e91e64f"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/frontend-independent-review-01/frontend-final-review-01.json",
+      "bytes": 100537,
+      "sha256": "b52e125d00ebefb0fcbd457433d0975bb3d1156d2b954246d2caa3ddf67a30bf"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/frontend-independent-review-01/frontend-author-summary-binding-supplement-01.json",
+      "bytes": 129033,
+      "sha256": "45b2b85560d6209bc38770678b3a0729436486ed1f2bf57a1dc45ed6033a8ec3"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-doc-builder-initial-relative-path-failure-01.json",
+      "bytes": 913,
+      "sha256": "7a5781deaec0a0a68bbc5f24043e7c026b089202dcae351f67f9929244f58060"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence-preflight/independent-backend-freeze-01-review-corrected-20261004T203218624823Z/independent-backend-freeze-01-final-review-corrected-matrix.json",
+      "bytes": 92888,
+      "sha256": "4d73b931243dd0fb575b5e637fac68b2214d872c2d77cf1211865485fca157d8"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence-preflight/independent-backend-freeze-02-corpus-review-20261004T204716827291Z/independent-backend-freeze-02-shared-corpus-final-review.json",
+      "bytes": 37375,
+      "sha256": "d7652f1cef9a3d23c64b1d46cd241f7b02f0263a232661704932358e5ec9b65b"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence-preflight/independent-final-matching-baseline-audit-20261004T210405958880Z/independent-final-matching-baseline-review.json",
+      "bytes": 581809,
+      "sha256": "420d14a58921f972bad4031234ba08314c3b95d17ac893c7653695a9a8ee88f8"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence-preflight/independent-publication-facts-scope-audit-20261004T205843684462Z/independent-publication-facts-scope-audit.json",
+      "bytes": 42245,
+      "sha256": "5be6626d81dedf251c690c5c8df191a44832da8ae8554e57d14c47b3280c05f0"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-wire-contract-addendum-v1.json",
+      "bytes": 3807,
+      "sha256": "3008123f9c5675db59971f4056e164615177c9d3a8da32c75c3b2641059933af"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-wire-contract-v1.json",
+      "bytes": 3943,
+      "sha256": "b414331d1323725b750be2d40aef0fe0645ffdbb7a694d820936d798b9150706"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-wire-outcome-transitions-addendum-v1.json",
+      "bytes": 6253,
+      "sha256": "601e01804f70efa6c90fc667dc085d57fd5c0c1974bd1d22fb25e96ad0458705"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-durable-rejection-interpretation-addendum-v1.json",
+      "bytes": 2216,
+      "sha256": "f7be38949c4c717bdcc9fa3c6482960ced3cd8e52792fb14acf17b86ffdec63d"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-native-task-mutation-ci-addendum-v1.json",
+      "bytes": 1504,
+      "sha256": "cfec4af33e77afded26ab5fdaaae661b55988c5953c0c4af336bf6df24570693"
+    },
+    {
+      "artifact": "desktop-task-mutation-fence/root-shared-wire-corpus-ownership-addendum-v1.json",
+      "bytes": 1700,
+      "sha256": "92af0edc576c81f03d1eba244f668a0386788e335f88b1ad962b738c6fd477fb"
+    }
+  ],
+  "published_pr": null,
+  "merged": false
+}

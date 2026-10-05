@@ -10,6 +10,7 @@ so they share the same deterministic output shape.
 from unittest.mock import MagicMock
 
 import pytest
+from langchain_core.exceptions import OutputParserException
 from pydantic import ValidationError
 
 from tradingagents.agents.analysts import sentiment_analyst as sentiment_module
@@ -391,7 +392,7 @@ class TestSentimentAnalystAgent:
     def test_falls_back_to_freetext_when_structured_call_fails(self):
         plain = "Fallback free-text sentiment."
         structured = MagicMock()
-        structured.invoke.side_effect = ValueError("bad JSON from model")
+        structured.invoke.side_effect = OutputParserException("bad JSON from model")
         llm = MagicMock()
         llm.with_structured_output.return_value = structured
         llm.invoke.return_value = MagicMock(content=plain)

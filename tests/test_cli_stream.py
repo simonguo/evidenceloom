@@ -96,12 +96,15 @@ def test_cli_stream_reports_parallel_starts_and_resumes_a_typed_decision(
         kind == "System" and content == "Resuming saved analysis"
         for _, kind, content in cli.message_buffer.messages
     )
-    assert resumed.curr_state["final_rating"] == "Overweight"
-    entries = resumed.memory_log.load_entries()
-    assert len(entries) == 1 and entries[0]["rating"] == "Overweight"
+    assert resumed.curr_state["final_rating"] == "REVIEW"
+    memory = resumed.curr_state["memory_bundle"]
+    assert resumed._research_memory().store.load_bundle(memory["run_id"]) == memory
+    assert memory["decision_snapshot"]["decision"]["rating"] == "REVIEW"
+    assert resumed.memory_log.load_entries() == []
     log_file = next((tmp_path / "results").rglob("full_states_log_*.json"))
     saved = json.loads(log_file.read_text())
-    assert saved["final_rating"] == "Overweight"
+    assert saved["final_rating"] == "REVIEW"
+    assert saved["memory_bundle"] == memory
     assert saved["run_settings"]["analyst_concurrency_limit"] == 2
     assert checkpoint_step(config["data_cache_dir"], "NVDA", TRADE_DATE, signature) is None
     assert resumed._checkpointer_ctx is None and resumed.graph.checkpointer is None

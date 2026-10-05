@@ -7,13 +7,21 @@ import { taskDetailHref } from "../utils";
 type TaskQueuePanelProps = {
   runningTask: AnalysisTask | null;
   queuedTasks: AnalysisTask[];
+  cleanupFailedTask: AnalysisTask | null;
+  cleanupRetrying: boolean;
+  cleanupUnconfirmed?: boolean;
+  resultPendingTask?: AnalysisTask | null;
+  resultRetrying?: boolean;
+  onRetryResult?: () => void;
+  stopping: boolean;
+  onRetryCleanup: () => void;
   language: SystemLanguage;
   onStop: () => void;
-  onCancel: (taskId: string) => void;
-  onMove: (taskId: string, direction: "up" | "down") => void;
+  onCancel: (taskId: string, task?: AnalysisTask) => void;
+  onMove: (taskId: string, direction: "up" | "down", task?: AnalysisTask) => void;
 };
 
-export function TaskQueuePanel({ runningTask, queuedTasks, language, onStop, onCancel, onMove }: TaskQueuePanelProps) {
+export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, cleanupUnconfirmed = false, resultPendingTask = null, resultRetrying = false, onRetryResult, stopping, onRetryCleanup, language, onStop, onCancel, onMove }: TaskQueuePanelProps) {
   const t = createTranslator(language);
 
   return (
@@ -26,17 +34,35 @@ export function TaskQueuePanel({ runningTask, queuedTasks, language, onStop, onC
         <span className="whitespace-nowrap text-xs text-zinc-500">{t("queuedCount", { count: queuedTasks.length })}</span>
       </div>
 
+      {cleanupFailedTask && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-zinc-900 px-5 py-3 text-sm text-rose-200">
+          <Link href={taskDetailHref(cleanupFailedTask.id)} className="font-medium">{cleanupFailedTask.ticker}</Link>
+          <span className="min-w-0 flex-1">{t(cleanupUnconfirmed ? "analysisCleanupUnconfirmed" : "analysisCleanupFailed")}</span>
+          <button type="button" disabled={cleanupRetrying} onClick={onRetryCleanup} className="vercel-button disabled:opacity-50">
+            {cleanupRetrying ? t("analysisStopping") : t("retryAnalysisCleanup")}
+          </button>
+        </div>
+      )}
+
+      {resultPendingTask && (
+        <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-zinc-900 px-5 py-3 text-sm text-amber-200">
+          <Link href={taskDetailHref(resultPendingTask.id)} className="font-medium">{resultPendingTask.ticker}</Link>
+          <span className="min-w-0 flex-1">{t("analysisResultPending")}</span>
+          <button type="button" disabled={resultRetrying} onClick={onRetryResult} className="vercel-button disabled:opacity-50">{t("retryAnalysisResult")}</button>
+        </div>
+      )}
+
       {runningTask && (
         <div className="flex items-center gap-3 border-b border-zinc-900 px-5 py-3">
           <Activity className="size-4 shrink-0 animate-pulse text-sky-300" />
           <Link href={taskDetailHref(runningTask.id)} className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium text-white">{runningTask.ticker}</span>
-              <span className="text-xs text-sky-300">{t("queueCurrent")}</span>
+              <span className="text-xs text-sky-300">{stopping ? t("analysisStopping") : t("queueCurrent")}</span>
             </div>
             {runningTask.instrumentName && <div className="mt-0.5 truncate text-xs text-zinc-500">{runningTask.instrumentName}</div>}
           </Link>
-          <button type="button" onClick={onStop} title={t("stopTask")} aria-label={t("stopTask")} className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-800 text-rose-300 transition hover:border-zinc-600 hover:bg-rose-950/30">
+          <button type="button" disabled={stopping} onClick={onStop} title={t("stopTask")} aria-label={t("stopTask")} className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-800 text-rose-300 transition hover:border-zinc-600 hover:bg-rose-950/30">
             <Square className="size-3.5" />
           </button>
         </div>
@@ -54,9 +80,9 @@ export function TaskQueuePanel({ runningTask, queuedTasks, language, onStop, onC
               {task.instrumentName && <div className="mt-0.5 truncate text-xs text-zinc-500">{task.instrumentName}</div>}
             </Link>
             <div className="flex shrink-0 items-center gap-1">
-              <QueueIconButton label={t("moveUp")} disabled={index === 0} onClick={() => onMove(task.id, "up")} icon={<ArrowUp className="size-3.5" />} />
-              <QueueIconButton label={t("moveDown")} disabled={index === queuedTasks.length - 1} onClick={() => onMove(task.id, "down")} icon={<ArrowDown className="size-3.5" />} />
-              <QueueIconButton label={t("cancelQueue")} onClick={() => onCancel(task.id)} icon={<X className="size-3.5" />} danger />
+              <QueueIconButton label={t("moveUp")} disabled={index === 0} onClick={() => onMove(task.id, "up", task)} icon={<ArrowUp className="size-3.5" />} />
+              <QueueIconButton label={t("moveDown")} disabled={index === queuedTasks.length - 1} onClick={() => onMove(task.id, "down", task)} icon={<ArrowDown className="size-3.5" />} />
+              <QueueIconButton label={t("cancelQueue")} onClick={() => onCancel(task.id, task)} icon={<X className="size-3.5" />} danger />
             </div>
           </div>
         ))}

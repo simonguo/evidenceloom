@@ -1,13 +1,19 @@
 "use client";
+import { verifiedIdentityExport } from "@/features/source-identity/lib/export";
 
 import { useEffect, useMemo, useState } from "react";
 import { getRuntimeAdapter } from "@/lib/runtime";
-import type { AnalysisTask, SystemLanguage } from "@/lib/types";
+import type { AnalysisTask, ReportVersion, SystemLanguage } from "@/lib/types";
 import type { ExportFormat } from "../types";
 import { buildReportDocument } from "../lib/report-document";
 import { reportExportFilename } from "../lib/filename";
 import { renderReportHtml } from "../lib/render-html";
 import { renderReportMarkdown } from "../lib/render-markdown";
+import { verifyEvidenceBundle } from "@/features/evidence/lib/validation";
+import { verifiedExportVersion } from "@/features/memory/lib/export";
+import { verifiedReadinessExport } from "@/features/research-readiness/lib/export";
+import { verifiedNumericExport } from "@/features/numeric-review/lib/export";
+import { reportJson } from "../lib/report-json";
 
 export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
   const versions = useMemo(
@@ -31,12 +37,21 @@ export function useReportExport(task: AnalysisTask, language: SystemLanguage) {
     setExporting(format);
     setMessage("");
     try {
-      const document = buildReportDocument(task.id, task.origin, selectedVersion, language);
-      const content = format === "html"
+      let frozenVersion = JSON.parse(JSON.stringify(selectedVersion)) as ReportVersion;
+      const taskId = task.id;
+      const origin = task.origin;
+      if (frozenVersion.evidenceValidation) throw new Error(`Evidence bundle is invalid: ${frozenVersion.evidenceValidation.reason}`);
+      if (frozenVersion.evidenceBundle) frozenVersion.evidenceBundle = await verifyEvidenceBundle(frozenVersion.evidenceBundle, frozenVersion.reportSections);
+      frozenVersion = await verifiedExportVersion(frozenVersion);
+      frozenVersion = await verifiedReadinessExport(frozenVersion);
+      frozenVersion = await verifiedNumericExport(taskId, frozenVersion);
+      frozenVersion = await verifiedIdentityExport(frozenVersion);
+      const document = buildReportDocument(taskId, origin, frozenVersion, language);
+      const content = format === "json" ? JSON.stringify(reportJson(taskId, origin, frozenVersion, { memoryHashesVerified: Boolean(frozenVersion.memoryBundle) }), null, 2) : format === "html"
         ? renderReportHtml(document)
         : renderReportMarkdown(document);
       const result = await getRuntimeAdapter().saveTextExport({
-        suggestedName: reportExportFilename(selectedVersion, format),
+        suggestedName: reportExportFilename(frozenVersion, format),
         format,
         content,
       });

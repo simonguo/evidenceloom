@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "target": "x86_64-apple-darwin",
+  "host_architecture": "arm64",
+  "python_architecture": "x86_64",
+  "execution_mode": "Rosetta 2",
+  "binary_sha256": "dadc06b83ba465441124355f200c08846963da6b39a7271e7fb4b4eb8d0d5828",
+  "manifest": {
+    "type": "evidence_ready",
+    "schema_version": 1,
+    "code_sha256": "71884b70661131bea9d149b98ab2bfda02f989aeb5fbdff6f89230857c364c8f",
+    "prompt_templates_sha256": "ab98de248667730cd987b89709e796c66a86eaf587e55a3ed30ee1027b343a5b",
+    "source_file_count": 80
+  },
+  "provider_requests": 0,
+  "measurements": [
+    {
+      "scope": "bootstrap",
+      "attempt": 1,
+      "seconds": 22.1147,
+      "event_type": "ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    },
+    {
+      "scope": "bootstrap",
+      "attempt": 2,
+      "seconds": 12.2079,
+      "event_type": "ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    },
+    {
+      "scope": "bootstrap",
+      "attempt": 3,
+      "seconds": 11.7072,
+      "event_type": "ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    },
+    {
+      "scope": "source_inventory",
+      "attempt": 1,
+      "seconds": 12.1494,
+      "event_type": "evidence_ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    },
+    {
+      "scope": "source_inventory",
+      "attempt": 2,
+      "seconds": 11.5669,
+      "event_type": "evidence_ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    },
+    {
+      "scope": "source_inventory",
+      "attempt": 3,
+      "seconds": 11.5032,
+      "event_type": "evidence_ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    },
+    {
+      "scope": "research_imports",
+      "attempt": 1,
+      "seconds": 62.8508,
+      "event_type": "runtime_ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    },
+    {
+      "scope": "research_imports",
+      "attempt": 2,
+      "seconds": 43.0167,
+      "event_type": "runtime_ready",
+      "exit_code": 0,
+      "stderr_bytes": 0,
+      "fresh_process": true,
+      "fresh_extraction_directory": true
+    }
+  ],
+  "wrong_architecture_rejected": true,
+  "scope": "Fresh processes and extraction directories on one local host; filesystem caches were not reset.",
+  "source_diagnostic_seconds": [
+    {
+      "command": "smoke_test",
+      "attempt": 1,
+      "seconds": 0.0522
+    },
+    {
+      "command": "smoke_test",
+      "attempt": 2,
+      "seconds": 0.0528
+    },
+    {
+      "command": "smoke_test",
+      "attempt": 3,
+      "seconds": 0.0537
+    },
+    {
+      "command": "evidence_manifest",
+      "attempt": 1,
+      "seconds": 0.0587
+    },
+    {
+      "command": "evidence_manifest",
+      "attempt": 2,
+      "seconds": 0.0578
+    },
+    {
+      "command": "evidence_manifest",
+      "attempt": 3,
+      "seconds": 0.0584
+    }
+  ],
+  "diagnostic_source_sha256": {
+    "cli/runner_diagnostics.py": "b43d8e8905b6a038e85e23c4bea45804a378dd8c73804907375b80b72362471c",
+    "cli/research_manifest.py": "42d8f220abffd02791b4d781250f425dcd3344e8e4ab29cd702a814a0bf64f52",
+    "cli/runner_protocol.py": "17f74a40c6e9f73a80925a3f3260dd04f87bacc90ce20049de5efa572ad84fd0",
+    "frontend/server/run_analysis.py": "e66c07ec6a6fb569c3e6de102b7203106bc8038f47237fe6c2b989823204c20a",
+    "frontend/server/evidenceloom-runner.spec": "5ad52e91a6c6fbf94e29efaae9f482ab3c1ca781e827f7135c995971bc41bbed"
+  },
+  "limitations": [
+    "Full analysis startup remains expensive.",
+    "Native arm64/Intel and Windows clean installation, signing, upgrade, and provider compatibility are not established.",
+    "Bootstrap/source inventory do not verify research imports or provider availability.",
+    "The code hash covers tradingagents/**/*.py; the prompt hash covers tradingagents/agents/**/*.py."
+  ],
+  "host_architecture_verification": {
+    "hw_optional_arm64": 1,
+    "python_proc_translated": 1,
+    "native_node_architecture": "arm64",
+    "note": "uname launched by translated Python reports the process architecture, so it was not used for host identity."
+  },
+  "rust_packaged_integration": {
+    "application_module": {
+      "exit_code": 0,
+      "elapsed_seconds": 56.2378
+    },
+    "minimal_driver": {
+      "exit_code": 0,
+      "probe_seconds": 68.4916
+    },
+    "cross_compilation_targets": [
+      "x86_64-pc-windows-msvc",
+      "aarch64-apple-darwin"
+    ],
+    "rust_toolchain": "1.95.0",
+    "serde": "1.0.229",
+    "serde_json": "1.0.151"
+  },
+  "release_gate": {
+    "exit_code": 0,
+    "elapsed_seconds": 82.3199,
+    "bootstrap_check_passed": true,
+    "runtime_check_passed": true,
+    "mode": "reuse_actual_built_sidecar",
+    "tauri_packaging": false
+  },
+  "local_checks": {
+    "python_tests_passed": 803,
+    "python_integration_tests_deselected": 1,
+    "expected_model_warnings": 8,
+    "focused_diagnostic_tests_passed": 84,
+    "rust_default_tests_passed": 31,
+    "rust_packaged_tests_explicitly_passed": 1,
+    "rust_packaged_tests_ignored_by_default": 1,
+    "ruff": "passed",
+    "python_format": "passed",
+    "bash_syntax": "passed",
+    "rust_format": "passed",
+    "clippy": "passed"
+  }
+}

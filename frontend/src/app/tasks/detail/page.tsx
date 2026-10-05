@@ -1,4 +1,5 @@
 "use client";
+import { IdentityInspector } from "@/features/source-identity/components/IdentityInspector";
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -26,6 +27,10 @@ import { StatusPill } from "@/components/task-center/components/StatusPill";
 import { EventStream } from "@/components/task-center/components/EventStream";
 import { DecisionSummaryCard } from "@/components/task-center/components/DecisionSummaryCard";
 import { ReportVersionsPanel } from "@/features/report-export";
+import { ReadinessInspector } from "@/features/research-readiness/components/ReadinessInspector";
+import { MemoryInspector } from "@/features/memory/components/MemoryInspector";
+import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
+import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
 
 const CandlestickChart = dynamic(
   () => import("@/components/charts/CandlestickChart").then((module) => module.CandlestickChart),
@@ -54,7 +59,7 @@ function TaskDetailRouteContent() {
 
 function TaskDetailPage({ taskId }: { taskId: string }) {
   const router = useRouter();
-  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, deleteTask, settings, hydrated, setActiveTaskId } = useTaskCenter();
+  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, runningTask, cleanupFailedTask, retryCleanup, resultPendingTask, retryResult, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews, beginReview, getTaskIdentity } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const task = getTask(taskId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -66,10 +71,17 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
   const [drawerAgent, setDrawerAgent] = useState("");
   const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pageMountedRef = useRef(false);
+  const identity = task && getTaskIdentity ? getTaskIdentity(task) : taskId;
+  const selectionRef = useRef({ taskId, identity });
+  const deletionAttemptRef = useRef<{ selection: { taskId: string; identity: object | string | undefined } } | null>(null);
+  if (selectionRef.current.taskId !== taskId || selectionRef.current.identity !== identity) selectionRef.current = { taskId, identity };
   const activeReports = Object.entries(task?.reportSections ?? {}).filter(([, content]) => Boolean(content));
 
   useEffect(() => {
+    pageMountedRef.current = true;
     setMounted(true);
+    return () => { pageMountedRef.current = false; };
   }, []);
 
   useEffect(() => {
@@ -204,16 +216,20 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {task.origin === "demo" ? null : task.status === "running" ? (
+            {task.origin === "demo" ? null : cleanupFailedTask?.id === task.id ? (
+              <button type="button" onClick={() => { void retryCleanup(); }} className="vercel-button">{t("retryAnalysisCleanup")}</button>
+            ) : resultPendingTask?.id === task.id ? (
+              <button type="button" onClick={() => { void retryResult(); }} className="vercel-button">{t("retryAnalysisResult")}</button>
+            ) : task.status === "running" || runningTask?.id === task.id ? (
               <button type="button" onClick={() => stopRunningTask()} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-red-300 transition hover:border-zinc-600 hover:bg-red-950/40">
                 <Square className="size-4" /> {t("stopTask")}
               </button>
             ) : task.status === "queued" ? (
-              <button type="button" onClick={() => cancelQueuedTask(task.id)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-amber-200 transition hover:border-zinc-600 hover:bg-amber-950/30">
+              <button type="button" onClick={() => cancelQueuedTask(task.id, task)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-amber-200 transition hover:border-zinc-600 hover:bg-amber-950/30">
                 <X className="size-4" /> {t("cancelQueue")}
               </button>
             ) : (
-              <button type="button" onClick={() => queueTask(task.id)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-900">
+              <button type="button" onClick={() => queueTask(task.id, task)} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-900">
                 <Play className="size-4" /> {t("addToQueue")}
               </button>
             )}
@@ -223,7 +239,20 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
               </button>
               {menuOpen && (
                 <div className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 py-1 shadow-xl">
-                  <button type="button" onClick={() => { deleteTask(task.id); setMenuOpen(false); router.push("/"); }} disabled={task.status === "running"} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-300 transition hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-40">
+                  <button type="button" onClick={async () => {
+                    const selected = selectionRef.current;
+                    if (deletionAttemptRef.current?.selection === selected) return;
+                    const attempt = { selection: selected };
+                    deletionAttemptRef.current = attempt;
+                    try {
+                      if (await deleteTask(task.id, task) && pageMountedRef.current && selectionRef.current === selected) {
+                        setMenuOpen(false);
+                        router.push("/");
+                      }
+                    } finally {
+                      if (deletionAttemptRef.current === attempt) deletionAttemptRef.current = null;
+                    }
+                  }} disabled={task.status === "running"} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-300 transition hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-40">
                     <Trash2 className="size-4" /> {t("deleteTask")}
                   </button>
                 </div>
@@ -253,6 +282,11 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                 hasDetails={Boolean(task.reportSections.final_trade_decision?.trim())}
                 onOpen={() => openAgentDrawer("Portfolio Manager")}
               />
+              <OutputQualityPanel quality={task.outputQuality} language={settings.systemLanguage} />
+              <IdentityInspector snapshot={task} language={settings.systemLanguage} />
+      <ReadinessInspector snapshot={task} language={settings.systemLanguage} />
+              <EvidenceInspector bundle={task.evidenceBundle} invalid={task.evidenceValidation} reports={task.reportSections} checkReportCitations={task.status === "completed"} language={settings.systemLanguage} />
+              <MemoryInspector snapshot={task} language={settings.systemLanguage} />
             </div>
           ) : (
             <div className="mt-5">
@@ -276,7 +310,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
         </div>
       </section>
 
-      <ReportVersionsPanel task={task} language={settings.systemLanguage} />
+      <ReportVersionsPanel task={task} language={settings.systemLanguage} settings={settings} onReviews={saveEvaluationReviews} onNumericReviews={saveNumericReviews} beginReview={beginReview} />
 
       <section className="space-y-6">
         <Panel title={t("agentProgressReports")} sticky>

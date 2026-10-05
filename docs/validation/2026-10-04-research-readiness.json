@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "validation_date": "2026-10-04",
+  "recorded_at": "2026-10-03T23:57:12.124060Z",
+  "record_status": "recorded",
+  "acceptance_status": "local_slice_verified_release_acceptance_incomplete",
+  "scope": "ResearchReadiness v1 with fictional/offline inputs, deterministic saved-row proof, gated final manager, validated mirrors and exports",
+  "product_quality_objective_complete": false,
+  "target_audience": [
+    "professional_analysts",
+    "independent_researchers"
+  ],
+  "candidate": {
+    "base_revision": "d81572617bf3c70e897e8f4504e508fa5395d1b2",
+    "source_revision": "29ac52f95e19d212193928bf0f401b5c844128c9",
+    "working_tree_candidate": false,
+    "research_manifest": {
+      "type": "evidence_ready",
+      "schema_version": 1,
+      "code_sha256": "17593da79aaab79085d6a1c5fd28991a04e8ed9fa243d53ddfa53c7ce0811601",
+      "prompt_templates_sha256": "361c2952214420de79ace08dcff8c7f5723f7c9a3bb77af25b48ed7ace8ffed0",
+      "source_file_count": 88
+    },
+    "component_sha256": {
+      "tradingagents/research/readiness.py": "a318bbb9cffa0ca591129ff140e7f32575bfbc78205410e9af478213c4b42927",
+      "tradingagents/research/market_inputs.py": "b23c29dce9a90ed727bd2d6ae0e6e0d13f1e83c304eded175809d6a781130990",
+      "tradingagents/dataflows/market_data_validator.py": "5809b60f8e488ebed52fad3b5dee86318c597460505cae7dd287bc9800a8b487",
+      "tradingagents/dataflows/stockstats_utils.py": "d7a0b4b268807f82645b43712a6b54cc0e5cb80eeabd0384735533e2a99b0a30",
+      "tradingagents/graph/setup.py": "30c5cafea313b6d0cc43ffb4db38401331d855b6d622e3eaf246a0ec1d2f17c3",
+      "tradingagents/graph/trading_graph.py": "3032b61729248ce725e3b8598a8ebbb143e80835f56348130da6063e5e50fac6",
+      "tradingagents/agents/managers/portfolio_manager.py": "9da031592ac4b265a8cf1014c1bcdac52c68cabab411c5b35a7c8baa11bf843a",
+      "tradingagents/memory/evaluation.py": "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e",
+      "frontend/server/run_analysis.py": "ee3a9f4537ef688e9d6139b01c6b37451669e73ed0485ce68fdec0e590c3b832",
+      "frontend/src/components/task-center/decisions.ts": "5d5c1fe64683fcbf52ee081176f6f8cd6cd7ab983c64b6499b47b5865551731c",
+      "frontend/src/lib/i18n.ts": "b6f8b08d77082614add72abbe670e8700cbccdfef6700fe7d1a3e6cab24dc4e9",
+      "frontend/src/features/research-readiness/lib/validation.ts": "998c58aa2e91a26cfa69c4ea4052ab536c9f2d09a0081c56fb3615baf44409ff",
+      "frontend/src/features/research-readiness/lib/market-inputs.ts": "9c2f496c0e2333e956b2f73beb5268c4f72d435b769e4e9915beaa885535f609",
+      "frontend/src/features/persistence/local-storage.ts": "5ce6b3fb05e065ba96c9c64593301d0048e44cbb61a281dc21bb19b223bfeab0",
+      "src-tauri/src/research_readiness.rs": "084d06c5287c15c6c5a7ca2477de1402d2a9958e55426f4bc3c8241603dd1816",
+      "src-tauri/src/research_readiness/derive.rs": "e7fe7a908fc878f06412cc1557c80de498e79015f669bd09252fb0e72e23de27",
+      "src-tauri/src/research_readiness/quality.rs": "77aa37d6b7d12780e839ba892e16ee4dfeda4a22413a8ce15ec2bec0080cc13c",
+      "src-tauri/src/research_readiness/market_inputs.rs": "7fcd5817de45a6f3d134f1d6e9c7625fec1c1d87b22251b2b6246dcb75cdf1c1",
+      "src-tauri/src/research_readiness/rating.rs": "e69bed0919b78e471f4d8530a3ff93b23a3b8863949692dfeaf735de5eb8f732",
+      "src-tauri/src/research_readiness_storage.rs": "8698a72c8193918485bfd5e31fd60e14ef0425e8224c2653d2181c4ac33115fa",
+      "src-tauri/src/storage.rs": "7fb7a0acc319c732921cc78a414f8a8d8b16dca728d8b9e71260cbd3d6374ee1",
+      ".github/workflows/sidecar-diagnostics.yml": "dc6e7afb883346e27a52d79fa0c12f7d0c8676da5902e5c78d5628f588d8c2a9"
+    }
+  },
+  "external_provider_or_model_requests": 0,
+  "fictional_fixtures": {
+    "tests/fixtures/research_readiness_v1.json": {
+      "file_sha256": "ff17c5b32eb6e4f49537c196442028b2f31bfe176d334e1efe8579bed9dc5339"
+    },
+    "tests/fixtures/research_readiness_evidence_v1.json": {
+      "file_sha256": "d896104d406c99f4f3481232d05d378e05a1e475af580c038d532452e462de4c"
+    }
+  },
+  "checks": {
+    "python_full_suite": {
+      "status": "passed",
+      "passed": 1042,
+      "subtests_passed": 75,
+      "deselected": 1,
+      "known_model_warnings": 8,
+      "elapsed_seconds": 112.9,
+      "command": "PYTHONPATH=. python -m pytest -q",
+      "python_version": "3.10.4",
+      "execution": "x86_64_Rosetta"
+    },
+    "python_ruff": {
+      "status": "passed",
+      "formatted_files": 168
+    },
+    "source_proof_focused": {
+      "status": "passed",
+      "passed": 224,
+      "raw_observation_cases": 51,
+      "provenance": "source_owner_reported"
+    },
+    "independent_graph_review": {
+      "status": "passed",
+      "tests_passed": 38,
+      "saved_final_json_receipts_revalidated": 10,
+      "provenance": "source_owner_read_only_review"
+    },
+    "frontend_full_suite": {
+      "status": "passed",
+      "passed": 288,
+      "files": 24,
+      "scope": "complete_implementation_before_two_string_REVIEW_copy_change",
+      "provenance": "frontend_owner_reported"
+    },
+    "final_review_copy": {
+      "status": "passed",
+      "focused_tests_passed": 116,
+      "files": 6,
+      "typecheck": "passed",
+      "targeted_eslint": "passed",
+      "production_build": "passed",
+      "static_build": "passed",
+      "provenance": "frontend_owner_reported"
+    },
+    "frontend_implementation_typecheck_lint_builds": {
+      "status": "passed",
+      "provenance": "frontend_owner_reported"
+    },
+    "rating_python_javascript_parity": {
+      "status": "passed",
+      "cases": 1062,
+      "mismatches": 0,
+      "method": "actual_python_parser_and_actual_transpiled_javascript_helper",
+      "provenance": "source_owner_independent_review"
+    },
+    "rust_host": {
+      "status": "passed",
+      "passed": 69,
+      "deliberate_ignored_packaged_tests": 2,
+      "elapsed_test_seconds": 5.35,
+      "format": "passed",
+      "clippy_all_targets_warnings_denied": "passed",
+      "provenance": "rust_owner_reported"
+    },
+    "windows_exact_module_check": {
+      "status": "passed",
+      "check_tests": "passed",
+      "clippy_tests_warnings_denied": "passed",
+      "native_execution": false,
+      "provenance": "rust_owner_reported"
+    },
+    "local_packaged_program": {
+      "recorded_at": "2026-10-03T23:36:16.442343Z",
+      "external_provider_or_model_requests": 0,
+      "host_cpu": "arm64",
+      "python_cpu": "x86_64",
+      "execution": "Rosetta_on_Apple_Silicon",
+      "artifact_sha256": "66a36a751d9ad4a8c3a40706fbd2a02a11f7a40b1369780fa6f432adf5fe1551",
+      "artifact_bytes": 53868224,
+      "manifest": {
+        "type": "evidence_ready",
+        "schema_version": 1,
+        "code_sha256": "17593da79aaab79085d6a1c5fd28991a04e8ed9fa243d53ddfa53c7ce0811601",
+        "prompt_templates_sha256": "361c2952214420de79ace08dcff8c7f5723f7c9a3bb77af25b48ed7ace8ffed0",
+        "source_file_count": 88
+      },
+      "manifest_matches": true,
+      "comparison_method": "manifest fields compared exactly; transport timestamp excluded; all 88 embedded readable Python source files independently matched byte hashes",
+      "bootstrap_and_runtime_probe": "passed",
+      "root_sidecar_unchanged": true
+    },
+    "actual_browser_and_downloads": {
+      "recorded_at": "2026-10-03T23:48:02.579180Z",
+      "fictional": true,
+      "ready_assessment_sha256": "7733d0e3c887658d4214b3584e5b332839c18763b7bd80f165bdf58d0a1fdf39",
+      "evidence_bundle_sha256": "3dc1d025d6e4510c577685368985fbd19a6251f601c846f7c67e2abcc3a2871b",
+      "checks": {
+        "three_exports_complete_readiness": true,
+        "three_exports_complete_evidence": true,
+        "three_exports_preserve_all_opaque_artifact_payload_strings": true,
+        "selected_version_id_and_hold_rating": true,
+        "reload_preserves_readiness_and_evidence_all_versions": true,
+        "legacy_selected_version_remains_unknown": true,
+        "withheld_receipt_review_visible": true,
+        "hash_mismatch_blocks_export": true,
+        "rehashed_false_pass_blocks_export": true,
+        "global_conflicts_block_all_current_and_frozen_owners": true,
+        "invalid_cases_preserve_complete_evidence_payloads": true,
+        "original_fictional_tasks_restored": true,
+        "rendered_html_complete_readiness": true,
+        "rendered_html_complete_evidence": true,
+        "final_deliberate_review_label": "\u5f85\u590d\u6838"
+      },
+      "downloads": {
+        "json": {
+          "bytes": 63329,
+          "sha256": "0643a31e4499b2d8415a98c1c8fa05107e0f42a2625ad458dbe281d7e46dc562"
+        },
+        "md": {
+          "bytes": 64820,
+          "sha256": "857d7f8a02dc4f46278b52a3867311567a3d3ba6873ca1fabf534fdd94322b88"
+        },
+        "html": {
+          "bytes": 156936,
+          "sha256": "a2ae44a66b3d4afff6c17474942a26bbfd0f9284227bbda5ad1213604032a48c"
+        }
+      },
+      "comparison_method": "parsed structural equality of complete envelopes; opaque artifact payload strings compare exactly",
+      "origin": "task_owned_127.0.0.1_31959",
+      "rendered_html_origin": "task_owned_127.0.0.1_31969",
+      "browser_and_servers_closed": true,
+      "origin_restored_to_initial_state": true,
+      "screenshots": [
+        {
+          "path": "docs/screenshots/readiness-export-appendix.jpg",
+          "bytes": 77874,
+          "sha256": "21086172bb49c41e36f4e9df96982c94f49e3512fdea2002e783ef311bd6e35b"
+        },
+        {
+          "path": "docs/screenshots/readiness-false-pass-rejected.jpg",
+          "bytes": 76173,
+          "sha256": "fabc1b217512cc69ca5edee7b579bd8a24ccd06f6580b43ba8e72de15edfbd0e"
+        },
+        {
+          "path": "docs/screenshots/readiness-global-conflict-rejected.jpg",
+          "bytes": 76347,
+          "sha256": "9c71a0069022c719377b0adc7ce6940ec9abcdcc1fb06dd7c05d7d5661d8cc36"
+        },
+        {
+          "path": "docs/screenshots/readiness-legacy-unknown.jpg",
+          "bytes": 71963,
+          "sha256": "76cc697d078080511395fabd20bc98eda762dd0e12f195c3b1d7bed000e1b491"
+        },
+        {
+          "path": "docs/screenshots/readiness-ready.jpg",
+          "bytes": 80983,
+          "sha256": "e26a2c6e02d00d51574d2daa33495f7ffae1808f1108832b13c236d42906b52c"
+        },
+        {
+          "path": "docs/screenshots/readiness-withheld.jpg",
+          "bytes": 81427,
+          "sha256": "be2652fe31ee8847e19f694a2c3460e6d2867bb5c754f92d1bdd73521a65cf1d"
+        }
+      ]
+    },
+    "native_platform_ci": {
+      "status": "tracked_by_pull_request_checks",
+      "workflow": ".github/workflows/sidecar-diagnostics.yml",
+      "targets": [
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin",
+        "x86_64-pc-windows-msvc"
+      ],
+      "completed_when_local_record_created": false,
+      "scope": "native_source_proof_Rust_storage_and_actual_new_packaged_runtime_and_memory_probes"
+    }
+  },
+  "limits": [
+    "input_checks_do_not_establish_claim_support_or_numeric_prose_accuracy",
+    "fictional_inputs_do_not_establish_real_provider_compatibility",
+    "publication_price_revision_vintage_and_independent_calendar_coverage_unknown",
+    "cross_compilation_is_not_native_Windows_execution",
+    "clean_install_signing_accessibility_analyst_task_completion_and_expert_evaluation_open"
+  ]
+}

@@ -4,7 +4,24 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 
 ## [Unreleased]
 
+- Freeze deterministic research input policies and save replayable readiness checks with every report version. Missing, invalid or unverified required inputs produce REVIEW and skip the final rating model call.
+- Preserve provider timestamps/timezones, reject impossible OHLCV and conflicting daily rows, exclude provisional rows from calculations, enforce indicator warm-up and load history relative to the requested research date.
+
 ### Changed
+
+- Freeze per-run research memory inputs, decision identity, actual recording time, effective benchmark, holding-period policy, and evaluator source hash in a separate MemoryBundle v1.
+- Persist full-precision outcome facts before model reflection; retain immutable report inputs and attach later dated evaluations separately in browser storage, SQLite schema v7, and complete JSON/HTML/Markdown reports.
+- Read saved evaluations through a bounded, read-only inventory command without initializing providers or models.
+- Run bootstrap and source-inventory diagnostics without importing research dependencies; retain a separate research-import probe for desktop health and release checks.
+- Validate the active Python interpreter and generated/reused sidecar OS and CPU against the requested target before packaging.
+- Capture and atomically persist exact sanitized model inputs, full-precision normalized source data, actual provider attempts, observed dates, frozen run-context hashes, and citation IDs in a versioned evidence bundle.
+- Preserve evidence through checkpoint recovery, task/history reload, SQLite schema v6, and self-contained HTML/Markdown/JSON exports; expose unknown historical provenance and unresolved references in the research workspace.
+- Serialize evidence writes across processes, reject corrupted or contradictory snapshots, and surface task persistence failures.
+- Run CI and security checks for stacked pull requests targeting quality branches.
+
+- Record output-format validation or text fallback with each decision agent, task, frozen report version, and HTML/Markdown export; show unknown quality for legacy reports.
+- Allow selected historical report versions to be reviewed with their own frozen content, configuration, and quality.
+- Make the real-provider format smoke use fictional inputs, explicit resource limits, sanitized JSON results, and schema-based pass criteria.
 
 - Selectively synchronized TradingAgents v0.5.2 reliability fixes while retaining the v0.2.5 package version, Python 3.10 compatibility, and A-share integrations.
 - Run selected analysts in private parallel subgraphs with a shared concurrency limit, per-agent progress, and a report join before research.
@@ -16,6 +33,19 @@ All notable Evidence Loom changes are documented here. The project follows [Sema
 - Added open-source governance, security, privacy, CI, and signed-release infrastructure.
 
 ### Fixed
+
+- Patch three locked Python runtime packages and compatible frontend dependencies; audit frozen Python requirements and the complete npm tree on pull requests, main pushes and the weekly schedule. Record the unpatched braces chain and Next's separate vendored Browserslist limitation.
+- Bind browser development and local production npm scripts to IPv4 loopback by default.
+- Exclude date-only legacy Markdown from authoritative settlement and historical context selection; model-written delimiters cannot create decisions or evaluation facts.
+- Prevent current settings, changed benchmark aliases, reflection failures, or completion retries from reinterpreting a saved decision; historical date-only decisions remain explicitly not evaluable.
+- Require successful exit and strict stdout JSONL from sidecar checks; reject legacy bootstrap-only responses and clean up timed-out diagnostic processes.
+- Replay uncheckpointed captured inputs after interruption without refetching, while retaining new IDs for genuinely repeated calls.
+- Preserve code and prompt hashes in packaged runners by retaining only the application's own Python source files; reject missing-source inventories rather than hashing an empty directory.
+- Withhold future-dated and explicitly withheld source values, remove source response/endpoint details from diagnostics, and capture effective Yahoo searches and Alpha topics accurately.
+
+- Reuse successful prose responses instead of generating a second answer; propagate exhausted provider failures and reject refused, truncated, or empty answers.
+- Consolidate OpenAI-compatible retries into the SDK budget, removing the implicit outer retry loop. Use `TRADINGAGENTS_LLM_MAX_RETRIES` instead of the legacy `TRADINGAGENTS_LLM_RETRY_ATTEMPTS` and `TRADINGAGENTS_LLM_RETRY_BASE_DELAY` variables.
+- Identify Tencent and Eastmoney as the actual successful A-share price source, including provider fallback and sliced price windows.
 
 - Carry the Portfolio Manager's typed rating into desktop results and memory. Unparseable decisions now display REVIEW instead of silently becoming Hold.
 - Bind tool symbols and dates to the current run, clip historical market/news/social inputs, and withhold historical fundamentals whose publication date cannot be established.

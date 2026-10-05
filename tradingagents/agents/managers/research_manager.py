@@ -9,7 +9,7 @@ from tradingagents.agents.utils.agent_utils import (
 )
 from tradingagents.agents.utils.structured import (
     bind_structured,
-    invoke_structured_or_freetext,
+    invoke_agent_output,
     NO_EXTERNAL_TOOLS,
 )
 
@@ -47,13 +47,15 @@ Write Recommendation, Rationale and Strategic Actions in that order, starting wi
 
 The research team does not know the caller's holdings. Express sizing against a standard allocation, so the trader can apply the actual portfolio. {NO_EXTERNAL_TOOLS}""" + get_language_instruction()
 
-        investment_plan = invoke_structured_or_freetext(
+        output = invoke_agent_output(
             structured_llm,
             llm,
             prompt,
+            ResearchPlan,
             render_research_plan,
             "Research Manager",
         )
+        investment_plan = output.text
 
         new_investment_debate_state = {
             "judge_decision": investment_plan,
@@ -67,6 +69,7 @@ The research team does not know the caller's holdings. Express sizing against a 
         return {
             "investment_debate_state": new_investment_debate_state,
             "investment_plan": investment_plan,
+            "output_quality": {"research_manager": output.quality},
         }
 
     return research_manager_node

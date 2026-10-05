@@ -14,12 +14,20 @@ The modifications include, but are not limited to:
 
 - provider integrations, model capability handling, structured output, and
   provider-specific reasoning controls;
+- observable output-format validation, bounded provider retries, frozen report
+  review, and actual-source attribution through A-share fallback;
+- content-addressed research evidence, actual source-attempt traces, frozen
+  inputs through interruption, citation resolution, and self-contained exports;
+- immutable per-run memory contracts, full-precision reference outcome facts,
+  independently dated reflections and review attachments, and read-only inventory;
 - market-data validation, symbol normalization, fallback behavior, and
   additional data sources;
 - checkpointing, memory logging, concurrency, error handling, and test
   coverage in the embedded Python research core;
 - an independently branded Next.js and Tauri desktop application, local task
   persistence, operating-system credential storage, and a packaged sidecar;
+- separate bootstrap/research-import diagnostics, bounded readiness probes,
+  and interpreter/output architecture guards for sidecar packaging;
 - privacy controls, secret redaction and migration, build/release automation,
   documentation, and project governance.
 

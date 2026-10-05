@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "platform": "macOS-x86_64",
+  "host_architecture": "arm64",
+  "python_architecture": "x86_64",
+  "execution_mode": "Rosetta 2",
+  "code_sha256": "08160b713d9e9a4c8d5bb0693eb7a3d632fba2ae63578d254a437419a0c1a237",
+  "prompt_templates_sha256": "ab98de248667730cd987b89709e796c66a86eaf587e55a3ed30ee1027b343a5b",
+  "source_file_count": 80,
+  "source_hashes_match": true,
+  "live_provider_requests": 0,
+  "startup_seconds": 84.3
+}

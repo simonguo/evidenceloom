@@ -21,7 +21,7 @@ uv run python scripts/generate_third_party_notices.py
 | `certifi` | `2026.7.22` | MPL-2.0 | [link](https://github.com/certifi/python-certifi) |
 | `cffi` | `2.1.0` | MIT-0 | [link](https://cffi.readthedocs.io/) |
 | `charset-normalizer` | `3.4.9` | MIT | [link](https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md) |
-| `cryptography` | `49.0.0` | Apache-2.0 OR BSD-3-Clause | [link](https://cryptography.io/en/latest/changelog/) |
+| `cryptography` | `50.0.2` | Apache-2.0 OR BSD-3-Clause | [link](https://cryptography.io/en/latest/changelog/) |
 | `curl_cffi` | `0.15.0` | MIT | [link](https://github.com/lexiforest/curl_cffi) |
 | `decorator` | `5.3.1` | BSD-2-Clause | — |
 | `distro` | `1.9.0` | Apache-2.0 | [link](https://github.com/python-distro/distro) |
@@ -47,9 +47,9 @@ uv run python scripts/generate_third_party_notices.py
 | `langchain-protocol` | `0.0.18` | MIT | [link](https://github.com/langchain-ai/agent-protocol/tree/main/streaming) |
 | `langgraph` | `1.2.9` | MIT | [link](https://docs.langchain.com/oss/python/langgraph/overview) |
 | `langgraph-checkpoint` | `4.1.1` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint) |
-| `langgraph-checkpoint-sqlite` | `3.1.0` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint-sqlite) |
+| `langgraph-checkpoint-sqlite` | `3.1.1` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/checkpoint-sqlite) |
 | `langgraph-prebuilt` | `1.1.0` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/prebuilt) |
-| `langgraph-sdk` | `0.4.2` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/sdk-py) |
+| `langgraph-sdk` | `0.4.4` | MIT | [link](https://github.com/langchain-ai/langgraph/tree/main/libs/sdk-py) |
 | `langsmith` | `0.10.9` | MIT | [link](https://smith.langchain.com/) |
 | `lxml` | `6.1.1` | BSD-3-Clause | [link](https://github.com/lxml/lxml) |
 | `markdown-it-py` | `4.2.0` | MIT | [link](https://markdown-it-py.readthedocs.io) |
@@ -100,7 +100,7 @@ uv run python scripts/generate_third_party_notices.py
 | `typing-inspection` | `0.4.2` | MIT | [link](https://github.com/pydantic/typing-inspection) |
 | `typing_extensions` | `4.16.0` | PSF-2.0 | [link](https://github.com/python/typing_extensions/issues) |
 | `tzdata` | `2026.3` | Apache-2.0 | [link](https://github.com/python/tzdata/issues) |
-| `urllib3` | `2.7.0` | MIT | [link](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) |
+| `urllib3` | `2.8.0` | MIT | [link](https://github.com/urllib3/urllib3/blob/main/CHANGES.rst) |
 | `uuid_utils` | `0.17.0` | BSD-3-Clause | [link](https://github.com/aminalaee/uuid-utils) |
 | `wcwidth` | `0.8.2` | MIT | [link](https://github.com/jquast/wcwidth) |
 | `webencodings` | `0.5.1` | BSD | [link](https://github.com/SimonSapin/python-webencodings) |
@@ -312,13 +312,13 @@ uv run python scripts/generate_third_party_notices.py
 | `@unrs/resolver-binding-win32-arm64-msvc` | `1.12.2` | MIT | — |
 | `@unrs/resolver-binding-win32-ia32-msvc` | `1.12.2` | MIT | — |
 | `@unrs/resolver-binding-win32-x64-msvc` | `1.12.2` | MIT | — |
-| `@vitest/expect` | `4.1.10` | MIT | — |
-| `@vitest/mocker` | `4.1.10` | MIT | — |
-| `@vitest/pretty-format` | `4.1.10` | MIT | — |
-| `@vitest/runner` | `4.1.10` | MIT | — |
-| `@vitest/snapshot` | `4.1.10` | MIT | — |
-| `@vitest/spy` | `4.1.10` | MIT | — |
-| `@vitest/utils` | `4.1.10` | MIT | — |
+| `@vitest/expect` | `4.1.11` | MIT | — |
+| `@vitest/mocker` | `4.1.11` | MIT | — |
+| `@vitest/pretty-format` | `4.1.11` | MIT | — |
+| `@vitest/runner` | `4.1.11` | MIT | — |
+| `@vitest/snapshot` | `4.1.11` | MIT | — |
+| `@vitest/spy` | `4.1.11` | MIT | — |
+| `@vitest/utils` | `4.1.11` | MIT | — |
 | `acorn` | `8.17.0` | MIT | — |
 | `acorn-jsx` | `5.3.2` | MIT | — |
 | `ajv` | `6.15.0` | MIT | — |
@@ -346,19 +346,19 @@ uv run python scripts/generate_third_party_notices.py
 | `bail` | `2.0.2` | MIT | — |
 | `balanced-match` | `1.0.2` | MIT | — |
 | `balanced-match` | `4.0.4` | MIT | — |
-| `baseline-browser-mapping` | `2.10.38` | Apache-2.0 | — |
+| `baseline-browser-mapping` | `2.11.0` | Apache-2.0 | — |
 | `bidi-js` | `1.0.3` | MIT | — |
 | `binary-extensions` | `2.3.0` | MIT | — |
-| `brace-expansion` | `1.1.16` | MIT | — |
-| `brace-expansion` | `5.0.8` | MIT | — |
+| `brace-expansion` | `1.1.21` | MIT | — |
+| `brace-expansion` | `5.0.12` | MIT | — |
 | `braces` | `3.0.3` | MIT | — |
-| `browserslist` | `4.28.2` | MIT | — |
+| `browserslist` | `4.28.7` | MIT | — |
 | `call-bind` | `1.0.9` | MIT | — |
 | `call-bind-apply-helpers` | `1.0.2` | MIT | — |
 | `call-bound` | `1.0.4` | MIT | — |
 | `callsites` | `3.1.0` | MIT | — |
 | `camelcase-css` | `2.0.1` | MIT | — |
-| `caniuse-lite` | `1.0.30001799` | CC-BY-4.0 | — |
+| `caniuse-lite` | `1.0.30001806` | CC-BY-4.0 | — |
 | `ccount` | `2.0.1` | MIT | — |
 | `chai` | `6.2.2` | MIT | — |
 | `chalk` | `4.1.2` | MIT | — |
@@ -399,7 +399,7 @@ uv run python scripts/generate_third_party_notices.py
 | `dlv` | `1.1.3` | MIT | — |
 | `doctrine` | `2.1.0` | Apache-2.0 | — |
 | `dunder-proto` | `1.0.1` | MIT | — |
-| `electron-to-chromium` | `1.5.376` | ISC | — |
+| `electron-to-chromium` | `1.5.393` | ISC | — |
 | `emoji-regex` | `9.2.2` | MIT | — |
 | `entities` | `8.0.0` | BSD-2-Clause | — |
 | `es-abstract` | `1.24.2` | MIT | — |
@@ -522,7 +522,7 @@ uv run python scripts/generate_third_party_notices.py
 | `iterator.prototype` | `1.1.5` | MIT | — |
 | `jiti` | `1.21.7` | MIT | — |
 | `js-tokens` | `4.0.0` | MIT | — |
-| `js-yaml` | `4.3.0` | MIT | — |
+| `js-yaml` | `4.3.2` | MIT | — |
 | `jsdom` | `29.1.1` | MIT | — |
 | `json-buffer` | `3.0.1` | MIT | — |
 | `json-schema-traverse` | `0.4.1` | MIT | — |
@@ -613,7 +613,7 @@ uv run python scripts/generate_third_party_notices.py
 | `natural-compare` | `1.4.0` | MIT | — |
 | `next` | `15.5.27` | MIT | — |
 | `node-exports-info` | `1.6.0` | MIT | — |
-| `node-releases` | `2.0.48` | MIT | — |
+| `node-releases` | `2.0.51` | MIT | — |
 | `normalize-path` | `3.0.0` | MIT | — |
 | `object-assign` | `4.1.1` | MIT | — |
 | `object-hash` | `3.0.0` | MIT | — |
@@ -741,7 +741,7 @@ uv run python scripts/generate_third_party_notices.py
 | `typed-array-length` | `1.0.8` | MIT | — |
 | `typescript` | `5.9.3` | Apache-2.0 | — |
 | `unbox-primitive` | `1.1.0` | MIT | — |
-| `undici` | `7.28.0` | MIT | — |
+| `undici` | `7.29.1` | MIT | — |
 | `undici-types` | `6.21.0` | MIT | — |
 | `unified` | `11.0.5` | MIT | — |
 | `unist-util-is` | `6.0.1` | MIT | — |
@@ -756,7 +756,7 @@ uv run python scripts/generate_third_party_notices.py
 | `vfile` | `6.0.3` | MIT | — |
 | `vfile-message` | `4.0.3` | MIT | — |
 | `vite` | `8.1.5` | MIT | — |
-| `vitest` | `4.1.10` | MIT | — |
+| `vitest` | `4.1.11` | MIT | — |
 | `w3c-xmlserializer` | `5.0.0` | MIT | — |
 | `webidl-conversions` | `8.0.1` | BSD-2-Clause | — |
 | `whatwg-mimetype` | `5.0.0` | MIT | — |
@@ -831,6 +831,7 @@ uv run python scripts/generate_third_party_notices.py
 | `cfg-expr` | `0.15.8` | MIT OR Apache-2.0 | [link](https://github.com/EmbarkStudios/cfg-expr) |
 | `cfg-if` | `1.0.4` | MIT OR Apache-2.0 | [link](https://github.com/rust-lang/cfg-if) |
 | `chrono` | `0.4.45` | MIT OR Apache-2.0 | [link](https://github.com/chronotope/chrono) |
+| `chrono-tz` | `0.10.4` | MIT OR Apache-2.0 | [link](https://github.com/chronotope/chrono-tz) |
 | `cipher` | `0.4.4` | MIT OR Apache-2.0 | [link](https://github.com/RustCrypto/traits) |
 | `combine` | `4.6.7` | MIT | [link](https://github.com/Marwes/combine) |
 | `concurrent-queue` | `2.5.0` | Apache-2.0 OR MIT | [link](https://github.com/smol-rs/concurrent-queue) |
@@ -1031,10 +1032,12 @@ uv run python scripts/generate_third_party_notices.py
 | `parking_lot` | `0.12.5` | MIT OR Apache-2.0 | [link](https://github.com/Amanieu/parking_lot) |
 | `parking_lot_core` | `0.9.12` | MIT OR Apache-2.0 | [link](https://github.com/Amanieu/parking_lot) |
 | `percent-encoding` | `2.3.2` | MIT OR Apache-2.0 | [link](https://github.com/servo/rust-url/) |
+| `phf` | `0.12.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_codegen` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_generator` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_macros` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
+| `phf_shared` | `0.12.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `phf_shared` | `0.13.1` | MIT | [link](https://github.com/rust-phf/rust-phf) |
 | `pin-project-lite` | `0.2.17` | Apache-2.0 OR MIT | [link](https://github.com/taiki-e/pin-project-lite) |
 | `piper` | `0.2.5` | MIT OR Apache-2.0 | [link](https://github.com/smol-rs/piper) |
@@ -1178,6 +1181,7 @@ uv run python scripts/generate_third_party_notices.py
 | `unic-ucd-ident` | `0.9.0` | MIT/Apache-2.0 | [link](https://github.com/open-i18n/rust-unic/) |
 | `unic-ucd-version` | `0.9.0` | MIT/Apache-2.0 | [link](https://github.com/open-i18n/rust-unic/) |
 | `unicode-ident` | `1.0.24` | (MIT OR Apache-2.0) AND Unicode-3.0 | [link](https://github.com/dtolnay/unicode-ident) |
+| `unicode-normalization` | `0.1.25` | MIT OR Apache-2.0 | [link](https://github.com/unicode-rs/unicode-normalization) |
 | `unicode-segmentation` | `1.13.3` | MIT OR Apache-2.0 | [link](https://github.com/unicode-rs/unicode-segmentation) |
 | `universal-hash` | `0.5.1` | MIT OR Apache-2.0 | [link](https://github.com/RustCrypto/traits) |
 | `url` | `2.5.8` | MIT OR Apache-2.0 | [link](https://github.com/servo/rust-url) |

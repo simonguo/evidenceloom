@@ -1,3 +1,10 @@
+import type { EffectiveRequestIdentity, IdentityValidation } from "@/features/source-identity/types";
+import type { NumericReview, NumericValidation, ReportTextSnapshot } from "@/features/numeric-review/types";
+import type { OutputQuality } from "@/features/output-quality/types";
+import type { EvidenceBundle, EvidenceValidation } from "@/features/evidence/types";
+import type { MemoryBundle, MemoryValidation, ReviewAttachment } from "@/features/memory/types";
+import type { ResearchReadiness, ReadinessValidation } from "@/features/research-readiness/types";
+
 export type AnalystKey = "market" | "social" | "news" | "fundamentals";
 export type AssetType = "stock" | "crypto";
 export type AgentStatus = "pending" | "in_progress" | "completed" | "error";
@@ -96,11 +103,14 @@ export type RuntimeRunSettings = {
   deep_think_llm?: string;
   analysts?: string[];
   output_language?: string;
+  holding_period_days?: number;
+  benchmark_ticker?: string;
   max_debate_rounds?: number;
   max_risk_discuss_rounds?: number;
   max_tool_rounds?: number;
+  research_readiness_policy_sha256?: string;
   analyst_concurrency_limit?: number;
-  temperature?: number;
+  temperature?: number | string | null;
   max_tokens?: number;
   data_vendors?: Record<string, string>;
   tool_vendors?: Record<string, string>;
@@ -121,6 +131,7 @@ export type ReportRunManifest = {
   maxDebateRounds: number;
   maxRiskRounds: number;
   benchmarkTicker: string;
+  holdingPeriodDays?: number;
 };
 
 export type ReportVersion = {
@@ -129,11 +140,24 @@ export type ReportVersion = {
   versionNumber: number;
   createdAt: string;
   legacy: boolean;
+  numericReviews?: NumericReview[];
   task: ReportTaskSnapshot;
   run: ReportRunManifest | null;
   decision: string;
   stats: AnalysisStats;
   reportSections: Record<string, string | null>;
+  outputQuality?: OutputQuality;
+  evidenceBundle?: EvidenceBundle;
+  evidenceValidation?: EvidenceValidation;
+  memoryBundle?: MemoryBundle;
+  memoryValidation?: MemoryValidation;
+  researchReadiness?: ResearchReadiness;
+  readinessValidation?: ReadinessValidation;
+  reportTextSnapshot?: ReportTextSnapshot;
+  numericValidation?: NumericValidation;
+  effectiveRequestIdentity?: EffectiveRequestIdentity;
+  identityValidation?: IdentityValidation;
+  evaluationReviews: ReviewAttachment[];
 };
 
 export type RunContext = {
@@ -160,6 +184,18 @@ export type AnalysisTask = {
   stats: AnalysisStats;
   agentStatuses: Record<string, AgentStatus>;
   reportSections: Record<string, string | null>;
+  outputQuality?: OutputQuality;
+  evidenceBundle?: EvidenceBundle;
+  evidenceValidation?: EvidenceValidation;
+  memoryBundle?: MemoryBundle;
+  memoryValidation?: MemoryValidation;
+  researchReadiness?: ResearchReadiness;
+  readinessValidation?: ReadinessValidation;
+  reportTextSnapshot?: ReportTextSnapshot;
+  numericValidation?: NumericValidation;
+  effectiveRequestIdentity?: EffectiveRequestIdentity;
+  identityValidation?: IdentityValidation;
+  evaluationReviews: ReviewAttachment[];
   reportVersions: ReportVersion[];
   logs: LogEntry[];
   error: string;
@@ -202,7 +238,13 @@ export type AnalysisEvent = {
   decision?: string;
   finalState?: Record<string, unknown>;
   runSettings?: RuntimeRunSettings;
+  outputQuality?: OutputQuality;
+  evidenceBundle?: EvidenceBundle;
+  memoryBundle?: MemoryBundle;
   error?: string;
+  researchReadiness?: ResearchReadiness;
+  reportTextSnapshot?: ReportTextSnapshot;
+  effectiveRequestIdentity?: EffectiveRequestIdentity;
   agent?: string;
 };
 

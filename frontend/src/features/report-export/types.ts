@@ -1,6 +1,8 @@
 import type { ReportVersion, SystemLanguage } from "@/lib/types";
+import type { OutputQualityView } from "@/features/output-quality/types";
+import type { EvidenceBundle, EvidenceValidation } from "@/features/evidence/types";
 
-export type ExportFormat = "html" | "md";
+export type ExportFormat = "html" | "md" | "json";
 
 export type ReportDocumentSection = {
   id: string;
@@ -9,11 +11,14 @@ export type ReportDocumentSection = {
 };
 
 export type ReportDocument = {
+  taskId: string;
   title: string;
   disclaimer: string;
   fictionalNotice: string;
   metadata: Array<[string, string]>;
+  outputQuality: OutputQualityView;
   sections: ReportDocumentSection[];
   language: SystemLanguage;
   version: ReportVersion;
+  evidence: { bundle?: EvidenceBundle; invalid?: EvidenceValidation };
 };

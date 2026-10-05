@@ -4,9 +4,9 @@
   "private": true,
   "packageManager": "npm@11.6.2",
   "scripts": {
-    "dev": "next dev -p 31741",
+    "dev": "next dev -p 31741 -H 127.0.0.1",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -43,7 +43,7 @@
     "postcss": "8.5.23",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   },
   "overrides": {
     "postcss": "$postcss",

@@ -24,6 +24,10 @@ from tradingagents.agents import (
 )
 from tradingagents.agents.analysts.turn import WRAP_UP
 from tradingagents.agents.utils.agent_states import AgentState
+from tradingagents.agents.utils.output_quality import sanitize_output_quality
+from tradingagents.evidence import analyst_evidence, current_ledger
+from tradingagents.research.readiness import assess_readiness, validate_readiness, withheld_decision
+from tradingagents.research.effective_request_identity import unsafe_effective_request_ids
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
@@ -55,16 +59,22 @@ def _tools_or_done(state) -> str:
 def _analyst_graph(spec, agent, max_tool_rounds: int):
     """One analyst as a graph of its own: the model and its tools, on a private message history.
 
-    It returns only its report, so analysts running side by side never write the
-    same key, and its tool calls never reach the other analysts' messages. After
+    It returns its report and output-format quality, so its tool calls never
+    reach the other analysts' messages. After
     ``max_tool_rounds`` rounds of tool calls it is told to write its report, and
     that turn ends it whatever it answers, so a model that keeps calling tools
     cannot run the graph into its recursion limit (#1420).
     """
-    output = TypedDict(f"{spec.key.capitalize()}Report", {spec.report_key: str})
+    output = TypedDict(
+        f"{spec.key.capitalize()}Report",
+        {spec.report_key: str, "output_quality": dict, "evidence_bundle": dict},
+    )
     graph = StateGraph(AgentState, output_schema=output)
 
     def emit_turn(result):
+        ledger = current_ledger()
+        if ledger is not None:
+            result = {**result, "evidence_bundle": ledger.bundle(analyst=spec.key)}
         get_stream_writer()({"analyst": spec.agent_node, "messages": result.get("messages", [])})
         return result
 
@@ -164,6 +174,56 @@ class GraphSetup:
         conservative_analyst = create_conservative_debator(self.quick_thinking_llm)
         portfolio_manager_node = create_portfolio_manager(self.deep_thinking_llm)
 
+        def gated_portfolio_manager(state):
+            ledger = current_ledger()
+            evidence = ledger.bundle() if ledger is not None else state.get("evidence_bundle")
+            policy = state.get("research_readiness_policy")
+            if not evidence or not policy:
+                # Embedded callers without a frozen capture cannot establish
+                # input readiness from model prose or a completed execution.
+                text = (
+                    "Rating: REVIEW\n\nNo frozen research input contract is available. "
+                    "Earlier analyst reports and debate require human review."
+                )
+                return {
+                    "final_rating": "REVIEW",
+                    "final_trade_decision": text,
+                    "risk_debate_state": {
+                        **state["risk_debate_state"],
+                        "judge_decision": text,
+                        "latest_speaker": "Judge",
+                    },
+                }
+            assessment = assess_readiness(evidence, policy)
+            if state.get("research_readiness"):
+                validate_readiness(state["research_readiness"], evidence)
+                if state["research_readiness"] != assessment:
+                    raise ValueError("Research readiness changed after it was frozen")
+            unsafe_requests = unsafe_effective_request_ids(evidence)
+            if assessment["recommendation_allowed"] and not unsafe_requests:
+                result = portfolio_manager_node(state)
+            else:
+                text = (
+                    "Rating: REVIEW\n\n"
+                    "Saved effective tool requests require human review before a directional recommendation.\n"
+                    "Provider requests and returned entity identity remain unverified.\n"
+                    "Earlier reports and debate remain exploratory research.\n"
+                    "Saved request references: "
+                    + " ".join(f"[E:{item}]" for item in unsafe_requests)
+                    if unsafe_requests
+                    else withheld_decision(assessment)
+                )
+                result = {
+                    "final_rating": "REVIEW",
+                    "final_trade_decision": text,
+                    "risk_debate_state": {
+                        **state["risk_debate_state"],
+                        "judge_decision": text,
+                        "latest_speaker": "Judge",
+                    },
+                }
+            return {**result, "research_readiness": assessment, "evidence_bundle": evidence}
+
         workflow = StateGraph(AgentState)
 
         slots = BoundedSemaphore(self.analyst_concurrency_limit)
@@ -176,10 +236,22 @@ class GraphSetup:
             def run_analyst(state, config):
                 # Stream execution reserves a worker for LangGraph's queue
                 # waiter, so bound the actual analyst lifetime independently.
-                with slots:
+                with slots, analyst_evidence(spec.key):
                     writer = get_stream_writer()
                     writer({"analyst": spec.agent_node, "analyst_started": True})
                     result = private_graph.invoke(state, config)
+                    # An analyst inherits parent state on resume. Project only
+                    # its own quality so an inherited, stale record cannot
+                    # overwrite a concurrent analyst's newer validation.
+                    quality = sanitize_output_quality(result.get("output_quality"))
+                    key = "sentiment" if spec.key == "social" else None
+                    result = {
+                        **result,
+                        "output_quality": {key: quality[key]} if key in quality else {},
+                    }
+                    ledger = current_ledger()
+                    if ledger is not None:
+                        result["evidence_bundle"] = ledger.bundle(analyst=spec.key)
                     writer({"analyst": spec.agent_node, "report": result})
                     return result
 
@@ -195,7 +267,7 @@ class GraphSetup:
         workflow.add_node("Aggressive Analyst", aggressive_analyst)
         workflow.add_node("Neutral Analyst", neutral_analyst)
         workflow.add_node("Conservative Analyst", conservative_analyst)
-        workflow.add_node("Portfolio Manager", portfolio_manager_node)
+        workflow.add_node("Portfolio Manager", gated_portfolio_manager)
 
         # The analysts work at the same time; the research debate starts once
         # every one of them has filed its report.

@@ -1,0 +1,1988 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "schema_version": 1,
+    "policy_version": "saved-effective-request-v1",
+    "scope": "saved_effective_outer_request_alignment",
+    "normalization": {
+      "ascii_case": "a-z_to_A-Z",
+      "strip_plus": false,
+      "trim_characters": [
+        "U+0009",
+        "U+000A",
+        "U+000B",
+        "U+000C",
+        "U+000D",
+        "U+0020"
+      ],
+      "unicode_normalization": "none"
+    },
+    "tool_scopes": {
+      "fetch_china_sentiment_sources": {
+        "content_scope": "retrieval_context",
+        "selector": "ticker"
+      },
+      "fetch_reddit_posts": {
+        "content_scope": "retrieval_context",
+        "selector": "ticker"
+      },
+      "fetch_stocktwits_messages": {
+        "content_scope": "retrieval_context",
+        "selector": "ticker"
+      },
+      "get_balance_sheet": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "ticker"
+      },
+      "get_cashflow": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "ticker"
+      },
+      "get_fundamentals": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "ticker"
+      },
+      "get_global_news": {
+        "content_scope": "global_query",
+        "selector": null
+      },
+      "get_income_statement": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "ticker"
+      },
+      "get_indicators": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "symbol"
+      },
+      "get_insider_transactions": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "ticker"
+      },
+      "get_market_data_snapshot": {
+        "content_scope": "legacy_tool_scope_unknown",
+        "selector": null
+      },
+      "get_news": {
+        "content_scope": "retrieval_context",
+        "selector": "ticker"
+      },
+      "get_stock_data": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "symbol"
+      },
+      "get_verified_market_snapshot": {
+        "content_scope": "single_instrument_requested_data",
+        "selector": "symbol"
+      },
+      "resolve_instrument_context": {
+        "content_scope": "identity_context",
+        "selector": "ticker"
+      }
+    },
+    "selector_like_keys": [
+      "instrument",
+      "symbol",
+      "ticker"
+    ],
+    "notation_rules": [
+      {
+        "grammar": [
+          "^[0-9]{6}\\.SH$",
+          "^[0-9]{6}\\.SS$",
+          "^SH[0-9]{6}$",
+          "^[0-9]{6}\\.SZ$",
+          "^SZ[0-9]{6}$"
+        ],
+        "id": "mainland_explicit_venue_v1",
+        "same_venue_aliases": {
+          "SH": [
+            ".SH",
+            ".SS",
+            "SH_prefix"
+          ],
+          "SZ": [
+            ".SZ",
+            "SZ_prefix"
+          ]
+        },
+        "venue_inference_from_bare_code": false
+      },
+      {
+        "bare_code_equivalence": false,
+        "canonical_notation": "left_pad_code_to_four_digits_plus_.HK",
+        "five_digit_leading_zero_equivalence": false,
+        "grammar": "^[0-9]{1,4}\\.HK$",
+        "id": "hk_explicit_suffix_padding_v1"
+      }
+    ],
+    "proxy_pairs": {
+      "BCOUSD": "BZ=F",
+      "BRENT": "BZ=F",
+      "COPPER": "HG=F",
+      "DE40": "^GDAXI",
+      "DJI30": "^DJI",
+      "EU50": "^STOXX50E",
+      "FRA40": "^FCHI",
+      "GER30": "^GDAXI",
+      "GER40": "^GDAXI",
+      "GOLD": "GC=F",
+      "HK50": "^HSI",
+      "JP225": "^N225",
+      "JPN225": "^N225",
+      "NAS100": "^NDX",
+      "NATGAS": "NG=F",
+      "SILVER": "SI=F",
+      "SPX": "^GSPC",
+      "SPX500": "^GSPC",
+      "UK100": "^FTSE",
+      "UKOIL": "BZ=F",
+      "US100": "^NDX",
+      "US30": "^DJI",
+      "US500": "^GSPC",
+      "USOIL": "CL=F",
+      "USTEC": "^NDX",
+      "WS30": "^DJI",
+      "WTI": "CL=F",
+      "WTICOUSD": "CL=F",
+      "XAG": "SI=F",
+      "XAGUSD": "SI=F",
+      "XAU": "GC=F",
+      "XAUUSD": "GC=F",
+      "XCUUSD": "HG=F",
+      "XNGUSD": "NG=F",
+      "XPDUSD": "PA=F",
+      "XPTUSD": "PL=F",
+      "XAUUSD+": "GC=F"
+    },
+    "currency_codes": [
+      "AUD",
+      "CAD",
+      "CHF",
+      "CNH",
+      "CNY",
+      "EUR",
+      "GBP",
+      "HKD",
+      "JPY",
+      "NZD",
+      "SGD",
+      "USD"
+    ],
+    "crypto_bases": [
+      "ADA",
+      "AVAX",
+      "BCH",
+      "BNB",
+      "BTC",
+      "DOGE",
+      "DOT",
+      "ETH",
+      "LINK",
+      "LTC",
+      "SOL",
+      "UNI",
+      "XLM",
+      "XRP"
+    ],
+    "provider_request_status": "unknown",
+    "provider_entity_status": "unknown",
+    "record_order": "ascii_evidence_id",
+    "source_order": "original_zero_based_index",
+    "extra_selector_rule": "canonical_conflict_precedes_extra_metadata_otherwise_record_unknown",
+    "missing_selector_rule": "never_use_alternate_key",
+    "plain_identifier_grammar": "\\^?[A-Z0-9][A-Z0-9._=-]{0,63}",
+    "limits": {
+      "max_identifier_bytes": 256,
+      "max_records": 100000,
+      "max_sources_per_record": 10000
+    },
+    "unsafe_record_reasons": [
+      "effective_request_conflict",
+      "effective_request_missing",
+      "effective_request_unusable",
+      "unqualified_venue",
+      "explicit_venue_conflict",
+      "unreviewed_identifier_relation",
+      "declared_proxy_reference",
+      "unexpected_selector_metadata",
+      "legacy_tool_scope_unknown"
+    ],
+    "reason_codes": [
+      "effective_request_aligned",
+      "effective_request_conflict",
+      "effective_request_missing",
+      "effective_request_unusable",
+      "unqualified_venue",
+      "explicit_venue_conflict",
+      "unreviewed_identifier_relation",
+      "declared_proxy_reference",
+      "unexpected_selector_metadata",
+      "global_query_not_instrument_scoped",
+      "legacy_tool_scope_unknown"
+    ],
+    "unsafe_rule": "every_non_global_record_alignment_conflict_unknown_or_proxy"
+  },
+  "policy_sha256": "933c826dc91d445488363e984acb5b66a5082fe548efbc4cfe930a7e71b5aa23",
+  "cases": [
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "get_stock_data_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "get_stock_data_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_indicators",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_indicators"
+      },
+      "name": "get_indicators_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_indicators",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_indicators"
+      },
+      "name": "get_indicators_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_verified_market_snapshot",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_verified_market_snapshot"
+      },
+      "name": "get_verified_market_snapshot_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_verified_market_snapshot",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_verified_market_snapshot"
+      },
+      "name": "get_verified_market_snapshot_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_fundamentals",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_fundamentals"
+      },
+      "name": "get_fundamentals_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_fundamentals",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_fundamentals"
+      },
+      "name": "get_fundamentals_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_balance_sheet",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_balance_sheet"
+      },
+      "name": "get_balance_sheet_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_balance_sheet",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_balance_sheet"
+      },
+      "name": "get_balance_sheet_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_cashflow",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_cashflow"
+      },
+      "name": "get_cashflow_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_cashflow",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_cashflow"
+      },
+      "name": "get_cashflow_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_income_statement",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_income_statement"
+      },
+      "name": "get_income_statement_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_income_statement",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_income_statement"
+      },
+      "name": "get_income_statement_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_news",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_news"
+      },
+      "name": "get_news_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_news",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_news"
+      },
+      "name": "get_news_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_insider_transactions",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_insider_transactions"
+      },
+      "name": "get_insider_transactions_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "get_insider_transactions",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_insider_transactions"
+      },
+      "name": "get_insider_transactions_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "fetch_stocktwits_messages",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "fetch_stocktwits_messages"
+      },
+      "name": "fetch_stocktwits_messages_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "fetch_stocktwits_messages",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "fetch_stocktwits_messages"
+      },
+      "name": "fetch_stocktwits_messages_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "fetch_reddit_posts",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "fetch_reddit_posts"
+      },
+      "name": "fetch_reddit_posts_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "fetch_reddit_posts",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "fetch_reddit_posts"
+      },
+      "name": "fetch_reddit_posts_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "fetch_china_sentiment_sources",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "fetch_china_sentiment_sources"
+      },
+      "name": "fetch_china_sentiment_sources_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "fetch_china_sentiment_sources",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "fetch_china_sentiment_sources"
+      },
+      "name": "fetch_china_sentiment_sources_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "resolve_instrument_context",
+        "content_scope": "identity_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "resolve_instrument_context"
+      },
+      "name": "resolve_instrument_context_actual_selector_matches"
+    },
+    {
+      "expected": {
+        "tool": "resolve_instrument_context",
+        "content_scope": "identity_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "resolve_instrument_context"
+      },
+      "name": "resolve_instrument_context_actual_selector_other"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": " \tAaPl\r\n"
+        },
+        "run_instrument": "AAPL",
+        "tool": "get_stock_data"
+      },
+      "name": "case_and_ascii_whitespace"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "000001"
+        },
+        "run_instrument": "000001",
+        "tool": "get_stock_data"
+      },
+      "name": "same_bare_code_literal",
+      "notes": "Venue/entity remains unknown, not Shenzhen inferred from prefix."
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "GOLD"
+        },
+        "run_instrument": "GOLD",
+        "tool": "get_stock_data"
+      },
+      "name": "same_literal_current_proxy_alias",
+      "notes": "Phase1 does not infer that the adapter requested GC=F; actual provider request is unsaved."
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "exact_preserved_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "FıCT"
+        },
+        "run_instrument": "FıCT",
+        "tool": "get_stock_data"
+      },
+      "name": "same_nonascii_literal"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "mainland_explicit_venue_v1",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": "SH",
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "600519.SS"
+        },
+        "run_instrument": "600519.SH",
+        "tool": "get_stock_data"
+      },
+      "name": "sh_suffix_alias"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "mainland_explicit_venue_v1",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": "SH",
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "600519.SS"
+        },
+        "run_instrument": "SH600519",
+        "tool": "get_stock_data"
+      },
+      "name": "sh_prefix_alias"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "mainland_explicit_venue_v1",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": "SZ",
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "000001.SZ"
+        },
+        "run_instrument": "SZ000001",
+        "tool": "get_stock_data"
+      },
+      "name": "sz_prefix_alias"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "explicit_venue_conflict",
+        "canonical_rule": "mainland_explicit_venue_v1",
+        "record_alignment": "conflict",
+        "record_reason": "explicit_venue_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "000001.SZ"
+        },
+        "run_instrument": "000001.SS",
+        "tool": "get_stock_data"
+      },
+      "name": "explicit_same_code_different_venue"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unqualified_venue",
+        "canonical_rule": "no_bare_venue_inference",
+        "record_alignment": "unknown",
+        "record_reason": "unqualified_venue",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "000001.SZ"
+        },
+        "run_instrument": "000001",
+        "tool": "get_stock_data"
+      },
+      "name": "bare_vs_qualified_sz"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unqualified_venue",
+        "canonical_rule": "no_bare_venue_inference",
+        "record_alignment": "unknown",
+        "record_reason": "unqualified_venue",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "000001.SS"
+        },
+        "run_instrument": "000001",
+        "tool": "get_stock_data"
+      },
+      "name": "bare_vs_qualified_sh"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "000001.SZ"
+        },
+        "run_instrument": "600519",
+        "tool": "get_stock_data"
+      },
+      "name": "bare_vs_qualified_other_code"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "hk_explicit_suffix_padding_v1",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": "HK",
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "0700.HK"
+        },
+        "run_instrument": "700.HK",
+        "tool": "get_stock_data"
+      },
+      "name": "hk_suffix_padding"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unqualified_venue",
+        "canonical_rule": "no_bare_venue_inference",
+        "record_alignment": "unknown",
+        "record_reason": "unqualified_venue",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "0700.HK"
+        },
+        "run_instrument": "700",
+        "tool": "get_stock_data"
+      },
+      "name": "hk_bare_no_venue"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "outside_reviewed_hk_rule",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "0700.HK"
+        },
+        "run_instrument": "00700.HK",
+        "tool": "get_stock_data"
+      },
+      "name": "hk_five_digit_padding_unreviewed"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "malformed_qualified_identifier",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "600519OTHER.SS"
+        },
+        "run_instrument": "600519.SS",
+        "tool": "get_stock_data"
+      },
+      "name": "mainland_truncation_must_not_confirm"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "BRK-B"
+        },
+        "run_instrument": "BRK.B",
+        "tool": "get_stock_data"
+      },
+      "name": "plain_shareclass_punctuation_not_alias",
+      "notes": "Conflicting saved request spelling, not a claim of different economic issuer."
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "proxy",
+        "canonical_reason": "declared_proxy_reference",
+        "canonical_rule": "explicit_yahoo_reference_pair",
+        "record_alignment": "proxy",
+        "record_reason": "declared_proxy_reference",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "GC=F"
+        },
+        "run_instrument": "GOLD",
+        "tool": "get_stock_data"
+      },
+      "name": "gold_declared_reference"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "proxy",
+        "canonical_reason": "declared_proxy_reference",
+        "canonical_rule": "explicit_yahoo_reference_pair",
+        "record_alignment": "proxy",
+        "record_reason": "declared_proxy_reference",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "GC=F"
+        },
+        "run_instrument": "XAUUSD+",
+        "tool": "get_stock_data"
+      },
+      "name": "metal_single_qualifier_declared_reference"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "proxy",
+        "canonical_reason": "declared_proxy_reference",
+        "canonical_rule": "explicit_yahoo_reference_pair",
+        "record_alignment": "proxy",
+        "record_reason": "declared_proxy_reference",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "^GSPC"
+        },
+        "run_instrument": "SPX500",
+        "tool": "get_stock_data"
+      },
+      "name": "cfd_declared_reference"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "US500"
+        },
+        "run_instrument": "SPX500",
+        "tool": "get_stock_data"
+      },
+      "name": "same_reference_two_aliases_not_merged"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "unsupported_broker_qualifier",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "AAPL"
+        },
+        "run_instrument": "AAPL+",
+        "tool": "get_stock_data"
+      },
+      "name": "arbitrary_plus_not_stripped"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "unsupported_broker_qualifier",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "GC=F"
+        },
+        "run_instrument": "XAUUSD++",
+        "tool": "get_stock_data"
+      },
+      "name": "multiple_plus_not_stripped"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "pair_namespace_not_captured",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "BTC-USD"
+        },
+        "run_instrument": "BTCUSD",
+        "tool": "get_stock_data"
+      },
+      "name": "crypto_pair_requires_namespace"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "pair_namespace_not_captured",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "EURUSD=X"
+        },
+        "run_instrument": "EURUSD",
+        "tool": "get_stock_data"
+      },
+      "name": "forex_pair_requires_namespace"
+    },
+    {
+      "expected": {
+        "tool": "fetch_stocktwits_messages",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "discussion_namespace_not_captured",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "ticker": "BTC.X"
+        },
+        "run_instrument": "BTC-USD",
+        "tool": "fetch_stocktwits_messages"
+      },
+      "name": "stocktwits_discussion_is_not_pair_confirmation"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "no_unicode_normalization",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "FıCT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "nonascii_confusable_not_casefolded"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "unreviewed_identifier_relation",
+        "canonical_rule": "no_unicode_normalization",
+        "record_alignment": "unknown",
+        "record_reason": "unreviewed_identifier_relation",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "０００００１.SZ"
+        },
+        "run_instrument": "000001.SZ",
+        "tool": "get_stock_data"
+      },
+      "name": "fullwidth_code_not_ascii_venue"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "effective_request_missing",
+        "canonical_rule": "no_proved_effective_selector",
+        "record_alignment": "unknown",
+        "record_reason": "effective_request_missing",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {},
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "canonical_selector_absent"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "effective_request_unusable",
+        "canonical_rule": "no_proved_effective_selector",
+        "record_alignment": "unknown",
+        "record_reason": "effective_request_unusable",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": ""
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "canonical_selector_empty"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "effective_request_unusable",
+        "canonical_rule": "no_proved_effective_selector",
+        "record_alignment": "unknown",
+        "record_reason": "effective_request_unusable",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": false
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "canonical_selector_boolean"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "effective_request_unusable",
+        "canonical_rule": "no_proved_effective_selector",
+        "record_alignment": "unknown",
+        "record_reason": "effective_request_unusable",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": null
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "canonical_selector_null"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "unknown",
+        "canonical_reason": "effective_request_missing",
+        "canonical_rule": "no_proved_effective_selector",
+        "record_alignment": "unknown",
+        "record_reason": "unexpected_selector_metadata",
+        "venue": null,
+        "unexpected_selector_keys": [
+          "ticker"
+        ]
+      },
+      "input": {
+        "parameters": {
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "non_effective_key_not_used"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "unknown",
+        "record_reason": "unexpected_selector_metadata",
+        "venue": null,
+        "unexpected_selector_keys": [
+          "ticker"
+        ]
+      },
+      "input": {
+        "parameters": {
+          "symbol": "FICT",
+          "ticker": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "canonical_aligns_extra_other_ambiguous"
+    },
+    {
+      "expected": {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": [
+          "ticker"
+        ]
+      },
+      "input": {
+        "parameters": {
+          "symbol": "OTHER",
+          "ticker": "FICT"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_stock_data"
+      },
+      "name": "canonical_other_extra_run_cannot_override"
+    },
+    {
+      "expected": {
+        "tool": "get_global_news",
+        "content_scope": "global_query",
+        "canonical_selector_key": null,
+        "canonical_alignment": "not_applicable",
+        "canonical_reason": "global_query_not_instrument_scoped",
+        "canonical_rule": "global_query",
+        "record_alignment": "not_applicable",
+        "record_reason": "global_query_not_instrument_scoped",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "curr_date": "2026-01-09"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_global_news"
+      },
+      "name": "global_news_not_scoped"
+    },
+    {
+      "expected": {
+        "tool": "get_market_data_snapshot",
+        "content_scope": "legacy_tool_scope_unknown",
+        "canonical_selector_key": null,
+        "canonical_alignment": "unknown",
+        "canonical_reason": "legacy_tool_scope_unknown",
+        "canonical_rule": "legacy_unknown",
+        "record_alignment": "unknown",
+        "record_reason": "legacy_tool_scope_unknown",
+        "venue": null,
+        "unexpected_selector_keys": []
+      },
+      "input": {
+        "parameters": {
+          "symbol": "OTHER"
+        },
+        "run_instrument": "FICT",
+        "tool": "get_market_data_snapshot"
+      },
+      "name": "legacy_snapshot_no_producer_map",
+      "notes": "Do not invent an effective selector from an unproduced legacy tool name."
+    }
+  ],
+  "fictional": true,
+  "evidence": {
+    "schema_version": 1,
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "research_as_of": "2026-01-09T23:59:59.999999Z",
+    "as_of_policy": "analysis_date_end_utc",
+    "market_timezone": null,
+    "created_at": "2026-01-09T10:00:00.000000Z",
+    "manifest": {
+      "analysts": [
+        "market"
+      ]
+    },
+    "manifest_sha256": "d709c471d532f09b2d89b65d2a66ce3eaad587946b4eff478f097e0d4c17d451",
+    "records": [
+      {
+        "id": "ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "analyst": "market",
+        "tool": "get_market_data_snapshot",
+        "instrument": "FICT",
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "status": "unavailable",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "107a1643d32838deade01fc0c934f882b295c5f92b779aa1f11666c32e4b8061",
+        "sources": [],
+        "attempts": []
+      },
+      {
+        "id": "ev-dddddddddddddddddddddddddddddddd",
+        "analyst": "market",
+        "tool": "get_global_news",
+        "instrument": "FICT",
+        "parameters": {
+          "curr_date": "2026-01-09"
+        },
+        "status": "empty",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "533bca78f47f26f147ea0a8f088b57d9a40d18302488177db7f24a415df2e6cd",
+        "sources": [],
+        "attempts": []
+      },
+      {
+        "id": "ev-cccccccccccccccccccccccccccccccc",
+        "analyst": "market",
+        "tool": "get_news",
+        "instrument": "FICT",
+        "parameters": {
+          "ticker": "FICT",
+          "symbol": "OTHER"
+        },
+        "status": "available",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "c663a04fa015eae3863dc5334d36d0db0fb3df8d819eb05547086c66bd041235",
+        "sources": [
+          {
+            "provider": "yfinance",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "unknown",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+          }
+        ],
+        "attempts": []
+      },
+      {
+        "id": "ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "analyst": "market",
+        "tool": "get_indicators",
+        "instrument": "FICT",
+        "parameters": {
+          "symbol": "OTHER",
+          "indicator": "rsi"
+        },
+        "status": "withheld",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "1161359d7ae8990c14ed2fbef7dc857b160d18709c3feeaa73a7f77120382f67",
+        "sources": [],
+        "attempts": []
+      },
+      {
+        "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "analyst": "market",
+        "tool": "get_stock_data",
+        "instrument": "FICT",
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "status": "available",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "ec36b9c8b1c8c461efd0113ebfa6f12a7d8d36643ed02c067237edeaed73db18",
+        "sources": [
+          {
+            "provider": "local_calculation",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "unknown",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+          },
+          {
+            "provider": "yfinance",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "unknown",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+          },
+          {
+            "provider": "alpha_vantage",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "withheld",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": null
+          }
+        ],
+        "attempts": []
+      }
+    ],
+    "artifacts": {
+      "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+        "kind": "normalized_data",
+        "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+      },
+      "ec36b9c8b1c8c461efd0113ebfa6f12a7d8d36643ed02c067237edeaed73db18": {
+        "kind": "tool_text",
+        "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline saved input"
+      },
+      "1161359d7ae8990c14ed2fbef7dc857b160d18709c3feeaa73a7f77120382f67": {
+        "kind": "tool_text",
+        "payload": "[E:ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb]\nFictional offline saved input"
+      },
+      "c663a04fa015eae3863dc5334d36d0db0fb3df8d819eb05547086c66bd041235": {
+        "kind": "tool_text",
+        "payload": "[E:ev-cccccccccccccccccccccccccccccccc]\nFictional offline saved input"
+      },
+      "533bca78f47f26f147ea0a8f088b57d9a40d18302488177db7f24a415df2e6cd": {
+        "kind": "tool_text",
+        "payload": "[E:ev-dddddddddddddddddddddddddddddddd]\nFictional offline saved input"
+      },
+      "107a1643d32838deade01fc0c934f882b295c5f92b779aa1f11666c32e4b8061": {
+        "kind": "tool_text",
+        "payload": "[E:ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee]\nFictional offline saved input"
+      }
+    },
+    "citation_audit": {
+      "market_report": {
+        "referenced_ids": [
+          "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "unresolved_ids": [],
+        "status": "resolved"
+      },
+      "sentiment_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "news_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "fundamentals_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "investment_plan": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "trader_investment_plan": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "final_trade_decision": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      }
+    },
+    "bundle_sha256": "60fd0f64a1ba17bfb8886760c5fe0a79c06dc36bd4200a627aeacc6fc1f432c1"
+  },
+  "snapshot": {
+    "schema_version": 1,
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "captured_at": "2026-01-09T11:00:00.000000Z",
+    "evidence_bundle_sha256": "60fd0f64a1ba17bfb8886760c5fe0a79c06dc36bd4200a627aeacc6fc1f432c1",
+    "report_sections": {
+      "market_report": "虚构研究📈\r\nSaved request review [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+      "sentiment_report": null,
+      "news_report": null,
+      "fundamentals_report": null,
+      "investment_plan": null,
+      "trader_investment_plan": null,
+      "final_trade_decision": null
+    },
+    "snapshot_sha256": "7ae9bdcd49f6f89fa09b068a08649e6c0cc12bbb3b0194b2d6534d2f5f539a57"
+  },
+  "assessment": {
+    "schema_version": 1,
+    "scope": "saved_effective_outer_request_alignment",
+    "policy_version": "saved-effective-request-v1",
+    "policy_sha256": "933c826dc91d445488363e984acb5b66a5082fe548efbc4cfe930a7e71b5aa23",
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "evidence_bundle_sha256": "60fd0f64a1ba17bfb8886760c5fe0a79c06dc36bd4200a627aeacc6fc1f432c1",
+    "report_snapshot_sha256": "7ae9bdcd49f6f89fa09b068a08649e6c0cc12bbb3b0194b2d6534d2f5f539a57",
+    "reviewed_at": "2026-01-09T12:00:00.000000Z",
+    "records": [
+      {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "source_index": 0,
+            "provider": "local_calculation",
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          },
+          {
+            "source_index": 1,
+            "provider": "yfinance",
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          },
+          {
+            "source_index": 2,
+            "provider": "alpha_vantage",
+            "data_sha256": null,
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          }
+        ]
+      },
+      {
+        "tool": "get_indicators",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sources": []
+      },
+      {
+        "tool": "get_news",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "unknown",
+        "record_reason": "unexpected_selector_metadata",
+        "venue": null,
+        "unexpected_selector_keys": [
+          "symbol"
+        ],
+        "evidence_id": "ev-cccccccccccccccccccccccccccccccc",
+        "sources": [
+          {
+            "source_index": 0,
+            "provider": "yfinance",
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          }
+        ]
+      },
+      {
+        "tool": "get_global_news",
+        "content_scope": "global_query",
+        "canonical_selector_key": null,
+        "canonical_alignment": "not_applicable",
+        "canonical_reason": "global_query_not_instrument_scoped",
+        "canonical_rule": "global_query",
+        "record_alignment": "not_applicable",
+        "record_reason": "global_query_not_instrument_scoped",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-dddddddddddddddddddddddddddddddd",
+        "sources": []
+      },
+      {
+        "tool": "get_market_data_snapshot",
+        "content_scope": "legacy_tool_scope_unknown",
+        "canonical_selector_key": null,
+        "canonical_alignment": "unknown",
+        "canonical_reason": "legacy_tool_scope_unknown",
+        "canonical_rule": "legacy_unknown",
+        "record_alignment": "unknown",
+        "record_reason": "legacy_tool_scope_unknown",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "sources": []
+      }
+    ],
+    "summary": {
+      "record_count": 5,
+      "source_count": 4,
+      "consistent_count": 1,
+      "conflict_count": 1,
+      "unknown_count": 2,
+      "proxy_count": 0,
+      "not_applicable_count": 1,
+      "unsafe_record_ids": [
+        "ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ev-cccccccccccccccccccccccccccccccc",
+        "ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      ]
+    },
+    "assessment_sha256": "cd406cda294aadb03915aa2ce1ed599a01610d656fcc8648cb52219b1fcba1e0"
+  },
+  "invalid_mutations": [
+    "omit_conflicting_record",
+    "omit_non_head_source",
+    "reorder_coverage",
+    "rehashed_false_consistent",
+    "change_provider_projection",
+    "change_null_data_sha",
+    "incorrect_summary",
+    "earlier_review_clock",
+    "cross_run_or_snapshot_binding",
+    "unknown_field",
+    "noncanonical_clock",
+    "false_policy_hash"
+  ]
+}

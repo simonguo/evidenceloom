@@ -1,0 +1,258 @@
+{
+  "schema_version": 1,
+  "kind": "public_source_report_case",
+  "case_id": "215bd089-ee49-4574-ae14-f2d99ac08d9b",
+  "policy_sha256": "28154c093e029dbfd584ae570ac794786dbee30f643505e3c635e6148889f976",
+  "report_ref": {
+    "report_id": "c2a58c79-8c35-48d2-a611-a715497e7049",
+    "version_id": "859b421c-3b81-4dfe-9f1d-90072c08d7ea",
+    "report_raw_utf8_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+    "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95",
+    "full_text_utf8_sha256": "5092dac6837e43c5c165d924354f84bba878939bcbc003b14a111f980c70871b"
+  },
+  "source_ref": {
+    "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+    "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+    "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+    "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+  },
+  "claims": [
+    {
+      "claim_id": "CUSR0000SA0-2023-11",
+      "report_target": {
+        "report_id": "c2a58c79-8c35-48d2-a611-a715497e7049",
+        "version_id": "859b421c-3b81-4dfe-9f1d-90072c08d7ea",
+        "report_raw_utf8_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+        "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95",
+        "full_text_utf8_sha256": "5092dac6837e43c5c165d924354f84bba878939bcbc003b14a111f980c70871b"
+      },
+      "source_target": {
+        "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+        "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+        "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+        "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+      },
+      "span": {
+        "start_byte": 703,
+        "end_byte": 710,
+        "text": "308.148"
+      },
+      "cell": {
+        "series_id": "CUSR0000SA0",
+        "year": "2023",
+        "period": "M11",
+        "reference_period": "2023-11",
+        "source_series_index": 0,
+        "source_observation_index": 13,
+        "value": "308.148",
+        "units": {
+          "kind": "index",
+          "base": "1982-84=100"
+        },
+        "adjustment": "seasonally_adjusted",
+        "metadata_status": "declared_from_official_definitions"
+      },
+      "context_spans": {
+        "series_id": {
+          "start_byte": 575,
+          "end_byte": 586,
+          "text": "CUSR0000SA0"
+        },
+        "reference_period": {
+          "start_byte": 605,
+          "end_byte": 612,
+          "text": "2023-11"
+        },
+        "units": {
+          "start_byte": 629,
+          "end_byte": 648,
+          "text": "index (1982-84=100)"
+        },
+        "adjustment": {
+          "start_byte": 670,
+          "end_byte": 689,
+          "text": "seasonally_adjusted"
+        }
+      },
+      "claim_sha256": "3c7c108decdf5f5d6b56afd56923d1304e251fa5fde316705bff5e4251dbc2f9"
+    },
+    {
+      "claim_id": "CUSR0000SA0-2023-12",
+      "report_target": {
+        "report_id": "c2a58c79-8c35-48d2-a611-a715497e7049",
+        "version_id": "859b421c-3b81-4dfe-9f1d-90072c08d7ea",
+        "report_raw_utf8_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+        "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95",
+        "full_text_utf8_sha256": "5092dac6837e43c5c165d924354f84bba878939bcbc003b14a111f980c70871b"
+      },
+      "source_target": {
+        "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+        "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+        "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+        "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+      },
+      "span": {
+        "start_byte": 848,
+        "end_byte": 855,
+        "text": "308.741"
+      },
+      "cell": {
+        "series_id": "CUSR0000SA0",
+        "year": "2023",
+        "period": "M12",
+        "reference_period": "2023-12",
+        "source_series_index": 0,
+        "source_observation_index": 12,
+        "value": "308.741",
+        "units": {
+          "kind": "index",
+          "base": "1982-84=100"
+        },
+        "adjustment": "seasonally_adjusted",
+        "metadata_status": "declared_from_official_definitions"
+      },
+      "context_spans": {
+        "series_id": {
+          "start_byte": 720,
+          "end_byte": 731,
+          "text": "CUSR0000SA0"
+        },
+        "reference_period": {
+          "start_byte": 750,
+          "end_byte": 757,
+          "text": "2023-12"
+        },
+        "units": {
+          "start_byte": 774,
+          "end_byte": 793,
+          "text": "index (1982-84=100)"
+        },
+        "adjustment": {
+          "start_byte": 815,
+          "end_byte": 834,
+          "text": "seasonally_adjusted"
+        }
+      },
+      "claim_sha256": "7f8d6607a73d86a88af5e61b7397f23dbb27c620e5dd6352654063e50cb046fb"
+    },
+    {
+      "claim_id": "CUUR0000SA0-2023-11",
+      "report_target": {
+        "report_id": "c2a58c79-8c35-48d2-a611-a715497e7049",
+        "version_id": "859b421c-3b81-4dfe-9f1d-90072c08d7ea",
+        "report_raw_utf8_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+        "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95",
+        "full_text_utf8_sha256": "5092dac6837e43c5c165d924354f84bba878939bcbc003b14a111f980c70871b"
+      },
+      "source_target": {
+        "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+        "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+        "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+        "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+      },
+      "span": {
+        "start_byte": 997,
+        "end_byte": 1004,
+        "text": "307.051"
+      },
+      "cell": {
+        "series_id": "CUUR0000SA0",
+        "year": "2023",
+        "period": "M11",
+        "reference_period": "2023-11",
+        "source_series_index": 1,
+        "source_observation_index": 13,
+        "value": "307.051",
+        "units": {
+          "kind": "index",
+          "base": "1982-84=100"
+        },
+        "adjustment": "not_seasonally_adjusted",
+        "metadata_status": "declared_from_official_definitions"
+      },
+      "context_spans": {
+        "series_id": {
+          "start_byte": 865,
+          "end_byte": 876,
+          "text": "CUUR0000SA0"
+        },
+        "reference_period": {
+          "start_byte": 895,
+          "end_byte": 902,
+          "text": "2023-11"
+        },
+        "units": {
+          "start_byte": 919,
+          "end_byte": 938,
+          "text": "index (1982-84=100)"
+        },
+        "adjustment": {
+          "start_byte": 960,
+          "end_byte": 983,
+          "text": "not_seasonally_adjusted"
+        }
+      },
+      "claim_sha256": "33aa13c69d4f59f77c449e8e76f4f754414497db970093a36e7aad2fe6bf26e6"
+    },
+    {
+      "claim_id": "CUUR0000SA0-2023-12",
+      "report_target": {
+        "report_id": "c2a58c79-8c35-48d2-a611-a715497e7049",
+        "version_id": "859b421c-3b81-4dfe-9f1d-90072c08d7ea",
+        "report_raw_utf8_sha256": "0218648bc4b7c9da2600ba8c5aac69493aa93574d1e3377193d1da8f2bd35998",
+        "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95",
+        "full_text_utf8_sha256": "5092dac6837e43c5c165d924354f84bba878939bcbc003b14a111f980c70871b"
+      },
+      "source_target": {
+        "corpus_id": "bls-cpi-us-city-average-2023-2024-retrieved-20261004",
+        "manifest_sha256": "ebd51e48506c59bff3c2dde9ed90cc8057237551cb6a8b749c631d2fe97898c8",
+        "raw_sha256": "d0e9ef0055f65b7e2593054f0ae0bb6e2eace7bfc02005c36399676b00e20a90",
+        "table_sha256": "3aadf7f6a382dfd76899b6c5939f549fb99794c7dd77362563c101712613d54e"
+      },
+      "span": {
+        "start_byte": 1146,
+        "end_byte": 1153,
+        "text": "306.746"
+      },
+      "cell": {
+        "series_id": "CUUR0000SA0",
+        "year": "2023",
+        "period": "M12",
+        "reference_period": "2023-12",
+        "source_series_index": 1,
+        "source_observation_index": 12,
+        "value": "306.746",
+        "units": {
+          "kind": "index",
+          "base": "1982-84=100"
+        },
+        "adjustment": "not_seasonally_adjusted",
+        "metadata_status": "declared_from_official_definitions"
+      },
+      "context_spans": {
+        "series_id": {
+          "start_byte": 1014,
+          "end_byte": 1025,
+          "text": "CUUR0000SA0"
+        },
+        "reference_period": {
+          "start_byte": 1044,
+          "end_byte": 1051,
+          "text": "2023-12"
+        },
+        "units": {
+          "start_byte": 1068,
+          "end_byte": 1087,
+          "text": "index (1982-84=100)"
+        },
+        "adjustment": {
+          "start_byte": 1109,
+          "end_byte": 1132,
+          "text": "not_seasonally_adjusted"
+        }
+      },
+      "claim_sha256": "3549b0c679b945d6d763fb85c958d1b787605fd19fab337a491b87be76c94b7a"
+    }
+  ],
+  "case_sha256": "d5a9cae5fc3f5479727d94e192484506d3cd27800e83567ff537015bac033932"
+}

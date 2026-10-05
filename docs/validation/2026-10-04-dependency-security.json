@@ -1,0 +1,450 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-04T01:16:38.710094+00:00",
+  "base_revision": "acba825011373c82828cc785d15a3559a0423cdf",
+  "components": {
+    "uv.lock": "1a6b236ba8ef62b230c1e3d7dc055122334905609a2d11cdaf55c34f3e50075b",
+    "frontend/package.json": "5b901a7a5f3f254bb64385f784dc2bd0d9983421a5ebe3a2e1317f442267b356",
+    "frontend/package-lock.json": "49ebbdecb64fa39974a1946a66b2d93b2a0d4a751b45a6b69bf5994c3b0cf9e4",
+    ".github/workflows/security.yml": "0ff5885475f602872ddef6674d346a057e3d15a040e696136ea2daa432681d2d",
+    "scripts/check_frontend_audit.py": "27a4b6a79ebe67bf8135ecc1b801f42b042f912c4295f17dd2ac98af20b8b1d3",
+    "tests/test_frontend_audit.py": "8ae976c6bb66dc87d1cd0cd394416ea58472b27414c3956c03ab7f6f24cfa065",
+    "THIRD_PARTY_NOTICES.md": "509e8c148c4fdf77695d88c49e943f9d6c9448f238c05bff8b8cbb2aef5805bf"
+  },
+  "python": {
+    "interpreter": "CPython 3.10.4 x86_64 through Rosetta",
+    "existing_full_suite": {
+      "passed": 1043,
+      "subtests_passed": 75,
+      "deselected": 1,
+      "warnings": 8,
+      "seconds": 144.05
+    },
+    "audit_gate_tests_passed": 48,
+    "frozen_install": true,
+    "ruff_check": true,
+    "ruff_format": true,
+    "lock_check": true,
+    "baseline_audit": {
+      "packages": 94,
+      "findings": [
+        {
+          "name": "cryptography",
+          "version": "49.0.0",
+          "ids": [
+            "PYSEC-2026-3552",
+            "PYSEC-2026-3552"
+          ]
+        },
+        {
+          "name": "langgraph-checkpoint-sqlite",
+          "version": "3.1.0",
+          "ids": [
+            "PYSEC-2026-3636"
+          ]
+        },
+        {
+          "name": "urllib3",
+          "version": "2.7.0",
+          "ids": [
+            "PYSEC-2026-4177",
+            "PYSEC-2026-4176",
+            "PYSEC-2026-4175"
+          ]
+        }
+      ],
+      "raw_findings": 6,
+      "unique_ids": [
+        "PYSEC-2026-3552",
+        "PYSEC-2026-3636",
+        "PYSEC-2026-4175",
+        "PYSEC-2026-4176",
+        "PYSEC-2026-4177"
+      ],
+      "report_sha256": "1fe4d69dafdd0bcacdbda20d43f506d203ee5ed1ca60b4720dc3025553b93504"
+    },
+    "final_audit": {
+      "packages": 94,
+      "findings": [],
+      "raw_findings": 0,
+      "unique_ids": [],
+      "report_sha256": "a31c9a8ae281dc71f0ae91a8a4a16e32c65250b9e0b250487b911be841772488"
+    },
+    "offline_compatibility": [
+      "google-auth RSA PEM signing/verification",
+      "google-auth EC PEM signing/verification",
+      "valid chunked response",
+      "oversized chunk line rejected",
+      "SQLite sibling namespace isolation",
+      "SQLite literal-percent namespace isolation"
+    ]
+  },
+  "frontend": {
+    "fresh_isolated_install": true,
+    "tests_passed": 288,
+    "test_files": 24,
+    "typecheck": true,
+    "lint": true,
+    "production_build": true,
+    "tauri_static_build": true,
+    "baseline_full_audit": {
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 3,
+          "high": 11,
+          "critical": 0,
+          "total": 14
+        },
+        "dependencies": {
+          "prod": 155,
+          "dev": 475,
+          "optional": 104,
+          "peer": 19,
+          "peerOptional": 0,
+          "total": 668
+        }
+      },
+      "affected_entries": [
+        "@next/eslint-plugin-next",
+        "@vitest/mocker",
+        "baseline-browser-mapping",
+        "brace-expansion",
+        "braces",
+        "browserslist",
+        "chokidar",
+        "eslint-config-next",
+        "fast-glob",
+        "js-yaml",
+        "micromatch",
+        "tailwindcss",
+        "undici",
+        "vitest"
+      ],
+      "unique_advisories": [
+        "https://github.com/advisories/GHSA-2883-xcg3-v3hh",
+        "https://github.com/advisories/GHSA-2gqq-gqf2-x968",
+        "https://github.com/advisories/GHSA-2jfj-6hjv-fm6j",
+        "https://github.com/advisories/GHSA-3wwx-pv8p-q78v",
+        "https://github.com/advisories/GHSA-3xpg-4rpp-hhhm",
+        "https://github.com/advisories/GHSA-4cwx-7wf7-3272",
+        "https://github.com/advisories/GHSA-5p4m-2wfm-xmqj",
+        "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+        "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+        "https://github.com/advisories/GHSA-82fw-gwwq-j7x9",
+        "https://github.com/advisories/GHSA-8436-99hf-9mmv",
+        "https://github.com/advisories/GHSA-8xcm-r25x-g524",
+        "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+        "https://github.com/advisories/GHSA-jr45-8vmc-qm54",
+        "https://github.com/advisories/GHSA-m8rv-5g2x-5cg5",
+        "https://github.com/advisories/GHSA-mh99-v99m-4gvg",
+        "https://github.com/advisories/GHSA-pmjh-fq2x-6v4x",
+        "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr",
+        "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+        "https://github.com/advisories/GHSA-r53p-7pc4-xj5r",
+        "https://github.com/advisories/GHSA-rfgv-xxqx-mfg5",
+        "https://github.com/advisories/GHSA-rgw5-rvv9-x895",
+        "https://github.com/advisories/GHSA-rx4f-c7p8-82vq",
+        "https://github.com/advisories/GHSA-v3r7-h72x-cjcm",
+        "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+        "https://github.com/advisories/GHSA-w293-vg96-wgc3",
+        "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv"
+      ],
+      "report_sha256": "b7cc54e20beef5ecd540d3fc30e8a69c8b5b6db13670473fadc35057542ae569"
+    },
+    "final_full_audit": {
+      "observed_at": "2026-10-04T01:10:02.414062Z",
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 8,
+          "critical": 0,
+          "total": 8
+        },
+        "dependencies": {
+          "prod": 155,
+          "dev": 475,
+          "optional": 104,
+          "peer": 19,
+          "peerOptional": 0,
+          "total": 668
+        }
+      },
+      "affected_entries": [
+        "@next/eslint-plugin-next",
+        "@tailwindcss/typography",
+        "braces",
+        "chokidar",
+        "eslint-config-next",
+        "fast-glob",
+        "micromatch",
+        "tailwindcss"
+      ],
+      "unique_advisories": [
+        "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+      ],
+      "report_sha256": "152d5bc24e35cd5f476e68c8f144bf7d299c241a181a1ab3aa207d451cbc57fb"
+    },
+    "final_production_audit": {
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 0,
+          "critical": 0,
+          "total": 0
+        },
+        "dependencies": {
+          "prod": 155,
+          "dev": 475,
+          "optional": 104,
+          "peer": 19,
+          "peerOptional": 0,
+          "total": 668
+        }
+      },
+      "affected_entries": [],
+      "unique_advisories": [],
+      "report_sha256": "2c53040a555afa20a336ed66956ce3e4405536bb74a7e95be1c1a6acbfcb3ccc"
+    },
+    "known_unresolved_advisory": "GHSA-vfj7-8cjw-p6xm",
+    "gate_baseline_rejected": true,
+    "gate_final_explicit_exception": true,
+    "initial_final_full_audit": {
+      "metadata": {
+        "vulnerabilities": {
+          "info": 0,
+          "low": 0,
+          "moderate": 0,
+          "high": 7,
+          "critical": 0,
+          "total": 7
+        },
+        "dependencies": {
+          "prod": 155,
+          "dev": 475,
+          "optional": 104,
+          "peer": 19,
+          "peerOptional": 0,
+          "total": 668
+        }
+      },
+      "affected_entries": [
+        "@next/eslint-plugin-next",
+        "braces",
+        "chokidar",
+        "eslint-config-next",
+        "fast-glob",
+        "micromatch",
+        "tailwindcss"
+      ],
+      "unique_advisories": [
+        "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+      ],
+      "report_sha256": "72b1f79d2784898b4775d36c6a2bede7db1eb4958f1ac1dfa54a3262d584455f"
+    },
+    "audit_scope": {
+      "required_command": "npm audit --include=dev --include=optional --include=peer --json",
+      "dependency_metadata_attests_scope": false,
+      "adverse_environment": {
+        "NODE_ENV": "production",
+        "npm_config_omit": "dev"
+      },
+      "npm_version": "11.6.2",
+      "local_node_version": "v24.12.0",
+      "npm_exit_code": 1,
+      "default_full_control_report_sha256": "152d5bc24e35cd5f476e68c8f144bf7d299c241a181a1ab3aa207d451cbc57fb",
+      "byte_identical_to_default_full_control": true,
+      "same_dependency_metadata_as_omit_dev": true,
+      "pre_review_gate_rejected_eighth_entry": true,
+      "reviewed_typography_instance": "node_modules/@tailwindcss/typography@0.5.20",
+      "reviewed_typography_edge": "peerDependencies.tailwindcss",
+      "scope_proof_sha256": "1368221b2c8e8908ef3c5fd6b111f0b9cf231d8aecb4abc635f22830ff058c48",
+      "official_documentation": "https://docs.npmjs.com/cli/v11/commands/npm-audit/#include",
+      "pinned_npm_source_confirms_include_wins": true,
+      "independent_post_review_sha256": "0cfbef5547eff29aa08d7fdade70080b120d3e3723d6539839defce42ca51485",
+      "independent_mutation_rejections": 11,
+      "post_review_complete_audit_gate_passed": true
+    },
+    "reviewed_exception_graphs": [
+      {
+        "vulnerable_packages": 7,
+        "reviewed_lock_instances": 8
+      },
+      {
+        "vulnerable_packages": 8,
+        "reviewed_lock_instances": 9
+      }
+    ]
+  },
+  "sidecar": {
+    "observed_at": "2026-10-04T00:53:00.067379+00:00",
+    "artifact_bytes": 53951632,
+    "artifact_sha256": "5d66296384cb46883d077bc4e8ab4e0f552baac0e6b5cbd08adb6a8aa53ac79e",
+    "embedded_metadata_versions": {
+      "cryptography": "50.0.2",
+      "urllib3": "2.8.0"
+    },
+    "sqlite_build_environment_version": "3.1.1",
+    "sqlite_compiled_modules_match_source": [
+      {
+        "module": "langgraph.checkpoint.sqlite",
+        "source_sha256": "b577c44d44e72b270d78caee4b7aacc5d2521dbbc1a33d39fb3240e20a830439"
+      },
+      {
+        "module": "langgraph.checkpoint.sqlite.utils",
+        "source_sha256": "7e1724b4442c0276738c6256c758ae575b89660972077f7e566f551bd3a1ec82"
+      },
+      {
+        "module": "langgraph.checkpoint.sqlite._delta",
+        "source_sha256": "cfa828f6c03373c6fa6ad9cb9b4c0080425f2524f10c789f27651d58a229c326"
+      }
+    ],
+    "sqlite_dist_info_not_bundled": true,
+    "own_compiled_modules_match_worktree": 98,
+    "namespace_modules_without_code": [
+      "tradingagents.agents.utils",
+      "tradingagents.agents.trader",
+      "tradingagents.agents.managers",
+      "tradingagents.agents.risk_mgmt",
+      "tradingagents.agents.researchers",
+      "tradingagents.agents.analysts"
+    ],
+    "readable_source_files": 88,
+    "all_readable_sources_match": true,
+    "manifest": {
+      "type": "evidence_ready",
+      "schema_version": 1,
+      "code_sha256": "17593da79aaab79085d6a1c5fd28991a04e8ed9fa243d53ddfa53c7ce0811601",
+      "prompt_templates_sha256": "361c2952214420de79ace08dcff8c7f5723f7c9a3bb77af25b48ed7ace8ffed0",
+      "source_file_count": 88
+    },
+    "manifest_command_seconds": 20.673,
+    "uv_lock_sha256": "1a6b236ba8ef62b230c1e3d7dc055122334905609a2d11cdaf55c34f3e50075b",
+    "source_build_openssl": "OpenSSL 3.6.1 27 Jan 2026",
+    "architecture": "Mach-O x86_64 on arm64 host through Rosetta",
+    "sidecar_probe_all_passed": true,
+    "root_sidecar_sha256": "c4688a5d98c7480e828c221f5caf02a22c03c6a7aa7db1b08b549883854a4e39"
+  },
+  "standalone": {
+    "relocated_copy": true,
+    "symlinks": 0,
+    "package_manifests": 139,
+    "remaining_braces_chain_packages_present": [],
+    "vendored_browserslist_still_present": true,
+    "python_entry_scripts": 2,
+    "python_environment_present": false,
+    "research_core_present": false,
+    "homepage_status": 200,
+    "assets": [
+      {
+        "path": "/_next/static/chunks/104-886bc81d39153f6c.js",
+        "status": 200,
+        "bytes": 279011
+      },
+      {
+        "path": "/_next/static/chunks/176-b06c1d1e6e69b017.js",
+        "status": 200,
+        "bytes": 8799
+      },
+      {
+        "path": "/_next/static/chunks/255-ce8c7c75002f810b.js",
+        "status": 200,
+        "bytes": 173933
+      },
+      {
+        "path": "/_next/static/chunks/4bd1b696-c023c6e3521b1417.js",
+        "status": 200,
+        "bytes": 173019
+      },
+      {
+        "path": "/_next/static/chunks/8cc6faea-5bbed60f911e5246.js",
+        "status": 200,
+        "bytes": 92961
+      },
+      {
+        "path": "/_next/static/chunks/968-df8377f497dab6d7.js",
+        "status": 200,
+        "bytes": 211283
+      },
+      {
+        "path": "/_next/static/chunks/app/layout-c2a712e4efb0cb9c.js",
+        "status": 200,
+        "bytes": 11956
+      },
+      {
+        "path": "/_next/static/chunks/app/page-9fce4aa06ee59853.js",
+        "status": 200,
+        "bytes": 12888
+      },
+      {
+        "path": "/_next/static/chunks/d648eb28-c4d50e0f4c9f5d14.js",
+        "status": 200,
+        "bytes": 88032
+      },
+      {
+        "path": "/_next/static/chunks/main-app-6ef1feccc57dd870.js",
+        "status": 200,
+        "bytes": 557
+      },
+      {
+        "path": "/_next/static/chunks/polyfills-42372ed130431b0a.js",
+        "status": 200,
+        "bytes": 112594
+      },
+      {
+        "path": "/_next/static/chunks/webpack-105eeabe7786321f.js",
+        "status": 200,
+        "bytes": 3564
+      },
+      {
+        "path": "/_next/static/css/1bfe551b0acc4378.css",
+        "status": 200,
+        "bytes": 58662
+      }
+    ],
+    "invalid_input_routes": [
+      {
+        "path": "/api/resolve-instrument",
+        "status": 400,
+        "body": "query is required"
+      },
+      {
+        "path": "/api/analyze",
+        "status": 400,
+        "body": "ticker is required\nanalysisDate must be YYYY-MM-DD\nat least one analyst is required"
+      }
+    ],
+    "scope": "relocated JavaScript UI/assets and rejected-input API smoke; does not establish clean-installed Python research runtime",
+    "independent_inventory_sha256": "56fc734a5af3241f19503c596dfbf6e91e89935cf6976ddba5ff016fd4d947d6"
+  },
+  "loopback_scripts": {
+    "dev": [
+      "127.0.0.1:31989",
+      "localhost:31989"
+    ],
+    "start": [
+      "127.0.0.1:31979",
+      "localhost:31979"
+    ],
+    "both_ipv4_loopback_listeners": true,
+    "all_http_statuses": 200,
+    "owned_servers_stopped": true
+  },
+  "known_limits": [
+    "Unpatched braces development chain remains an explicit exception.",
+    "Next 15.5.27 and 16.3.8 retain separately vendored legacy Browserslist behaviors; no production HTTP path demonstrated.",
+    "macOS Intel cryptography source-build success does not restore upstream support removed in49.",
+    "Source-build OpenSSL3.6.1 differs from official wheel OpenSSL4.0.3.",
+    "Complete web research backend clean-install, real proxy/provider interoperability, signing and OS dependency auditing remain open.",
+    "Audit JSON dependency counts do not attest full inclusion scope; the trusted explicit command is required."
+  ],
+  "native_candidate_ci": "required PR checks pending when this local record was written",
+  "provider_requests": 0,
+  "model_requests": 0,
+  "broader_product_objective_complete": false
+}

@@ -1,6 +1,8 @@
 from typing import Annotated
 from typing_extensions import TypedDict
 from langgraph.graph import MessagesState
+from tradingagents.agents.utils.output_quality import merge_output_quality
+from tradingagents.evidence import merge_evidence_bundles
 
 
 # Researcher team state
@@ -64,6 +66,16 @@ class AgentState(MessagesState):
     final_trade_decision: Annotated[str, "Final decision made by the Risk Analysts"]
     final_rating: Annotated[str, "Portfolio Manager rating, or REVIEW when unavailable"]
     run_settings: Annotated[dict, "Safe configuration manifest for this run"]
+    evidence_bundle: Annotated[dict, merge_evidence_bundles]
+    research_memory: Annotated[dict, "Frozen memory input, evaluation plan and research start"]
+    research_readiness_policy: Annotated[dict, "Frozen deterministic research input policy"]
+    research_readiness: Annotated[dict, "Saved research input checks before recommendation"]
+    memory_bundle: Annotated[dict, "Immutable completion memory and outcome contract"]
+    report_text_snapshot: Annotated[dict, "Immutable original report strings after final Evidence"]
+    effective_request_identity: Annotated[
+        dict, "Saved outer-selector review; provider identity unknown"
+    ]
+    output_quality: Annotated[dict, merge_output_quality]
     past_context: Annotated[
         str,
         "Memory log context injected at run start (same-ticker decisions + cross-ticker lessons)",

@@ -73,6 +73,7 @@ echo "Python: $PYTHON"
 # Step 1 – Build PyInstaller sidecar
 # ---------------------------------------------------------------------------
 if [[ "$SKIP_SIDECAR" -eq 0 ]]; then
+  "$PYTHON" "$REPO_ROOT/scripts/sidecar_architecture.py" interpreter "$TARGET_TRIPLE"
   echo ""
   echo "==> Step 1: Building PyInstaller sidecar..."
 
@@ -97,11 +98,8 @@ if [[ ! -f "$SIDECAR_BIN" ]]; then
   echo "ERROR: Sidecar binary not found at $SIDECAR_BIN" >&2
   exit 1
 fi
-if grep -q "EVIDENCELOOM_SIDECAR_PLACEHOLDER" "$SIDECAR_BIN" 2>/dev/null; then
-  echo "ERROR: $SIDECAR_BIN is still the placeholder. The PyInstaller build may have failed." >&2
-  exit 1
-fi
-echo "Sidecar binary verified: $SIDECAR_BIN"
+"$PYTHON" "$REPO_ROOT/scripts/sidecar_architecture.py" binary "$TARGET_TRIPLE" "$SIDECAR_BIN"
+echo "Sidecar OS and architecture verified: $SIDECAR_BIN"
 
 # A real identity makes PyInstaller sign both the launcher and every collected
 # Mach-O binary with hardened runtime enabled. This is required before the
@@ -121,25 +119,14 @@ if [[ "$TARGET_TRIPLE" == *"apple-darwin" && -n "${APPLE_SIGNING_IDENTITY:-}" ]]
 fi
 
 # ---------------------------------------------------------------------------
-# Step 2 – Quick smoke-test the sidecar
+# Step 2 – Check bootstrap and actual research imports, including reused binaries
 # ---------------------------------------------------------------------------
-if [[ "$SKIP_SIDECAR" -eq 0 ]]; then
-  echo ""
-  echo "==> Step 2: Smoke-testing sidecar..."
-  set +e
-  RESULT="$(printf '%s\n' '{"__command":"smoke_test"}' | "$SIDECAR_BIN" 2>&1)"
-  SIDECAR_STATUS=$?
-  set -e
-  if echo "$RESULT" | grep -q '"type": "ready"' && [[ "$SIDECAR_STATUS" -eq 0 ]]; then
-    echo "Sidecar smoke-test passed."
-  else
-    echo "ERROR: Sidecar returned unexpected output:"
-    printf '%s\n' "$RESULT" | sed 's/^/  /'
-    exit 1
-  fi
-else
-  echo "==> Step 2: Skipped (--skip-sidecar)."
-fi
+echo ""
+echo "==> Step 2: Checking sidecar bootstrap and research imports..."
+# Legacy-safe: older sidecars recognize smoke_test and cannot enter an analysis;
+# their plain ready response is insufficient and requires rebuilding.
+# Both sequential probes share one bounded 90-second deadline.
+"$PYTHON" "$REPO_ROOT/scripts/sidecar_probe.py" all "$SIDECAR_BIN"
 
 # ---------------------------------------------------------------------------
 # Step 3 – Build Tauri app

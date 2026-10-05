@@ -200,13 +200,24 @@ def get_instrument_context_from_state(state: Mapping[str, Any]) -> str:
     consumer is never forced to make a yfinance call mid-graph.
     """
     context = state.get("instrument_context")
-    if isinstance(context, str) and context.strip():
-        return context
-    return build_instrument_context(
-        str(state["company_of_interest"]),
-        state.get("asset_type", "stock"),
-        trade_date=state.get("trade_date"),
-    )
+    if not isinstance(context, str) or not context.strip():
+        context = build_instrument_context(
+            str(state["company_of_interest"]),
+            state.get("asset_type", "stock"),
+            trade_date=state.get("trade_date"),
+        )
+    from tradingagents.evidence import current_ledger
+
+    if current_ledger() is not None or state.get("evidence_bundle"):
+        context += (
+            " Research evidence: cite each source-backed factual or numeric claim with the exact"
+            " [E:ev-UUIDhex] marker supplied in the source input or upstream report."
+            " Preserve these markers when summarizing others' reports; never invent or alter an ID."
+            " Separate observed facts from your inference, and identify unavailable or historically"
+            " unverified data. A resolving citation identifies a captured input; it does not"
+            " establish that the source supports the claim."
+        )
+    return context
 
 
 def report_or_unavailable(report: Any, label: str = "This report") -> str:

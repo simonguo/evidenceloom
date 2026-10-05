@@ -1,0 +1,222 @@
+{
+  "schema_version": 1,
+  "policy_version": "saved-effective-request-v1",
+  "scope": "saved_effective_outer_request_alignment",
+  "normalization": {
+    "ascii_case": "a-z_to_A-Z",
+    "strip_plus": false,
+    "trim_characters": [
+      "U+0009",
+      "U+000A",
+      "U+000B",
+      "U+000C",
+      "U+000D",
+      "U+0020"
+    ],
+    "unicode_normalization": "none"
+  },
+  "tool_scopes": {
+    "fetch_china_sentiment_sources": {
+      "content_scope": "retrieval_context",
+      "selector": "ticker"
+    },
+    "fetch_reddit_posts": {
+      "content_scope": "retrieval_context",
+      "selector": "ticker"
+    },
+    "fetch_stocktwits_messages": {
+      "content_scope": "retrieval_context",
+      "selector": "ticker"
+    },
+    "get_balance_sheet": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "ticker"
+    },
+    "get_cashflow": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "ticker"
+    },
+    "get_fundamentals": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "ticker"
+    },
+    "get_global_news": {
+      "content_scope": "global_query",
+      "selector": null
+    },
+    "get_income_statement": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "ticker"
+    },
+    "get_indicators": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "symbol"
+    },
+    "get_insider_transactions": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "ticker"
+    },
+    "get_market_data_snapshot": {
+      "content_scope": "legacy_tool_scope_unknown",
+      "selector": null
+    },
+    "get_news": {
+      "content_scope": "retrieval_context",
+      "selector": "ticker"
+    },
+    "get_stock_data": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "symbol"
+    },
+    "get_verified_market_snapshot": {
+      "content_scope": "single_instrument_requested_data",
+      "selector": "symbol"
+    },
+    "resolve_instrument_context": {
+      "content_scope": "identity_context",
+      "selector": "ticker"
+    }
+  },
+  "selector_like_keys": [
+    "instrument",
+    "symbol",
+    "ticker"
+  ],
+  "notation_rules": [
+    {
+      "grammar": [
+        "^[0-9]{6}\\.SH$",
+        "^[0-9]{6}\\.SS$",
+        "^SH[0-9]{6}$",
+        "^[0-9]{6}\\.SZ$",
+        "^SZ[0-9]{6}$"
+      ],
+      "id": "mainland_explicit_venue_v1",
+      "same_venue_aliases": {
+        "SH": [
+          ".SH",
+          ".SS",
+          "SH_prefix"
+        ],
+        "SZ": [
+          ".SZ",
+          "SZ_prefix"
+        ]
+      },
+      "venue_inference_from_bare_code": false
+    },
+    {
+      "bare_code_equivalence": false,
+      "canonical_notation": "left_pad_code_to_four_digits_plus_.HK",
+      "five_digit_leading_zero_equivalence": false,
+      "grammar": "^[0-9]{1,4}\\.HK$",
+      "id": "hk_explicit_suffix_padding_v1"
+    }
+  ],
+  "proxy_pairs": {
+    "BCOUSD": "BZ=F",
+    "BRENT": "BZ=F",
+    "COPPER": "HG=F",
+    "DE40": "^GDAXI",
+    "DJI30": "^DJI",
+    "EU50": "^STOXX50E",
+    "FRA40": "^FCHI",
+    "GER30": "^GDAXI",
+    "GER40": "^GDAXI",
+    "GOLD": "GC=F",
+    "HK50": "^HSI",
+    "JP225": "^N225",
+    "JPN225": "^N225",
+    "NAS100": "^NDX",
+    "NATGAS": "NG=F",
+    "SILVER": "SI=F",
+    "SPX": "^GSPC",
+    "SPX500": "^GSPC",
+    "UK100": "^FTSE",
+    "UKOIL": "BZ=F",
+    "US100": "^NDX",
+    "US30": "^DJI",
+    "US500": "^GSPC",
+    "USOIL": "CL=F",
+    "USTEC": "^NDX",
+    "WS30": "^DJI",
+    "WTI": "CL=F",
+    "WTICOUSD": "CL=F",
+    "XAG": "SI=F",
+    "XAGUSD": "SI=F",
+    "XAU": "GC=F",
+    "XAUUSD": "GC=F",
+    "XCUUSD": "HG=F",
+    "XNGUSD": "NG=F",
+    "XPDUSD": "PA=F",
+    "XPTUSD": "PL=F",
+    "XAUUSD+": "GC=F"
+  },
+  "currency_codes": [
+    "AUD",
+    "CAD",
+    "CHF",
+    "CNH",
+    "CNY",
+    "EUR",
+    "GBP",
+    "HKD",
+    "JPY",
+    "NZD",
+    "SGD",
+    "USD"
+  ],
+  "crypto_bases": [
+    "ADA",
+    "AVAX",
+    "BCH",
+    "BNB",
+    "BTC",
+    "DOGE",
+    "DOT",
+    "ETH",
+    "LINK",
+    "LTC",
+    "SOL",
+    "UNI",
+    "XLM",
+    "XRP"
+  ],
+  "provider_request_status": "unknown",
+  "provider_entity_status": "unknown",
+  "record_order": "ascii_evidence_id",
+  "source_order": "original_zero_based_index",
+  "extra_selector_rule": "canonical_conflict_precedes_extra_metadata_otherwise_record_unknown",
+  "missing_selector_rule": "never_use_alternate_key",
+  "plain_identifier_grammar": "\\^?[A-Z0-9][A-Z0-9._=-]{0,63}",
+  "limits": {
+    "max_identifier_bytes": 256,
+    "max_records": 100000,
+    "max_sources_per_record": 10000
+  },
+  "unsafe_record_reasons": [
+    "effective_request_conflict",
+    "effective_request_missing",
+    "effective_request_unusable",
+    "unqualified_venue",
+    "explicit_venue_conflict",
+    "unreviewed_identifier_relation",
+    "declared_proxy_reference",
+    "unexpected_selector_metadata",
+    "legacy_tool_scope_unknown"
+  ],
+  "reason_codes": [
+    "effective_request_aligned",
+    "effective_request_conflict",
+    "effective_request_missing",
+    "effective_request_unusable",
+    "unqualified_venue",
+    "explicit_venue_conflict",
+    "unreviewed_identifier_relation",
+    "declared_proxy_reference",
+    "unexpected_selector_metadata",
+    "global_query_not_instrument_scoped",
+    "legacy_tool_scope_unknown"
+  ],
+  "unsafe_rule": "every_non_global_record_alignment_conflict_unknown_or_proxy"
+}

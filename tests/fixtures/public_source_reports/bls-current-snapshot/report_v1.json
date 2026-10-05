@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "kind": "public_source_engineering_report",
+  "report_id": "c2a58c79-8c35-48d2-a611-a715497e7049",
+  "version_id": "859b421c-3b81-4dfe-9f1d-90072c08d7ea",
+  "version_number": 1,
+  "created_at": "2026-10-04T12:49:31.000000Z",
+  "authorship": {
+    "mode": "engineering_fixture",
+    "author_identity": null,
+    "production_run_id": null,
+    "external_research_model_run_id": null,
+    "method_record": "Engineering composition of a complete illustrative source-reading report from four retained response cells. No independent author identity, production research execution, external model run or expert approval is asserted."
+  },
+  "scope": "current_saved_snapshot_cell_transcription",
+  "title": "Saved BLS monthly index cells: an engineering source-reading report",
+  "full_text": "# 已保存来源研究说明 🧾\r\n\r\nEngineering fixture: current saved monthly source observations.\r\nThis report is an engineering composition, not an observed production analyst or external research-model run. Author identity and independent review are unknown.\r\nThe retained manifest records retrieval on 2026-10-04. Reference periods below are monthly statistical labels, not publication or first-availability times.\r\nUnits and seasonal-adjustment descriptions are declarations from the saved manifest, not descriptive fields supplied in the raw API response.\r\n\r\nSeries CUSR0000SA0; reference period 2023-11; declared units index (1982-84=100); declared adjustment seasonally_adjusted; saved value 308.148.\r\nSeries CUSR0000SA0; reference period 2023-12; declared units index (1982-84=100); declared adjustment seasonally_adjusted; saved value 308.741.\r\nSeries CUUR0000SA0; reference period 2023-11; declared units index (1982-84=100); declared adjustment not_seasonally_adjusted; saved value 307.051.\r\nSeries CUUR0000SA0; reference period 2023-12; declared units index (1982-84=100); declared adjustment not_seasonally_adjusted; saved value 306.746.\r\n\r\nLimits: these four cell selections compare exact saved decimal strings only. No percentage, prediction or investment conclusion is presented. Surrounding prose and semantic support are not evaluated.\r\nProvider origin is not authenticated. Historical vintage, publication and first public availability remain unknown; absent historical release bodies are not reconstructed.\r\nExpert review is pending, with no reviewer and zero approved claims. These selections do not represent all factual claims in the surrounding prose.\r\nSource: U.S. Bureau of Labor Statistics; retrieval date 2026-10-04.\r\nBLS.gov cannot vouch for the data or analyses derived from these data after the data have been retrieved from BLS.gov.\r\n",
+  "authority": {
+    "provider_origin": "NOT_AUTHENTICATED",
+    "historical_vintage": "unknown",
+    "publication_time": null,
+    "first_public_availability": null,
+    "first_public_availability_status": "unknown"
+  },
+  "expert_review": {
+    "status": "PENDING",
+    "reviewer": null,
+    "reviewed_at": null,
+    "approved_claim_denominator": 0,
+    "dimensions": {
+      "semantic_support": "PENDING",
+      "temporal_validity": "PENDING",
+      "inference_classification": "PENDING",
+      "abstention_appropriateness": "PENDING"
+    },
+    "labels": []
+  },
+  "report_sha256": "b05cdc7781a45f5603d45ed01eb3cf175949698822a152a2ce7de92f23afea95"
+}

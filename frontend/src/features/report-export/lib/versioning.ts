@@ -1,5 +1,13 @@
+import { normalizeIdentityTaskFields } from "@/features/source-identity/lib/tasks";
+import { copyIdentityFromEvent } from "@/features/source-identity/lib/validation";
+import { normalizeNumericTaskFields } from "@/features/numeric-review/lib/tasks";
+import { copySnapshotFromEvent } from "@/features/numeric-review/lib/snapshot";
 import { resolveTaskDecision } from "@/components/task-center/decisions";
+import { mergeEventOutputQuality, normalizeOutputQuality } from "@/features/output-quality/lib/quality";
 import { mergeRuntimeManifest } from "./runtime-settings";
+import { normalizeTaskEvidence } from "@/features/evidence/lib/validation";
+import { normalizeMemoryTaskFields } from "@/features/memory/lib/validation";
+import { normalizeReadinessTaskFields } from "@/features/research-readiness/lib/validation";
 import packageMetadata from "../../../../package.json";
 import type {
   AnalysisEvent,
@@ -34,31 +42,49 @@ export function appendCompletedReportVersion(
   event: AnalysisEvent,
   runContext: RunContext,
   createdAt = new Date().toISOString(),
+  versionId?: string,
 ): AnalysisTask {
   if (event.type !== "completed" || task.origin === "demo") return task;
-  if (task.reportVersions.some((version) => version.runId === runContext.runId)) return task;
+  const evidenceTask = normalizeTaskEvidence({ ...task, evidenceBundle: task.evidenceValidation ? undefined : event.evidenceBundle ?? task.evidenceBundle });
+  const runId = evidenceTask.evidenceBundle?.run_id ?? runContext.runId;
+  if (task.reportVersions.some((version) => version.runId === runId)) return task;
 
   const reportSections = event.reportSections ?? task.reportSections;
   if (!hasReportContent(reportSections)) return task;
+  const numeric = task.numericValidation ? { reportTextSnapshot: undefined, numericValidation: task.numericValidation } : copySnapshotFromEvent(event, evidenceTask.evidenceBundle) ?? { reportTextSnapshot: task.reportTextSnapshot, numericValidation: undefined };
+
+  const identity = task.identityValidation ? { effectiveRequestIdentity: undefined, identityValidation: task.identityValidation } : copyIdentityFromEvent(event, evidenceTask.evidenceBundle, numeric.reportTextSnapshot) ?? { effectiveRequestIdentity: task.effectiveRequestIdentity, identityValidation: undefined };
 
   const nextVersionNumber = task.reportVersions.reduce(
     (maximum, version) => Math.max(maximum, version.versionNumber),
     0,
   ) + 1;
   const version: ReportVersion = {
-    id: crypto.randomUUID(),
-    runId: runContext.runId,
+    id: versionId ?? crypto.randomUUID(),
+    runId,
     versionNumber: nextVersionNumber,
     createdAt,
     legacy: false,
+    reportTextSnapshot: numeric.reportTextSnapshot,
+    numericValidation: numeric.numericValidation,
+    numericReviews: [],
+    ...identity,
     task: taskSnapshot(task),
     run: mergeRuntimeManifest(runContext.manifest, event.runSettings),
     decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event),
     stats: { ...(event.stats ?? task.stats) },
     reportSections: { ...reportSections },
+    outputQuality: mergeEventOutputQuality(task.outputQuality, event),
+    evidenceBundle: evidenceTask.evidenceBundle,
+    evidenceValidation: evidenceTask.evidenceValidation,
+    memoryBundle: task.memoryValidation ? undefined : event.memoryBundle ?? event.finalState?.memory_bundle as ReportVersion["memoryBundle"] ?? task.memoryBundle,
+    memoryValidation: task.memoryValidation,
+    researchReadiness: task.readinessValidation ? undefined : event.researchReadiness ?? event.finalState?.research_readiness as ReportVersion["researchReadiness"] ?? task.researchReadiness,
+    readinessValidation: task.readinessValidation,
+    evaluationReviews: [],
   };
 
-  return { ...task, reportVersions: [...task.reportVersions, version] };
+  return normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeMemoryTaskFields(normalizeTaskEvidence({ ...task, ...numeric, ...identity, reportVersions: [...task.reportVersions, version] })))));
 }
 
 export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
@@ -76,20 +102,31 @@ export function ensureLegacyReportVersion(task: AnalysisTask): AnalysisTask {
     versionNumber: 1,
     createdAt: task.updatedAt || task.createdAt,
     legacy: true,
+    reportTextSnapshot: task.reportTextSnapshot,
+    numericValidation: task.numericValidation,
+    numericReviews: [],
     task: taskSnapshot(task),
     run: null,
     decision: task.decision,
     stats: { ...task.stats },
     reportSections: { ...task.reportSections },
+    outputQuality: normalizeOutputQuality(task.outputQuality),
+    evidenceBundle: task.evidenceBundle,
+    evidenceValidation: task.evidenceValidation,
+    memoryBundle: task.memoryBundle,
+    memoryValidation: task.memoryValidation,
+    researchReadiness: task.researchReadiness,
+    readinessValidation: task.readinessValidation,
+    evaluationReviews: task.evaluationReviews ?? [],
   };
-  return { ...task, reportVersions: [version] };
+  return normalizeNumericTaskFields(normalizeMemoryTaskFields(normalizeTaskEvidence({ ...task, reportVersions: [version] })));
 }
 
 export function hasReportContent(sections: Record<string, string | null | undefined>) {
   return Object.values(sections).some((content) => Boolean(content?.trim()));
 }
 
-function taskSnapshot(task: AnalysisTask): ReportTaskSnapshot {
+export function taskSnapshot(task: AnalysisTask): ReportTaskSnapshot {
   return {
     ticker: task.ticker,
     instrumentName: task.instrumentName,

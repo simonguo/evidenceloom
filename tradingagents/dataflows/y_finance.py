@@ -13,6 +13,8 @@ from .date_window import (
 )
 from .yfinance_common import raise_for_empty, YAHOO_HOST
 from .net import vendor_reachable
+from .evidence_utils import frame_data, observe_ohlcv, observed_window, scalar
+from tradingagents.evidence import observe_source
 
 
 def _raise_a_share_fundamental_gap(ticker: str, canonical: str, dataset: str) -> None:
@@ -65,6 +67,17 @@ def get_YFin_data_online(
     # Remove timezone info from index for cleaner output
     if data.index.tz is not None:
         data.index = data.index.tz_localize(None)
+
+    observe_ohlcv(
+        data,
+        provider="yfinance",
+        url="https://finance.yahoo.com/",
+        transformations=(
+            "Requested inclusive date window enforced",
+            "Timezone removed preserving local dates",
+            "Display prices rounded to two decimals",
+        ),
+    )
 
     # Round numerical values to 2 decimal places for cleaner display
     numeric_columns = ["Open", "High", "Low", "Close", "Adj Close"]
@@ -201,8 +214,7 @@ def get_stock_stats_indicators_window(
 
     except VendorError:
         raise  # Unknown/delisted symbol — let the router emit the sentinel
-    except Exception as e:
-        print(f"Error getting bulk stockstats data: {e}")
+    except Exception:
         # Fallback to original implementation if bulk method fails
         ind_string = ""
         curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
@@ -254,6 +266,16 @@ def _get_stock_stats_bulk(
         else:
             result_dict[date_str] = str(indicator_value)
 
+    values = [
+        {"date": str(row["Date"]), "value": scalar(row[indicator])} for _, row in df.iterrows()
+    ]
+    observe_source(
+        "local_calculation",
+        normalized_data={"indicator": indicator, "values": values},
+        observed_window=observed_window(data),
+        transformations=("Technical indicator calculated with stockstats",),
+    )
+
     return result_dict
 
 
@@ -276,7 +298,7 @@ def get_stockstats_indicator(
         raise  # Unknown/delisted symbol — let the router emit the sentinel
     except Exception as e:
         raise NoMarketDataError(
-            symbol, symbol, f"{indicator} could not be read for {curr_date}: {e}"
+            symbol, symbol, f"{indicator} could not be read for {curr_date}"
         ) from e
 
     return str(indicator_value)
@@ -300,6 +322,7 @@ def get_fundamentals(
     # answer does not depend on it.
     withheld = withhold_live_profile(curr_date, canonical)
     if withheld:
+        observe_source("yfinance", historical_availability="withheld")
         return withheld
 
     info = yf_retry(lambda: yf.Ticker(canonical).info)
@@ -353,6 +376,51 @@ def get_fundamentals(
     if not lines:
         raise_for_empty(ticker, canonical, "fundamental fields")
 
+    # Select only fields rendered above; do not persist Yahoo's full profile envelope.
+    numeric_fields = {
+        key: scalar(info[key])
+        for key in (
+            "marketCap",
+            "trailingPE",
+            "forwardPE",
+            "pegRatio",
+            "priceToBook",
+            "trailingEps",
+            "forwardEps",
+            "dividendYield",
+            "beta",
+            "fiftyTwoWeekHigh",
+            "fiftyTwoWeekLow",
+            "fiftyDayAverage",
+            "twoHundredDayAverage",
+            "totalRevenue",
+            "grossProfits",
+            "ebitda",
+            "netIncomeToCommon",
+            "profitMargins",
+            "operatingMargins",
+            "returnOnEquity",
+            "returnOnAssets",
+            "debtToEquity",
+            "currentRatio",
+            "bookValue",
+            "freeCashflow",
+        )
+        if key in info
+    }
+    observe_source(
+        "yfinance",
+        url="https://finance.yahoo.com/",
+        normalized_data={
+            "fields": {label: value for label, value in fields if value is not None},
+            "numeric_values": numeric_fields,
+        },
+        transformations=(
+            "Selected company profile fields",
+            "Dividend yield and debt to equity shown in percent",
+        ),
+    )
+
     return f"# Company Fundamentals for {canonical}\n\n" + "\n".join(lines)
 
 
@@ -363,12 +431,19 @@ def _statement(ticker, freq, curr_date, title, quarterly_attr, annual_attr) -> s
         _raise_a_share_fundamental_gap(ticker, canonical, "fundamental data")
     withheld = withhold_undated_statements(curr_date, canonical, title)
     if withheld:
+        observe_source("yfinance", historical_availability="withheld")
         return withheld
     what = title.lower()
     attr = quarterly_attr if freq.lower() == "quarterly" else annual_attr
     data = yf_retry(lambda: getattr(yf.Ticker(canonical), attr))
     if data is None or data.empty:
         raise_for_empty(ticker, canonical, f"{what} data")
+    observe_source(
+        "yfinance",
+        url="https://finance.yahoo.com/",
+        normalized_data=frame_data(data, include_index=True),
+        transformations=("Financial statement table rendered as CSV",),
+    )
     return f"# {title} data for {canonical} ({freq})\n" + data.to_csv()
 
 
@@ -413,6 +488,7 @@ def get_insider_transactions(
         _raise_a_share_fundamental_gap(ticker, canonical, "fundamental data")
     withheld = withhold_undisclosed_trades(curr_date, canonical)
     if withheld:
+        observe_source("yfinance", historical_availability="withheld")
         return withheld
     data = yf_retry(lambda: yf.Ticker(canonical).insider_transactions)
 
@@ -425,4 +501,10 @@ def get_insider_transactions(
             )
         return f"No insider transactions reported for symbol '{canonical}'"
 
+    observe_source(
+        "yfinance",
+        url="https://finance.yahoo.com/",
+        normalized_data=frame_data(data, include_index=True),
+        transformations=("Insider transaction table rendered as CSV",),
+    )
     return f"# Insider Transactions data for {canonical}\n" + data.to_csv()

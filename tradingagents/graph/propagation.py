@@ -23,6 +23,9 @@ class Propagator:
         past_context: str = "",
         instrument_context: str = "",
         run_settings: Optional[Dict[str, Any]] = None,
+        evidence_bundle: Optional[Dict[str, Any]] = None,
+        research_memory: Optional[Dict[str, Any]] = None,
+        research_readiness_policy: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create the initial state for the agent graph.
 
@@ -40,6 +43,10 @@ class Propagator:
             "trade_date": str(trade_date),
             "past_context": past_context,
             "run_settings": run_settings or {},
+            "evidence_bundle": evidence_bundle or {},
+            "research_memory": research_memory or {},
+            "research_readiness_policy": research_readiness_policy or {},
+            "output_quality": {},
             "investment_debate_state": InvestDebateState(
                 {
                     "bull_history": "",

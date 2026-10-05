@@ -1,0 +1,376 @@
+{
+  "schema_version": 1,
+  "fictional": true,
+  "evidence": {
+    "schema_version": 1,
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "research_as_of": "2026-01-09T23:59:59.999999Z",
+    "as_of_policy": "analysis_date_end_utc",
+    "market_timezone": null,
+    "created_at": "2026-01-09T10:00:00.000000Z",
+    "manifest": {
+      "analysts": [
+        "market"
+      ],
+      "effective_request_identity_policy_sha256": "933c826dc91d445488363e984acb5b66a5082fe548efbc4cfe930a7e71b5aa23"
+    },
+    "manifest_sha256": "81763fd23928233b300c6e4bd47ad6b0026e68e35b32840ad1f6fcbc92505db4",
+    "records": [
+      {
+        "id": "ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "analyst": "market",
+        "tool": "get_market_data_snapshot",
+        "instrument": "FICT",
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "status": "unavailable",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "107a1643d32838deade01fc0c934f882b295c5f92b779aa1f11666c32e4b8061",
+        "sources": [],
+        "attempts": []
+      },
+      {
+        "id": "ev-dddddddddddddddddddddddddddddddd",
+        "analyst": "market",
+        "tool": "get_global_news",
+        "instrument": "FICT",
+        "parameters": {
+          "curr_date": "2026-01-09"
+        },
+        "status": "empty",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "533bca78f47f26f147ea0a8f088b57d9a40d18302488177db7f24a415df2e6cd",
+        "sources": [],
+        "attempts": []
+      },
+      {
+        "id": "ev-cccccccccccccccccccccccccccccccc",
+        "analyst": "market",
+        "tool": "get_news",
+        "instrument": "FICT",
+        "parameters": {
+          "ticker": "FICT",
+          "symbol": "OTHER"
+        },
+        "status": "available",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "c663a04fa015eae3863dc5334d36d0db0fb3df8d819eb05547086c66bd041235",
+        "sources": [
+          {
+            "provider": "yfinance",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "unknown",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+          }
+        ],
+        "attempts": []
+      },
+      {
+        "id": "ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "analyst": "market",
+        "tool": "get_indicators",
+        "instrument": "FICT",
+        "parameters": {
+          "symbol": "OTHER",
+          "indicator": "rsi"
+        },
+        "status": "withheld",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "1161359d7ae8990c14ed2fbef7dc857b160d18709c3feeaa73a7f77120382f67",
+        "sources": [],
+        "attempts": []
+      },
+      {
+        "id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "analyst": "market",
+        "tool": "get_stock_data",
+        "instrument": "FICT",
+        "parameters": {
+          "symbol": "FICT"
+        },
+        "status": "available",
+        "fetched_at": "2026-01-09T10:00:00.000000Z",
+        "output_sha256": "ec36b9c8b1c8c461efd0113ebfa6f12a7d8d36643ed02c067237edeaed73db18",
+        "sources": [
+          {
+            "provider": "local_calculation",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "unknown",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+          },
+          {
+            "provider": "yfinance",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "unknown",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444"
+          },
+          {
+            "provider": "alpha_vantage",
+            "url": null,
+            "observed_window": {
+              "start": "2026-01-07",
+              "end": "2026-01-08"
+            },
+            "publication_dates": null,
+            "historical_availability": "withheld",
+            "units": null,
+            "adjustments": null,
+            "transformations": [
+              "Fictional offline table"
+            ],
+            "data_sha256": null
+          }
+        ],
+        "attempts": []
+      }
+    ],
+    "artifacts": {
+      "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444": {
+        "kind": "normalized_data",
+        "payload": "{\"columns\":[\"Date\",\"Close\",\"TieOne\",\"TieTwo\",\"NegativeOne\",\"NegativeTwo\",\"Carry\",\"Zero\",\"Scientific\",\"Large\",\"Null\",\"Boolean\",\"String\"],\"rows\":[[\"2026-01-08\",125.02345678901236,1.005,2.675,-1.005,-2.675,9.995,-0.004,1e2,1e127,null,false,\"1.005\"],[\"2026-01-07\",124.92345678901235,1,2,-1,-2,9,0,1,1,null,true,\"2\"]]}"
+      },
+      "ec36b9c8b1c8c461efd0113ebfa6f12a7d8d36643ed02c067237edeaed73db18": {
+        "kind": "tool_text",
+        "payload": "[E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]\nFictional offline saved input"
+      },
+      "1161359d7ae8990c14ed2fbef7dc857b160d18709c3feeaa73a7f77120382f67": {
+        "kind": "tool_text",
+        "payload": "[E:ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb]\nFictional offline saved input"
+      },
+      "c663a04fa015eae3863dc5334d36d0db0fb3df8d819eb05547086c66bd041235": {
+        "kind": "tool_text",
+        "payload": "[E:ev-cccccccccccccccccccccccccccccccc]\nFictional offline saved input"
+      },
+      "533bca78f47f26f147ea0a8f088b57d9a40d18302488177db7f24a415df2e6cd": {
+        "kind": "tool_text",
+        "payload": "[E:ev-dddddddddddddddddddddddddddddddd]\nFictional offline saved input"
+      },
+      "107a1643d32838deade01fc0c934f882b295c5f92b779aa1f11666c32e4b8061": {
+        "kind": "tool_text",
+        "payload": "[E:ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee]\nFictional offline saved input"
+      }
+    },
+    "citation_audit": {
+      "market_report": {
+        "referenced_ids": [
+          "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "unresolved_ids": [],
+        "status": "resolved"
+      },
+      "sentiment_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "news_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "fundamentals_report": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "investment_plan": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "trader_investment_plan": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      },
+      "final_trade_decision": {
+        "referenced_ids": [],
+        "unresolved_ids": [],
+        "status": "none"
+      }
+    },
+    "bundle_sha256": "dcb244aa1081f15761dec30972d0ca611d35cdabac0eeef5ab68f4df19038066"
+  },
+  "snapshot": {
+    "schema_version": 1,
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "captured_at": "2026-01-09T11:00:00.000000Z",
+    "evidence_bundle_sha256": "dcb244aa1081f15761dec30972d0ca611d35cdabac0eeef5ab68f4df19038066",
+    "report_sections": {
+      "market_report": "虚构研究📈\r\nSaved request review [E:ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+      "sentiment_report": null,
+      "news_report": null,
+      "fundamentals_report": null,
+      "investment_plan": null,
+      "trader_investment_plan": null,
+      "final_trade_decision": "Rating: REVIEW\nSaved request identity requires human review."
+    },
+    "snapshot_sha256": "2950752e393342af6365e796fc4544c8bd2e925ea76da1f2c15e44630292648a"
+  },
+  "assessment": {
+    "schema_version": 1,
+    "scope": "saved_effective_outer_request_alignment",
+    "policy_version": "saved-effective-request-v1",
+    "policy_sha256": "933c826dc91d445488363e984acb5b66a5082fe548efbc4cfe930a7e71b5aa23",
+    "run_id": "5c042f1b-67ff-4d37-8690-7d38afca64ff",
+    "instrument": "FICT",
+    "analysis_date": "2026-01-09",
+    "evidence_bundle_sha256": "dcb244aa1081f15761dec30972d0ca611d35cdabac0eeef5ab68f4df19038066",
+    "report_snapshot_sha256": "2950752e393342af6365e796fc4544c8bd2e925ea76da1f2c15e44630292648a",
+    "reviewed_at": "2026-01-09T12:00:00.000000Z",
+    "records": [
+      {
+        "tool": "get_stock_data",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "consistent",
+        "record_reason": "effective_request_aligned",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sources": [
+          {
+            "source_index": 0,
+            "provider": "local_calculation",
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          },
+          {
+            "source_index": 1,
+            "provider": "yfinance",
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          },
+          {
+            "source_index": 2,
+            "provider": "alpha_vantage",
+            "data_sha256": null,
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          }
+        ]
+      },
+      {
+        "tool": "get_indicators",
+        "content_scope": "single_instrument_requested_data",
+        "canonical_selector_key": "symbol",
+        "canonical_alignment": "conflict",
+        "canonical_reason": "effective_request_conflict",
+        "canonical_rule": "different_saved_ascii_literal",
+        "record_alignment": "conflict",
+        "record_reason": "effective_request_conflict",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sources": []
+      },
+      {
+        "tool": "get_news",
+        "content_scope": "retrieval_context",
+        "canonical_selector_key": "ticker",
+        "canonical_alignment": "consistent",
+        "canonical_reason": "effective_request_aligned",
+        "canonical_rule": "ascii_literal",
+        "record_alignment": "unknown",
+        "record_reason": "unexpected_selector_metadata",
+        "venue": null,
+        "unexpected_selector_keys": [
+          "symbol"
+        ],
+        "evidence_id": "ev-cccccccccccccccccccccccccccccccc",
+        "sources": [
+          {
+            "source_index": 0,
+            "provider": "yfinance",
+            "data_sha256": "9034c871f2a0f9b27852fdb19e3f7b1c2b164aa13d2df8ec446aabd7ea8ac444",
+            "provider_request": "unknown",
+            "provider_entity": "unknown"
+          }
+        ]
+      },
+      {
+        "tool": "get_global_news",
+        "content_scope": "global_query",
+        "canonical_selector_key": null,
+        "canonical_alignment": "not_applicable",
+        "canonical_reason": "global_query_not_instrument_scoped",
+        "canonical_rule": "global_query",
+        "record_alignment": "not_applicable",
+        "record_reason": "global_query_not_instrument_scoped",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-dddddddddddddddddddddddddddddddd",
+        "sources": []
+      },
+      {
+        "tool": "get_market_data_snapshot",
+        "content_scope": "legacy_tool_scope_unknown",
+        "canonical_selector_key": null,
+        "canonical_alignment": "unknown",
+        "canonical_reason": "legacy_tool_scope_unknown",
+        "canonical_rule": "legacy_unknown",
+        "record_alignment": "unknown",
+        "record_reason": "legacy_tool_scope_unknown",
+        "venue": null,
+        "unexpected_selector_keys": [],
+        "evidence_id": "ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "sources": []
+      }
+    ],
+    "summary": {
+      "record_count": 5,
+      "source_count": 4,
+      "consistent_count": 1,
+      "conflict_count": 1,
+      "unknown_count": 2,
+      "proxy_count": 0,
+      "not_applicable_count": 1,
+      "unsafe_record_ids": [
+        "ev-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ev-cccccccccccccccccccccccccccccccc",
+        "ev-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      ]
+    },
+    "assessment_sha256": "03852e5842b3f89c6fbda7936cd941e1f08f3384ecf7543e9b585c102cf09d25"
+  }
+}

@@ -1,0 +1,803 @@
+{
+  "recorded_at_utc": "2026-10-05T04:22:56.338872+00:00",
+  "status": "local_candidate_validated_remote_exact_head_ci_pending",
+  "base_commit": "a19d9f6e76ba5427de3b061408da2b34a74e51d7",
+  "implementation_commit": "5f7a87020836ce37334aa1bd5054cb830d7b75d8",
+  "source_changed_file_count": 26,
+  "source_files": [
+    {
+      "path": ".github/workflows/sidecar-diagnostics.yml",
+      "bytes": 10286,
+      "sha256": "bc15914320fac4c5da98b8ad7669014b9540be7d6b6936824157586f9945b156"
+    },
+    {
+      "path": "docs/DESKTOP_ANALYSIS_ATTACHMENT.md",
+      "bytes": 6224,
+      "sha256": "6424567853af126abc278c0afdfdcbe7033639d29ac7c7a8797cca44566966cf"
+    },
+    {
+      "path": "frontend/src/components/task-center/context.tsx",
+      "bytes": 55081,
+      "sha256": "1360301320e992469e3e2a765d5786bf22b8b988cc42ff882a3f25f95fcfc7be"
+    },
+    {
+      "path": "frontend/src/components/task-center/desktop-task-deletion.test.ts",
+      "bytes": 10408,
+      "sha256": "9ab4deba7e7ece71d4705656cfab9798c27f524d5708c937956010d6a135efa4"
+    },
+    {
+      "path": "frontend/src/components/task-center/desktop-task-mutation-fence.test.ts",
+      "bytes": 23277,
+      "sha256": "0923cac8f1115bb8cfdc9ffa0dfbcc737af22e9735a11cdcba2d14575ecda094"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/attachment-types.ts",
+      "bytes": 5388,
+      "sha256": "a134dd4f00ccaf6f65d1b9eb5787a5620b8d470c14e3dab60958d7c5565efa99"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/components/NativeAnalysisControls.tsx",
+      "bytes": 1744,
+      "sha256": "41fb9a0acd1c6842710ef97b49d8668d65cfef7e7daa02960b9fee9051878701"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/lib/attachment-native-bridge.test.ts",
+      "bytes": 10054,
+      "sha256": "4261f22d2a7e4ff732f7ac67ccda6aa62154c29b6873d8dd717191722db42d95"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/lib/attachment-provider.test.ts",
+      "bytes": 7653,
+      "sha256": "4d3f3046b6c24aac83c349e021c5d76f1119f56b9c1c3f31f8b023bff8a3a0ec"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/lib/attachment.test.ts",
+      "bytes": 12790,
+      "sha256": "7d12eb2fac399b651d732146635c90ac240ba1b65822f695e24c36ddbd976533"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/lib/attachment.ts",
+      "bytes": 13713,
+      "sha256": "ec7bb4915365c4e92d5eccb0610294f60cbe486aaa0989e7f5a728c1004d1e63"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/lib/consumer.ts",
+      "bytes": 20604,
+      "sha256": "82632efb328e72c6b40c6498d82323219d2a1b44eeab8bbaf3821a56a5eeb87f"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/lib/protocol.ts",
+      "bytes": 43231,
+      "sha256": "e375f196cf9d461d9452367064ced42e6478257983bed37684fe34c61dc66e51"
+    },
+    {
+      "path": "frontend/src/features/analysis-recovery/test-support/attachment-fixture.ts",
+      "bytes": 4124,
+      "sha256": "bcc4161101ce428a40d77b884b4e3e2c073e1b7fd9e38417bdc58381807ecc70"
+    },
+    {
+      "path": "frontend/src/lib/desktop-analysis.ts",
+      "bytes": 2551,
+      "sha256": "2aafe26c8d7be2d4cf7ca1753ebd9e0c489e2ab50634cc51cb1b0cd6960b02e2"
+    },
+    {
+      "path": "frontend/src/lib/i18n.ts",
+      "bytes": 33449,
+      "sha256": "957da33bd5e39dbd874b5f7bb363f6972d7f8456c65ef2a90f3a62367e47798e"
+    },
+    {
+      "path": "src-tauri/src/analysis_recovery/fixture.rs",
+      "bytes": 2492,
+      "sha256": "1a92118b37a2592b931b45df29f24cb282030fb9eeecf4d653165c6cd382916d"
+    },
+    {
+      "path": "src-tauri/src/analysis_recovery/parser.rs",
+      "bytes": 16369,
+      "sha256": "8fff8cf2a15773c2dbf20996c2b5dce15d9ab3c10a728ac1b26c8376aa50c608"
+    },
+    {
+      "path": "src-tauri/src/analysis_recovery/parser_tests.rs",
+      "bytes": 5095,
+      "sha256": "d4c4555b37e07c60eaf903d53906a2816fa7907d6b461a512bc4657f9f3ef497"
+    },
+    {
+      "path": "src-tauri/src/analysis_recovery/runtime.rs",
+      "bytes": 82493,
+      "sha256": "ee08d0eef31a61c454a577d25e82fb2d1e8123452fae0d4741afe29179fd965c"
+    },
+    {
+      "path": "src-tauri/src/analysis_recovery/runtime_tests.rs",
+      "bytes": 94743,
+      "sha256": "776d98c5392bf93f0a7681fd7c036b2ad19a74b949738a6fce698fb13e0d5bc4"
+    },
+    {
+      "path": "src-tauri/src/analysis_recovery/wire.rs",
+      "bytes": 18843,
+      "sha256": "1af6ea56937d1035b29aff6ebc61f3eec137f1a54792512f48cee7a1e6554aef"
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "bytes": 68942,
+      "sha256": "57929448ffe4ccb54e22ec9258a41d04a81097a873a31c9ee890fbbedc9f8d74"
+    },
+    {
+      "path": "src-tauri/src/storage.rs",
+      "bytes": 182979,
+      "sha256": "4a1f9de823ca1d407cd0f4f43bc2ebe17bffb7cc54c6523c365e73a0f3e99507"
+    },
+    {
+      "path": "src-tauri/src/storage/analysis_journal.rs",
+      "bytes": 82967,
+      "sha256": "6a51cf99c07c8f22db6cfd523decec76044a9876f9f989813f91e45bce85902a"
+    },
+    {
+      "path": "src-tauri/src/storage/analysis_journal/tests.rs",
+      "bytes": 56026,
+      "sha256": "bf7877058cd628a8ab26923d64b2b9a35a6687dce0df9b24d8218e7d0b81a840"
+    }
+  ],
+  "product_objective": {
+    "status": "open",
+    "audience": "Professional analysts and independent researchers",
+    "areas": [
+      {
+        "area": "Source provenance",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Historical validity",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Evidence coverage",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Claims and citations",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Reproducibility",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Model and provider reliability",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Analyst workflow",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Execution control",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Security and privacy",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Research evaluation",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Release and operations",
+        "status": "open; partial engineering evidence may exist"
+      },
+      {
+        "area": "Competitive quality",
+        "status": "open; partial engineering evidence may exist"
+      }
+    ],
+    "actual_external_participant_completions": 0,
+    "expert_approved_claims": 0,
+    "participant_availability": "unknown; unanswered availability is not unavailability"
+  },
+  "local_checks": [
+    {
+      "name": "rust-fmt-03",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/rust-fmt-03/receipt.json",
+        "bytes": 17205,
+        "sha256": "a15720728e5667f6f9d2078e2da7c05db7ffe9592e2f6a349296dcde4251c58d"
+      },
+      "argv": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": null,
+      "raw_artifacts": {
+        "stdout.raw": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.raw": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "name": "rust-no-run-03",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/rust-no-run-03/receipt.json",
+        "bytes": 17284,
+        "sha256": "cc008cf51f47758753e8dee9626108a5a92b18b4dbaeaad6cb57736c6b778a5a"
+      },
+      "argv": [
+        "cargo",
+        "test",
+        "--all-targets",
+        "--no-run",
+        "--locked",
+        "--offline",
+        "--message-format=json"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": null,
+      "raw_artifacts": {
+        "stdout.raw": {
+          "bytes": 344261,
+          "sha256": "b75745be6176d5d83205279ad5fb9e2f031066e6fed2f7377122071e97712bc3"
+        },
+        "stderr.raw": {
+          "bytes": 223,
+          "sha256": "661ec00d21b40c79b23d89bb1808c8d33500aa12149530e3ba6dfa0ccb23e035"
+        }
+      }
+    },
+    {
+      "name": "rust-clippy-03",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/rust-clippy-03/receipt.json",
+        "bytes": 17274,
+        "sha256": "59fd173f65c0402efef8213488b76a71386de11ebf63f0a8384b26ebf390a898"
+      },
+      "argv": [
+        "cargo",
+        "clippy",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": null,
+      "raw_artifacts": {
+        "stdout.raw": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr.raw": {
+          "bytes": 221,
+          "sha256": "5a7666bcf788dbda519f744aff33278292605919618e6242dad0dab7f23994ec"
+        }
+      }
+    },
+    {
+      "name": "rust-full-03",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/rust-full-03/receipt.json",
+        "bytes": 17263,
+        "sha256": "7c6c8b2d0fcd063760ea46e860061c426bb76d3dd00e49b6a5deb894cc9636d2"
+      },
+      "argv": [
+        "cargo",
+        "test",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": null,
+      "raw_artifacts": {
+        "stdout.raw": {
+          "bytes": 29025,
+          "sha256": "74bc27890d18913dc26442e777a0bea011f4d85d3bba7e4cf869ee9c7c3c47d4"
+        },
+        "stderr.raw": {
+          "bytes": 1217,
+          "sha256": "fae59760e3f2dd3e7d33d86fc86abf7ff1c024e160712aaaef3bc19298327ca5"
+        }
+      }
+    },
+    {
+      "name": "sql-corpus-03",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/sql-corpus-03/receipt.json",
+        "bytes": 17900,
+        "sha256": "e1848606c1fa248ead784f4c5a29561ad6004537103c7780d9f82927e4db8deb"
+      },
+      "argv": [
+        "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/native03-binary/evidenceloom_desktop-b582dfa5e6ae138b",
+        "storage::analysis_journal::tests::analysis_journal_actual_sql_wire_corpus_serializes_original_publication_and_number_forms",
+        "--exact",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": null,
+      "raw_artifacts": {
+        "stdout.raw": {
+          "bytes": 249,
+          "sha256": "85320948f96abc5445d9449c36f5700f017fc0faf5c78ac71ee217ea51cc2130"
+        },
+        "stderr.raw": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "name": "final-08-native-integration",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-08-native-integration/execution.json",
+        "bytes": 3087,
+        "sha256": "a1a2297826c192009b68dff3ea7434fb90ca674904bfbb12a489a65b04dfe793"
+      },
+      "argv": [
+        "npm",
+        "test",
+        "--",
+        "src/features/analysis-recovery/lib/attachment-native-bridge.test.ts",
+        "src/features/analysis-recovery/lib/native-bridge.test.ts",
+        "src/features/analysis-recovery/lib/protocol.test.ts",
+        "--reporter=default",
+        "--reporter=junit",
+        "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-08-native-integration/junit.xml"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": true,
+      "raw_artifacts": [
+        {
+          "path": "junit.xml",
+          "bytes": 4804,
+          "sha256": "0ce136e0beea802187ce5ede0f527dfa76f8bbd78db93e23b311772c0cc465c5"
+        },
+        {
+          "path": "producer-after.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "producer-before.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "raw.log",
+          "bytes": 2897,
+          "sha256": "6f50182397d2e4bb5536df2bdde345469264cb0e1ee120e5aeed314f5bef6139"
+        },
+        {
+          "path": "source-after.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        },
+        {
+          "path": "source-before.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        }
+      ]
+    },
+    {
+      "name": "final-09-full-suite",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-09-full-suite/execution.json",
+        "bytes": 2876,
+        "sha256": "781a6b8f0932b345f0707cf6b072bc8e062026350c6ecc60c9a603375c34a413"
+      },
+      "argv": [
+        "npm",
+        "test",
+        "--",
+        "--reporter=default",
+        "--reporter=junit",
+        "--outputFile.junit=/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-09-full-suite/junit.xml"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": true,
+      "raw_artifacts": [
+        {
+          "path": "junit.xml",
+          "bytes": 225386,
+          "sha256": "8de1489ecf86a960bd1549fe921a7e48bf2aabe672efb57e5b59495b58a14e54"
+        },
+        {
+          "path": "producer-after.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "producer-before.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "raw.log",
+          "bytes": 35054,
+          "sha256": "dfc82ec222e6b0783fc223432aa15a1641425484452753ef4c4c3be3d042305b"
+        },
+        {
+          "path": "source-after.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        },
+        {
+          "path": "source-before.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        }
+      ]
+    },
+    {
+      "name": "final-10-typecheck",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-10-typecheck/execution.json",
+        "bytes": 1876,
+        "sha256": "c6f155547ebb8778f8e215b0a23c96952f1f4d1585410baf03d4f55552491a6f"
+      },
+      "argv": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": true,
+      "raw_artifacts": [
+        {
+          "path": "producer-after.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "producer-before.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "raw.log",
+          "bytes": 65,
+          "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+        },
+        {
+          "path": "source-after.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        },
+        {
+          "path": "source-before.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        }
+      ]
+    },
+    {
+      "name": "final-11-lint",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-11-lint/execution.json",
+        "bytes": 1870,
+        "sha256": "ace010754e03b93b2ec8978e968a56f22b41f4173c65f935a536c9b0a451b3f4"
+      },
+      "argv": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": true,
+      "raw_artifacts": [
+        {
+          "path": "producer-after.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "producer-before.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "raw.log",
+          "bytes": 56,
+          "sha256": "64433d90eb0a53d21a047c1d717ff93fcf82ac583b21a1a700535929f3fe26a0"
+        },
+        {
+          "path": "source-after.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        },
+        {
+          "path": "source-before.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        }
+      ]
+    },
+    {
+      "name": "final-12-web-build",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-12-web-build/execution.json",
+        "bytes": 1874,
+        "sha256": "415b2b126acb169c97c824a5bd31ba556c0aabbdcdeff94db90009618c10feca"
+      },
+      "argv": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": true,
+      "raw_artifacts": [
+        {
+          "path": "producer-after.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "producer-before.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "raw.log",
+          "bytes": 1679,
+          "sha256": "919145bbecfda57f36bb803b89597db70a554159c7e8e8322979b7b850186a16"
+        },
+        {
+          "path": "source-after.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        },
+        {
+          "path": "source-before.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        }
+      ]
+    },
+    {
+      "name": "final-13-static-build",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-13-static-build/execution.json",
+        "bytes": 1879,
+        "sha256": "f82637ab178883fba34d47e454c2cd683ca4fd5015ec1f21f8651bf59a7e4fc8"
+      },
+      "argv": [
+        "npm",
+        "run",
+        "build:tauri"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": true,
+      "raw_artifacts": [
+        {
+          "path": "producer-after.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "producer-before.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "raw.log",
+          "bytes": 1747,
+          "sha256": "58dfc84e05cd25a549eb762e447503dd0964b90a16c1e809dd4513b0c627683d"
+        },
+        {
+          "path": "source-after.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        },
+        {
+          "path": "source-before.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        }
+      ]
+    },
+    {
+      "name": "final-14-generated-types",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-14-generated-types/execution.json",
+        "bytes": 1876,
+        "sha256": "52b7063a1440829e3735adf02b02d172e46f1cc634e975e2e886947c84c32754"
+      },
+      "argv": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "source_stable": true,
+      "native_producer_stable": true,
+      "raw_artifacts": [
+        {
+          "path": "producer-after.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "producer-before.json",
+          "bytes": 9025,
+          "sha256": "dafc36447c835a0e2bfefec976da72df8e97c6d75fe20278967666f45d7ea4de"
+        },
+        {
+          "path": "raw.log",
+          "bytes": 65,
+          "sha256": "87b25840ae9c2ee687dd52bb8814e67e2d733daf0718c0307f709bc7a03fa496"
+        },
+        {
+          "path": "source-after.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        },
+        {
+          "path": "source-before.json",
+          "bytes": 44746,
+          "sha256": "3a026203f9147b94c3987dea8acb9d4cf71ccba433b84d5113d1cf77a27c6d5a"
+        }
+      ]
+    }
+  ],
+  "frontend": {
+    "full": {
+      "passed": 811,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 62
+    },
+    "native_integration": {
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 3
+    },
+    "inventory_rows": 250,
+    "actual_provider_scenarios": 9,
+    "owned_workers": 18,
+    "new_reattachment_scenarios": 3,
+    "ordinary_boundary_cases": 6,
+    "actual_sql_serialization_case_count": 1,
+    "actual_sql_replies": 8
+  },
+  "rust": {
+    "passed": 260,
+    "failed": 0,
+    "ignored": 3,
+    "intentionalCaughtPanicMarkers": 7,
+    "compilerDiagnostics": [],
+    "new_parser_runtime_cases": 14,
+    "strict_all_target_clippy": "passed; warnings denied"
+  },
+  "warnings": {
+    "new_attachment_integration_act": 0,
+    "full_existing_act": 41,
+    "next_eslint_plugin_notice_per_build": 1,
+    "lint": 0,
+    "suppression_added": false
+  },
+  "executable": {
+    "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/native03-binary/evidenceloom_desktop-b582dfa5e6ae138b",
+    "bytes": 27048360,
+    "sha256": "42d7e01765662b501e06b3a6f20e25ff4d018483502e6beae36344a366122b06"
+  },
+  "corpus": {
+    "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/sql-corpus-03/actual-sql-corpus.json",
+    "bytes": 48577,
+    "sha256": "91056254ceec3f6595cde33cd098c0539001eb6b743df0a40c178b62cbff8b09"
+  },
+  "scope": {
+    "authority": "same exact live native runtime; explicit watch/project/exact Stop; mayStart false",
+    "storage_schema": 13,
+    "wire_terminal_field": "safeTerminalThroughApplied",
+    "durable": "canonical matching SQL cut and verified applied-prefix anchor",
+    "volatile": "watch/exact Stop only, no projection",
+    "retired": "reconcile saved state only, no new control or execution",
+    "physical_join_vs_sql": "late failed SQL receipt cannot revoke actual join; explicit retry binds latest known revision",
+    "v1_write_assertion": "captured run A has no V1 save or new reservation/start during reattachment; ordinary pre-reservation B repair is not forbidden"
+  },
+  "evidence_inputs": {
+    "root_local_gate": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/root-final-local-acceptance-20261005T042237062976Z.json",
+      "bytes": 7862,
+      "sha256": "935c5af29e324ae2769e1f62ba8bfc17ac8b61411d491ad3872ec96d2de062f9"
+    },
+    "source_commit_record": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/root-source-commit-20261005T042246361182Z/record.json",
+      "bytes": 13997,
+      "sha256": "9effd4f7156d84840d1f0dfc7f3933946e5afe4b6303b74318d921fa3e90f930"
+    },
+    "independent_review": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/independent-103-final-combined-local-gate-20261005T042136225898Z/review.json",
+      "bytes": 377409,
+      "sha256": "970f56526828615377f9f0411250e7349449e39ef2a3d4c3fb69f8e18af36f31"
+    },
+    "frontend_engineering": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/frontend/final-engineering-receipt-06-20261005T041620907378Z/frontend-final-engineering-summary.json",
+      "bytes": 28591,
+      "sha256": "53cc563d09817aafa4585a83e6c944293c01b081b0ac695f62742728a0b53bbd"
+    },
+    "source_freeze": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/root-joint-product-source-freeze-03.json",
+      "bytes": 105451,
+      "sha256": "d0f7c79ef60c849b59f55e5676aae170abee0ae50820180e221ae90134f2e0fe"
+    },
+    "native_index": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/root-current-native-checks-03.json",
+      "bytes": 5589,
+      "sha256": "2be82465f7045fe77341317f92a09fc71a2e69f35fbc9a5351f5e64cf6ec52f7"
+    },
+    "workflow_syntax_tool_observation": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-analysis-attachment/root-workflow-syntax-tool-observation-01/receipt.json",
+      "bytes": 2007,
+      "sha256": "711a150dfc4da3773b77b8d45455c44383abdbea6b0e5ccbb661c25e59b20e74"
+    }
+  },
+  "retained_attempts": [
+    {
+      "name": "rust-no-run-01",
+      "result": "three newly added test type errors; original raw preserved"
+    },
+    {
+      "name": "rust-full-02",
+      "result": "258 pass, two migration fixture failures, three ignored; fixed only unsupported fixture event literal"
+    },
+    {
+      "name": "frontend-draft-stale-ack",
+      "result": "permanent stale attachment acknowledgement regression failed before accepted-current refresh fix"
+    },
+    {
+      "name": "final-01-native-integration",
+      "result": "15 pass, one fixture failure; hardcoded B differed from observed actual run identities"
+    },
+    {
+      "name": "final-02/03",
+      "result": "16 integration / 811 full pass; new fixture act warnings retained before scoped act repair"
+    },
+    {
+      "name": "final-06/07",
+      "result": "intermediate act cleanup; actual logs and immutable source05 metadata preserved"
+    },
+    {
+      "name": "engineering-receipt-first-attempt",
+      "result": "overstrong all-task V1 counter assertion rejected one permitted B pre-reservation write; not a product/test failure"
+    }
+  ],
+  "remote_gate": {
+    "status": "pending at documentation time",
+    "required": "Actual final publication head, terminal check classification and complete raw-log review of all nine CI jobs; three native platforms include production JSONL/SQL integration and both real packaged-sidecar bridges"
+  },
+  "open_limits": [
+    "Actual WebView reload and Tauri IPC",
+    "Prior-runtime restart/offline or copied/unsealed journal settlement",
+    "Pending discard and cross-store clear completion",
+    "Browser CAS and settings/Keychain atomicity",
+    "General IPC deadlines and shutdown",
+    "Clean installs/upgrades/signing and release acceptance",
+    "Production API/model behavior",
+    "External analyst tasks, expert research support and competitive evaluation"
+  ],
+  "merged": false
+}

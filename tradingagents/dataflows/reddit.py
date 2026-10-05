@@ -30,6 +30,8 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .date_window import coverage_gap, in_window, is_historical
+from .evidence_utils import scalar, source_attempt
+from tradingagents.evidence import capture_evidence, observe_source
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +112,13 @@ def _fetch_subreddit_rss(
     """
     url = _RSS.format(sub=sub, qs=_search_qs(ticker, limit))
     req = Request(url, headers={"User-Agent": _UA})
+    started = time.monotonic()
     try:
         with urlopen(req, timeout=timeout) as resp:
             root = ET.fromstring(resp.read())
-    except (OSError, http.client.HTTPException, ET.ParseError) as exc:
-        logger.warning("Reddit RSS fetch failed for r/%s · %s: %s", sub, ticker, exc)
+    except (OSError, http.client.HTTPException, ET.ParseError):
+        source_attempt("reddit", "unavailable", (time.monotonic() - started) * 1000)
+        logger.warning("Reddit RSS fetch unavailable for r/%s · %s", sub, ticker)
         return None
 
     posts = []
@@ -134,6 +138,7 @@ def _fetch_subreddit_rss(
                 "source": "rss",
             }
         )
+    source_attempt("reddit", "available" if posts else "empty", (time.monotonic() - started) * 1000)
     return posts
 
 
@@ -145,17 +150,21 @@ def _fetch_subreddit(
 ) -> list[dict]:
     url = _API.format(sub=sub, qs=_search_qs(ticker, limit))
     req = Request(url, headers={"User-Agent": _UA, "Accept": "application/json"})
+    started = time.monotonic()
     try:
         with urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read())
         children = (payload.get("data") or {}).get("children") or []
+        source_attempt(
+            "reddit", "available" if children else "empty", (time.monotonic() - started) * 1000
+        )
         return [c.get("data", {}) for c in children if isinstance(c, dict)]
-    except (OSError, http.client.HTTPException, json.JSONDecodeError) as exc:
+    except (OSError, http.client.HTTPException, json.JSONDecodeError):
+        source_attempt("reddit", "unavailable", (time.monotonic() - started) * 1000)
         logger.warning(
-            "Reddit JSON fetch failed for r/%s · %s: %s — falling back to RSS feed.",
+            "Reddit JSON fetch unavailable for r/%s · %s; trying RSS feed.",
             sub,
             ticker,
-            exc,
         )
         return _fetch_subreddit_rss(ticker, sub, limit, timeout)
 
@@ -168,6 +177,26 @@ def fetch_reddit_posts(
     inter_request_delay: float = 0.4,
     start_date: str | None = None,
     end_date: str | None = None,
+) -> str:
+    """Fetch date-filtered Reddit discussion, including public RSS fallback."""
+    subreddits = tuple(subreddits)
+    return capture_evidence(
+        "fetch_reddit_posts",
+        {
+            "ticker": ticker,
+            "subreddits": list(subreddits),
+            "limit_per_sub": limit_per_sub,
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+        lambda: _fetch_reddit_posts(
+            ticker, subreddits, limit_per_sub, timeout, inter_request_delay, start_date, end_date
+        ),
+    )
+
+
+def _fetch_reddit_posts(
+    ticker, subreddits, limit_per_sub, timeout, inter_request_delay, start_date, end_date
 ) -> str:
     """Fetch recent Reddit posts mentioning ``ticker`` across finance
     subreddits and return them as a formatted plaintext block.
@@ -212,6 +241,7 @@ def fetch_reddit_posts(
         else:
             header += " (via RSS feed; scores/comments unavailable):" if via_rss else ":"
         lines = [header]
+        normalized = []
         for p in posts:
             title = (p.get("title") or "").replace("\n", " ").strip()
             score = p.get("score")
@@ -229,6 +259,43 @@ def fetch_reddit_posts(
             lines.append(
                 f"  [{meta}] {title}" + (f"\n    body excerpt: {selftext}" if selftext else "")
             )
+            normalized.append(
+                {
+                    "title": title,
+                    "body_excerpt": selftext,
+                    "created_utc": scalar(created),
+                    "score": None if historical else scalar(score),
+                    "num_comments": None if historical else scalar(comments),
+                    "retrieval_format": "rss" if p.get("source") == "rss" else "json",
+                }
+            )
+        dates = [_posted_at(p) for p in posts]
+        valid = [d for d in dates if d is not None]
+        observe_source(
+            "reddit",
+            url=f"https://www.reddit.com/r/{sub}/search.rss"
+            if via_rss
+            else f"https://www.reddit.com/r/{sub}/search.json",
+            normalized_data={"subreddit": sub, "posts": normalized},
+            observed_window={
+                "start": min(valid).strftime("%Y-%m-%d"),
+                "end": max(valid).strftime("%Y-%m-%d"),
+            }
+            if valid
+            else None,
+            publication_dates=[d.isoformat().replace("+00:00", "Z") for d in valid]
+            if len(valid) == len(posts)
+            else None,
+            # Content can be edited; publication timestamps alone cannot establish its historical version.
+            transformations=(
+                "Posts filtered to requested publication window",
+                "Historical engagement metrics withheld"
+                if historical
+                else "Current engagement metrics displayed",
+                "Body excerpts truncated for display",
+                "RSS feed parsed" if via_rss else "Public JSON post fields selected",
+            ),
+        )
         blocks.append("\n".join(lines))
 
     return "\n\n".join(blocks)

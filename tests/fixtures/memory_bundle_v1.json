@@ -1,0 +1,201 @@
+{
+  "schema_version": 1,
+  "run_id": "11111111-1111-4111-8111-111111111111",
+  "instrument": "EVDM.TEST",
+  "analysis_date": "2025-02-14",
+  "evidence_bundle_sha256": "b9a1f561d85816ec6944d67313705db48df8fe11dc50066b39b0327dded1d60e",
+  "persistence_status": "durable",
+  "input_snapshot": {
+    "schema_version": 1,
+    "instrument": "EVDM.TEST",
+    "selected_at": "2025-02-14T12:00:00.000000Z",
+    "research_cutoff": "2025-02-14T23:59:59.999999Z",
+    "availability_cutoff": "2025-02-14T12:00:00.000000Z",
+    "selector_version": "recent-reflections-v1",
+    "same_ticker_limit": 5,
+    "cross_ticker_limit": 3,
+    "decisions": [
+      {
+        "schema_version": 1,
+        "run_id": "22222222-2222-4222-8222-222222222222",
+        "decision": {
+          "schema_version": 1,
+          "decision_id": "22222222-2222-4222-8222-222222222222",
+          "run_id": "22222222-2222-4222-8222-222222222222",
+          "instrument": "EVDM.TEST",
+          "asset_type": "stock",
+          "analysis_date": "2025-02-07",
+          "research_started_at": "2025-02-07T11:59:00.000000Z",
+          "research_as_of": "2025-02-07T23:59:59.999999Z",
+          "recorded_at": "2025-02-07T12:05:00.000000Z",
+          "analysis_calendar_date": "2025-02-07",
+          "host_utc_offset": "+00:00",
+          "rating": "Hold",
+          "decision_text_sha256": "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f",
+          "contract_sha256": "516601126b5d2a911a544a789f35a0c9513f5db7340d26a0e2f82422e41e9541",
+          "evidence_bundle_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "decision_sha256": "563f72d4aaa26455ccc4753b6571c789b86543b4e712e503d21e665e3fcb05aa"
+        },
+        "contract": {
+          "schema_version": 1,
+          "analysis_date": "2025-02-07",
+          "research_calendar_date": "2025-02-07",
+          "host_utc_offset": "+00:00",
+          "resolved_benchmark": "FICTIONAL.TEST",
+          "holding_period_days": 2,
+          "evaluation_mode": "prospective_reference",
+          "not_evaluable_reason": null,
+          "evaluator_version": "common-daily-adjusted-close-v1",
+          "evaluator_code_sha256": "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e",
+          "effective_history_parameters": {
+            "interval": "1d",
+            "auto_adjust": false,
+            "back_adjust": false,
+            "actions": true,
+            "repair": false,
+            "rounding": false,
+            "keepna": true,
+            "prepost": false
+          },
+          "decision_text_sha256": "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f",
+          "holding_period_unit": "common_complete_provider_daily_rows",
+          "policy_version": "common-daily-close-v1",
+          "entry_policy": "first_common_complete_date_after_recorded_source_and_utc_dates",
+          "exit_policy": "holding_count_common_row_transitions",
+          "alignment_policy": "identical_session_date_no_fill",
+          "session_policy": "provider_daily_rows_timezone_required",
+          "completion_policy": "date_elapsed_in_source_timezone_and_utc",
+          "price_basis": "provider_adjusted_close",
+          "return_policy": "simple_return_difference_no_fx",
+          "contract_sha256": "516601126b5d2a911a544a789f35a0c9513f5db7340d26a0e2f82422e41e9541"
+        },
+        "outcome": {
+          "schema_version": 1,
+          "contract_sha256": "516601126b5d2a911a544a789f35a0c9513f5db7340d26a0e2f82422e41e9541",
+          "observed_at": "2025-02-13T12:00:00.000000Z",
+          "status": "available",
+          "reason": null,
+          "facts_sha256": "cedb5e3df5a517b36ea928cb38f25dfd5d9f828478c6933efa2b1e34e88d7ad2",
+          "calculation_sha256": "6c545702cb956c831d8cc0d81fef1fef01d3b34427956b9fbf5a92a7ee96b910",
+          "outcome_sha256": "9ba17ed180b1b11d7c229d0922beb4807ae1b8257619d222583810e06cbb09ef"
+        },
+        "reflection": {
+          "schema_version": 1,
+          "outcome_sha256": "9ba17ed180b1b11d7c229d0922beb4807ae1b8257619d222583810e06cbb09ef",
+          "reflected_at": "2025-02-13T12:01:00.000000Z",
+          "model_context_sha256": "1ea0c1d61b4a780a730b5af66af61e96bb8ef1900efc1b1cf7fe8b9176b4f3f2",
+          "prompt_sha256": "72d795a4afb6f05450ba5524411b1774aa9dae3d4cfe6d110857ade45eea7c43",
+          "response_sha256": "3ff79c7621310f5e72844b753b96387917fb15571559cfbd7e4386af3f645760",
+          "reflection_sha256": "d02b58cae142dc3fcbfcc7d1e9fae862fee63690c13be80c26bdbfea747b5f6c"
+        },
+        "artifacts": {
+          "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f": {
+            "kind": "text",
+            "payload": "Rating: Hold\nFictional decision.",
+            "sha256": "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f"
+          },
+          "cedb5e3df5a517b36ea928cb38f25dfd5d9f828478c6933efa2b1e34e88d7ad2": {
+            "kind": "canonical_json",
+            "payload": "{\"contract_sha256\":\"516601126b5d2a911a544a789f35a0c9513f5db7340d26a0e2f82422e41e9541\",\"decision_sha256\":\"563f72d4aaa26455ccc4753b6571c789b86543b4e712e503d21e665e3fcb05aa\",\"limitations\":{\"alignment\":\"identical_session_labels_not_simultaneous_market_closes\",\"coverage_basis\":\"provider_reported_daily_rows\",\"exchange_calendar_coverage\":\"unknown\",\"execution\":\"reference_prices_not_realized_fills\",\"fx_conversion\":\"none\",\"price_vintage\":\"unknown\",\"provider_revision\":\"unknown\",\"publication_time\":\"unknown\"},\"observation_cutoff\":\"2025-02-13T12:00:00.000000Z\",\"schema_version\":1,\"sources\":[{\"currency\":null,\"exchange_calendar_coverage\":\"unknown\",\"issue\":null,\"observed_at\":\"2025-02-13T12:00:00.000000Z\",\"price_vintage\":\"unknown\",\"provider\":\"yfinance\",\"publication_at\":null,\"request_parameters\":{\"actions\":true,\"auto_adjust\":false,\"back_adjust\":false,\"end\":\"2025-02-13\",\"interval\":\"1d\",\"keepna\":true,\"prepost\":false,\"repair\":false,\"rounding\":false,\"start\":\"2025-02-07\"},\"requested_symbol\":\"EVDM.TEST\",\"resolved_symbol\":\"EVDM.TEST\",\"revision\":\"unknown\",\"role\":\"instrument\",\"rows\":[{\"date\":\"2025-02-10\",\"timestamp\":\"2025-02-10T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":123.45678901234567},\"Close\":{\"status\":\"finite\",\"value\":123.45678901234567},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},{\"date\":\"2025-02-11\",\"timestamp\":\"2025-02-11T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":124.5},\"Close\":{\"status\":\"finite\",\"value\":124.5},\"Dividends\":{\"status\":\"finite\",\"value\":1e-07},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},{\"date\":\"2025-02-12\",\"timestamp\":\"2025-02-12T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":126.25},\"Close\":{\"status\":\"finite\",\"value\":126.25},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}}],\"timezone\":\"UTC\"},{\"currency\":null,\"exchange_calendar_coverage\":\"unknown\",\"issue\":null,\"observed_at\":\"2025-02-13T12:00:00.000000Z\",\"price_vintage\":\"unknown\",\"provider\":\"yfinance\",\"publication_at\":null,\"request_parameters\":{\"actions\":true,\"auto_adjust\":false,\"back_adjust\":false,\"end\":\"2025-02-13\",\"interval\":\"1d\",\"keepna\":true,\"prepost\":false,\"repair\":false,\"rounding\":false,\"start\":\"2025-02-07\"},\"requested_symbol\":\"FICTIONAL.TEST\",\"resolved_symbol\":\"FICTIONAL.TEST\",\"revision\":\"unknown\",\"role\":\"benchmark\",\"rows\":[{\"date\":\"2025-02-10\",\"timestamp\":\"2025-02-10T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":1.0},\"Close\":{\"status\":\"finite\",\"value\":1.0},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},{\"date\":\"2025-02-11\",\"timestamp\":\"2025-02-11T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":1.01},\"Close\":{\"status\":\"finite\",\"value\":1.01},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},{\"date\":\"2025-02-12\",\"timestamp\":\"2025-02-12T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":1.02},\"Close\":{\"status\":\"finite\",\"value\":1.02},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}}],\"timezone\":\"UTC\"}]}",
+            "sha256": "cedb5e3df5a517b36ea928cb38f25dfd5d9f828478c6933efa2b1e34e88d7ad2"
+          },
+          "6c545702cb956c831d8cc0d81fef1fef01d3b34427956b9fbf5a92a7ee96b910": {
+            "kind": "canonical_json",
+            "payload": "{\"benchmark_return\":0.020000000000000018,\"benchmark_return_formula\":\"benchmark_exit_adj_close / benchmark_entry_adj_close - 1\",\"common_complete_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"],\"complete_benchmark_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"],\"complete_instrument_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"],\"contract_sha256\":\"516601126b5d2a911a544a789f35a0c9513f5db7340d26a0e2f82422e41e9541\",\"currency_policy\":\"native_currency_returns_no_fx_conversion\",\"difference_formula\":\"raw_return - benchmark_return\",\"endpoints\":[{\"entry\":{\"date\":\"2025-02-10\",\"timestamp\":\"2025-02-10T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":123.45678901234567},\"Close\":{\"status\":\"finite\",\"value\":123.45678901234567},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"exit\":{\"date\":\"2025-02-12\",\"timestamp\":\"2025-02-12T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":126.25},\"Close\":{\"status\":\"finite\",\"value\":126.25},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"resolved_symbol\":\"EVDM.TEST\",\"role\":\"instrument\"},{\"entry\":{\"date\":\"2025-02-10\",\"timestamp\":\"2025-02-10T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":1.0},\"Close\":{\"status\":\"finite\",\"value\":1.0},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"exit\":{\"date\":\"2025-02-12\",\"timestamp\":\"2025-02-12T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":1.02},\"Close\":{\"status\":\"finite\",\"value\":1.02},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"resolved_symbol\":\"FICTIONAL.TEST\",\"role\":\"benchmark\"}],\"entry_after_date\":\"2025-02-07\",\"entry_date\":\"2025-02-10\",\"exit_date\":\"2025-02-12\",\"holding_period_days\":2,\"holding_period_unit\":\"common_complete_provider_daily_rows\",\"interpretation\":\"close_to_close_reference_performance_not_realized_execution_or_capm_alpha\",\"raw_return\":0.02262500920362509,\"raw_return_formula\":\"instrument_exit_adj_close / instrument_entry_adj_close - 1\",\"return_difference\":0.0026250092036250727,\"schema_version\":1,\"selected_common_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"]}",
+            "sha256": "6c545702cb956c831d8cc0d81fef1fef01d3b34427956b9fbf5a92a7ee96b910"
+          },
+          "72d795a4afb6f05450ba5524411b1774aa9dae3d4cfe6d110857ade45eea7c43": {
+            "kind": "text",
+            "payload": "Review the exact fictional saved reference-price outcome. No actual securities or external retrieval.",
+            "sha256": "72d795a4afb6f05450ba5524411b1774aa9dae3d4cfe6d110857ade45eea7c43"
+          },
+          "1ea0c1d61b4a780a730b5af66af61e96bb8ef1900efc1b1cf7fe8b9176b4f3f2": {
+            "kind": "canonical_json",
+            "payload": "{\"llm_provider\":\"fictional\",\"model\":\"offline-scripted\"}",
+            "sha256": "1ea0c1d61b4a780a730b5af66af61e96bb8ef1900efc1b1cf7fe8b9176b4f3f2"
+          },
+          "3ff79c7621310f5e72844b753b96387917fb15571559cfbd7e4386af3f645760": {
+            "kind": "text",
+            "payload": "Entirely fictional fixture reflection. Reference return difference does not establish execution or thesis causality.",
+            "sha256": "3ff79c7621310f5e72844b753b96387917fb15571559cfbd7e4386af3f645760"
+          }
+        },
+        "snapshot_sha256": "19bb0783b217e585d57b25cf661b4a91eccb4113be375ca23d17ba8e6648337a"
+      }
+    ],
+    "context_artifact": {
+      "kind": "text",
+      "payload": "Past analyses of EVDM.TEST (most recent first):\n\nMemory decision 22222222-2222-4222-8222-222222222222 | EVDM.TEST | 2025-02-07 | Hold\nResearch reference evaluation; not execution or realized strategy profit.\nDecision:\nRating: Hold\nFictional decision.\nFrozen benchmark: FICTIONAL.TEST; horizon: 2 common complete provider daily rows.\nOutcome observed at: 2025-02-13T12:00:00.000000Z\nSaved calculation:\n{\"benchmark_return\":0.020000000000000018,\"benchmark_return_formula\":\"benchmark_exit_adj_close / benchmark_entry_adj_close - 1\",\"common_complete_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"],\"complete_benchmark_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"],\"complete_instrument_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"],\"contract_sha256\":\"516601126b5d2a911a544a789f35a0c9513f5db7340d26a0e2f82422e41e9541\",\"currency_policy\":\"native_currency_returns_no_fx_conversion\",\"difference_formula\":\"raw_return - benchmark_return\",\"endpoints\":[{\"entry\":{\"date\":\"2025-02-10\",\"timestamp\":\"2025-02-10T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":123.45678901234567},\"Close\":{\"status\":\"finite\",\"value\":123.45678901234567},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"exit\":{\"date\":\"2025-02-12\",\"timestamp\":\"2025-02-12T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":126.25},\"Close\":{\"status\":\"finite\",\"value\":126.25},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"resolved_symbol\":\"EVDM.TEST\",\"role\":\"instrument\"},{\"entry\":{\"date\":\"2025-02-10\",\"timestamp\":\"2025-02-10T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":1.0},\"Close\":{\"status\":\"finite\",\"value\":1.0},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"exit\":{\"date\":\"2025-02-12\",\"timestamp\":\"2025-02-12T00:00:00+00:00\",\"utc_offset\":\"+00:00\",\"values\":{\"Adj Close\":{\"status\":\"finite\",\"value\":1.02},\"Close\":{\"status\":\"finite\",\"value\":1.02},\"Dividends\":{\"status\":\"finite\",\"value\":0.0},\"Stock Splits\":{\"status\":\"finite\",\"value\":0.0}}},\"resolved_symbol\":\"FICTIONAL.TEST\",\"role\":\"benchmark\"}],\"entry_after_date\":\"2025-02-07\",\"entry_date\":\"2025-02-10\",\"exit_date\":\"2025-02-12\",\"holding_period_days\":2,\"holding_period_unit\":\"common_complete_provider_daily_rows\",\"interpretation\":\"close_to_close_reference_performance_not_realized_execution_or_capm_alpha\",\"raw_return\":0.02262500920362509,\"raw_return_formula\":\"instrument_exit_adj_close / instrument_entry_adj_close - 1\",\"return_difference\":0.0026250092036250727,\"schema_version\":1,\"selected_common_dates\":[\"2025-02-10\",\"2025-02-11\",\"2025-02-12\"]}\nReflection completed at: 2025-02-13T12:01:00.000000Z\nEntirely fictional fixture reflection. Reference return difference does not establish execution or thesis causality.",
+      "sha256": "94e4404c95ea8da9057083c296a3b9252a689fd880259a127859a8b66e83fe68"
+    },
+    "raw_text_sha256": "77c8b29e19af9f9a7c3b902dd3d7acf608662be1a37494b13300688937371f30",
+    "context_sha256": "cc10b08f6d8a2b9c7b8b1de41f232f6eeef3fc37dcb64a5c16a84e0f907de3eb",
+    "input_sha256": "d24421bcead38fd01203ceadd102bde129cf15cf66f01bbf83a2c43162140db5"
+  },
+  "decision_snapshot": {
+    "schema_version": 1,
+    "run_id": "11111111-1111-4111-8111-111111111111",
+    "decision": {
+      "schema_version": 1,
+      "decision_id": "11111111-1111-4111-8111-111111111111",
+      "run_id": "11111111-1111-4111-8111-111111111111",
+      "instrument": "EVDM.TEST",
+      "asset_type": "stock",
+      "analysis_date": "2025-02-14",
+      "research_started_at": "2025-02-14T11:59:00.000000Z",
+      "research_as_of": "2025-02-14T23:59:59.999999Z",
+      "recorded_at": "2025-02-14T12:05:00.000000Z",
+      "analysis_calendar_date": "2025-02-14",
+      "host_utc_offset": "+00:00",
+      "rating": "Hold",
+      "decision_text_sha256": "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f",
+      "contract_sha256": "22cfaee8235b29bdbe6f7199784b31cc96c95ceecb1353a9cccf87d2a9bfb3c6",
+      "evidence_bundle_sha256": "b9a1f561d85816ec6944d67313705db48df8fe11dc50066b39b0327dded1d60e",
+      "decision_sha256": "96ea4ba158ee284034f7bda8be9a00cbd69073af414b756b37a1a4e0c3f83d14"
+    },
+    "contract": {
+      "schema_version": 1,
+      "analysis_date": "2025-02-14",
+      "research_calendar_date": "2025-02-14",
+      "host_utc_offset": "+00:00",
+      "resolved_benchmark": "FICTIONAL.TEST",
+      "holding_period_days": 2,
+      "evaluation_mode": "prospective_reference",
+      "not_evaluable_reason": null,
+      "evaluator_version": "common-daily-adjusted-close-v1",
+      "evaluator_code_sha256": "774dfabc8b246fe8885aa923b27a2a1e91d8e9bbf07df9a86fb1a41d0eddba4e",
+      "effective_history_parameters": {
+        "interval": "1d",
+        "auto_adjust": false,
+        "back_adjust": false,
+        "actions": true,
+        "repair": false,
+        "rounding": false,
+        "keepna": true,
+        "prepost": false
+      },
+      "decision_text_sha256": "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f",
+      "holding_period_unit": "common_complete_provider_daily_rows",
+      "policy_version": "common-daily-close-v1",
+      "entry_policy": "first_common_complete_date_after_recorded_source_and_utc_dates",
+      "exit_policy": "holding_count_common_row_transitions",
+      "alignment_policy": "identical_session_date_no_fill",
+      "session_policy": "provider_daily_rows_timezone_required",
+      "completion_policy": "date_elapsed_in_source_timezone_and_utc",
+      "price_basis": "provider_adjusted_close",
+      "return_policy": "simple_return_difference_no_fx",
+      "contract_sha256": "22cfaee8235b29bdbe6f7199784b31cc96c95ceecb1353a9cccf87d2a9bfb3c6"
+    },
+    "outcome": null,
+    "reflection": null,
+    "artifacts": {
+      "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f": {
+        "kind": "text",
+        "payload": "Rating: Hold\nFictional decision.",
+        "sha256": "e4c943df4c8b66ebfe5f78cc22a8fc703340c977ed6752af1c26ee57d6c3c00f"
+      }
+    },
+    "snapshot_sha256": "13283b76fac151bfa3fdaf0fbb6326ba580ffc8e1966af4a41667216cddcaf53"
+  },
+  "bundle_sha256": "c5b12f3f25950fe9412cc1f5acb5cc6ef04e98b0f6da0a436711be0980076a23"
+}

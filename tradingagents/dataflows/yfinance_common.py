@@ -8,6 +8,7 @@ from yfinance.exceptions import YFPricesMissingError, YFRateLimitError
 
 from tradingagents.dataflows.errors import NoMarketDataError, VendorUnavailableError
 from tradingagents.dataflows.net import vendor_reachable
+from tradingagents.dataflows.evidence_utils import source_attempt
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +66,20 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
     one again reads an empty profile.
     """
     for attempt in range(max_retries + 1):
+        started = time.monotonic()
         try:
-            return func()
+            result = func()
+            empty = (
+                result is None
+                or getattr(result, "empty", False)
+                or (isinstance(result, (list, dict, str)) and not result)
+            )
+            source_attempt(
+                "yfinance", "empty" if empty else "available", (time.monotonic() - started) * 1000
+            )
+            return result
         except YFRateLimitError as exc:
+            source_attempt("yfinance", "unavailable", (time.monotonic() - started) * 1000)
             if attempt < max_retries:
                 delay = base_delay * (2**attempt)
                 logger.warning(
@@ -76,11 +88,13 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
                 time.sleep(delay)
             else:
                 raise VendorUnavailableError(
-                    f"Yahoo Finance rate limited after {max_retries} retries: {exc}"
+                    f"Yahoo Finance rate limited after {max_retries} retries"
                 ) from exc
         except Exception as exc:
             if _answered_empty(exc):
+                source_attempt("yfinance", "empty", (time.monotonic() - started) * 1000)
                 return None
+            source_attempt("yfinance", "unavailable", (time.monotonic() - started) * 1000)
             raise VendorUnavailableError(
                 f"Yahoo Finance request failed: {type(exc).__name__}"
             ) from exc

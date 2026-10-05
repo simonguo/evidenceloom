@@ -1,3 +1,6 @@
+import { normalizeIdentityTasks, verifyIdentityTasks, assertRetainedIdentityAuthority } from "@/features/source-identity/lib/tasks";
+import { normalizeNumericTasks, verifyNumericTasks } from "@/features/numeric-review/lib/tasks";
+import { assertRetainedNumericAuthority } from "@/features/numeric-review/lib/history";
 import {
   createEmptyTask,
   defaultGlobalSettings,
@@ -7,6 +10,11 @@ import {
   normalizeGlobalSettings,
 } from "@/lib/analysis";
 import { ensureLegacyReportVersion } from "@/features/report-export/lib/versioning";
+import { normalizeTaskOutputQuality } from "@/features/output-quality/lib/quality";
+import { normalizeTaskEvidence, verifyTaskEvidence } from "@/features/evidence/lib/validation";
+import { normalizeMemoryTaskFields } from "@/features/memory/lib/validation";
+import { assertRetainedMemoryAuthority, normalizeMemoryTasks, verifyMemoryTasks } from "@/features/memory/lib/tasks";
+import { normalizeReadinessTasks, verifyReadinessTasks } from "@/features/research-readiness/lib/validation";
 import type { AnalysisForm, AnalysisTask, GlobalSettings } from "@/lib/types";
 
 const settingsStorageKey = "evidenceloom.globalSettings.v1";
@@ -49,14 +57,30 @@ export function loadTasks(): AnalysisTask[] {
     ?? firstJson<AnalysisTask[]>(legacyTasksKeys)
     ?? [];
   const normalized = normalizeTasks(tasks);
-  saveTasks(normalized);
+  if (!normalized.some((task) => task.numericValidation || task.identityValidation || task.memoryValidation || task.reportVersions.some((version) => version.numericValidation || version.identityValidation || version.memoryValidation))) saveTasks(normalized);
   removeKeys(legacyTasksKeys);
   return normalized;
 }
 
 export function saveTasks(tasks: AnalysisTask[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(tasksStorageKey, JSON.stringify(tasks));
+  assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  assertRetainedIdentityAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  assertRetainedMemoryAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  const safe = normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(normalizeMemoryTasks(tasks.map(normalizeTaskOutputQuality).map(normalizeTaskEvidence)))));
+  assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], safe);
+  assertRetainedIdentityAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], safe);
+  assertRetainedMemoryAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], safe);
+  window.localStorage.setItem(tasksStorageKey, JSON.stringify(safe));
+}
+
+export async function saveVerifiedTasks(tasks: AnalysisTask[]) {
+  if (typeof window !== "undefined") assertRetainedNumericAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  if (typeof window !== "undefined") assertRetainedIdentityAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  if (typeof window !== "undefined") assertRetainedMemoryAuthority(readJson<AnalysisTask[]>(tasksStorageKey) ?? [], tasks);
+  const captured = JSON.parse(JSON.stringify(tasks)) as AnalysisTask[];
+  const safe = await verifyIdentityTasks(await verifyNumericTasks(await verifyReadinessTasks(await verifyMemoryTasks(await Promise.all(captured.map(verifyTaskEvidence))))));
+  saveTasks(safe);
 }
 
 export function loadLegacyDesktopData(): LegacyDesktopData {
@@ -113,7 +137,7 @@ export function stripSecretFields<T extends { apiKey?: string; alphaVantageApiKe
 }
 
 function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
-  return tasks.map((task) => {
+  return normalizeIdentityTasks(normalizeNumericTasks(normalizeReadinessTasks(normalizeMemoryTasks(tasks.map((task) => {
     const status = task.status === "running" ? "stopped" : task.status;
     const normalized: AnalysisTask = {
       ...createEmptyTask({
@@ -140,8 +164,8 @@ function normalizeTasks(tasks: AnalysisTask[]): AnalysisTask[] {
       reportSections: task.reportSections ?? {},
       reportVersions: task.reportVersions ?? [],
     };
-    return ensureLegacyReportVersion(normalized);
-  });
+    return normalizeMemoryTaskFields(normalizeTaskEvidence(normalizeTaskOutputQuality(ensureLegacyReportVersion(normalized))));
+  })))));
 }
 
 function firstJson<T>(keys: string[]): T | undefined {

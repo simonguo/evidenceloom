@@ -1,0 +1,202 @@
+name: Sidecar Diagnostics
+
+on:
+  pull_request:
+    branches: [main, "quality/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sidecar-diagnostics-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-diagnostics:
+    name: Native diagnostics (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+            timeout_minutes: 45
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            timeout_minutes: 90
+          - os: windows-2025
+            target: x86_64-pc-windows-msvc
+            timeout_minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHON_DOTENV_DISABLED: "1"
+      LANGCHAIN_TRACING_V2: "false"
+      LANGSMITH_TRACING: "false"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install frozen dependencies
+        run: |
+          python -m pip install --disable-pip-version-check uv==0.6.6
+          uv sync --frozen --group dev
+          uv lock --check
+      - name: Run native source and process diagnostics
+        run: |
+          uv run --frozen pytest -q \
+            tests/test_runner_diagnostics.py \
+            tests/test_runner_source_manifest.py \
+            tests/test_sidecar_architecture.py \
+            tests/test_sidecar_probe.py \
+            tests/test_memory_inventory.py \
+            tests/test_memory_contract.py \
+            tests/test_memory_evaluation.py \
+            tests/test_research_memory_pipeline.py \
+            tests/test_memory_target_binding.py \
+            tests/test_memory_target_binding_boundaries.py \
+            tests/test_memory_target_publication.py \
+            tests/test_frozen_claim_evaluation.py \
+            tests/test_public_source_corpus.py \
+            tests/test_public_source_report_case.py \
+            tests/test_langgraph_sdk_authorization.py \
+            tests/test_diagnostic_key_classification.py \
+            tests/test_market_data_validator.py \
+            tests/test_stockstats_date_column.py \
+            tests/test_market_inputs.py \
+            tests/test_research_readiness.py \
+            tests/test_numeric_review.py \
+            tests/test_numeric_pipeline.py \
+            tests/test_effective_request_identity.py \
+            tests/test_effective_request_identity_persistence.py \
+            tests/test_effective_request_pipeline.py
+      - name: Build and validate the native packaged sidecar
+        env:
+          SIDECAR_TARGET: ${{ matrix.target }}
+        run: |
+          sidecar_python="$(uv run --frozen python -c 'import sys; print(sys.executable)')"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            sidecar_python="$(cygpath -u "$sidecar_python")"
+          fi
+          PYTHON="$sidecar_python" bash scripts/build_tauri_sidecar.sh "$SIDECAR_TARGET"
+          sidecar_binary="$PWD/src-tauri/binaries/evidenceloom-runner-$SIDECAR_TARGET"
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            sidecar_binary="$sidecar_binary.exe"
+          fi
+          "$sidecar_python" scripts/sidecar_probe.py all "$sidecar_binary"
+      - name: Run native Rust protocol and process fixtures
+        run: |
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked runtime_probe
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_execution
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked memory
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked readiness
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked numeric
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked identity
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked task_mutation
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_journal
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_recovery
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frozen frontend dependencies for native recovery fixtures
+        working-directory: frontend
+        run: |
+          npm install --global npm@11.6.2
+          npm ci
+      - name: Validate native recovery, consecutive runs, and frontend reattachment
+        run: |
+          cargo test --manifest-path src-tauri/Cargo.toml --locked --no-run --message-format=json > "$RUNNER_TEMP/analysis-recovery-build.jsonl"
+          uv run --frozen python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import shutil
+          import subprocess
+
+          temporary = Path(os.environ["RUNNER_TEMP"])
+          artifacts = [json.loads(line) for line in (temporary / "analysis-recovery-build.jsonl").read_text(encoding="utf-8").splitlines() if line.startswith("{")]
+          executables = {item["executable"] for item in artifacts if item.get("reason") == "compiler-artifact" and item.get("profile", {}).get("test") and item.get("executable")}
+          if len(executables) != 1:
+              raise RuntimeError("Exactly one compiled native test executable is required")
+          executable = executables.pop()
+          directory = temporary / ("analysis-recovery-" + os.environ["GITHUB_RUN_ID"] + "-" + os.environ["GITHUB_RUN_ATTEMPT"])
+          directory.mkdir()
+          corpus = directory / "actual-sql-corpus.json"
+          environment = dict(os.environ)
+          environment["EVIDENCELOOM_RECOVERY_CORPUS_OUTPUT"] = str(corpus)
+          subprocess.run([executable, "storage::analysis_journal::tests::analysis_journal_actual_sql_wire_corpus_serializes_original_publication_and_number_forms", "--exact", "--nocapture"], env=environment, check=True)
+          if json.loads(corpus.read_text(encoding="utf-8")).get("producer") != "actual-native-sql-read-v1":
+              raise RuntimeError("Actual SQL serialization corpus is required")
+          rustc = subprocess.check_output(["rustup", "which", "rustc"], text=True).strip()
+          environment.pop("EVIDENCELOOM_RECOVERY_CORPUS_OUTPUT")
+          environment["EVIDENCELOOM_RECOVERY_CORPUS_INPUT"] = str(corpus)
+          environment["EVIDENCELOOM_RECOVERY_BRIDGE_EXE"] = executable
+          environment["EVIDENCELOOM_RECOVERY_BRIDGE_ARTIFACTS"] = str(directory)
+          environment["EVIDENCELOOM_RECOVERY_RUSTC_DIRECTORY"] = str(Path(rustc).parent)
+          npm = shutil.which("npm")
+          if npm is None:
+              raise RuntimeError("Repository npm executable is required")
+          subprocess.run([npm, "test", "--", "src/features/analysis-recovery/lib/protocol.test.ts", "src/features/analysis-recovery/lib/native-bridge.test.ts", "src/features/analysis-recovery/lib/attachment-native-bridge.test.ts"], cwd="frontend", env=environment, check=True)
+          PY
+      - name: Seed an owned saved-memory fixture store
+        run: |
+          uv run --frozen python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import tempfile
+
+          os.environ["EVIDENCELOOM_BOOTSTRAP_ONLY"] = "1"
+          from tradingagents.memory.store import MemoryStore
+
+          bundle = json.loads(Path("tests/fixtures/memory_bundle_v1.json").read_text(encoding="utf-8"))
+          directory = Path(tempfile.mkdtemp(prefix="evidenceloom-memory-inventory-", dir=os.environ["RUNNER_TEMP"]))
+          memory_path = directory / "memory.md"
+          store = MemoryStore(str(memory_path))
+          prior = bundle["input_snapshot"]["decisions"][0]
+          empty_context = MemoryStore().context_snapshot(
+              prior["decision"]["instrument"], prior["decision"]["research_as_of"],
+              selected_at=prior["decision"]["recorded_at"],
+          )
+          store.record_decision(prior)
+          store.bundle(prior["run_id"], empty_context, evidence_bundle_sha256=prior["decision"]["evidence_bundle_sha256"])
+          store.record_decision(bundle["decision_snapshot"])
+          store.bundle(bundle["run_id"], bundle["input_snapshot"], evidence_bundle_sha256=bundle["evidence_bundle_sha256"])
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"EVIDENCELOOM_VALIDATION_MEMORY_STORE={memory_path.resolve()}\n")
+          PY
+      - name: Exercise the Rust bridge against the real packaged sidecar
+        env:
+          SIDECAR_TARGET: ${{ matrix.target }}
+        run: |
+          sidecar_binary="$(uv run --frozen python -c 'import os; from pathlib import Path; suffix = ".exe" if os.name == "nt" else ""; print((Path("src-tauri/binaries") / ("evidenceloom-runner-" + os.environ["SIDECAR_TARGET"] + suffix)).resolve())')"
+          EVIDENCELOOM_VALIDATION_SIDECAR="$sidecar_binary" \
+            cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked \
+            runtime_probe::tests::packaged_artifact_verifies_actual_runtime -- \
+            --exact --ignored
+          EVIDENCELOOM_VALIDATION_SIDECAR="$sidecar_binary" \
+            cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked \
+            research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory -- \
+            --exact --ignored
+      - name: Clean up the owned fixture store
+        if: always()
+        run: |
+          uv run --frozen python - <<'PY'
+          import os
+          from pathlib import Path
+          import shutil
+
+          memory_path = os.environ.get("EVIDENCELOOM_VALIDATION_MEMORY_STORE")
+          if memory_path:
+              directory = Path(memory_path).parent
+              if directory.name.startswith("evidenceloom-memory-inventory-"):
+                  shutil.rmtree(directory, ignore_errors=True)
+          PY

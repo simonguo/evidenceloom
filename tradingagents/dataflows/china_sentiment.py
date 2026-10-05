@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import datetime, timedelta
 
 import requests
 
 from .date_window import is_historical
+from .evidence_utils import scalar, source_attempt
+from tradingagents.evidence import capture_evidence, observe_source
 
 
 EASTMONEY_SEARCH_URL = "https://search-api-web.eastmoney.com/search/jsonp"
@@ -47,6 +50,15 @@ def fetch_china_sentiment_sources(
     end_date: str,
     limit: int = 12,
 ) -> str:
+    """Fetch Chinese news and discussion with captured actual source inputs."""
+    return capture_evidence(
+        "fetch_china_sentiment_sources",
+        {"ticker": symbol, "start_date": start_date, "end_date": end_date, "limit": limit},
+        lambda: _fetch_china_sentiment_sources(symbol, start_date, end_date, limit),
+    )
+
+
+def _fetch_china_sentiment_sources(symbol, start_date, end_date, limit) -> str:
     code = normalize_a_share_code(symbol)
     historical = is_historical(end_date)
     # Today's name (including ST status) can differ from the historical name;
@@ -87,6 +99,45 @@ def fetch_china_sentiment_sources(
         if (published := _parse_datetime(post.get("date") or "")) is not None
         and start_dt <= published < end_dt
     ]
+    # The underlying AkShare *_em helpers and the public search/bar endpoints
+    # both serve Eastmoney. Only retain selected article and post fields.
+    for label, rows, url in (
+        ("articles", articles or recent_articles, EASTMONEY_SEARCH_URL),
+        ("hot_keywords", hot_keywords, None),
+        ("posts", posts, EASTMONEY_GUBA_URL),
+    ):
+        if not rows:
+            continue
+        dates = [_parse_datetime(item.get("date") or "") for item in rows]
+        known = [d for d in dates if d is not None]
+        selected = []
+        for item in rows:
+            selected.append(
+                {
+                    k: scalar(v)
+                    for k, v in item.items()
+                    if not historical or k not in {"read_count", "comment_count"}
+                }
+            )
+        observe_source(
+            "eastmoney",
+            url=url,
+            normalized_data={label: selected},
+            observed_window={
+                "start": min(known).strftime("%Y-%m-%d"),
+                "end": max(known).strftime("%Y-%m-%d"),
+            }
+            if known
+            else None,
+            # These Chinese endpoint dates have no observed timezone offset.
+            transformations=(
+                "Chinese article and post fields selected",
+                "Historical current engagement metrics withheld"
+                if historical
+                else "Current engagement metrics may be displayed",
+                "Items after requested end date excluded",
+            ),
+        )
 
     lines = [
         f"## A股中文舆情数据：{company_name or code}（{code}）",
@@ -160,12 +211,21 @@ def _get_json(url: str, params: dict, referer: str) -> dict:
         "Accept": "application/json,text/plain,*/*",
         "Referer": referer,
     }
-    response = requests.get(url, params=params, headers=headers, timeout=12)
-    response.raise_for_status()
-    text = response.text.strip()
-    if text.startswith("jQuery(") and text.endswith(")"):
-        text = text[len("jQuery(") : -1]
-    return json.loads(text)
+    started = time.monotonic()
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=12)
+        response.raise_for_status()
+        text = response.text.strip()
+        if text.startswith("jQuery(") and text.endswith(")"):
+            text = text[len("jQuery(") : -1]
+        result = json.loads(text)
+    except Exception:
+        source_attempt("eastmoney", "unavailable", (time.monotonic() - started) * 1000)
+        raise
+    source_attempt(
+        "eastmoney", "available" if result else "empty", (time.monotonic() - started) * 1000
+    )
+    return result
 
 
 def _fetch_company_name(code: str) -> str | None:
@@ -246,12 +306,22 @@ def _fetch_akshare_stock_news(
     limit: int,
     include_recent: bool,
 ) -> list[dict]:
+    started = time.monotonic()
     try:
         import akshare as ak  # type: ignore
 
         frame = ak.stock_news_em(symbol=code)
-    except Exception:
+    except ImportError:
+        source_attempt("akshare", "not_configured", (time.monotonic() - started) * 1000)
         return []
+    except Exception:
+        source_attempt("eastmoney", "unavailable", (time.monotonic() - started) * 1000)
+        return []
+    source_attempt(
+        "eastmoney",
+        "available" if not frame.empty else "empty",
+        (time.monotonic() - started) * 1000,
+    )
 
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
@@ -282,12 +352,22 @@ def _fetch_akshare_stock_news(
 
 
 def _fetch_eastmoney_hot_keywords(code: str, limit: int) -> list[dict]:
+    started = time.monotonic()
     try:
         import akshare as ak  # type: ignore
 
         frame = ak.stock_hot_keyword_em(symbol=_eastmoney_rank_symbol(code))
-    except Exception:
+    except ImportError:
+        source_attempt("akshare", "not_configured", (time.monotonic() - started) * 1000)
         return []
+    except Exception:
+        source_attempt("eastmoney", "unavailable", (time.monotonic() - started) * 1000)
+        return []
+    source_attempt(
+        "eastmoney",
+        "available" if not frame.empty else "empty",
+        (time.monotonic() - started) * 1000,
+    )
 
     rows = []
     for _, row in frame.head(limit).iterrows():

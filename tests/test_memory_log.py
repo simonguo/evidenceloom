@@ -672,90 +672,30 @@ class TestDeferredReflection:
 
     # TradingAgentsGraph._resolve_pending_entries
 
-    def test_resolve_skips_other_tickers(self, tmp_path):
-        """Pending AAPL entry is not resolved when the run is for NVDA."""
+    @pytest.mark.parametrize("ticker", ["AAPL", "NVDA"])
+    def test_legacy_prose_is_never_settled_or_selected(self, tmp_path, ticker):
+        """Date-only legacy records do not establish decision availability or facts."""
+        from tradingagents.graph.research_memory import ResearchMemory
+
         log = make_log(tmp_path)
-        log.store_decision("AAPL", "2026-01-10", DECISION_BUY)
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.memory_log = log
-        mock_graph.config = {}
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        with patch(
-            "tradingagents.graph.trading_graph.compute_returns",
-            return_value=(0.05, 0.02, 5, "2026-01-12"),
-        ):
-            TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
-        mock_graph._fetch_returns.assert_not_called()
-        assert len(log.get_pending_entries()) == 1
-
-    def test_resolve_marks_entry_completed(self, tmp_path):
-        """After resolve, get_pending_entries() is empty and the entry has a REFLECTION."""
-        log = make_log(tmp_path)
-        log.store_decision("NVDA", "2026-01-05", DECISION_BUY)
-        mock_reflector = MagicMock()
-        mock_reflector.reflect_on_final_decision.return_value = "Momentum confirmed."
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.memory_log = log
-        mock_graph.config = {}
-        mock_graph.reflector = mock_reflector
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        with patch(
-            "tradingagents.graph.trading_graph.compute_returns",
-            return_value=(0.05, 0.02, 5, "2026-01-12"),
-        ):
-            TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
-        assert log.get_pending_entries() == []
-        entries = log.load_entries()
-        assert len(entries) == 1
-        assert entries[0]["pending"] is False
-        assert entries[0]["reflection"] == "Momentum confirmed."
-        assert "+5.0%" in entries[0]["raw"]
-        assert "+2.0%" in entries[0]["alpha"]
-
-    def test_resolve_keeps_entry_pending_when_reflection_fails(self, tmp_path):
-        """Deferred reflection failures do not fail the next analysis run."""
-        log = make_log(tmp_path)
-        log.store_decision("NVDA", "2026-01-05", DECISION_BUY)
-        mock_reflector = MagicMock()
-        mock_reflector.reflect_on_final_decision.side_effect = RuntimeError("subscription expired")
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.memory_log = log
-        mock_graph.config = {}
-        mock_graph.reflector = mock_reflector
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        mock_graph._resolve_benchmark = MagicMock(return_value="SPY")
-
-        with patch(
-            "tradingagents.graph.trading_graph.compute_returns",
-            return_value=(0.05, 0.02, 5, "2026-01-12"),
-        ):
-            TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
-
-        mock_reflector.reflect_on_final_decision.assert_called_once()
-        assert len(log.get_pending_entries()) == 1
-
-    def test_resolve_keeps_run_alive_when_outcome_persist_fails(self, tmp_path):
-        """Persisting historical outcome updates is best-effort."""
-        log = make_log(tmp_path)
-        log.store_decision("NVDA", "2026-01-05", DECISION_BUY)
+        log.store_decision(ticker, "2026-01-10", DECISION_BUY)
         log.batch_update_with_outcomes = MagicMock(side_effect=OSError("disk unavailable"))
-        mock_reflector = MagicMock()
-        mock_reflector.reflect_on_final_decision.return_value = "Momentum confirmed."
+        path = log._log_path
+        before = path.read_bytes()
+        reflector = MagicMock()
+        controller = ResearchMemory({"memory_log_path": str(path)}, reflector, lambda: {})
         mock_graph = MagicMock(spec=TradingAgentsGraph)
         mock_graph.memory_log = log
-        mock_graph.config = {}
-        mock_graph.reflector = mock_reflector
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        mock_graph._resolve_benchmark = MagicMock(return_value="SPY")
-
-        with patch(
-            "tradingagents.graph.trading_graph.compute_returns",
-            return_value=(0.05, 0.02, 5, "2026-01-12"),
-        ):
+        mock_graph._research_memory.return_value = controller
+        with patch("tradingagents.graph.research_memory.evaluate_decision") as evaluate:
             TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
-
-        log.batch_update_with_outcomes.assert_called_once()
+        evaluate.assert_not_called()
+        reflector.invoke_reference_reflection.assert_not_called()
+        log.batch_update_with_outcomes.assert_not_called()
+        assert path.read_bytes() == before
         assert len(log.get_pending_entries()) == 1
+        context = controller.store.context_snapshot("NVDA", "2026-02-01T23:59:59.999999Z")
+        assert context["decisions"] == [] and context["context_artifact"]["payload"] == ""
 
 
 # ---------------------------------------------------------------------------
@@ -787,7 +727,7 @@ class TestPortfolioManagerInjection:
             past_context="[2026-01-05 | NVDA | Buy | +5.0% | +2.0% | 5d]\nGreat call."
         )
         pm_node(state)
-        assert "Lessons from prior decisions and outcomes" in captured["prompt"]
+        assert state["past_context"] in captured["prompt"]
         assert "Great call." in captured["prompt"]
 
     def test_pm_no_past_context_no_section(self):
@@ -922,7 +862,7 @@ class TestLegacyRemoval:
             create_portfolio_manager(mock_llm, memory=MagicMock())
 
     def test_full_pipeline_no_regression(self, tmp_path):
-        """propagate() completes and stores the decision after the redesign."""
+        """A compatibility-only raw graph state is logged without inventing a contract."""
         import functools
 
         fake_state = {
@@ -976,7 +916,7 @@ class TestLegacyRemoval:
         )
         mock_graph._log_state = functools.partial(TradingAgentsGraph._log_state, mock_graph)
         TradingAgentsGraph.propagate(mock_graph, "NVDA", "2026-01-10")
-        entries = mock_graph.memory_log.load_entries()
-        assert len(entries) == 1
-        assert entries[0]["ticker"] == "NVDA"
-        assert entries[0]["pending"] is True
+        assert mock_graph.memory_log.load_entries() == []
+        assert "memory_bundle" not in fake_state
+        mock_graph._research_memory.assert_not_called()
+        assert list(tmp_path.rglob("full_states_log_*.json"))

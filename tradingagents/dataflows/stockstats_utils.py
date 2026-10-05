@@ -13,6 +13,8 @@ from .eastmoney import load_ohlcv as load_eastmoney_ohlcv
 from stockstats import wrap
 from typing import Annotated
 from tradingagents.dataflows.yfinance_common import raise_for_empty, yf_retry
+from .evidence_utils import observe_ohlcv, scalar
+from tradingagents.evidence import observe_source
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +71,56 @@ def _normalize_dates(dates) -> pd.Series:
     return pd.to_datetime(pd.Series(dates).map(_local_midnight))
 
 
+def preserve_source_dates(data: pd.DataFrame) -> pd.DataFrame:
+    """Keep received timestamps and timezone evidence beside the working date.
+
+    A naive timestamp is never assigned a timezone from its ticker. Old CSVs
+    with explicit offsets retain those offsets, even when the original IANA
+    zone name was not saved. Existing source columns survive cache replay.
+    """
+    result = _ensure_date_column(data).copy()
+    if "Date" not in result:
+        return result
+    metadata = []
+    declared = result.attrs.get("source_timezone")
+    declared_origin = result.attrs.get("timezone_origin", "provider_metadata")
+    if declared_origin not in {"provider_metadata", "symbol_market_convention", "unknown"}:
+        declared_origin = "unknown"
+    for value in result["Date"]:
+        try:
+            if isinstance(value, str) and value.rstrip().endswith("-00:00"):
+                # RFC3339 negative zero means the offset is unknown. Parsing
+                # it as UTC would invent a source clock that was not observed.
+                metadata.append((value, None, None, "unknown"))
+                continue
+            stamp = pd.Timestamp(value)
+            if pd.isna(stamp):
+                raise ValueError
+            zone = str(stamp.tzinfo) if stamp.tzinfo is not None else declared
+            origin = (
+                "timestamp"
+                if stamp.tzinfo is not None
+                else (declared_origin if declared else "unknown")
+            )
+            offset = stamp.strftime("%z") if stamp.tzinfo is not None else None
+            if offset and len(offset) == 5:
+                offset = offset[:3] + ":" + offset[3:]
+            metadata.append((stamp.isoformat(), zone, offset, origin))
+        except (TypeError, ValueError, OverflowError):
+            metadata.append((None, None, None, "unknown"))
+    for index, name in enumerate(
+        ("SourceTimestamp", "SourceTimezone", "SourceUTCOffset", "TimezoneOrigin")
+    ):
+        if name not in result:
+            result[name] = [row[index] for row in metadata]
+    unknown_offsets = result["SourceTimestamp"].map(
+        lambda value: isinstance(value, str) and value.rstrip().endswith("-00:00")
+    )
+    result.loc[unknown_offsets, ["SourceTimezone", "SourceUTCOffset"]] = None
+    result.loc[unknown_offsets, "TimezoneOrigin"] = "unknown"
+    return result
+
+
 def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     """Normalize a stock DataFrame for stockstats: parse/normalize dates and
     coerce prices to numeric (NaN where invalid). Dropping incomplete rows and
@@ -77,8 +129,9 @@ def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     data = _ensure_date_column(data)
     if "Date" not in data or "Close" not in data:
         raise VendorUnavailableError("OHLCV response has no usable date or close column")
-    data = data.copy()
+    data = preserve_source_dates(data)
     data["Date"] = _normalize_dates(data["Date"])
+    data.attrs["invalid_timestamp_rows"] = int(data["Date"].isna().sum())
     data = data.dropna(subset=["Date"]).copy()
 
     price_cols = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in data.columns]
@@ -167,12 +220,42 @@ def _cache_is_fresh(data_file, as_of_dt, now) -> bool:
     )
 
 
+def _cache_window(data, start_str, end_str):
+    """Return the recorded provider request, without claiming calendar coverage.
+
+    Indicator windows call this loader for several past dates. Reuse may rely
+    on 200 distinct received dates before that cutoff; the verifier still
+    checks integrity, completion and each indicator's actual warm-up.
+    """
+    if not {"HistoryRequestStart", "HistoryRequestEnd"}.issubset(data.columns):
+        return None
+    starts, ends = (
+        data["HistoryRequestStart"].dropna().unique(),
+        data["HistoryRequestEnd"].dropna().unique(),
+    )
+    if len(starts) != 1 or len(ends) != 1:
+        return None
+    try:
+        start, end = pd.Timestamp(starts[0]), pd.Timestamp(ends[0])
+        requested_start, requested_end = pd.Timestamp(start_str), pd.Timestamp(end_str)
+        if start.tzinfo is not None or end.tzinfo is not None or end < requested_end:
+            return None
+        dates = _coerce_ohlcv_dates(data)
+        preceding = dates[(dates < requested_end) & (dates >= start)]
+        if start <= requested_start or preceding.nunique() >= 200:
+            return {"start": start.strftime("%Y-%m-%d"), "end": end.strftime("%Y-%m-%d")}
+    except (ValueError, TypeError, OverflowError):
+        pass
+    return None
+
+
 def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFrame:
     """Fetch OHLCV data with caching, filtered to prevent look-ahead bias.
 
-    Downloads 5 years of data up to today and caches per symbol. On
-    subsequent calls the cache is reused. Rows after curr_date are
-    filtered out so backtests never see future prices.
+    Requests five years ending at the analysis cutoff, including its daily
+    row. Bounded cache reuse retains its actual provider request window.
+    Original timestamps/offsets remain beside the normalized working dates;
+    date filtering does not establish publication or adjustment vintage.
 
     ``fill_gaps`` carries prices forward over gaps so indicators compute on a
     continuous series. Pass ``False`` to read the values as the vendor reported
@@ -196,24 +279,36 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
             ) from exc
         data = _clean_dataframe(data)
         data = data[data["Date"] <= pd.Timestamp(curr_date).normalize()]
-        data = _fill_price_gaps(data) if fill_gaps else data.dropna(subset=["Close"]).copy()
+        data = _fill_price_gaps(data) if fill_gaps else data.copy()
+        data.attrs["requested_window"] = {
+            "start": (pd.Timestamp(curr_date) - pd.DateOffset(years=5)).strftime("%Y-%m-%d"),
+            "end": curr_date,
+        }
         _assert_ohlcv_not_stale(data, curr_date, symbol, canonical)
         if data.empty:
             raise NoMarketDataError(symbol, canonical, "no A-share prices in the requested window")
+        observe_ohlcv(
+            data,
+            transformations=(
+                "Dates normalized preserving local dates",
+                "Rows after analysis date excluded",
+                "Missing price cells forward then backward filled"
+                if fill_gaps
+                else "Reported missing cells retained for integrity assessment",
+            ),
+        )
         return data
     safe_symbol = safe_ticker_component(canonical)
 
     config = get_config()
     as_of_dt = pd.to_datetime(curr_date).normalize()
 
-    # One cache file per symbol, holding the latest 5y-to-today download.
+    # One cache file per symbol, with its actual request window stored in rows.
     now = pd.Timestamp.today()
-    start_date = now - pd.DateOffset(years=5)
+    start_date = as_of_dt - pd.DateOffset(years=5)
     start_str = start_date.strftime("%Y-%m-%d")
-    # yfinance ``end`` is EXCLUSIVE; request tomorrow so today's row is included
-    # when curr_date is the current day (#986). Look-ahead is still prevented by
-    # the curr_date filter below.
-    end_str = (now + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+    # Yahoo end is exclusive. Inclusion is not proof that this daily bar closed.
+    end_str = (as_of_dt + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
     os.makedirs(config["data_cache_dir"], exist_ok=True)
     data_file = os.path.join(
@@ -225,17 +320,23 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
     # transient rate limit). Treat an empty/columnless cache as a miss and
     # re-fetch rather than serving the poisoned file forever.
     data = None
+    cached_input = False
+    provider_window = {"start": start_str, "end": end_str}
     if os.path.exists(data_file):
         try:
             cached = pd.read_csv(data_file, on_bad_lines="skip", encoding="utf-8")
         except (pd.errors.EmptyDataError, pd.errors.ParserError, OSError):
             cached = pd.DataFrame()
+        cached_window = _cache_window(cached, start_str, end_str)
         if (
             not cached.empty
             and "Close" in cached.columns
             and _cache_is_fresh(data_file, as_of_dt, now)
+            and cached_window is not None
         ):
             data = cached
+            cached_input = True
+            provider_window = cached_window
 
     if data is None:
         # yf.download catches every error, a rate limit included, and returns
@@ -244,8 +345,14 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
             lambda: yf.Ticker(canonical).history(
                 start=start_str,
                 end=end_str,
+                interval="1d",
                 auto_adjust=True,
+                back_adjust=False,
                 actions=False,
+                repair=False,
+                rounding=False,
+                keepna=True,
+                prepost=False,
             )
         )
         if downloaded is None:
@@ -254,13 +361,23 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
         # Only cache real data — never persist an empty frame.
         if downloaded.empty or "Close" not in downloaded.columns:
             raise_for_empty(symbol, canonical, "price rows")
+        downloaded = preserve_source_dates(downloaded)
+        downloaded["HistoryRequestStart"] = start_str
+        downloaded["HistoryRequestEnd"] = end_str
+        downloaded["PriceBasis"] = "auto_adjusted_ohlcv"
         replace_file(data_file, lambda temp: downloaded.to_csv(temp, index=False, encoding="utf-8"))
         data = downloaded
+
+    data.attrs.update({"source": "yfinance", "source_url": "https://finance.yahoo.com/"})
+    data.attrs["requested_window"] = {"start": provider_window["start"], "end": curr_date}
+    if "PriceBasis" in data and data["PriceBasis"].eq("auto_adjusted_ohlcv").all():
+        data.attrs["price_basis"] = "auto_adjusted_ohlcv"
+        data.attrs["adjustments"] = "auto_adjust=True requested; actions=False"
 
     data = _clean_dataframe(data)
 
     # Filter to curr_date to prevent look-ahead bias in backtesting.
-    data = data[data["Date"] <= as_of_dt]
+    data = data[(data["Date"] >= start_date) & (data["Date"] <= as_of_dt)]
     if data.empty:
         raise NoMarketDataError(symbol, canonical, f"no OHLCV rows on or before {curr_date}")
 
@@ -284,11 +401,26 @@ def load_ohlcv(symbol: str, curr_date: str, fill_gaps: bool = True) -> pd.DataFr
     # Indicators need a continuous series, so gaps are carried forward. A caller
     # that reports the numbers themselves asks for the frame as it was reported:
     # a filled cell is the previous session's price under this session's date.
-    data = _fill_price_gaps(data) if fill_gaps else data.dropna(subset=["Close"]).copy()
+    data = _fill_price_gaps(data) if fill_gaps else data.copy()
 
     # Reject a stale frame (latest row far older than curr_date) rather than
     # feeding year-old prices into indicators (#1021).
     _assert_ohlcv_not_stale(data, curr_date, symbol, canonical)
+
+    transformations = [
+        "Dates normalized preserving local dates",
+        "Rows after analysis date excluded",
+    ]
+    if cached_input:
+        transformations.append(
+            "Loaded normalized local OHLCV cache; original retrieval time and adjustment vintage unknown"
+        )
+    transformations.append(
+        "Missing price cells forward then backward filled"
+        if fill_gaps
+        else "Reported missing cells retained for integrity assessment"
+    )
+    observe_ohlcv(data, transformations=transformations)
 
     return data
 
@@ -325,6 +457,16 @@ class StockstatsUtils:
 
         if not matching_rows.empty:
             indicator_value = matching_rows[indicator].values[0]
+            observe_source(
+                "local_calculation",
+                normalized_data={
+                    "indicator": indicator,
+                    "date": curr_date_str,
+                    "value": scalar(indicator_value),
+                },
+                observed_window={"start": curr_date_str, "end": curr_date_str},
+                transformations=("Technical indicator calculated with stockstats",),
+            )
             return indicator_value
         else:
-            return "N/A: Not a trading day (weekend or holiday)"
+            return "N/A: No provider row for this date; session/calendar coverage unknown"

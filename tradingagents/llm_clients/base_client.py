@@ -2,36 +2,7 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-
-def normalize_utf8_text(value: str) -> str:
-    """Return text that can be encoded as strict UTF-8.
-
-    Python strings can contain isolated UTF-16 surrogate code points when an
-    upstream API returns malformed escaped Unicode.  UTF-8 encoders reject
-    those code points.  Preserve valid surrogate pairs by combining them into
-    their Unicode scalar value and replace only malformed surrogates with the
-    standard replacement character.
-    """
-    if not any(0xD800 <= ord(char) <= 0xDFFF for char in value):
-        return value
-
-    normalized = []
-    index = 0
-    while index < len(value):
-        codepoint = ord(value[index])
-        if 0xD800 <= codepoint <= 0xDBFF and index + 1 < len(value):
-            low = ord(value[index + 1])
-            if 0xDC00 <= low <= 0xDFFF:
-                normalized.append(chr(0x10000 + ((codepoint - 0xD800) << 10) + (low - 0xDC00)))
-                index += 2
-                continue
-        if 0xD800 <= codepoint <= 0xDFFF:
-            normalized.append("\ufffd")
-        else:
-            normalized.append(value[index])
-        index += 1
-
-    return "".join(normalized)
+from cli.runner_protocol import normalize_utf8_text
 
 
 def normalize_utf8_payload(value: Any) -> Any:

@@ -1,31 +1,82 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402 - bootstrap commands deliberately precede research imports
 from __future__ import annotations
 
 import json
 import sys
 import time
-import traceback
 from datetime import datetime
 from typing import Any, Dict, Iterable, List
 from urllib.parse import urlsplit, urlunsplit
 
-from cli.main import (
-    ANALYST_ORDER,
-    MessageBuffer,
-    classify_message_type,
-    update_analyst_statuses,
-)
-from cli.stats_handler import StatsCallbackHandler
-from cli.utils import detect_asset_type, normalize_ticker_symbol
-from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
-from tradingagents.graph.analyst_execution import (
-    AnalystWallTimeTracker,
-    build_analyst_execution_plan,
-)
-from tradingagents.graph.trading_graph import TradingAgentsGraph
-from tradingagents.agents.utils.rating import run_rating
-from tradingagents.llm_clients.factory import build_llm_kwargs
-from tradingagents.llm_clients.base_client import normalize_utf8_text
+# Command-line diagnostics must not initialize the research runtime. Keep normal
+# module imports intact for callers that use or patch the analysis helpers.
+_BOOTSTRAP_PAYLOAD = None
+if __name__ == "__main__":
+    from cli.runner_diagnostics import bootstrap
+
+    _bootstrap_status, _BOOTSTRAP_PAYLOAD = bootstrap()
+    if _bootstrap_status is not None:
+        raise SystemExit(_bootstrap_status)
+
+try:
+    from cli.main import (
+        ANALYST_ORDER,
+        MessageBuffer,
+        classify_message_type,
+        update_analyst_statuses,
+    )
+    from cli.stats_handler import StatsCallbackHandler
+    from cli.utils import detect_asset_type, normalize_ticker_symbol
+    from tradingagents.default_config import DEFAULT_CONFIG, validate_holding_period_days
+    from tradingagents.agents.utils.output_quality import (
+        merge_output_quality,
+        sanitize_output_quality,
+    )
+    from tradingagents.evidence import (
+        audit_citations,
+        merge_evidence_bundles,
+        sanitize_diagnostic,
+        validate_evidence_bundle,
+    )
+    from tradingagents.graph.analyst_execution import (
+        AnalystWallTimeTracker,
+        build_analyst_execution_plan,
+    )
+    from tradingagents.graph.trading_graph import TradingAgentsGraph
+    from tradingagents.agents.utils.rating import run_rating
+    from tradingagents.memory.schema import validate_bundle as validate_memory_bundle
+    from tradingagents.research.numeric_review import (
+        NumericReviewError,
+        public_report_copy,
+        validate_report_text_snapshot,
+    )
+    from tradingagents.research.effective_request_identity import (
+        POLICY_SHA256 as EFFECTIVE_REQUEST_POLICY_SHA256,
+        EffectiveRequestIdentityError,
+        validate_effective_request_identity,
+    )
+    from tradingagents.llm_clients.factory import build_llm_kwargs
+    from tradingagents.llm_clients.base_client import normalize_utf8_text
+    from cli.research_manifest import research_manifest
+    from cli.runner_protocol import emit
+    from cli.runner_diagnostics import (
+        memory_inventory_requested,
+        read_memory_inventory,
+        read_request,
+        verify_runtime_requested,
+    )
+except Exception as _runtime_import_error:  # noqa: BLE001 - import failures are protocol events
+    if (
+        _BOOTSTRAP_PAYLOAD is None
+        or _BOOTSTRAP_PAYLOAD.get("__command") != "smoke_test"
+        or _BOOTSTRAP_PAYLOAD.get("verifyRuntime") is not True
+    ):
+        raise
+    from cli.runner_diagnostics import emit_error
+
+    emit_error(_runtime_import_error, "Research runtime could not be initialized")
+    raise SystemExit(1) from None
 
 REPORT_SECTION_KEYS = [
     "market_report",
@@ -36,12 +87,6 @@ REPORT_SECTION_KEYS = [
     "trader_investment_plan",
     "final_trade_decision",
 ]
-
-
-def emit(event: Dict[str, Any]) -> None:
-    event.setdefault("timestamp", datetime.now().strftime("%H:%M:%S"))
-    serialized = json.dumps(event, ensure_ascii=False, default=str)
-    print(normalize_utf8_text(serialized), flush=True)
 
 
 def normalize_analysts(raw: Iterable[str], asset_type: str) -> List[str]:
@@ -244,6 +289,8 @@ def emit_progress(
     stats_handler: StatsCallbackHandler,
     started_at: float,
     message: str | None = None,
+    output_quality: Dict[str, Any] | None = None,
+    evidence_bundle: Dict[str, Any] | None = None,
 ) -> None:
     event = {
         "type": "progress",
@@ -257,6 +304,10 @@ def emit_progress(
         agent = current_agent(buffer)
         if agent:
             event["agent"] = agent
+    if output_quality is not None:
+        event["outputQuality"] = sanitize_output_quality(output_quality)
+    if evidence_bundle:
+        event["evidenceBundle"] = validate_evidence_bundle(evidence_bundle)
     emit(event)
 
 
@@ -274,7 +325,7 @@ def resolve_pending_entries_safely(
             {
                 "type": "message",
                 "messageType": "System",
-                "message": f"Skipped historical outcome refresh: {exc}",
+                "message": f"Skipped historical outcome refresh ({type(exc).__name__})",
                 "agentStatuses": status_snapshot(buffer),
                 "reportSections": report_snapshot(buffer),
                 "stats": current_stats(stats_handler, started_at),
@@ -343,8 +394,61 @@ def update_reports_from_chunk(buffer: MessageBuffer, chunk: Dict[str, Any]) -> N
 
 
 def compact_final_state(final_state: Dict[str, Any]) -> Dict[str, Any]:
+    from tradingagents.memory.publication import validate_completed_memory
+
+    memory = validate_completed_memory(
+        final_state.get("memory_bundle"), final_state.get("evidence_bundle"), owner=final_state
+    )
+    manifest = final_state.get("evidence_bundle", {}).get("manifest", {})
+    marker = manifest.get("effective_request_identity_policy_sha256")
+    if "effective_request_identity_policy_sha256" in manifest and (
+        marker != EFFECTIVE_REQUEST_POLICY_SHA256 or "effective_request_identity" not in final_state
+    ):
+        raise EffectiveRequestIdentityError()
+    snapshot = None
+    if final_state.get("report_text_snapshot"):
+        snapshot = validate_report_text_snapshot(
+            final_state["report_text_snapshot"], final_state["evidence_bundle"]
+        )
+        if snapshot["report_sections"] != {
+            key: final_state.get(key) for key in REPORT_SECTION_KEYS
+        }:
+            raise NumericReviewError()
+        if memory is not None:
+            from tradingagents.memory.schema import utc_timestamp
+
+            if utc_timestamp(snapshot["captured_at"]) < utc_timestamp(
+                memory["decision_snapshot"]["decision"]["recorded_at"]
+            ):
+                raise NumericReviewError()
+    assessment = None
+    if "effective_request_identity" in final_state:
+        assessment = validate_effective_request_identity(
+            final_state["effective_request_identity"],
+            final_state["evidence_bundle"],
+            final_state.get("report_text_snapshot"),
+        )
+        if (
+            marker is not None
+            and assessment["summary"]["unsafe_record_ids"]
+            and run_rating(final_state) != "REVIEW"
+        ):
+            raise EffectiveRequestIdentityError()
     keys = [*REPORT_SECTION_KEYS, "final_rating", "run_settings"]
-    return {key: final_state.get(key) for key in keys if key in final_state}
+    compact = {key: final_state.get(key) for key in keys if key in final_state}
+    if "output_quality" in final_state:
+        compact["output_quality"] = sanitize_output_quality(final_state["output_quality"])
+    if final_state.get("evidence_bundle"):
+        compact["evidence_bundle"] = validate_evidence_bundle(final_state["evidence_bundle"])
+    if memory is not None:
+        compact["memory_bundle"] = memory
+    if final_state.get("research_readiness"):
+        compact["research_readiness"] = final_state["research_readiness"]
+    if snapshot is not None:
+        compact["report_text_snapshot"] = snapshot
+    if assessment is not None:
+        compact["effective_request_identity"] = assessment
+    return compact
 
 
 def run_post_completion_tasks(
@@ -360,23 +464,14 @@ def run_post_completion_tasks(
     warnings: List[str] = []
 
     def record_warning(label: str, exc: Exception) -> None:
-        warnings.append(f"{label}: {exc}")
-        print(f"TradingAgents post-run warning: {label}: {exc}", file=sys.stderr, flush=True)
+        warning = f"{label} ({type(exc).__name__})"
+        warnings.append(warning)
+        print(f"TradingAgents post-run warning: {warning}", file=sys.stderr, flush=True)
 
     try:
         graph._log_state(analysis_date, final_state)
     except Exception as exc:  # noqa: BLE001 - result persistence must not change run outcome
         record_warning("failed to write state log", exc)
-
-    try:
-        graph.memory_log.store_decision(
-            ticker=ticker,
-            trade_date=analysis_date,
-            final_trade_decision=str(final_state.get("final_trade_decision") or ""),
-            rating=run_rating(final_state),
-        )
-    except Exception as exc:  # noqa: BLE001 - memory persistence is best-effort after completion
-        record_warning("failed to store memory decision", exc)
 
     if config.get("checkpoint_enabled"):
         try:
@@ -407,14 +502,6 @@ def run(payload: Dict[str, Any]) -> None:
     selected_analysts = normalize_analysts(payload.get("analysts") or ANALYST_ORDER, asset_type)
     config = build_config(payload)
 
-    emit(
-        {
-            "type": "message",
-            "messageType": "runtime",
-            "message": describe_llm_config(config),
-        }
-    )
-
     stats_handler = StatsCallbackHandler()
     analyst_execution_plan = build_analyst_execution_plan(
         selected_analysts,
@@ -428,6 +515,14 @@ def run(payload: Dict[str, Any]) -> None:
         debug=False,
         callbacks=[stats_handler],
     )
+    secrets = graph._evidence_secrets()
+    emit(
+        {
+            "type": "message",
+            "messageType": "runtime",
+            "message": sanitize_diagnostic(describe_llm_config(config), secrets=secrets),
+        }
+    )
 
     buffer = MessageBuffer()
     buffer.init_for_analysis(selected_analysts)
@@ -436,7 +531,9 @@ def run(payload: Dict[str, Any]) -> None:
     emit(
         {
             "type": "started",
-            "message": f"Started analysis for {ticker} on {analysis_date}",
+            "message": sanitize_diagnostic(
+                f"Started analysis for {ticker} on {analysis_date}", secrets=secrets
+            ),
             "messageType": "System",
             "agentStatuses": status_snapshot(buffer),
             "reportSections": report_snapshot(buffer),
@@ -457,7 +554,11 @@ def run(payload: Dict[str, Any]) -> None:
                 "Resuming saved analysis" if graph._resuming else "Starting fresh analysis",
             )
 
-        final_state: Dict[str, Any] = {}
+        final_state: Dict[str, Any] = {
+            key: init_agent_state[key]
+            for key in ("run_settings", "evidence_bundle")
+            if key in init_agent_state
+        }
         previous_state: Dict[str, Any] = {}
         processed_message_ids = set()
 
@@ -486,7 +587,7 @@ def run(payload: Dict[str, Any]) -> None:
                         {
                             "type": "message",
                             "messageType": message_type,
-                            "message": content.strip(),
+                            "message": sanitize_diagnostic(content.strip(), secrets=secrets),
                             "agent": chunk_agent,
                         }
                     )
@@ -501,25 +602,57 @@ def run(payload: Dict[str, Any]) -> None:
                             {
                                 "type": "message",
                                 "messageType": "Tool",
-                                "message": f"{tool_name} called",
+                                "message": sanitize_diagnostic(
+                                    f"{tool_name} called", secrets=secrets
+                                ),
                                 "agent": chunk_agent,
                             }
                         )
 
-            update_analyst_statuses(buffer, changes, wall_time_tracker=analyst_wall_time_tracker)
-            update_reports_from_chunk(buffer, changes)
-            emit_progress(buffer, stats_handler, started_at)
+            published_changes = public_report_copy(changes, secrets=secrets)
+            update_analyst_statuses(
+                buffer, published_changes, wall_time_tracker=analyst_wall_time_tracker
+            )
+            update_reports_from_chunk(buffer, published_changes)
+            quality = merge_output_quality(
+                final_state.get("output_quality"), chunk.get("output_quality")
+            )
+            evidence = merge_evidence_bundles(
+                final_state.get("evidence_bundle"), chunk.get("evidence_bundle")
+            )
+            if evidence:
+                evidence = audit_citations(evidence, report_snapshot(buffer))
+            emit_progress(
+                buffer, stats_handler, started_at, output_quality=quality, evidence_bundle=evidence
+            )
             final_state.update(
                 {key: value for key, value in chunk.items() if key != "analyst_started"}
             )
+            final_state["output_quality"] = quality
+            if evidence:
+                final_state["evidence_bundle"] = evidence
 
-        graph.curr_state = final_state
         decision = run_rating(final_state)
         for agent in list(buffer.agent_status.keys()):
             buffer.update_agent_status(agent, "completed")
+        published_final = public_report_copy(final_state, secrets=secrets)
         for section in list(buffer.report_sections.keys()):
-            if section in final_state:
-                buffer.update_report_section(section, final_state[section])
+            if section in published_final:
+                buffer.update_report_section(section, published_final[section])
+        if final_state.get("evidence_bundle"):
+            ledger = getattr(graph, "_evidence_ledger", None)
+            if ledger is not None:
+                final_state["evidence_bundle"] = ledger.bundle(reports=report_snapshot(buffer))
+            else:
+                final_state["evidence_bundle"] = audit_citations(
+                    final_state["evidence_bundle"], report_snapshot(buffer)
+                )
+            # Persist the frozen decision/contract before publishing completion.
+            # Optional state-log/checkpoint cleanup remains in post-completion work.
+            graph.record_decision(ticker, analysis_date, final_state, persist_state=False)
+            for section in list(buffer.report_sections.keys()):
+                if section in final_state:
+                    buffer.update_report_section(section, final_state[section])
 
         emit(
             {
@@ -527,10 +660,50 @@ def run(payload: Dict[str, Any]) -> None:
                 "message": analyst_wall_time_tracker.format_summary(),
                 "messageType": "System",
                 "agentStatuses": status_snapshot(buffer),
-                "reportSections": report_snapshot(buffer),
+                "reportSections": (
+                    final_state["report_text_snapshot"]["report_sections"]
+                    if final_state.get("report_text_snapshot")
+                    else report_snapshot(buffer)
+                ),
                 "stats": current_stats(stats_handler, started_at),
                 "decision": decision,
                 "runSettings": final_state.get("run_settings", graph.run_settings()),
+                "outputQuality": sanitize_output_quality(final_state.get("output_quality")),
+                **(
+                    {"evidenceBundle": validate_evidence_bundle(final_state["evidence_bundle"])}
+                    if final_state.get("evidence_bundle")
+                    else {}
+                ),
+                **(
+                    {"memoryBundle": validate_memory_bundle(final_state["memory_bundle"])}
+                    if final_state.get("memory_bundle")
+                    else {}
+                ),
+                **(
+                    {"researchReadiness": final_state["research_readiness"]}
+                    if final_state.get("research_readiness")
+                    else {}
+                ),
+                **(
+                    {
+                        "reportTextSnapshot": validate_report_text_snapshot(
+                            final_state["report_text_snapshot"], final_state["evidence_bundle"]
+                        )
+                    }
+                    if final_state.get("report_text_snapshot")
+                    else {}
+                ),
+                **(
+                    {
+                        "effectiveRequestIdentity": validate_effective_request_identity(
+                            final_state["effective_request_identity"],
+                            final_state["evidence_bundle"],
+                            final_state["report_text_snapshot"],
+                        )
+                    }
+                    if "effective_request_identity" in final_state
+                    else {}
+                ),
                 "finalState": compact_final_state(final_state),
             }
         )
@@ -543,9 +716,20 @@ def run(payload: Dict[str, Any]) -> None:
 
 def main() -> int:
     try:
-        payload = json.loads(sys.stdin.read() or "{}")
+        payload = _BOOTSTRAP_PAYLOAD if _BOOTSTRAP_PAYLOAD is not None else read_request()
         if payload.get("__command") == "smoke_test":
-            emit({"type": "ready"})
+            if memory_inventory_requested(payload):
+                emit(read_memory_inventory(payload))
+                return 0
+            # All normal research imports succeeded; no clients or sources ran.
+            emit({"type": "runtime_ready" if verify_runtime_requested(payload) else "ready"})
+            return 0
+        if payload.get("__command") == "evidence_manifest":
+            from pathlib import Path
+            import tradingagents
+
+            package = Path(tradingagents.__file__).parent
+            emit(research_manifest(package))
             return 0
         if payload.get("__command") == "resolve_instrument":
             from resolve_instrument import resolve
@@ -574,15 +758,29 @@ def main() -> int:
                 flush=True,
             )
             return 0
+        if payload.get("__command") is not None:
+            raise ValueError("Unknown runner command")
         run(payload)
         return 0
     except Exception as exc:  # noqa: BLE001 - bridge must surface any backend failure to UI
-        print(f"Evidence Loom runner error: {exc}", file=sys.stderr, flush=True)
+        secrets = tuple(
+            value
+            for key, value in DEFAULT_CONFIG.items()
+            if isinstance(value, str)
+            and value
+            and any(marker in key.lower() for marker in ("api_key", "token", "secret", "password"))
+        )
+        error = sanitize_diagnostic(str(exc), secrets=secrets)
+        print(
+            f"Evidence Loom runner error ({type(exc).__name__}): {error}",
+            file=sys.stderr,
+            flush=True,
+        )
         emit(
             {
                 "type": "error",
-                "error": str(exc),
-                "message": traceback.format_exc(limit=8),
+                "error": error,
+                "message": error,
                 "messageType": "Error",
             }
         )

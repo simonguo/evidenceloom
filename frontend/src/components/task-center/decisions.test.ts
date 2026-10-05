@@ -21,6 +21,16 @@ describe("authoritative portfolio rating", () => {
     ["Rating: Buy; Sell evidence is weak", "buy"],
     ["Rating: Buy: Sell evidence is weak", "buy"],
     ["Rating: Buy. Sell evidence is weak", "buy"],
+    ["١. Rating: Buy\nRating: REVIEW", "buy"],
+    ["Ratİng: Buy\nRating: REVIEW", "buy"],
+    ["Rating: REVİEW\nRating: REVIEW", ""],
+    ["Rating: Revıew\nRating: REVIEW", ""],
+    ["Rating: Buy\u0301\nRating: REVIEW", "review"],
+    ["Rating: Hold\u0338\nRating: REVIEW", "hold"],
+    ["Rating: Buy中\nRating: REVIEW", "review"],
+    ["Rating: Buy or Sell rationale\nRating: REVIEW", ""],
+    ["Rating: We consider Buy or Sell\nRating: REVIEW", ""],
+    ["Rating: \uFEFFBuy\nRating: REVIEW", "review"],
   ])("reads only a decision's explicit label", (report, expected) => {
     expect(extractDecisionFromReport(report)).toBe(expected);
   });

@@ -21,12 +21,14 @@ if [[ -z "$TARGET_TRIPLE" ]]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON_BIN="${PYTHON:-python}"
+"$PYTHON_BIN" "$REPO_ROOT/scripts/sidecar_architecture.py" interpreter "$TARGET_TRIPLE"
 DIST_DIR="${TMPDIR:-/tmp}/evidenceloom-runner-dist"
 WORK_DIR="${TMPDIR:-/tmp}/evidenceloom-runner-build"
 
 rm -rf "$DIST_DIR" "$WORK_DIR"
 cd "$REPO_ROOT"
-"${PYTHON:-python}" -m PyInstaller frontend/server/evidenceloom-runner.spec --distpath "$DIST_DIR" --workpath "$WORK_DIR" --noconfirm
+"$PYTHON_BIN" -m PyInstaller frontend/server/evidenceloom-runner.spec --distpath "$DIST_DIR" --workpath "$WORK_DIR" --noconfirm
 
 SOURCE_BIN="$DIST_DIR/evidenceloom-runner"
 DEST_BIN="$REPO_ROOT/src-tauri/binaries/evidenceloom-runner-$TARGET_TRIPLE"
@@ -35,6 +37,8 @@ if [[ "$TARGET_TRIPLE" == *"windows"* || "$TARGET_TRIPLE" == *"msvc"* ]]; then
   DEST_BIN="$DEST_BIN.exe"
 fi
 
+"$PYTHON_BIN" "$REPO_ROOT/scripts/sidecar_architecture.py" binary "$TARGET_TRIPLE" "$SOURCE_BIN"
+mkdir -p "$REPO_ROOT/src-tauri/binaries"
 cp "$SOURCE_BIN" "$DEST_BIN"
 chmod +x "$DEST_BIN" || true
 

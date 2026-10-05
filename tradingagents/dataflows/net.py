@@ -1,7 +1,6 @@
 """HTTP helpers shared by the vendors."""
 
 import requests
-from urllib.parse import quote
 
 
 def get_scrubbed(url: str, *, params: dict, timeout: float, secret: str, passthrough=()):
@@ -10,7 +9,7 @@ def get_scrubbed(url: str, *, params: dict, timeout: float, secret: str, passthr
     Vendors that authenticate with a query parameter put the key in the URL, and
     requests quotes the full URL in HTTP, connection and timeout errors, so any
     log or traceback that records one would carry the key (#1324). A requests
-    error is re-raised as the same class with the key replaced and nothing
+    error is re-raised as the same class with a fixed unavailable message and nothing
     attached: no request or response (both hold the URL) and no exception chain,
     which is why this raises after the ``except`` block rather than inside it.
     Statuses in ``passthrough`` are returned for the caller to handle.
@@ -21,10 +20,7 @@ def get_scrubbed(url: str, *, params: dict, timeout: float, secret: str, passthr
             response.raise_for_status()
         return response
     except requests.RequestException as exc:
-        message = str(exc)
-        if secret:
-            message = message.replace(secret, "***").replace(quote(secret, safe=""), "***")
-        error = type(exc)(message)
+        error = type(exc)("HTTP request unavailable")
     raise error
 
 

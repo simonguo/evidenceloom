@@ -29,7 +29,11 @@ from .akshare_fundamentals import (
 )
 from .alpha_vantage_common import AlphaVantageRateLimitError as AlphaVantageRateLimitError
 from .errors import NoMarketDataError, VendorNotConfiguredError, VendorUnavailableError
+from .evidence_utils import attempt_count
 import logging
+import time
+
+from tradingagents.evidence import capture_evidence, observe_attempt
 
 from yfinance.exceptions import YFRateLimitError
 
@@ -143,14 +147,14 @@ def get_vendor(category: str, method: str = None) -> str:
 def vendor_unavailable(method: str, error: Exception) -> str:
     return (
         f"DATA_UNAVAILABLE: configured vendors for '{method}' are rate limited or "
-        f"unavailable ({error}). This says nothing about the instrument. "
+        "unavailable. This says nothing about the instrument. "
         "Do not estimate or fabricate values; report the data as unavailable."
     )
 
 
 def no_data_available(error: NoMarketDataError) -> str:
     resolved = "" if error.canonical == error.symbol else f" (resolved to '{error.canonical}')"
-    reason = f" Detail: {error.detail}." if error.detail else ""
+    reason = " Returned market data is stale." if "stale" in error.detail.lower() else ""
     return (
         f"NO_DATA_AVAILABLE: No usable market data for '{error.symbol}'{resolved} "
         f"from any configured vendor.{reason} The symbol may be invalid, delisted, "
@@ -159,7 +163,58 @@ def no_data_available(error: NoMarketDataError) -> str:
     )
 
 
+_PARAMETERS = {
+    "get_stock_data": ("symbol", "start_date", "end_date"),
+    "get_indicators": (
+        "symbol",
+        "indicator",
+        "curr_date",
+        "look_back_days",
+        "interval",
+        "time_period",
+        "series_type",
+    ),
+    "get_fundamentals": ("ticker", "curr_date"),
+    "get_balance_sheet": ("ticker", "freq", "curr_date"),
+    "get_cashflow": ("ticker", "freq", "curr_date"),
+    "get_income_statement": ("ticker", "freq", "curr_date"),
+    "get_news": ("ticker", "start_date", "end_date"),
+    "get_global_news": ("curr_date", "look_back_days", "limit"),
+    "get_insider_transactions": ("ticker", "curr_date"),
+}
+
+
 def route_to_vendor(method: str, *args, **kwargs):
+    parameters = dict(zip(_PARAMETERS.get(method, ()), args))
+    parameters.update({k: v for k, v in kwargs.items() if k in _PARAMETERS.get(method, ())})
+    if method == "get_global_news":
+        config = get_config()
+        for name, key in (
+            ("look_back_days", "global_news_lookback_days"),
+            ("limit", "global_news_article_limit"),
+        ):
+            if parameters.get(name) is None:
+                parameters[name] = config[key]
+    elif method == "get_news":
+        parameters["limit"] = get_config()["news_article_limit"]
+    elif method in {"get_balance_sheet", "get_cashflow", "get_income_statement"}:
+        parameters.setdefault("freq", "quarterly")
+    return capture_evidence(method, parameters, lambda: _route_to_vendor(method, *args, **kwargs))
+
+
+def _attempt_status(result):
+    if isinstance(result, str):
+        text = result.lower()
+        if "withheld" in text:
+            return "withheld"
+        if "unavailable" in text or "not directly available" in text:
+            return "unavailable"
+        if not text.strip() or text.startswith(("no ", "<no ")):
+            return "empty"
+    return "available"
+
+
+def _route_to_vendor(method: str, *args, **kwargs):
     """Try exactly the configured vendor chain, retaining each failure's meaning."""
     category = get_category_for_method(method)
     if method not in VENDOR_METHODS:
@@ -184,18 +239,31 @@ def route_to_vendor(method: str, *args, **kwargs):
     for vendor in chain:
         impl = available[vendor]
         impl = impl[0] if isinstance(impl, list) else impl
+        started = time.monotonic()
+        before_attempts = attempt_count()
+
+        def record_attempt(status):
+            if attempt_count() == before_attempts:
+                observe_attempt(vendor, status, (time.monotonic() - started) * 1000)
+
         try:
-            return impl(*args, **kwargs)
+            result = impl(*args, **kwargs)
+            record_attempt(_attempt_status(result))
+            return result
         except VendorNotConfiguredError as exc:
+            record_attempt("not_configured")
             logger.warning("Vendor %s not configured for %s; trying next vendor", vendor, method)
             not_configured = exc
         except (VendorUnavailableError, YFRateLimitError) as exc:
-            logger.warning("Vendor %s unavailable for %s: %s", vendor, method, exc)
+            record_attempt("unavailable")
+            logger.warning("Vendor %s unavailable for %s", vendor, method)
             last_unavailable = exc
         except NoMarketDataError as exc:
+            record_attempt("empty")
             last_no_data = exc
         except Exception as exc:
-            logger.warning("Vendor %s failed for %s: %s", vendor, method, exc)
+            record_attempt("unavailable")
+            logger.warning("Vendor %s failed for %s", vendor, method)
             failed = exc
 
     if last_unavailable is not None or failed is not None:

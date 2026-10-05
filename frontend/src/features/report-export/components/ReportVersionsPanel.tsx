@@ -1,15 +1,34 @@
 "use client";
 
+import { IdentityInspector } from "@/features/source-identity/components/IdentityInspector";
 import { Download, FileCode2, FileText, Loader2 } from "lucide-react";
-import type { AnalysisTask, SystemLanguage } from "@/lib/types";
+import type { AnalysisTask, GlobalSettings, SystemLanguage } from "@/lib/types";
+import { NumericReviewPanel } from "@/features/numeric-review/components/NumericReviewPanel";
+import type { NumericReview } from "@/features/numeric-review/types";
+import type { ReviewAttachment } from "@/features/memory/types";
+import { ReadinessInspector } from "@/features/research-readiness/components/ReadinessInspector";
+import { MemoryInspector } from "@/features/memory/components/MemoryInspector";
+import { useEvaluationReview } from "@/features/memory/hooks/useEvaluationReview";
 import { useReportExport } from "../hooks/useReportExport";
+import { OutputQualityPanel } from "@/features/output-quality/components/OutputQualityPanel";
+import { ReportVersionPreview } from "./ReportVersionPreview";
+import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
+import { ReportVersionComparison } from "./ReportVersionComparison";
 
 export function ReportVersionsPanel({
   task,
   language,
+  settings,
+  onReviews,
+  onNumericReviews,
+  beginReview,
 }: {
   task: AnalysisTask;
   language: SystemLanguage;
+  settings?: GlobalSettings;
+  onNumericReviews?: (taskId: string, versionId: string, reviews: NumericReview[], action?: unknown) => Promise<void>;
+  onReviews?: (taskId: string, versionId: string, reviews: ReviewAttachment[], action?: unknown) => Promise<void>;
+  beginReview?: (task: AnalysisTask, versionId: string) => unknown;
 }) {
   const {
     versions,
@@ -21,6 +40,10 @@ export function ReportVersionsPanel({
     exportVersion,
   } = useReportExport(task, language);
   const zh = language === "zh";
+  const captureReview = beginReview && selectedVersion ? () => beginReview(task, selectedVersion.id) : undefined;
+  const saveReviews = onReviews ? captureReview ? (versionId: string, attachments: ReviewAttachment[], action?: unknown) => onReviews(task.id, versionId, attachments, action)
+    : (versionId: string, attachments: ReviewAttachment[]) => onReviews(task.id, versionId, attachments) : undefined;
+  const review = useEvaluationReview(selectedVersion, language, settings, saveReviews, captureReview);
 
   return (
     <section className="rounded-xl border border-zinc-900 bg-black p-5">
@@ -32,8 +55,8 @@ export function ReportVersionsPanel({
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
             {zh
-              ? "每次成功完成的分析都会冻结为只读版本。导出文件会离开本机，分享前请检查内容。"
-              : "Every successful run is frozen as a read-only version. Exported files leave this device; review them before sharing."}
+              ? "每次完成的研究运行都会冻结为只读版本；输入检查结果独立于运行完成。导出文件会离开本机，分享前请检查内容。"
+              : "Every completed research run is frozen as a read-only version; input-check results are separate from run completion. Exported files leave this device; review them before sharing."}
           </p>
         </div>
 
@@ -67,6 +90,8 @@ export function ReportVersionsPanel({
               disabled={Boolean(exporting)}
               onClick={() => void exportVersion("md")}
             />
+            <ExportButton label={zh ? "报告 JSON" : "Report JSON"} icon={<Download className="size-4" />} loading={exporting === "json"} disabled={Boolean(exporting)} onClick={() => void exportVersion("json")} />
+            {selectedVersion.memoryBundle && onReviews && <ExportButton label={zh ? "读取保存的评估" : "Load saved evaluation"} icon={<FileText className="size-4" />} loading={review.loading} disabled={review.loading || Boolean(exporting) || Boolean(selectedVersion.memoryValidation)} onClick={() => void review.refresh()} />}
           </div>
         )}
       </div>
@@ -88,7 +113,25 @@ export function ReportVersionsPanel({
         </div>
       )}
 
-      {message && <p className="mt-3 break-words text-xs text-zinc-400">{message}</p>}
+      {selectedVersion && (
+        <div className="mt-4 space-y-3">
+          <OutputQualityPanel quality={selectedVersion.outputQuality} language={language} />
+          <EvidenceInspector bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
+          <IdentityInspector key={`identity:${selectedVersion.id}`} snapshot={selectedVersion} language={language} />
+          <ReadinessInspector snapshot={selectedVersion} language={language} />
+          <MemoryInspector snapshot={selectedVersion} language={language} />
+          <NumericReviewPanel key={`numeric:${selectedVersion.id}`} taskId={task.id} version={selectedVersion} language={language} onSave={onNumericReviews} beginReview={captureReview} />
+          <details key={`preview:${selectedVersion.id}`} className="rounded-lg border border-zinc-800 p-4">
+            <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">
+              {zh ? `审阅选中的报告 v${selectedVersion.versionNumber}` : `Review selected report v${selectedVersion.versionNumber}`}
+            </summary>
+            <ReportVersionPreview version={selectedVersion} taskId={task.id} origin={task.origin} language={language} />
+          </details>
+        </div>
+      )}
+      <ReportVersionComparison taskId={task.id} reportVersions={task.reportVersions} language={language} />
+      {message && <p role="status" className="mt-3 break-words text-xs text-zinc-400">{message}</p>}
+      {review.message && <p role="status" className="mt-3 break-words text-xs text-zinc-400">{review.message}</p>}
     </section>
   );
 }

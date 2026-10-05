@@ -6,12 +6,20 @@ const chineseRatings: Record<string, string> = {
   持有: "Hold", 观望: "Hold", 中性: "Hold", 低配: "Underweight", 减持: "Underweight",
   卖出: "Sell", 清仓: "Sell", 看空: "Sell", 待复核: "REVIEW",
 };
-const ratingLine = /^\s*(?:\d+[.)]\s+)?[*_#\s]*(?:(?:final|our)\s+rating|rating|(?:最终|建议|组合)?评级|最终(?:交易)?决策|交易决策|决策|建议)[*_\s]*[:\-\u2010-\u2015][*_\s]*(.+)$/i;
-const englishRating = /\b(Buy|Overweight|Hold|Underweight|Sell|REVIEW)\b/gi;
+// Python's Unicode whitespace, decimal numbering and word boundaries differ
+// from JavaScript's ASCII \d/\b and its treatment of BOM as whitespace.
+const space = "\\p{White_Space}\\u001C-\\u001F";
+const word = "[\\p{L}\\p{N}_]";
+const englishValues = "Buy|Overwe[iİı]ght|Hold|Underwe[iİı]ght|Sell|REV[iİı]EW";
+const ratingLine = new RegExp(`^[${space}]*(?:\\p{Nd}+[.)][${space}]+)?[*_#${space}]*(?:(?:f[iİı]nal|our)[${space}]+rat[iİı]ng|rat[iİı]ng|(?:最终|建议|组合)?评级|最终(?:交易)?决策|交易决策|决策|建议)[*_${space}]*[:\\-\\u2010-\\u2015][*_${space}]*(.+)$`, "iu");
+const englishRating = new RegExp(`(?<!${word})(${englishValues})(?!${word})`, "giu");
+const initialEnglishRating = new RegExp(`^(${englishValues})(?!${word})`, "iu");
+const explanation = new RegExp(`[${space}]+[\\-\\u2013\\u2014][${space}]+|[:：;；.。]`, "u");
+const edgeSpace = new RegExp(`^[${space}]+|[${space}]+$`, "gu");
 const chineseRating = new RegExp(Object.keys(chineseRatings).join("|"), "g");
 
 function hasAmbiguousRating(value: string): boolean {
-  const clause = value.split(/[:：;；.。]|\s+[-–—]\s+/, 1)[0];
+  const clause = value.split(explanation, 1)[0];
   const choices = new Set([
     ...Array.from(clause.matchAll(englishRating), (match) => normalizeRating(match[0])),
     ...Array.from(clause.matchAll(chineseRating), (match) => chineseRatings[match[0]]),
@@ -21,17 +29,18 @@ function hasAmbiguousRating(value: string): boolean {
 
 export function normalizeRating(value: unknown): string {
   if (typeof value !== "string") return "";
-  return ratings.find((rating) => rating.toLowerCase() === value.trim().toLowerCase()) ?? "";
+  return ratings.find((rating) => rating.toLowerCase() === value.replace(edgeSpace, "").toLowerCase()) ?? "";
 }
 
 export function extractDecisionFromReport(report: string | null | undefined): string {
   if (!report?.trim()) return "";
-  for (const line of report.normalize("NFKC").split(/\r?\n/)) {
-    const value = line.match(ratingLine)?.[1]?.trim();
+  // eslint-disable-next-line no-control-regex -- Match the saved Python/Rust splitlines contract, including Unicode line separators.
+  for (const line of report.normalize("NFKC").split(/[\n\r\u000B\u000C\u0085\u2028\u2029\u001C\u001D\u001E]/)) {
+    const value = line.match(ratingLine)?.[1]?.replace(edgeSpace, "");
     if (!value) continue;
-    const english = value.match(/^(Buy|Overweight|Hold|Underweight|Sell|REVIEW)\b/i)?.[1];
+    const english = value.match(initialEnglishRating)?.[1];
     const chinese = Object.keys(chineseRatings).find((label) => value.startsWith(label));
-    if ((english || chinese) && hasAmbiguousRating(value)) return "";
+    if (hasAmbiguousRating(value)) return "";
     if (english) return normalizeRating(english).toLowerCase();
     if (chinese) return chineseRatings[chinese].toLowerCase();
   }

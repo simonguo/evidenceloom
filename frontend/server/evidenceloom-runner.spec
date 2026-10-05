@@ -13,12 +13,18 @@ if sys.platform == "darwin":
     codesign_identity = os.environ.get("APPLE_SIGNING_IDENTITY") or None
 
 block_cipher = None
+research_sources = [
+    (str(path.resolve()), path.parent.relative_to(repo_root).as_posix())
+    for path in sorted((repo_root / "tradingagents").rglob("*.py"))
+]
 
-a = Analysis(
+a = Analysis(  # noqa: F821 - injected by the PyInstaller spec interpreter
     [str(runner)],
     pathex=[str(repo_root)],
     binaries=[],
-    datas=[],
+    # Freeze the same own-source hashes in installed and development runs.
+    # PYZ alone supplies synthetic __file__ paths without readable .py files.
+    datas=research_sources,
     hiddenimports=["load_ohlcv_chart", "resolve_instrument", "test_llm"],
     hookspath=[],
     hooksconfig={},
@@ -29,8 +35,8 @@ a = Analysis(
     cipher=block_cipher,
     noarchive=False,
 )
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
-exe = EXE(
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)  # noqa: F821
+exe = EXE(  # noqa: F821
     pyz,
     a.scripts,
     a.binaries,

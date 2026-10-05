@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "run_id": "11111111-1111-4111-8111-111111111111",
+  "instrument": "EVDM.TEST",
+  "analysis_date": "2025-02-14",
+  "research_as_of": "2025-02-14T23:59:59.999999Z",
+  "as_of_policy": "analysis_date_end_utc",
+  "market_timezone": null,
+  "created_at": "2025-02-14T12:00:00.000000Z",
+  "manifest": {
+    "core_version": "0.2.5",
+    "temperature": "0.2",
+    "analysts": [
+      "market"
+    ],
+    "code_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "manifest_sha256": "ff0ef465b72f62417101209e8f1f688b85b11c946de5805d590750ea3f958335",
+  "records": [
+    {
+      "id": "ev-11111111111111111111111111111111",
+      "analyst": "market",
+      "tool": "get_stock_data",
+      "instrument": "EVDM.TEST",
+      "parameters": {
+        "symbol": "EVDM.TEST",
+        "start_date": "2025-02-13",
+        "end_date": "2025-02-14"
+      },
+      "status": "available",
+      "fetched_at": "2025-02-14T12:00:01.000000Z",
+      "output_sha256": "6a08174817c70cf1aa4d35409909f37bc5d0581cdd91f499885594271c9ba579",
+      "sources": [
+        {
+          "provider": "tencent",
+          "url": "https://example.com/research",
+          "observed_window": {
+            "start": "2025-02-13",
+            "end": "2025-02-14"
+          },
+          "publication_dates": null,
+          "historical_availability": "unknown",
+          "units": "fictional price units",
+          "adjustments": null,
+          "transformations": [
+            "Synthetic fixture; no external market retrieval"
+          ],
+          "data_sha256": "ead52a216ad5191b06a9bd39d85fdfa04968f33699f9afd0244d5bc962581b90"
+        }
+      ],
+      "attempts": [
+        {
+          "provider": "tencent",
+          "status": "available",
+          "elapsed_ms": 12
+        }
+      ]
+    }
+  ],
+  "artifacts": {
+    "ead52a216ad5191b06a9bd39d85fdfa04968f33699f9afd0244d5bc962581b90": {
+      "kind": "normalized_data",
+      "payload": "{\"close\":123.45678901234567,\"integral\":1.0,\"tiny\":1e-07}"
+    },
+    "6a08174817c70cf1aa4d35409909f37bc5d0581cdd91f499885594271c9ba579": {
+      "kind": "tool_text",
+      "payload": "[E:ev-11111111111111111111111111111111]\nFictional fixture: close=123.46; normalized data retains original precision."
+    }
+  },
+  "citation_audit": {},
+  "bundle_sha256": "3a039d93f35f9c17a38421bc0c186b51495aa46aa04796e4b1f3a010d04d56b5"
+}
