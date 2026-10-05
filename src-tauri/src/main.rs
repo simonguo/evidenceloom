@@ -1,5 +1,6 @@
 mod analysis_execution;
 mod analysis_recovery;
+mod application_environment;
 mod effective_request_identity;
 mod effective_request_identity_storage;
 mod evidence;
@@ -16,6 +17,7 @@ mod runtime_probe;
 mod secrets;
 mod storage;
 
+use application_environment::ApplicationEnvironment;
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use serde_json::json;
@@ -124,25 +126,25 @@ async fn save_desktop_settings(
 }
 
 #[tauri::command]
-fn set_provider_secret(provider: String, value: String) -> Result<(), String> {
-    secrets::set_provider_secret(&provider, &value)
+fn set_provider_secret(app: AppHandle, provider: String, value: String) -> Result<(), String> {
+    ApplicationEnvironment::selected(&app).set_provider_secret(&provider, &value)
 }
 
 #[tauri::command]
-fn delete_provider_secret(provider: String) -> Result<(), String> {
-    secrets::delete_provider_secret(&provider)
+fn delete_provider_secret(app: AppHandle, provider: String) -> Result<(), String> {
+    ApplicationEnvironment::selected(&app).delete_provider_secret(&provider)
 }
 
 #[tauri::command]
-fn set_alpha_vantage_secret(provider: String, value: String) -> Result<(), String> {
+fn set_alpha_vantage_secret(app: AppHandle, provider: String, value: String) -> Result<(), String> {
     let _ = provider;
-    secrets::set_alpha_vantage_secret(&value)
+    ApplicationEnvironment::selected(&app).set_alpha_secret(&value)
 }
 
 #[tauri::command]
-fn delete_alpha_vantage_secret(provider: String) -> Result<(), String> {
+fn delete_alpha_vantage_secret(app: AppHandle, provider: String) -> Result<(), String> {
     let _ = provider;
-    secrets::delete_alpha_vantage_secret()
+    ApplicationEnvironment::selected(&app).delete_alpha_secret()
 }
 
 async fn storage_blocking<T, F>(work: F) -> Result<T, storage::StorageError>
@@ -276,6 +278,7 @@ async fn save_text_export(
     format: String,
     content: String,
 ) -> Result<TextExportResult, String> {
+    ApplicationEnvironment::selected(&app).permit_native_dialog()?;
     tauri::async_runtime::spawn_blocking(move || {
         let (extension, filter_name) = match format.as_str() {
             "html" => ("html", "HTML"),
@@ -364,10 +367,11 @@ async fn import_legacy_desktop_data(
 
 #[tauri::command]
 fn runtime_info(app: AppHandle) -> RuntimeInfo {
-    let repo_root = repo_root();
-    let sidecar = sidecar_path(Some(&app));
+    let dependencies = ApplicationEnvironment::selected(&app);
+    let repo_root = dependencies.project_root(repo_root);
+    let sidecar = sidecar_path(&dependencies, Some(&app));
     let packaged = runtime_probe::uses_sidecar(
-        &runner_mode(),
+        &runner_mode(&dependencies),
         sidecar.as_deref().map(is_real_sidecar).unwrap_or(false),
     );
     RuntimeInfo {
@@ -378,7 +382,7 @@ fn runtime_info(app: AppHandle) -> RuntimeInfo {
             "Tauri Desktop / Local Python"
         },
         configured_project_root: None,
-        python_path: resolve_python_path(&repo_root, None)
+        python_path: resolve_python_path(&dependencies, &repo_root, None)
             .to_string_lossy()
             .to_string(),
         runner_path: runner_path(&repo_root).to_string_lossy().to_string(),
@@ -408,9 +412,10 @@ fn load_ohlcv_chart_data_process(
     curr_date: String,
     payload_json: String,
 ) -> Result<Vec<OhlcvBar>, String> {
+    let dependencies = ApplicationEnvironment::selected(&app);
     let payload =
         serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
-    let configured_project_root = if allow_external_runner_paths() {
+    let configured_project_root = if allow_external_runner_paths(&dependencies) {
         payload
             .get("projectRoot")
             .and_then(Value::as_str)
@@ -418,7 +423,7 @@ fn load_ohlcv_chart_data_process(
     } else {
         None
     };
-    let repo_root = effective_repo_root(configured_project_root.as_deref());
+    let repo_root = effective_repo_root(&dependencies, configured_project_root.as_deref());
     let mut safe_payload = sanitize_payload(&payload);
     if let Value::Object(map) = &mut safe_payload {
         map.insert(
@@ -435,38 +440,39 @@ fn load_ohlcv_chart_data_process(
         );
     }
 
-    let sidecar = sidecar_path(Some(&app));
-    if matches!(runner_mode().as_str(), "sidecar" | "auto") {
+    let sidecar = sidecar_path(&dependencies, Some(&app));
+    if matches!(runner_mode(&dependencies).as_str(), "sidecar" | "auto") {
         if let Some(sidecar_path) = sidecar.as_ref().filter(|path| is_real_sidecar(path)) {
             let value = run_json_command(
+                &dependencies,
                 sidecar_path,
                 &[],
                 &safe_payload,
-                &runtime_work_dir(Some(&app), &repo_root),
+                &runtime_work_dir(&dependencies, Some(&app), &repo_root),
                 child_env(&app, &repo_root, &payload)?,
                 "OHLCV chart sidecar",
             )?;
             return serde_json::from_value::<Vec<OhlcvBar>>(value)
                 .map_err(|error| format!("Failed to parse OHLCV chart data: {error}"));
         }
-        if runner_mode() == "sidecar" {
+        if runner_mode(&dependencies) == "sidecar" {
             return Err(format!(
                 "Packaged OHLCV chart loader not found: {}. Tried: {}",
                 sidecar
                     .as_ref()
                     .map(|path| path.to_string_lossy().to_string())
                     .unwrap_or_else(|| "--".to_string()),
-                sidecar_debug_paths(Some(&app))
+                sidecar_debug_paths(&dependencies, Some(&app))
             ));
         }
     }
 
-    let python_override = if allow_external_runner_paths() {
+    let python_override = if allow_external_runner_paths(&dependencies) {
         payload.get("pythonPath").and_then(Value::as_str)
     } else {
         None
     };
-    let python = resolve_python_path(&repo_root, python_override);
+    let python = resolve_python_path(&dependencies, &repo_root, python_override);
     let loader = ohlcv_loader_path(&repo_root);
 
     if !python.is_file() {
@@ -490,6 +496,7 @@ fn load_ohlcv_chart_data_process(
         .arg(curr_date.trim())
         .current_dir(&repo_root);
     child_environment.apply(&mut command);
+    dependencies.configure_command(&mut command)?;
     let output = command.output().map_err(|error| error.to_string())?;
 
     let stdout = redact_text(
@@ -530,14 +537,15 @@ fn resolve_instrument_process(
     query: String,
     payload_json: String,
 ) -> Result<Value, String> {
+    let dependencies = ApplicationEnvironment::selected(&app);
     let payload =
         serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
-    let configured_project_root = if allow_external_runner_paths() {
+    let configured_project_root = if allow_external_runner_paths(&dependencies) {
         payload.get("projectRoot").and_then(Value::as_str)
     } else {
         None
     };
-    let repo_root = effective_repo_root(configured_project_root);
+    let repo_root = effective_repo_root(&dependencies, configured_project_root);
     let mut safe_payload = sanitize_payload(&payload);
     if let Value::Object(map) = &mut safe_payload {
         map.insert("query".to_string(), Value::String(query));
@@ -547,33 +555,35 @@ fn resolve_instrument_process(
         );
     }
 
-    let sidecar = sidecar_path(Some(&app));
-    if matches!(runner_mode().as_str(), "sidecar" | "auto") {
+    let sidecar = sidecar_path(&dependencies, Some(&app));
+    if matches!(runner_mode(&dependencies).as_str(), "sidecar" | "auto") {
         if let Some(sidecar_path) = sidecar.as_ref().filter(|path| is_real_sidecar(path)) {
             return run_json_command(
+                &dependencies,
                 sidecar_path,
                 &[],
                 &safe_payload,
-                &runtime_work_dir(Some(&app), &repo_root),
+                &runtime_work_dir(&dependencies, Some(&app), &repo_root),
                 child_env(&app, &repo_root, &payload)?,
                 "instrument resolver sidecar",
             );
         }
-        if runner_mode() == "sidecar" {
+        if runner_mode(&dependencies) == "sidecar" {
             return Err(format!(
                 "Packaged instrument resolver not found: {}. Tried: {}",
                 sidecar
                     .as_ref()
                     .map(|path| path.to_string_lossy().to_string())
                     .unwrap_or_else(|| "--".to_string()),
-                sidecar_debug_paths(Some(&app))
+                sidecar_debug_paths(&dependencies, Some(&app))
             ));
         }
     }
 
     let python = resolve_python_path(
+        &dependencies,
         &repo_root,
-        if allow_external_runner_paths() {
+        if allow_external_runner_paths(&dependencies) {
             payload.get("pythonPath").and_then(Value::as_str)
         } else {
             None
@@ -595,6 +605,7 @@ fn resolve_instrument_process(
 
     let args = vec![resolver.to_string_lossy().to_string()];
     run_json_command(
+        &dependencies,
         &python,
         &args,
         &safe_payload,
@@ -612,14 +623,15 @@ async fn test_llm_connection(app: AppHandle, payload_json: String) -> Result<Val
 }
 
 fn test_llm_connection_process(app: AppHandle, payload_json: String) -> Result<Value, String> {
+    let dependencies = ApplicationEnvironment::selected(&app);
     let payload =
         serde_json::from_str::<Value>(&payload_json).map_err(|error| error.to_string())?;
-    let configured_project_root = if allow_external_runner_paths() {
+    let configured_project_root = if allow_external_runner_paths(&dependencies) {
         payload.get("projectRoot").and_then(Value::as_str)
     } else {
         None
     };
-    let repo_root = effective_repo_root(configured_project_root);
+    let repo_root = effective_repo_root(&dependencies, configured_project_root);
     let mut safe_payload = sanitize_payload(&payload);
     if let Value::Object(map) = &mut safe_payload {
         map.insert(
@@ -628,33 +640,35 @@ fn test_llm_connection_process(app: AppHandle, payload_json: String) -> Result<V
         );
     }
 
-    let sidecar = sidecar_path(Some(&app));
-    if matches!(runner_mode().as_str(), "sidecar" | "auto") {
+    let sidecar = sidecar_path(&dependencies, Some(&app));
+    if matches!(runner_mode(&dependencies).as_str(), "sidecar" | "auto") {
         if let Some(sidecar_path) = sidecar.as_ref().filter(|path| is_real_sidecar(path)) {
             return run_json_command(
+                &dependencies,
                 sidecar_path,
                 &[],
                 &safe_payload,
-                &runtime_work_dir(Some(&app), &repo_root),
+                &runtime_work_dir(&dependencies, Some(&app), &repo_root),
                 child_env(&app, &repo_root, &payload)?,
                 "LLM test sidecar",
             );
         }
-        if runner_mode() == "sidecar" {
+        if runner_mode(&dependencies) == "sidecar" {
             return Err(format!(
                 "Packaged LLM test runner not found: {}. Tried: {}",
                 sidecar
                     .as_ref()
                     .map(|path| path.to_string_lossy().to_string())
                     .unwrap_or_else(|| "--".to_string()),
-                sidecar_debug_paths(Some(&app))
+                sidecar_debug_paths(&dependencies, Some(&app))
             ));
         }
     }
 
     let python = resolve_python_path(
+        &dependencies,
         &repo_root,
-        if allow_external_runner_paths() {
+        if allow_external_runner_paths(&dependencies) {
             payload.get("pythonPath").and_then(Value::as_str)
         } else {
             None
@@ -676,16 +690,18 @@ fn test_llm_connection_process(app: AppHandle, payload_json: String) -> Result<V
 
     let args = vec![runner.to_string_lossy().to_string()];
     run_json_command(
+        &dependencies,
         &python,
         &args,
         &safe_payload,
-        &runtime_work_dir(Some(&app), &repo_root),
+        &runtime_work_dir(&dependencies, Some(&app), &repo_root),
         child_env(&app, &repo_root, &payload)?,
         "LLM test runner",
     )
 }
 
 fn run_json_command(
+    dependencies: &ApplicationEnvironment,
     executable: &Path,
     args: &[String],
     payload: &Value,
@@ -701,6 +717,7 @@ fn run_json_command(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     child_environment.apply(&mut command);
+    dependencies.configure_command(&mut command)?;
     let mut child = command.spawn().map_err(|error| {
         format!(
             "failed to start {label} at {}: {error}",
@@ -867,9 +884,14 @@ async fn reserve_analysis(
 ) -> Result<recovery_wire::AdmissionOutcomeReply, recovery_wire::RecoveryError> {
     let recovery = state.recovery.clone();
     let wake = recovery_wake(&app);
+    let dependencies = ApplicationEnvironment::selected(&app);
     recovery_blocking(move || {
         let packet = recovery_parser::parse::<recovery_wire::AdmissionRequest>(&request_json)?;
-        recovery.reserve(packet, prepare_analysis_credentials, wake)
+        recovery.reserve(
+            packet,
+            move |request| prepare_analysis_credentials(&dependencies, request),
+            wake,
+        )
     })
     .await
 }
@@ -1042,7 +1064,8 @@ async fn get_research_memory_inventory(
 ) -> Result<Value, String> {
     research_memory::validate_requested_ids(&decision_ids)?;
     tauri::async_runtime::spawn_blocking(move || {
-        let external = allow_external_runner_paths();
+        let dependencies = ApplicationEnvironment::selected(&app);
+        let external = allow_external_runner_paths(&dependencies);
         if !external
             && (normalize_optional_path(project_root.as_deref()).is_some()
                 || normalize_optional_path(python_path.as_deref()).is_some())
@@ -1054,10 +1077,11 @@ async fn get_research_memory_inventory(
         } else {
             None
         };
-        let repo_root = effective_repo_root(configured_root.as_deref());
-        let sidecar = sidecar_path(Some(&app));
+        let repo_root = effective_repo_root(&dependencies, configured_root.as_deref());
+        let sidecar = sidecar_path(&dependencies, Some(&app));
         let sidecar_real = sidecar.as_deref().is_some_and(is_real_sidecar);
-        let mut command = if runtime_probe::uses_sidecar(&runner_mode(), sidecar_real) {
+        let mut command = if runtime_probe::uses_sidecar(&runner_mode(&dependencies), sidecar_real)
+        {
             if !sidecar_real {
                 return Err("Research memory inventory requires a built sidecar.".into());
             }
@@ -1066,10 +1090,11 @@ async fn get_research_memory_inventory(
                     .as_deref()
                     .ok_or("Research memory runtime is unavailable.")?,
             );
-            command.current_dir(runtime_work_dir(Some(&app), &repo_root));
+            command.current_dir(runtime_work_dir(&dependencies, Some(&app), &repo_root));
             command
         } else {
             let python = resolve_python_path(
+                &dependencies,
                 &repo_root,
                 if external {
                     python_path.as_deref()
@@ -1081,8 +1106,8 @@ async fn get_research_memory_inventory(
             command.arg(runner_path(&repo_root)).current_dir(&repo_root);
             command
         };
-        command.env("PYTHONPATH", build_pythonpath(&repo_root));
-        research_memory_inventory::read(command, &decision_ids)
+        command.env("PYTHONPATH", build_pythonpath(&dependencies, &repo_root));
+        research_memory_inventory::read_in_environment(command, &decision_ids, &dependencies)
     })
     .await
     .map_err(|_| "Research memory inventory could not be read.".to_string())?
@@ -1093,31 +1118,33 @@ fn check_runtime_process(
     python_path_override: Option<String>,
     project_root: Option<String>,
 ) -> RuntimeCheck {
-    let external_runner_allowed = allow_external_runner_paths();
+    let dependencies = ApplicationEnvironment::selected(&app);
+    let external_runner_allowed = allow_external_runner_paths(&dependencies);
     let configured_project_root = if external_runner_allowed {
         normalize_optional_path(project_root.as_deref())
     } else {
         None
     };
-    let repo_root = effective_repo_root(configured_project_root.as_deref());
+    let repo_root = effective_repo_root(&dependencies, configured_project_root.as_deref());
     let python_override = if external_runner_allowed {
         python_path_override.as_deref()
     } else {
         None
     };
-    let python = resolve_python_path(&repo_root, python_override);
+    let python = resolve_python_path(&dependencies, &repo_root, python_override);
     let runner = runner_path(&repo_root);
-    let sidecar = sidecar_path(Some(&app));
-    let mode = runner_mode();
+    let sidecar = sidecar_path(&dependencies, Some(&app));
+    let mode = runner_mode(&dependencies);
     let sidecar_real = sidecar.as_deref().map(is_real_sidecar).unwrap_or(false);
     let mut errors = Vec::new();
 
     let (python_exists, runner_exists, python_version, can_import_trading_agents, import_error) =
         if runtime_probe::uses_sidecar(&mode, sidecar_real) {
             let result = if sidecar_real {
-                runtime_probe::probe_sidecar(
+                runtime_probe::probe_sidecar_in_environment(
+                    &dependencies,
                     sidecar.as_deref().expect("real sidecar has a path"),
-                    &runtime_work_dir(Some(&app), &repo_root),
+                    &runtime_work_dir(&dependencies, Some(&app), &repo_root),
                 )
                 .map_err(|error| error.message().to_string())
             } else {
@@ -1161,16 +1188,18 @@ fn check_runtime_process(
             }
 
             let python_version = if python_exists {
-                command_output(&python, &["--version"], &repo_root, false).unwrap_or_else(|error| {
-                    errors.push(format!("Failed to read Python version: {error}"));
-                    String::new()
-                })
+                command_output(&dependencies, &python, &["--version"], &repo_root, false)
+                    .unwrap_or_else(|error| {
+                        errors.push(format!("Failed to read Python version: {error}"));
+                        String::new()
+                    })
             } else {
                 String::new()
             };
 
             let import_result = if python_exists {
                 command_output(
+                    &dependencies,
                     &python,
                     &["-c", "import tradingagents; print('ok')"],
                     &repo_root,
@@ -1226,6 +1255,7 @@ fn check_runtime_process(
 }
 
 fn prepare_analysis_credentials(
+    dependencies: &ApplicationEnvironment,
     request: &recovery_wire::AdmissionRequest,
 ) -> Result<recovery_runtime::CredentialSnapshot, recovery_wire::RecoveryError> {
     let provider = request.context["requestedSettings"]["llmProvider"]
@@ -1233,14 +1263,16 @@ fn prepare_analysis_credentials(
         .ok_or_else(recovery_wire::RecoveryError::invalid)?
         .trim()
         .to_lowercase();
-    let provider_secret = secrets::get_provider_secret(&provider)
+    let provider_secret = dependencies
+        .provider_secret(&provider)
         .map_err(|_| recovery_wire::RecoveryError::fixed("analysis_identity_unavailable"))?;
-    let alpha_secret = secrets::get_alpha_vantage_secret()
+    let alpha_secret = dependencies
+        .alpha_secret()
         .map_err(|_| recovery_wire::RecoveryError::fixed("analysis_identity_unavailable"))?;
     let inherited = analysis_recovery::publication::CREDENTIAL_ENV
         .iter()
         .map(|name| {
-            let value = match env::var(name) {
+            let value = match dependencies.var(name) {
                 Ok(value) => Some(value),
                 Err(env::VarError::NotPresent) => None,
                 Err(env::VarError::NotUnicode(_)) => {
@@ -1276,11 +1308,12 @@ fn prepare_analysis_credentials(
     })
 }
 fn prepared_child_env(
+    dependencies: &ApplicationEnvironment,
     root: &Path,
     snapshot: &recovery_runtime::CredentialSnapshot,
 ) -> ChildEnvironment {
     let mut environment = ChildEnvironment::default();
-    environment.push_public("PYTHONPATH", build_pythonpath(root));
+    environment.push_public("PYTHONPATH", build_pythonpath(dependencies, root));
     for name in analysis_recovery::publication::CREDENTIAL_ENV {
         environment.remove(name);
     }
@@ -1313,29 +1346,32 @@ fn run_recovery_process(
     publisher: recovery_runtime::Publisher,
     payload: Value,
 ) {
-    let configured_root = if allow_external_runner_paths() {
+    let dependencies = ApplicationEnvironment::selected(&app);
+    let configured_root = if allow_external_runner_paths(&dependencies) {
         payload.get("projectRoot").and_then(Value::as_str)
     } else {
         None
     };
-    let root = effective_repo_root(configured_root);
+    let root = effective_repo_root(&dependencies, configured_root);
     let python = resolve_python_path(
+        &dependencies,
         &root,
-        if allow_external_runner_paths() {
+        if allow_external_runner_paths(&dependencies) {
             payload.get("pythonPath").and_then(Value::as_str)
         } else {
             None
         },
     );
     let runner = resolve_runner_command(
+        &dependencies,
         &python,
         &runner_path(&root),
-        sidecar_path(Some(&app)).as_ref(),
+        sidecar_path(&dependencies, Some(&app)).as_ref(),
     );
     let mut command = Command::new(&runner.executable);
     command
         .args(&runner.args)
-        .current_dir(runtime_work_dir(Some(&app), &root));
+        .current_dir(runtime_work_dir(&dependencies, Some(&app), &root));
     let snapshot = publisher
         .run
         .credentials
@@ -1346,7 +1382,11 @@ fn run_recovery_process(
         recovery_runtime::worker_failed_before_spawn(execution, publisher, "analysis_start_failed");
         return;
     };
-    prepared_child_env(&root, &snapshot).apply(&mut command);
+    prepared_child_env(&dependencies, &root, &snapshot).apply(&mut command);
+    if dependencies.configure_command(&mut command).is_err() {
+        recovery_runtime::worker_failed_before_spawn(execution, publisher, "analysis_start_failed");
+        return;
+    }
     recovery_runtime::run_owned_worker(
         execution,
         publisher,
@@ -1362,19 +1402,25 @@ fn repo_root() -> PathBuf {
         .to_path_buf()
 }
 
-fn runtime_work_dir(app: Option<&AppHandle>, repo_root: &Path) -> PathBuf {
-    if allow_external_runner_paths() {
-        return repo_root.to_path_buf();
-    }
-
-    if let Some(app) = app {
-        if let Ok(path) = app.path().app_data_dir() {
-            let _ = fs::create_dir_all(&path);
-            return path;
+fn runtime_work_dir(
+    dependencies: &ApplicationEnvironment,
+    app: Option<&AppHandle>,
+    repo_root: &Path,
+) -> PathBuf {
+    dependencies.work_dir(|| {
+        if allow_external_runner_paths(dependencies) {
+            return repo_root.to_path_buf();
         }
-    }
 
-    env::current_dir().unwrap_or_else(|_| repo_root.to_path_buf())
+        if let Some(app) = app {
+            if let Ok(path) = app.path().app_data_dir() {
+                let _ = fs::create_dir_all(&path);
+                return path;
+            }
+        }
+
+        env::current_dir().unwrap_or_else(|_| repo_root.to_path_buf())
+    })
 }
 
 struct RunnerCommand {
@@ -1383,11 +1429,12 @@ struct RunnerCommand {
 }
 
 fn resolve_runner_command(
+    dependencies: &ApplicationEnvironment,
     python: &Path,
     runner: &Path,
     sidecar: Option<&PathBuf>,
 ) -> RunnerCommand {
-    let mode = runner_mode();
+    let mode = runner_mode(dependencies);
     if matches!(mode.as_str(), "sidecar" | "auto") {
         if let Some(sidecar_path) = sidecar.filter(|path| is_real_sidecar(path)) {
             return RunnerCommand {
@@ -1426,110 +1473,126 @@ fn is_real_sidecar(path: &Path) -> bool {
     }
 }
 
-fn runner_mode() -> String {
-    let configured = env::var("EVIDENCELOOM_RUNNER_MODE")
-        .or_else(|_| env::var("TRADINGAGENTS_RUNNER_MODE"))
-        .unwrap_or_else(|_| "python".to_string())
-        .trim()
-        .to_lowercase();
-    if allow_external_runner_paths() {
-        configured
-    } else {
-        "sidecar".to_string()
-    }
+fn runner_mode(dependencies: &ApplicationEnvironment) -> String {
+    dependencies.runner_mode(|| {
+        let configured = dependencies
+            .var("EVIDENCELOOM_RUNNER_MODE")
+            .or_else(|_| dependencies.var("TRADINGAGENTS_RUNNER_MODE"))
+            .unwrap_or_else(|_| "python".to_string())
+            .trim()
+            .to_lowercase();
+        if allow_external_runner_paths(dependencies) {
+            configured
+        } else {
+            "sidecar".to_string()
+        }
+    })
 }
 
-fn allow_external_runner_paths() -> bool {
-    cfg!(debug_assertions)
-        || env::var("EVIDENCELOOM_ALLOW_EXTERNAL_RUNNER")
-            .or_else(|_| env::var("TRADINGAGENTS_ALLOW_EXTERNAL_RUNNER"))
-            .map(|value| matches!(value.trim().to_lowercase().as_str(), "1" | "true" | "yes"))
-            .unwrap_or(false)
+fn allow_external_runner_paths(dependencies: &ApplicationEnvironment) -> bool {
+    dependencies.external_runner_allowed(|| {
+        cfg!(debug_assertions)
+            || dependencies
+                .var("EVIDENCELOOM_ALLOW_EXTERNAL_RUNNER")
+                .or_else(|_| dependencies.var("TRADINGAGENTS_ALLOW_EXTERNAL_RUNNER"))
+                .map(|value| matches!(value.trim().to_lowercase().as_str(), "1" | "true" | "yes"))
+                .unwrap_or(false)
+    })
 }
 
-fn sidecar_path(app: Option<&AppHandle>) -> Option<PathBuf> {
-    if let Ok(path) = env::var("EVIDENCELOOM_RUNNER_SIDECAR")
-        .or_else(|_| env::var("TRADINGAGENTS_RUNNER_SIDECAR"))
-    {
-        if !path.trim().is_empty() {
-            return Some(PathBuf::from(path));
-        }
-    }
-
-    let binary_name = if cfg!(windows) {
-        "evidenceloom-runner.exe"
-    } else {
-        "evidenceloom-runner"
-    };
-    let target_triple = env!("TAURI_ENV_TARGET_TRIPLE");
-    let mut dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("binaries")
-        .join(format!("evidenceloom-runner-{target_triple}"));
-    if cfg!(windows) {
-        dev_path.set_extension("exe");
-    }
-
-    let mut candidates = Vec::new();
-
-    if let Ok(exe_path) = env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            candidates.push(exe_dir.join(binary_name));
-        }
-    }
-
-    if let Some(app) = app {
-        if let Ok(path) = app
-            .path()
-            .resolve(binary_name, tauri::path::BaseDirectory::Resource)
+fn sidecar_path(dependencies: &ApplicationEnvironment, app: Option<&AppHandle>) -> Option<PathBuf> {
+    dependencies.sidecar(|| {
+        if let Ok(path) = dependencies
+            .var("EVIDENCELOOM_RUNNER_SIDECAR")
+            .or_else(|_| dependencies.var("TRADINGAGENTS_RUNNER_SIDECAR"))
         {
-            candidates.push(path);
+            if !path.trim().is_empty() {
+                return Some(PathBuf::from(path));
+            }
         }
-    }
 
-    candidates.push(dev_path);
+        let binary_name = if cfg!(windows) {
+            "evidenceloom-runner.exe"
+        } else {
+            "evidenceloom-runner"
+        };
+        let target_triple = env!("TAURI_ENV_TARGET_TRIPLE");
+        let mut dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(format!("evidenceloom-runner-{target_triple}"));
+        if cfg!(windows) {
+            dev_path.set_extension("exe");
+        }
 
-    candidates
-        .iter()
-        .find(|path| is_real_sidecar(path))
-        .cloned()
-        .or_else(|| candidates.into_iter().next())
+        let mut candidates = Vec::new();
+
+        if let Ok(exe_path) = env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                candidates.push(exe_dir.join(binary_name));
+            }
+        }
+
+        if let Some(app) = app {
+            if let Ok(path) = app
+                .path()
+                .resolve(binary_name, tauri::path::BaseDirectory::Resource)
+            {
+                candidates.push(path);
+            }
+        }
+
+        candidates.push(dev_path);
+
+        candidates
+            .iter()
+            .find(|path| is_real_sidecar(path))
+            .cloned()
+            .or_else(|| candidates.into_iter().next())
+    })
 }
 
-fn sidecar_debug_paths(app: Option<&AppHandle>) -> String {
-    let binary_name = if cfg!(windows) {
-        "evidenceloom-runner.exe"
-    } else {
-        "evidenceloom-runner"
-    };
-    let mut paths = Vec::new();
-    if let Ok(exe_path) = env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            paths.push(exe_dir.join(binary_name));
+fn sidecar_debug_paths(dependencies: &ApplicationEnvironment, app: Option<&AppHandle>) -> String {
+    dependencies.sidecar_description(|| {
+        let binary_name = if cfg!(windows) {
+            "evidenceloom-runner.exe"
+        } else {
+            "evidenceloom-runner"
+        };
+        let mut paths = Vec::new();
+        if let Ok(exe_path) = env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                paths.push(exe_dir.join(binary_name));
+            }
         }
-    }
-    if let Some(app) = app {
-        if let Ok(path) = app
-            .path()
-            .resolve(binary_name, tauri::path::BaseDirectory::Resource)
+        if let Some(app) = app {
+            if let Ok(path) = app
+                .path()
+                .resolve(binary_name, tauri::path::BaseDirectory::Resource)
+            {
+                paths.push(path);
+            }
+        }
+        paths
+            .into_iter()
+            .map(|path| path.to_string_lossy().to_string())
+            .collect::<Vec<_>>()
+            .join(", ")
+    })
+}
+
+fn effective_repo_root(
+    dependencies: &ApplicationEnvironment,
+    configured_path: Option<&str>,
+) -> PathBuf {
+    dependencies.project_root(|| {
+        if let Some(path) = configured_path
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
         {
-            paths.push(path);
+            return PathBuf::from(path);
         }
-    }
-    paths
-        .into_iter()
-        .map(|path| path.to_string_lossy().to_string())
-        .collect::<Vec<_>>()
-        .join(", ")
-}
-
-fn effective_repo_root(configured_path: Option<&str>) -> PathBuf {
-    if let Some(path) = configured_path
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-    {
-        return PathBuf::from(path);
-    }
-    repo_root()
+        repo_root()
+    })
 }
 
 fn normalize_optional_path(path: Option<&str>) -> Option<String> {
@@ -1559,29 +1622,38 @@ fn instrument_resolver_path(repo_root: &Path) -> PathBuf {
         .join("resolve_instrument.py")
 }
 
-fn resolve_python_path(repo_root: &Path, configured_path: Option<&str>) -> PathBuf {
-    if let Some(path) = configured_path
-        .map(str::trim)
-        .filter(|path| !path.is_empty())
-    {
-        return PathBuf::from(path);
-    }
-
-    if let Ok(path) = env::var("EVIDENCELOOM_PYTHON").or_else(|_| env::var("TRADINGAGENTS_PYTHON"))
-    {
-        if !path.trim().is_empty() {
+fn resolve_python_path(
+    dependencies: &ApplicationEnvironment,
+    repo_root: &Path,
+    configured_path: Option<&str>,
+) -> PathBuf {
+    dependencies.python_path(|| {
+        if let Some(path) = configured_path
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
+        {
             return PathBuf::from(path);
         }
-    }
 
-    if cfg!(windows) {
-        repo_root.join(".venv").join("Scripts").join("python.exe")
-    } else {
-        repo_root.join(".venv").join("bin").join("python")
-    }
+        if let Ok(path) = dependencies
+            .var("EVIDENCELOOM_PYTHON")
+            .or_else(|_| dependencies.var("TRADINGAGENTS_PYTHON"))
+        {
+            if !path.trim().is_empty() {
+                return PathBuf::from(path);
+            }
+        }
+
+        if cfg!(windows) {
+            repo_root.join(".venv").join("Scripts").join("python.exe")
+        } else {
+            repo_root.join(".venv").join("bin").join("python")
+        }
+    })
 }
 
 fn command_output(
+    dependencies: &ApplicationEnvironment,
     command_path: &Path,
     args: &[&str],
     repo_root: &Path,
@@ -1590,8 +1662,9 @@ fn command_output(
     let mut command = Command::new(command_path);
     command.args(args).current_dir(repo_root);
     if with_pythonpath {
-        command.env("PYTHONPATH", build_pythonpath(repo_root));
+        command.env("PYTHONPATH", build_pythonpath(dependencies, repo_root));
     }
+    dependencies.configure_command(&mut command)?;
     let output = command.output().map_err(|error| error.to_string())?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -1602,8 +1675,8 @@ fn command_output(
     }
 }
 
-fn build_pythonpath(repo_root: &Path) -> String {
-    match env::var("PYTHONPATH") {
+fn build_pythonpath(dependencies: &ApplicationEnvironment, repo_root: &Path) -> String {
+    match dependencies.var("PYTHONPATH") {
         Ok(existing) if !existing.is_empty() => format!(
             "{}{}{}",
             repo_root.to_string_lossy(),
@@ -1652,16 +1725,25 @@ impl ChildEnvironment {
 }
 
 fn child_env(
-    _app: &AppHandle,
+    app: &AppHandle,
+    repo_root: &Path,
+    payload: &Value,
+) -> Result<ChildEnvironment, String> {
+    child_env_in_environment(&ApplicationEnvironment::selected(app), repo_root, payload)
+}
+
+fn child_env_in_environment(
+    dependencies: &ApplicationEnvironment,
     repo_root: &Path,
     payload: &Value,
 ) -> Result<ChildEnvironment, String> {
     let mut environment = ChildEnvironment::default();
-    environment.push_public("PYTHONPATH", build_pythonpath(repo_root));
+    environment.push_public("PYTHONPATH", build_pythonpath(dependencies, repo_root));
 
-    let configured_provider = env::var("EVIDENCELOOM_LLM_PROVIDER")
+    let configured_provider = dependencies
+        .var("EVIDENCELOOM_LLM_PROVIDER")
         .ok()
-        .or_else(|| env::var("TRADINGAGENTS_LLM_PROVIDER").ok());
+        .or_else(|| dependencies.var("TRADINGAGENTS_LLM_PROVIDER").ok());
     let provider = payload
         .get("llmProvider")
         .and_then(Value::as_str)
@@ -1673,10 +1755,10 @@ fn child_env(
     isolate_provider_credentials(&mut environment, &provider);
     environment.push_public("EVIDENCELOOM_LLM_PROVIDER", provider.clone());
     environment.push_public("TRADINGAGENTS_LLM_PROVIDER", provider.clone());
-    let provider_secret = secrets::get_provider_secret(&provider)?;
+    let provider_secret = dependencies.provider_secret(&provider)?;
     inject_provider_secret(&mut environment, &provider, provider_secret);
 
-    if let Some(alpha_key) = secrets::get_alpha_vantage_secret()? {
+    if let Some(alpha_key) = dependencies.alpha_secret()? {
         environment.push_secret("ALPHA_VANTAGE_API_KEY", alpha_key);
     }
 
@@ -1763,7 +1845,9 @@ fn path_delimiter() -> &'static str {
 }
 
 fn main() {
+    let environment = ApplicationEnvironment::system();
     tauri::Builder::default()
+        .manage(environment)
         .setup(|app| {
             let coordinator = app.state::<AppState>().recovery.clone();
             let backend = Arc::new(storage::AppJournalBackend::new(app.handle().clone()));

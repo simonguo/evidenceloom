@@ -9,6 +9,7 @@ use serde_json::Value;
 use std::{fs, path::PathBuf};
 use tauri::{AppHandle, Manager};
 
+use crate::application_environment::ApplicationEnvironment;
 use crate::evidence::{validate_bundle, validate_invalid};
 use crate::output_quality::{normalize_output_quality, normalize_report_version_quality};
 use crate::secrets;
@@ -290,7 +291,15 @@ pub fn delete_task(app: &AppHandle, packet: &Packet) -> Result<MutationReply, St
 pub fn clear_data(app: &AppHandle, packet: &Packet) -> Result<MutationReply, StorageError> {
     let _coordinator = task_mutation::coordinator();
     let conn = open_database(app).map_err(StorageError::unavailable)?;
-    task_mutation::clear(&conn, packet, || {
+    clear_data_from_conn_in_environment(&ApplicationEnvironment::selected(app), &conn, packet)
+}
+
+pub(crate) fn clear_data_from_conn_in_environment(
+    environment: &ApplicationEnvironment,
+    conn: &Connection,
+    packet: &Packet,
+) -> Result<MutationReply, StorageError> {
+    task_mutation::clear(conn, packet, || {
         // Read only: settings loading can migrate secrets and must not precede the fence.
         let raw: Option<String> = conn
             .query_row("SELECT value FROM settings WHERE id='global'", [], |row| {
@@ -303,7 +312,7 @@ pub fn clear_data(app: &AppHandle, packet: &Packet) -> Result<MutationReply, Sto
             .transpose()
             .map_err(|e| e.to_string())?
             .map(|s| s.llm_provider);
-        secrets::delete_all_secrets(provider.as_deref())
+        environment.clear_credentials(provider.as_deref())
     })
 }
 
@@ -370,14 +379,23 @@ pub fn import_legacy(app: &AppHandle, legacy: Value) -> Result<DesktopSnapshot, 
 }
 
 fn open_database(app: &AppHandle) -> Result<Connection, String> {
+    open_database_in_environment(&ApplicationEnvironment::selected(app), || {
+        app.path().app_data_dir().map_err(|error| error.to_string())
+    })
+}
+
+pub(crate) fn open_database_in_environment(
+    environment: &ApplicationEnvironment,
+    system_app_data: impl FnOnce() -> Result<PathBuf, String>,
+) -> Result<Connection, String> {
     let _opening = DATABASE_OPEN
         .lock()
         .unwrap_or_else(|poison| poison.into_inner());
-    let path = database_path(app)?;
+    let path = database_path_in_environment(environment, system_app_data)?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
-    // database_path performs any supported legacy copy before this observation.
+    // Path resolution performs any supported legacy copy before this observation.
     let pristine = !path.exists();
     let conn = Connection::open(path).map_err(|error| error.to_string())?;
     conn.busy_timeout(std::time::Duration::from_secs(5))
@@ -386,17 +404,17 @@ fn open_database(app: &AppHandle) -> Result<Connection, String> {
     Ok(conn)
 }
 
-fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
-    let app_data = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
+pub(crate) fn database_path_in_environment(
+    environment: &ApplicationEnvironment,
+    system_app_data: impl FnOnce() -> Result<PathBuf, String>,
+) -> Result<PathBuf, String> {
+    let app_data = environment.app_data_dir(system_app_data)?;
     let database = app_data.join("evidenceloom.db");
     if database.exists() {
         return Ok(database);
     }
 
-    for legacy in database_migration_candidates(&app_data) {
+    for legacy in environment.database_candidates(&app_data, database_migration_candidates) {
         if legacy.is_file() {
             fs::create_dir_all(&app_data).map_err(|error| error.to_string())?;
             copy_legacy_database(&legacy, &database)?;
@@ -1064,6 +1082,16 @@ fn load_settings_from_conn(
     app: &AppHandle,
     conn: &Connection,
 ) -> Result<(Option<StoredSettings>, Option<String>), String> {
+    load_settings_from_conn_in_environment(&ApplicationEnvironment::selected(app), conn, || {
+        app.path().app_data_dir().map_err(|error| error.to_string())
+    })
+}
+
+pub(crate) fn load_settings_from_conn_in_environment(
+    environment: &ApplicationEnvironment,
+    conn: &Connection,
+    system_app_data: impl Fn() -> Result<PathBuf, String>,
+) -> Result<(Option<StoredSettings>, Option<String>), String> {
     let raw = conn
         .query_row(
             "SELECT value FROM settings WHERE id = 'global'",
@@ -1078,7 +1106,8 @@ fn load_settings_from_conn(
     let value = serde_json::from_str::<Value>(&raw).map_err(|error| error.to_string())?;
     let mut settings = serde_json::from_value::<StoredSettings>(value.clone())
         .map_err(|error| error.to_string())?;
-    let status_added = hydrate_secret_status_metadata(&mut settings, &value);
+    let status_added =
+        hydrate_secret_status_metadata_in_environment(environment, &mut settings, &value);
     if !contains_legacy_secrets(&value) {
         if status_added {
             save_settings_to_conn(conn, &settings)?;
@@ -1086,7 +1115,12 @@ fn load_settings_from_conn(
         return Ok((Some(settings), None));
     }
 
-    match migrate_legacy_secrets(app, &value, &settings.llm_provider) {
+    match migrate_legacy_secrets_in_environment(
+        environment,
+        &value,
+        &settings.llm_provider,
+        system_app_data,
+    ) {
         Ok(()) => {
             mark_legacy_secret_status(&mut settings, &value);
             save_settings_to_conn(conn, &settings)?;
@@ -2520,34 +2554,52 @@ fn mark_legacy_secret_status(settings: &mut StoredSettings, value: &Value) {
     }
 }
 
-fn hydrate_secret_status_metadata(settings: &mut StoredSettings, value: &Value) -> bool {
+pub(crate) fn hydrate_secret_status_metadata_in_environment(
+    environment: &ApplicationEnvironment,
+    settings: &mut StoredSettings,
+    value: &Value,
+) -> bool {
     let mut changed = false;
     if value.get("providerConfigured").is_none() {
         settings.provider_configured = secrets::provider_secret_id(&settings.llm_provider)
-            .is_ok_and(|secret_id| secrets::detect_secret_without_prompt(&secret_id));
+            .is_ok_and(|secret_id| environment.credential_metadata(&secret_id));
         changed = true;
     }
     if value.get("alphaVantageConfigured").is_none() {
         settings.alpha_vantage_configured =
-            secrets::detect_secret_without_prompt(secrets::ALPHA_VANTAGE_SECRET_ID);
+            environment.credential_metadata(secrets::ALPHA_VANTAGE_SECRET_ID);
         changed = true;
     }
     changed
 }
 
 fn migrate_legacy_secrets(app: &AppHandle, value: &Value, provider: &str) -> Result<(), String> {
+    migrate_legacy_secrets_in_environment(
+        &ApplicationEnvironment::selected(app),
+        value,
+        provider,
+        || app.path().app_data_dir().map_err(|error| error.to_string()),
+    )
+}
+
+pub(crate) fn migrate_legacy_secrets_in_environment(
+    environment: &ApplicationEnvironment,
+    value: &Value,
+    provider: &str,
+    system_app_data: impl Fn() -> Result<PathBuf, String>,
+) -> Result<(), String> {
     let provider_secret = value
         .get("apiKey")
         .and_then(Value::as_str)
-        .map(|secret| decrypt_legacy_secret(app, secret))
+        .map(|secret| decrypt_legacy_secret_in_environment(environment, secret, &system_app_data))
         .transpose()?;
     let alpha_vantage_secret = value
         .get("alphaVantageApiKey")
         .and_then(Value::as_str)
-        .map(|secret| decrypt_legacy_secret(app, secret))
+        .map(|secret| decrypt_legacy_secret_in_environment(environment, secret, &system_app_data))
         .transpose()?;
     write_migrated_secrets(
-        &secrets::SystemCredentialStore,
+        environment.credential_store(),
         provider,
         provider_secret.as_deref(),
         alpha_vantage_secret.as_deref(),
@@ -2578,7 +2630,11 @@ fn migration_error(error: String) -> String {
     )
 }
 
-fn decrypt_legacy_secret(app: &AppHandle, value: &str) -> Result<String, String> {
+fn decrypt_legacy_secret_in_environment(
+    environment: &ApplicationEnvironment,
+    value: &str,
+    system_app_data: impl FnOnce() -> Result<PathBuf, String>,
+) -> Result<String, String> {
     if value.is_empty() || !value.starts_with(SECRET_PREFIX) {
         return Ok(value.to_string());
     }
@@ -2595,7 +2651,7 @@ fn decrypt_legacy_secret(app: &AppHandle, value: &str) -> Result<String, String>
     let ciphertext = STANDARD
         .decode(ciphertext)
         .map_err(|error| error.to_string())?;
-    let key = load_legacy_secret_key(app)?;
+    let key = load_legacy_secret_key_in_environment(environment, system_app_data)?;
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|error| error.to_string())?;
     let plaintext = cipher
         .decrypt(Nonce::from_slice(&nonce), ciphertext.as_ref())
@@ -2603,12 +2659,14 @@ fn decrypt_legacy_secret(app: &AppHandle, value: &str) -> Result<String, String>
     String::from_utf8(plaintext).map_err(|error| error.to_string())
 }
 
-fn load_legacy_secret_key(app: &AppHandle) -> Result<[u8; 32], String> {
-    let app_data = app
-        .path()
-        .app_data_dir()
-        .map_err(|error| error.to_string())?;
-    for path in legacy_data_candidates(&app_data, "tradingagents.secret") {
+pub(crate) fn load_legacy_secret_key_in_environment(
+    environment: &ApplicationEnvironment,
+    system_app_data: impl FnOnce() -> Result<PathBuf, String>,
+) -> Result<[u8; 32], String> {
+    let app_data = environment.app_data_dir(system_app_data)?;
+    for path in environment.legacy_key_candidates(&app_data, |app_data| {
+        legacy_data_candidates(app_data, "tradingagents.secret")
+    }) {
         if path.is_file() {
             let key = fs::read(&path).map_err(|error| error.to_string())?;
             return key

@@ -1,4 +1,5 @@
 //! Read-only, legacy-safe inventory with the same process containment as startup.
+use crate::application_environment::ApplicationEnvironment;
 use crate::research_memory as memory;
 use crate::runtime_probe::process::ProbeProcess;
 use serde_json::Value;
@@ -17,11 +18,24 @@ const OUTDATED: &str =
 const TIMED_OUT: &str = "Research memory inventory timed out.";
 const TOO_LARGE: &str = "Research memory inventory exceeded its size limit.";
 
+#[cfg(test)]
 pub fn read(command: Command, ids: &[String]) -> Result<Value, String> {
-    read_with_timeout(command, ids, TIMEOUT)
+    read_in_environment(command, ids, &ApplicationEnvironment::system())
 }
 
-fn configure(command: &mut Command) {
+pub(crate) fn read_in_environment(
+    command: Command,
+    ids: &[String],
+    environment: &ApplicationEnvironment,
+) -> Result<Value, String> {
+    read_with_environment_and_timeout(command, ids, environment, TIMEOUT)
+}
+
+pub(crate) fn configure_in_environment(
+    command: &mut Command,
+    environment: &ApplicationEnvironment,
+) -> Result<(), String> {
+    environment.configure_command(command)?;
     command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -49,7 +63,7 @@ fn configure(command: &mut Command) {
     }
     // Do not read the desktop secret store or pass provider credentials. Keep
     // HOME and the configured memory log path for the authoritative read only.
-    for (name, _) in std::env::vars_os() {
+    for name in environment.environment_names() {
         let upper = name.to_string_lossy().to_ascii_uppercase();
         if upper.contains("API_KEY")
             || upper.contains("ACCESS_TOKEN")
@@ -66,11 +80,18 @@ fn configure(command: &mut Command) {
             command.env_remove(name);
         }
     }
+    Ok(())
 }
 
-fn read_with_timeout(
+#[cfg(test)]
+fn read_with_timeout(command: Command, ids: &[String], timeout: Duration) -> Result<Value, String> {
+    read_with_environment_and_timeout(command, ids, &ApplicationEnvironment::system(), timeout)
+}
+
+fn read_with_environment_and_timeout(
     mut command: Command,
     ids: &[String],
+    environment: &ApplicationEnvironment,
     timeout: Duration,
 ) -> Result<Value, String> {
     memory::validate_requested_ids(ids)?;
@@ -81,7 +102,7 @@ fn read_with_timeout(
     }))
     .map_err(|_| FAILURE)?;
     request.push(b'\n');
-    configure(&mut command);
+    configure_in_environment(&mut command, environment)?;
     let mut process = ProbeProcess::spawn(command, deadline).map_err(|_| FAILURE)?;
     let sent = process
         .child
