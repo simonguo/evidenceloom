@@ -131,9 +131,21 @@ export class SameSessionConsumer {
     this.header = page.header;
     return page;
   }
+  private async confirmProjectionCurrent(reply: OutcomeReply) {
+    if (reply.current.state === "unavailable") this.observe(reply.current);
+    // A committed receipt and a coherent canonical cut are separate truths.
+    // Re-query only this immutable packet; never repeat a write or restamp its parent.
+    for (let attempt = 0; reply.receipt && reply.current.state === "unavailable" && reply.current.error.code === "analysis_observation_changed" && attempt < 3; attempt++) {
+      if (!this.eligible() || !this.projection) throw new RecoveryPendingError();
+      reply = await this.projection.query();
+      if (reply.current.state === "unavailable") this.observe(reply.current);
+    }
+    if (reply.receipt && reply.current.state === "unavailable") throw new RecoveryPendingError();
+    return reply;
+  }
   private async projectCut(through: string | null = null) {
     if (this.projection) {
-      const reply = await this.projection.query();
+      const reply = await this.confirmProjectionCurrent(await this.projection.query());
       this.observe(reply.current); if (await this.retireDiscarded()) return this.current?.state === "coherent" ? this.current.journal : undefined;
       if (reply.rejection?.code === "analysis_conflict" && reply.current.state === "coherent") {
         const originalHead = this.projection.packet.request.expectedHead;
@@ -167,7 +179,7 @@ export class SameSessionConsumer {
       const request: ProjectionRequest = { recoveryProtocolVersion: 1, requestId: crypto.randomUUID(), journalId: header.journalId, origin: header.origin, binding: header.binding, expectedHead: parent.head, expectedAppliedSeq: parent.appliedSeq, throughSeq: page.lastSeq, rangeDigest: page.rangeProof.digest, projection: { task: reduced.task } };
       this.projection = new OutcomeRequest(freezePacket(request), "analysis_projection_sql", "commit_analysis_projection", "query_analysis_projection", this.api!, () => this.eligible());
       this.pendingProgress = reduced.progress;
-      const reply = await this.projection.execute();
+      const reply = await this.confirmProjectionCurrent(await this.projection.execute());
       this.observe(reply.current); if (await this.retireDiscarded()) return this.current?.state === "coherent" ? this.current.journal : undefined;
       if (reply.rejection?.code === "analysis_conflict" && reply.current.state === "coherent") {
         this.observe(reply.current);

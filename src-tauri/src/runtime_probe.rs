@@ -1,3 +1,4 @@
+use crate::application_environment::ApplicationEnvironment;
 #[path = "runtime_probe/process.rs"]
 pub(crate) mod process;
 
@@ -50,10 +51,31 @@ pub fn uses_sidecar(mode: &str, sidecar_real: bool) -> bool {
     mode == "sidecar" || (mode == "auto" && sidecar_real)
 }
 
+#[cfg(test)]
 pub fn probe_sidecar(path: &Path, work_dir: &Path) -> Result<(), ProbeFailure> {
+    probe_sidecar_in_environment(&ApplicationEnvironment::system(), path, work_dir)
+}
+
+pub(crate) fn probe_sidecar_in_environment(
+    environment: &ApplicationEnvironment,
+    path: &Path,
+    work_dir: &Path,
+) -> Result<(), ProbeFailure> {
+    let command = sidecar_command_in_environment(environment, path, work_dir)?;
+    probe_command(command, PROBE_TIMEOUT)
+}
+
+pub(crate) fn sidecar_command_in_environment(
+    environment: &ApplicationEnvironment,
+    path: &Path,
+    work_dir: &Path,
+) -> Result<Command, ProbeFailure> {
     let mut command = Command::new(path);
     command.current_dir(work_dir);
-    probe_command(command, PROBE_TIMEOUT)
+    environment
+        .configure_command(&mut command)
+        .map_err(|_| ProbeFailure::Start)?;
+    Ok(command)
 }
 
 fn probe_command(command: Command, timeout: Duration) -> Result<(), ProbeFailure> {

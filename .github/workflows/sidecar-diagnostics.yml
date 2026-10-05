@@ -101,6 +101,7 @@ jobs:
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked task_mutation
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_journal
           cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked analysis_recovery
+          cargo test --manifest-path src-tauri/Cargo.toml --all-targets --locked application_environment
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: "22"

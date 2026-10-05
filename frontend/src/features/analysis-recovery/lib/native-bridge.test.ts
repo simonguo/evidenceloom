@@ -35,6 +35,26 @@ it.skipIf(!executable).each(["safe", "safe_float", "empty", "critical_then_safe"
     while (Date.now() < deadline && (!center || center.tasks.length !== 2 || center.tasks.some((task) => task.status !== status) || center.runningTask !== null)) {
       await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
     }
+    if (!center || center.tasks.length !== 2 || center.tasks.some((task) => task.status !== status) || center.runningTask !== null) {
+      // Fixed metadata only; original request bodies and saved research remain in owned artifacts.
+      const id = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9:_-]{1,128}$/.test(value) ? value : null;
+      const code = (value: unknown) => typeof value === "string" && Object.hasOwn(recoveryMessages, value) ? value : "unknown";
+      const rows = bridge.replies.slice(-12).map((row) => {
+        const result = row.ok && typeof row.ok === "object" ? row.ok as Record<string, unknown> : undefined;
+        const receipt = result?.receipt && typeof result.receipt === "object" ? result.receipt as Record<string, unknown> : undefined;
+        let current: ReturnType<typeof readCurrent> | undefined;
+        try { if (result?.current) current = readCurrent(result.current); } catch { /* Invalid wire is classified without its content. */ }
+        const journal = current?.state === "coherent" ? current.journal : null;
+        const error = row.error && typeof row.error === "object" ? row.error as Record<string, unknown> : undefined;
+        return { id: id(row.id), errorCode: error ? code(error.code) : null,
+          receipt: receipt ? { requestId: id(receipt.requestId), throughSeq: id(receipt.throughSeq), controlRevision: id(receipt.controlRevision), outcome: id(receipt.outcome) } : null,
+          current: current ? { state: current.state, errorCode: current.state === "unavailable" ? code(current.error.code) : null,
+            runtime: { initialization: current.runtime.initialization, observationRevision: current.runtime.observationRevision, runtimeGate: current.runtime.runtimeGate, journalGate: current.runtime.journalGate, owner: current.runtime.owner ? { taskId: id(current.runtime.owner.origin.taskId), runId: id(current.runtime.owner.origin.runId), journalId: id(current.runtime.owner.journalId), phase: current.runtime.owner.phase, cleanupState: current.runtime.owner.cleanupState } : null },
+            journal: journal ? { journalId: id(journal.journalId), latestSeq: journal.latestSeq, appliedSeq: journal.appliedSeq, sealedThroughSeq: journal.sealedThroughSeq, controlRevision: journal.controlRevision, cleanupState: journal.cleanupState, resultState: journal.resultState, historyState: journal.historyState } : null } : null };
+      });
+      const diagnostic = JSON.stringify({ mode, running: center?.runningTask ? { id: id(center.runningTask.id), status: center.runningTask.status } : null, tasks: center?.tasks.slice(0, 2).map((task) => ({ id: id(task.id), status: task.status })), replies: rows });
+      console.error("OWNED_RECOVERY_FINAL_DIAGNOSTIC", diagnostic.length <= 16384 ? diagnostic : "bounded metadata unavailable");
+    }
     expect(center?.tasks).toHaveLength(2); expect(center!.tasks.every((task) => task.status === status)).toBe(true); expect(center!.runningTask).toBeNull();
     const requests = bridge.requests.map((line) => JSON.parse(line) as { id: string; command: string; args: { requestJson?: string } });
     expect(requests.filter((request) => request.command === "start_analysis")).toHaveLength(2); expect(requests.filter((request) => request.command === "commit_analysis_projection").length).toBeGreaterThanOrEqual(4);

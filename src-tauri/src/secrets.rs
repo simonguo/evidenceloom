@@ -25,6 +25,9 @@ pub trait CredentialStore {
     fn get(&self, secret_id: &str) -> Result<Option<String>, String>;
     fn set(&self, secret_id: &str, value: &str) -> Result<(), String>;
     fn delete(&self, secret_id: &str) -> Result<(), String>;
+    fn configured(&self, _secret_id: &str) -> bool {
+        false
+    }
 }
 
 pub struct SystemCredentialStore;
@@ -57,6 +60,10 @@ impl CredentialStore for SystemCredentialStore {
         }
         Ok(())
     }
+
+    fn configured(&self, secret_id: &str) -> bool {
+        detect_secret_without_prompt(secret_id)
+    }
 }
 
 pub fn provider_secret_id(provider: &str) -> Result<String, String> {
@@ -64,38 +71,10 @@ pub fn provider_secret_id(provider: &str) -> Result<String, String> {
     Ok(format!("llm-provider-{provider}"))
 }
 
-pub fn get_provider_secret(provider: &str) -> Result<Option<String>, String> {
-    SystemCredentialStore.get(&provider_secret_id(provider)?)
-}
-
-pub fn set_provider_secret(provider: &str, value: &str) -> Result<(), String> {
-    SystemCredentialStore.set(&provider_secret_id(provider)?, value)
-}
-
-pub fn delete_provider_secret(provider: &str) -> Result<(), String> {
-    SystemCredentialStore.delete(&provider_secret_id(provider)?)
-}
-
-pub fn get_alpha_vantage_secret() -> Result<Option<String>, String> {
-    SystemCredentialStore.get(ALPHA_VANTAGE_SECRET_ID)
-}
-
-pub fn set_alpha_vantage_secret(value: &str) -> Result<(), String> {
-    SystemCredentialStore.set(ALPHA_VANTAGE_SECRET_ID, value)
-}
-
-pub fn delete_alpha_vantage_secret() -> Result<(), String> {
-    SystemCredentialStore.delete(ALPHA_VANTAGE_SECRET_ID)
-}
-
-pub fn delete_all_secrets(current_provider: Option<&str>) -> Result<(), String> {
-    delete_all_secrets_from(&SystemCredentialStore, current_provider)
-}
-
 /// Checks only non-secret Keychain attributes and explicitly disables
 /// authentication UI. This lets an upgraded app preserve its "configured"
 /// indicator without reading a password during startup.
-pub fn detect_secret_without_prompt(secret_id: &str) -> bool {
+fn detect_secret_without_prompt(secret_id: &str) -> bool {
     let Ok(secret_id) = normalize_secret_id(secret_id) else {
         return false;
     };
@@ -185,7 +164,7 @@ fn normalize_secret_id(value: &str) -> Result<String, String> {
     Ok(normalized)
 }
 
-fn delete_all_secrets_from(
+pub(crate) fn delete_all_secrets_from(
     store: &dyn CredentialStore,
     current_provider: Option<&str>,
 ) -> Result<(), String> {

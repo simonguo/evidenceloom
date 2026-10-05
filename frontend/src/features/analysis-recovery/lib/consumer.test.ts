@@ -14,6 +14,62 @@ function consumer(fixture: ReturnType<typeof transportFixture>) {
 }
 
 describe("same-session journal consumer with fictional transport", () => {
+  it.each(["1", "3"])("confirms a known projection receipt through %s using only the original read-only query after a transient unavailable current", async (throughSeq) => {
+    const f = transportFixture(), c = consumer(f), invoke = f.api.invoke;
+    let original: string | undefined, queries = 0;
+    f.api.invoke = async (command, args) => {
+      const reply = await invoke(command, args);
+      if (command === "commit_analysis_projection" && JSON.parse(args.requestJson).throughSeq === throughSeq) original = args.requestJson;
+      if (original === args.requestJson && (command === "commit_analysis_projection" || command === "query_analysis_projection" && ++queries === 1)) {
+        const known = reply as { current: RecoveryCurrent };
+        return { ...known, current: { state: "unavailable", error: { code: "analysis_observation_changed", message: recoveryMessages.analysis_observation_changed }, runtime: known.current.runtime } };
+      }
+      return reply;
+    };
+    await c.session.run();
+    expect(c.session.phase).toBe("ready"); expect(f.task().reportVersions).toHaveLength(1);
+    expect(queries).toBe(2);
+    const originalWrites = f.calls.filter((call) => call.command === "commit_analysis_projection" && call.args.requestJson === original);
+    const queriesForOriginal = f.calls.filter((call) => call.command === "query_analysis_projection" && call.args.requestJson === original);
+    expect(originalWrites).toHaveLength(1); expect(queriesForOriginal).toHaveLength(2);
+    expect(queriesForOriginal.every((call) => call.args.executionInputJson === undefined)).toBe(true);
+    expect(f.calls.filter((call) => call.command === "start_analysis")).toHaveLength(1);
+  });
+
+  it("bounds unavailable-current queries while retaining the original known receipt for an explicit retry", async () => {
+    const f = transportFixture(), c = consumer(f), invoke = f.api.invoke;
+    let original: string | undefined, unavailable = true;
+    f.api.invoke = async (command, args) => {
+      const reply = await invoke(command, args);
+      if (command === "commit_analysis_projection" && JSON.parse(args.requestJson).throughSeq === "1") original = args.requestJson;
+      if (unavailable && args.requestJson === original && (command === "commit_analysis_projection" || command === "query_analysis_projection")) {
+        const known = reply as { current: RecoveryCurrent };
+        return { ...known, current: { state: "unavailable", error: { code: "analysis_observation_changed", message: recoveryMessages.analysis_observation_changed }, runtime: known.current.runtime } };
+      }
+      return reply;
+    };
+    await expect(c.session.run()).rejects.toBeInstanceOf(RecoveryPendingError);
+    expect(c.session.phase).toBe("result_pending");
+    expect(f.calls.filter((call) => call.command === "query_analysis_projection")).toHaveLength(3);
+    expect(f.calls.filter((call) => call.command === "commit_analysis_projection")).toHaveLength(1);
+    expect(f.calls.some((call) => call.command === "start_analysis")).toBe(false);
+    const originalPacket = original; unavailable = false; await c.session.retryResult();
+    expect(c.session.phase).toBe("ready"); expect(f.calls.filter((call) => call.command === "start_analysis")).toHaveLength(1);
+    expect(f.calls.filter((call) => call.command === "commit_analysis_projection" && call.args.requestJson === originalPacket)).toHaveLength(1);
+    expect(f.calls.filter((call) => call.command === "query_analysis_projection" && call.args.requestJson === originalPacket)).toHaveLength(4);
+  });
+  it("keeps a known projection blocked when current storage is unavailable without treating a receipt as a ready gate", async () => {
+    const f = transportFixture(), c = consumer(f), invoke = f.api.invoke;
+    f.api.invoke = async (command, args) => {
+      const reply = await invoke(command, args);
+      if (command !== "commit_analysis_projection") return reply;
+      const known = reply as { current: RecoveryCurrent };
+      return { ...known, current: { state: "unavailable", error: { code: "analysis_storage_unavailable", message: recoveryMessages.analysis_storage_unavailable }, runtime: known.current.runtime } };
+    };
+    await expect(c.session.run()).rejects.toBeInstanceOf(RecoveryPendingError);
+    expect(c.session.phase).toBe("result_pending"); expect(f.calls.some((call) => call.command === "start_analysis")).toBe(false);
+    expect(f.calls.filter((call) => call.command === "query_analysis_projection")).toHaveLength(0);
+  });
   it("acknowledges subscription and reset projection before one start, then commits each server page", async () => {
     const f = transportFixture({ pageSize: 1, events: [{ type: "report", reportSections: { market_report: "partial" } }, { type: "completed", reportSections: { market_report: "complete" } }] }), c = consumer(f);
     let listened = false; f.api.listen = async () => { listened = true; return () => undefined; };
