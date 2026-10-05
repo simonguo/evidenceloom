@@ -24,6 +24,7 @@ impl Fixture {
             SEQUENCE.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir(&root).unwrap();
+        let root = root.canonicalize().unwrap();
         let runner = root.join("fictional-runner-not-executed");
         std::fs::write(&runner, b"fictional routing marker; never executed").unwrap();
         let environment = ApplicationEnvironment::owned(&root, &runner).unwrap();
