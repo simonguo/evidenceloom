@@ -1,6 +1,8 @@
 mod analysis_execution;
 mod analysis_recovery;
 mod application_environment;
+#[cfg(feature = "desktop-acceptance")]
+mod desktop_acceptance;
 mod effective_request_identity;
 mod effective_request_identity_storage;
 mod evidence;
@@ -1387,6 +1389,25 @@ fn run_recovery_process(
         recovery_runtime::worker_failed_before_spawn(execution, publisher, "analysis_start_failed");
         return;
     }
+    #[cfg(feature = "desktop-acceptance")]
+    {
+        let controls = app.state::<Arc<desktop_acceptance::control::ControlState>>();
+        if controls
+            .register(
+                &app.state::<AppState>().recovery,
+                &publisher.run,
+                &mut command,
+            )
+            .is_err()
+        {
+            recovery_runtime::worker_failed_before_spawn(
+                execution,
+                publisher,
+                "analysis_start_failed",
+            );
+            return;
+        }
+    }
     recovery_runtime::run_owned_worker(
         execution,
         publisher,
@@ -1845,10 +1866,32 @@ fn path_delimiter() -> &'static str {
 }
 
 fn main() {
+    let mut context = tauri::generate_context!();
+    #[cfg(not(feature = "desktop-acceptance"))]
+    validate_default_build_stamp(include_str!(concat!(
+        env!("OUT_DIR"),
+        "/desktop-build-stamp.json"
+    )))
+    .expect("Desktop build identity is invalid.");
+    #[cfg(feature = "desktop-acceptance")]
+    let prepared = desktop_acceptance::prepare(&mut context)
+        .expect("Acceptance application preparation failed.");
+    #[cfg(feature = "desktop-acceptance")]
+    let environment = ApplicationEnvironment::from_prepared_acceptance(&prepared);
+    #[cfg(not(feature = "desktop-acceptance"))]
     let environment = ApplicationEnvironment::system();
-    tauri::Builder::default()
+    #[cfg(not(feature = "desktop-acceptance"))]
+    let _ = &mut context;
+    let builder = tauri::Builder::default();
+    #[cfg(feature = "desktop-acceptance")]
+    let builder = builder
+        .manage(prepared.controls())
+        .plugin(desktop_acceptance::plugin());
+    builder
         .manage(environment)
-        .setup(|app| {
+        .setup(move |app| {
+            #[cfg(feature = "desktop-acceptance")]
+            prepared.recheck()?;
             let coordinator = app.state::<AppState>().recovery.clone();
             let backend = Arc::new(storage::AppJournalBackend::new(app.handle().clone()));
             let initializing = coordinator.clone();
@@ -1863,6 +1906,8 @@ fn main() {
                     Err(_) => coordinator.initialization_failed("analysis_identity_unavailable"),
                 }
             });
+            #[cfg(feature = "desktop-acceptance")]
+            prepared.create_window(app)?;
             Ok(())
         })
         .plugin(tauri_plugin_dialog::init())
@@ -1901,7 +1946,7 @@ fn main() {
             import_legacy_desktop_tasks,
             query_desktop_task_mutation
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Evidence Loom desktop app");
 }
 
@@ -2177,4 +2222,66 @@ mod tests {
         fs::remove_file(path).unwrap();
         fs::remove_dir(directory).unwrap();
     }
+}
+
+// This is a compiled mode check, not a runtime activation flag or publish proof.
+// Normal development accepts only its explicit non-certifiable descriptor.
+#[cfg(not(feature = "desktop-acceptance"))]
+fn validate_default_build_stamp(raw: &str) -> Result<(), &'static str> {
+    let value = recovery_parser::raw_json(raw, 1024 * 1024)
+        .map_err(|_| "Desktop build identity is invalid.")?;
+    recovery_parser::exact(
+        &value,
+        &[
+            "schemaVersion",
+            "mode",
+            "stage",
+            "buildId",
+            "baseCommit",
+            "sourceInventorySha256",
+            "target",
+            "enabledFeatures",
+            "signingPolicy",
+            "permittedOwnedParent",
+            "effectiveConfigSha256",
+            "aclInventorySha256",
+            "frontendInputInventorySha256",
+            "frontendInventorySha256",
+            "cargoLockSha256",
+            "frontendLockSha256",
+            "fixture",
+        ],
+    )
+    .map_err(|_| "Desktop build identity is invalid.")?;
+    let valid = value["schemaVersion"] == 1
+        && value["mode"] == "shipping"
+        && (value["stage"] == "compile-only" || value["stage"] == "app")
+        && value["target"] == env!("EVIDENCELOOM_DESKTOP_TARGET")
+        && value["enabledFeatures"] == serde_json::json!([])
+        && value["fixture"].is_null();
+    if valid {
+        Ok(())
+    } else {
+        Err("Desktop build identity is invalid.")
+    }
+}
+
+#[cfg(all(test, not(feature = "desktop-acceptance")))]
+#[test]
+fn desktop_acceptance_default_binary_rejects_feature_descriptor_and_unknown_keys() {
+    let original = include_str!(concat!(env!("OUT_DIR"), "/desktop-build-stamp.json"));
+    validate_default_build_stamp(original).unwrap();
+    for (key, bad) in [
+        ("mode", serde_json::json!("acceptance")),
+        ("stage", serde_json::json!("fixture-only")),
+        ("enabledFeatures", serde_json::json!(["desktop-acceptance"])),
+        ("fixture", serde_json::json!({"protocolVersion":1})),
+    ] {
+        let mut value: Value = serde_json::from_str(original).unwrap();
+        value[key] = bad;
+        assert!(validate_default_build_stamp(&value.to_string()).is_err());
+    }
+    let mut value: Value = serde_json::from_str(original).unwrap();
+    value["extra"] = true.into();
+    assert!(validate_default_build_stamp(&value.to_string()).is_err());
 }

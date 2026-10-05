@@ -245,7 +245,18 @@ jobs:
           dmg="$(find 'src-tauri/target/${{ matrix.target }}/release/bundle' -name '*.dmg' -print -quit)"
           test -n "$dmg"
           test -f "$dmg"
+          proof="$RUNNER_TEMP/desktop-shipping-proof.json"
+          python scripts/check_desktop_acceptance_boundary.py seal-package \
+            --parent "$EVIDENCELOOM_SHIPPING_BUILD_PROOF" --artifact "$dmg" --output "$proof"
+          python scripts/check_desktop_acceptance_boundary.py guard --proof "$proof" "$dmg"
           gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber
+      - name: Transfer internal shipping proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-shipping-proof-${{ matrix.target }}
+          path: ${{ runner.temp }}/desktop-shipping-proof.json
+          if-no-files-found: error
+          retention-days: 14
 
   build-windows-test:
     if: github.event_name == 'workflow_dispatch'
@@ -333,6 +344,13 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Failed to create draft test release" }
           }
 
+          $proof = Join-Path $env:RUNNER_TEMP 'desktop-windows-shipping-proof.json'
+          python scripts/check_desktop_acceptance_boundary.py seal-package `
+            --parent $env:EVIDENCELOOM_SHIPPING_BUILD_PROOF --artifact $installer.FullName `
+            --output $proof --channel unsigned-test
+          if ($LASTEXITCODE -ne 0) { throw 'desktop_proof_invalid' }
+          python scripts/check_desktop_acceptance_boundary.py guard --proof $proof $installer.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'desktop_proof_invalid' }
           gh release upload $testTag $installer.FullName --clobber
           if ($LASTEXITCODE -ne 0) { throw "Failed to upload Windows test installer" }
   release:
@@ -360,6 +378,11 @@ jobs:
       - name: Add legal files
         run: |
           cp LICENSE NOTICE THIRD_PARTY_NOTICES.md release-artifacts/
+      - name: Download internal shipping proofs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: desktop-shipping-proof-*
+          path: ${{ runner.temp }}/desktop-proof-downloads
       - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           path: release-artifacts
@@ -377,7 +400,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          batch="$RUNNER_TEMP/desktop-publication-proof.json"
+          python scripts/check_desktop_acceptance_boundary.py seal-batch \
+            --directory release-artifacts --output "$batch" \
+            "$RUNNER_TEMP/desktop-proof-downloads/desktop-shipping-proof-aarch64-apple-darwin/desktop-shipping-proof.json" \
+            "$RUNNER_TEMP/desktop-proof-downloads/desktop-shipping-proof-x86_64-apple-darwin/desktop-shipping-proof.json"
+          python scripts/check_desktop_acceptance_boundary.py guard --proof "$batch" release-artifacts/*
+          gh release view "$GITHUB_REF_NAME" --json isDraft,assets > "$RUNNER_TEMP/desktop-remote-before.json"
+          python scripts/check_desktop_acceptance_boundary.py remote-set --proof "$batch" --listing "$RUNNER_TEMP/desktop-remote-before.json"
           gh release upload "$GITHUB_REF_NAME" release-artifacts/* --clobber
+          remote_directory="$(mktemp -d "$RUNNER_TEMP/evidenceloom-remote.XXXXXX")"
+          gh release view "$GITHUB_REF_NAME" --json isDraft,assets > "$RUNNER_TEMP/desktop-remote-after.json"
+          gh release download "$GITHUB_REF_NAME" --dir "$remote_directory"
+          python scripts/check_desktop_acceptance_boundary.py remote-guard --proof "$batch" \
+            --listing "$RUNNER_TEMP/desktop-remote-after.json" --downloaded "$remote_directory"
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then
             gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=true
           else

@@ -147,6 +147,20 @@ jobs:
               raise RuntimeError("Repository npm executable is required")
           subprocess.run([npm, "test", "--", "src/features/analysis-recovery/lib/protocol.test.ts", "src/features/analysis-recovery/lib/native-bridge.test.ts", "src/features/analysis-recovery/lib/attachment-native-bridge.test.ts"], cwd="frontend", env=environment, check=True)
           PY
+      - name: Validate nondefault desktop acceptance compilation and bounded fixtures
+        run: |
+          export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+          export RUSTUP_HOME="${RUSTUP_HOME:-$HOME/.rustup}"
+          feature_root="$RUNNER_TEMP/evidenceloom-desktop-acceptance-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$feature_root/home" "$feature_root/temp" "$feature_root/fixtures"
+          export HOME="$feature_root/home" USERPROFILE="$feature_root/home"
+          export TMPDIR="$feature_root/temp" TMP="$feature_root/temp" TEMP="$feature_root/temp"
+          export CARGO_TARGET_DIR="$feature_root/target"
+          export EVIDENCELOOM_DESKTOP_ACCEPTANCE_FIXTURE_ROOT="$feature_root/fixtures"
+          unset EVIDENCELOOM_DESKTOP_BUILD_STAMP EVIDENCELOOM_DESKTOP_ACCEPTANCE_MANIFEST TAURI_CONFIG
+          cargo test --manifest-path src-tauri/Cargo.toml --features desktop-acceptance --all-targets --locked --no-run
+          cargo clippy --manifest-path src-tauri/Cargo.toml --features desktop-acceptance --all-targets --locked -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --features desktop-acceptance --all-targets --locked desktop_acceptance_
       - name: Seed an owned saved-memory fixture store
         run: |
           uv run --frozen python - <<'PY'

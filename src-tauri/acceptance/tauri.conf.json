@@ -1,0 +1,23 @@
+{
+  "productName": "Evidence Loom Acceptance",
+  "identifier": "io.github.simonguo.evidenceloom.acceptance",
+  "build": {
+    "beforeDevCommand": null,
+    "beforeBuildCommand": null,
+    "beforeBundleCommand": null,
+    "devUrl": null
+  },
+  "app": {
+    "windows": [{"label": "main", "title": "Evidence Loom Acceptance", "create": false, "width": 1280, "height": 820}],
+    "security": {"capabilities": ["desktop-acceptance"]}
+  },
+  "bundle": {
+    "active": false,
+    "targets": ["app"],
+    "externalBin": null,
+    "resources": null,
+    "macOS": null,
+    "windows": null
+  },
+  "plugins": null
+}
