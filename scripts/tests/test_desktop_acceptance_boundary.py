@@ -16,6 +16,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import check_desktop_acceptance_boundary as boundary  # noqa: E402
 import build_desktop_acceptance as acceptance_builder  # noqa: E402
+import sidecar_architecture as architecture  # noqa: E402
 
 
 class DesktopBoundaryTests(unittest.TestCase):
@@ -25,7 +26,7 @@ class DesktopBoundaryTests(unittest.TestCase):
         self.root = Path(self.temporary.name).resolve()
         self.repo = self.root / "repo"
         self.repo.mkdir()
-        self.target = boundary.TARGETS[0]
+        self.target = boundary.ACCEPTANCE_TARGETS[0]
         self.commit = "1" * 40
         config = {
             "identifier": "io.github.simonguo.evidenceloom",
@@ -679,6 +680,154 @@ class DesktopBoundaryTests(unittest.TestCase):
             with self.assertRaises(boundary.BoundaryError):
                 boundary.inventory(self.repo, ["linked"])
 
+    def test_all_native_sidecar_targets_keep_fixed_builder_and_probe_binding(self):
+        self.assertEqual(set(boundary.SIDECAR_TARGETS), set(architecture.TARGETS))
+        for target in boundary.SIDECAR_TARGETS:
+            with self.subTest(target=target):
+                suffix = ".exe" if "windows" in target else ""
+                binary = self.repo / f"src-tauri/binaries/evidenceloom-runner-{target}{suffix}"
+                binary.write_bytes(b"inert simulated native sidecar, never executed")
+                path = self.root / f"input-{target}.json"
+                with patch.object(boundary.subprocess, "run") as run:
+                    boundary.build_shipping_sidecar(
+                        self.repo, target, "owned-python", path, self.commit
+                    )
+                self.assertEqual(run.call_count, 2)
+                self.assertEqual(
+                    run.call_args_list[0].args[0],
+                    ["bash", str(self.repo / "scripts/build_tauri_sidecar.sh"), target],
+                )
+                self.assertEqual(
+                    run.call_args_list[1].args[0],
+                    ["owned-python", str(self.repo / "scripts/sidecar_probe.py"), "all", str(binary)],
+                )
+                boundary.verify_sidecar(self.repo, target, binary, boundary.load_json(path))
+
+    def test_linux_shipping_grammar_keeps_generic_outputs_out_of_macos_batch(self):
+        targets = ("aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu")
+        for target in targets:
+            with self.subTest(target=target):
+                binary = self.repo / f"src-tauri/binaries/evidenceloom-runner-{target}"
+                binary.write_bytes(b"inert simulated Linux sidecar, never executed")
+                path = self.root / f"linux-input-{target}.json"
+                boundary.write_json(
+                    path,
+                    boundary.sidecar_proof(
+                        self.repo, target, binary, self.commit, self.completion
+                    ),
+                )
+                directory = self.root / f"linux-stage-{target}"
+                stamp = boundary.prepare_shipping(
+                    self.repo, directory, target, self.commit, binary, path, {}, self.typed
+                )
+                executable = self.root / f"inert-desktop-{target}"
+                executable.write_bytes(b"unit bytes, never executable\n" + boundary.canonical(stamp))
+                proof = boundary.seal_build(directory, executable)
+                self.assertEqual(boundary.validate_proof(proof)["target"], target)
+                self.assertIsNone(proof["packagedSidecar"])
+                self.assertEqual(
+                    proof["sidecarTransformation"], "not-observed-in-application-output"
+                )
+                # Complete inert bundle contents leave only the target boundary
+                # before any packaged runner or proof input is hashed.
+                bundle = self.root / f"inert-non-macos-bundle-{target}"
+                binaries = bundle / "Contents/MacOS"
+                binaries.mkdir(parents=True)
+                bundled_executable = binaries / "evidenceloom-desktop"
+                bundled_executable.write_bytes(executable.read_bytes())
+                (binaries / "evidenceloom-runner").write_bytes(b"inert normal output runner")
+                with patch.object(boundary, "hash_file", wraps=boundary.hash_file) as hash_file:
+                    with self.assertRaises(boundary.BoundaryError):
+                        boundary.seal_build(directory, bundled_executable, bundle)
+                    hash_file.assert_not_called()
+
+        # Begin with a real, complete seven-asset unit batch. Its parent package
+        # proofs remain legal shipping proofs after changing only target/identity.
+        public, batch = self.batch_fixture(observed=False)
+        self.assertEqual(len(list(public.iterdir())), 7)
+        boundary.guard(batch, list(public.iterdir()))
+        parent_paths = (
+            self.root / "Evidence-Loom-arm64.dmg.proof.json",
+            self.root / "intel-proof.json",
+        )
+        mutant_paths = []
+        for target, parent_path in zip(targets, parent_paths):
+            proof = boundary.load_json(parent_path)
+            proof["target"] = target
+            proof["buildId"] = boundary.build_id(
+                {key: proof[key] for key in boundary.STAMP_KEYS}
+            )
+            path = self.root / f"linux-package-proof-{target}.json"
+            boundary.write_json(path, proof)
+            artifact = public / proof["artifacts"][0]["logicalName"]
+            self.assertEqual(boundary.guard(path, [artifact])["target"], target)
+            mutant_paths.append(path)
+        output = self.root / "never-linux-release-batch.json"
+        with self.assertRaises(boundary.BoundaryError):
+            boundary.seal_batch(public, mutant_paths, output)
+        self.assertFalse(output.exists())
+
+    def test_unknown_native_target_rejects_before_build_and_in_final_proof(self):
+        target = "x86_64-arbitrary-build-label"
+        with self.assertRaises(boundary.BoundaryError):
+            boundary.sidecar_proof(self.repo, target, self.binary, self.commit, self.completion)
+        proof = boundary.load_json(self.sidecar_path)
+        proof["target"] = target
+        with self.assertRaises(boundary.BoundaryError):
+            boundary.verify_sidecar(self.repo, target, self.binary, proof)
+        with patch.object(boundary.subprocess, "run") as run:
+            with self.assertRaises(boundary.BoundaryError):
+                boundary.build_shipping_sidecar(
+                    self.repo, target, "owned-python", self.root / "never-input.json", self.commit
+                )
+            run.assert_not_called()
+        directory = self.app_stage()
+        proof = boundary.load_json(directory / "build-proof.json")
+        proof["target"] = target
+        proof["buildId"] = boundary.build_id({key: proof[key] for key in boundary.STAMP_KEYS})
+        with self.assertRaises(boundary.BoundaryError):
+            boundary.validate_stamp({key: proof[key] for key in boundary.STAMP_KEYS}, shipping=True)
+        with self.assertRaises(boundary.BoundaryError):
+            boundary.validate_proof(proof)
+
+    def test_linux_acceptance_stamp_and_pipeline_reject_before_owned_build(self):
+        directory = self.app_stage()
+        original = boundary.load_json(directory / "desktop-build-stamp.json")
+        for target in ("aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"):
+            for stage in ("compile-only", "fixture-only", "app"):
+                stamp = {
+                    **original,
+                    "mode": "acceptance",
+                    "stage": stage,
+                    "enabledFeatures": ["desktop-acceptance"],
+                    "signingPolicy": "unsigned",
+                    "permittedOwnedParent": str(self.root),
+                    "fixture": {
+                        "protocolVersion": 1,
+                        "logicalResource": "evidenceloom-desktop-fixture",
+                        "sha256": "0" * 64,
+                        "bytes": 1,
+                    } if stage == "app" else None,
+                }
+                stamp["buildId"] = boundary.build_id(stamp)
+                boundary.validate_stamp(stamp)
+                stamp["target"] = target
+                stamp["buildId"] = boundary.build_id(stamp)
+                with self.subTest(target=target, stage=stage):
+                    with self.assertRaises(boundary.BoundaryError):
+                        boundary.validate_stamp(stamp)
+            args = self.pipeline_args("never-acceptance-" + target)
+            args.target = target
+            with (
+                patch.object(acceptance_builder, "copy_native_source") as copy_source,
+                patch.object(acceptance_builder, "compile_owned_source") as compile_source,
+            ):
+                with self.assertRaises(boundary.BoundaryError):
+                    acceptance_builder.pipeline(args)
+                copy_source.assert_not_called()
+                compile_source.assert_not_called()
+            self.assertFalse(Path(args.work_root).exists())
+
     def test_only_fixed_normal_builder_and_probe_can_produce_reusable_proof(self):
         path = self.root / "fresh-input.json"
         with patch.object(boundary.subprocess, "run") as run:
@@ -731,7 +880,7 @@ class DesktopBoundaryTests(unittest.TestCase):
 
     def test_reuse_rejects_source_target_bytes_and_completion_changes(self):
         original = boundary.load_json(self.sidecar_path)
-        for field, value in [("target", boundary.TARGETS[1]), ("producer", "hash-only-record")]:
+        for field, value in [("target", boundary.ACCEPTANCE_TARGETS[1]), ("producer", "hash-only-record")]:
             proof = copy.deepcopy(original)
             proof[field] = value
             with self.assertRaises(boundary.BoundaryError):
@@ -829,7 +978,7 @@ class DesktopBoundaryTests(unittest.TestCase):
         self.assertIsNone(proof["packagedSidecar"])
         self.assertEqual(proof["sidecarTransformation"], "not-observed-in-application-output")
         windows = copy.deepcopy(proof)
-        windows["target"] = boundary.TARGETS[2]
+        windows["target"] = boundary.ACCEPTANCE_TARGETS[2]
         windows["buildId"] = boundary.build_id({key: windows[key] for key in boundary.STAMP_KEYS})
         windows["sidecarTransformation"] = "not-observed-in-installer"
         boundary.validate_proof(windows)
@@ -897,7 +1046,7 @@ class DesktopBoundaryTests(unittest.TestCase):
         second.write_bytes(b"owned Intel package")
         p2 = self.root / "intel-proof.json"
         second_proof = boundary.load_json(p1)
-        second_proof["target"] = boundary.TARGETS[1]
+        second_proof["target"] = boundary.ACCEPTANCE_TARGETS[1]
         second_proof["buildId"] = boundary.build_id(
             {key: second_proof[key] for key in boundary.STAMP_KEYS}
         )
@@ -948,7 +1097,7 @@ class DesktopBoundaryTests(unittest.TestCase):
         ):
             self.assertEqual(batch_proof[key], arm[key])
         self.assertNotEqual(batch_proof["packagedSidecar"], intel["packagedSidecar"])
-        self.assertEqual(batch_proof["target"], boundary.TARGETS[0])
+        self.assertEqual(batch_proof["target"], boundary.ACCEPTANCE_TARGETS[0])
         parent = boundary.digest(
             boundary.canonical(
                 sorted(boundary.hash_file(path)["sha256"] for path in (arm_path, intel_path))

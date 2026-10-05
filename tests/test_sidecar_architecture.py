@@ -10,6 +10,7 @@ import sys
 
 import pytest
 
+from scripts import check_desktop_acceptance_boundary as boundary
 from scripts.sidecar_architecture import (
     ArchitectureError,
     BinaryIdentity,
@@ -21,6 +22,7 @@ from scripts.sidecar_architecture import (
 
 pytestmark = pytest.mark.unit
 REPO = Path(__file__).resolve().parents[1]
+UNIT_FIXTURE_COMMIT = "1" * 40
 
 
 def _macho(cpu, endian="<"):
@@ -142,22 +144,50 @@ def _native_target():
 def _fixture_repo(tmp_path):
     root = tmp_path / "fixture repo"
     (root / "scripts").mkdir(parents=True)
-    (root / "frontend").mkdir()
+    (root / "frontend" / "server").mkdir(parents=True)
     (root / "src-tauri" / "binaries").mkdir(parents=True)
     for name in (
         "build_tauri_sidecar.sh",
         "build_desktop_sidecar.sh",
         "sidecar_architecture.py",
         "sidecar_probe.py",
+        "check_desktop_acceptance_boundary.py",
     ):
         shutil.copyfile(REPO / "scripts" / name, root / "scripts" / name)
+    shutil.copyfile(
+        REPO / "frontend/server/evidenceloom-runner.spec",
+        root / "frontend/server/evidenceloom-runner.spec",
+    )
     return root
+
+
+def _write_unit_shipping_proof(root, target, binary):
+    """Supply a synthetic unit prerequisite, never an actual build/probe certificate."""
+    source = boundary.source_binding(root)
+    proof = boundary.sidecar_proof(
+        root,
+        target,
+        binary,
+        UNIT_FIXTURE_COMMIT,
+        {
+            "buildExitCode": 0,
+            "probeExitCode": 0,
+            "sourceBeforeSha256": source,
+            "sourceAfterSha256": source,
+        },
+    )
+    path = binary.with_name(binary.name + ".shipping-proof.json")
+    path.unlink(missing_ok=True)
+    boundary.write_json(path, proof)
+    return path
 
 
 def _environment(tmp_path):
     environment = dict(os.environ)
     for key in ("APPLE_SIGNING_IDENTITY", "APPLE_TEAM_ID", "PYTHONPATH"):
         environment.pop(key, None)
+    # Disposable fixtures have no Git checkout; never inherit a real build identity.
+    environment["GITHUB_SHA"] = UNIT_FIXTURE_COMMIT
     environment["TMPDIR"] = str(tmp_path / "build temp")
     Path(environment["TMPDIR"]).mkdir()
     return environment
@@ -306,6 +336,7 @@ def test_skip_sidecar_checks_reused_architecture_before_packaging(tmp_path):
     reused = root / "src-tauri" / "binaries" / ("evidenceloom-runner-" + target + suffix)
     wrong = "aarch64" if architecture == "x86_64" else "x86_64"
     _binary(reused, system, wrong)
+    _write_unit_shipping_proof(root, target, reused)
     tools = tmp_path / "tools"
     tools.mkdir()
     marker = tmp_path / "npm-invoked"
@@ -327,6 +358,7 @@ def test_skip_sidecar_checks_reused_architecture_before_packaging(tmp_path):
     assert result.returncode != 0 and "architecture mismatch" in result.stderr
     assert not marker.exists()
     _binary(reused, system, architecture)
+    _write_unit_shipping_proof(root, target, reused)
     header_only = subprocess.run(
         args + ["--skip-tauri"], env=environment, capture_output=True, text=True
     )
@@ -344,6 +376,7 @@ def test_reused_sidecar_requires_bootstrap_and_legacy_safe_research_probe(tmp_pa
     root = _fixture_repo(tmp_path)
     sidecar = root / "src-tauri" / "binaries" / ("evidenceloom-runner-" + target)
     _compiled_probe(tmp_path, sidecar, target)
+    _write_unit_shipping_proof(root, target, sidecar)
     environment = _environment(tmp_path)
     commands = tmp_path / "probe-commands.jsonl"
     environment["SIDECAR_TEST_COMMAND_LOG"] = str(commands)
@@ -399,6 +432,7 @@ def test_desktop_wrapper_rejects_false_readiness_before_distribution(tmp_path, m
     root = _fixture_repo(tmp_path)
     sidecar = root / "src-tauri" / "binaries" / ("evidenceloom-runner-" + target)
     _compiled_probe(tmp_path, sidecar, target)
+    _write_unit_shipping_proof(root, target, sidecar)
     environment = _environment(tmp_path)
     environment["SIDECAR_TEST_PROBE_MODE"] = mode
     command_log = tmp_path / "commands.jsonl"
@@ -435,3 +469,45 @@ def test_desktop_wrapper_rejects_false_readiness_before_distribution(tmp_path, m
     assert [json.loads(line) for line in command_log.read_text().splitlines()] == [
         {"__command": "smoke_test"}
     ]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Disposable npm shim requires POSIX executable scripts")
+@pytest.mark.parametrize("damage", ["missing", "tampered_bytes", "stale_source"])
+def test_desktop_wrapper_rejects_invalid_shipping_proof_before_probe_and_packaging(tmp_path, damage):
+    target = _native_target()
+    root = _fixture_repo(tmp_path)
+    sidecar = root / "src-tauri" / "binaries" / ("evidenceloom-runner-" + target)
+    _compiled_probe(tmp_path, sidecar, target)
+    proof = _write_unit_shipping_proof(root, target, sidecar)
+    if damage == "missing":
+        proof.unlink()
+    elif damage == "tampered_bytes":
+        sidecar.write_bytes(sidecar.read_bytes() + b"changed unit fixture bytes")
+    else:
+        (root / "scripts" / "changed-unit-source.txt").write_text("stale source binding")
+    environment = _environment(tmp_path)
+    commands = tmp_path / "commands.jsonl"
+    environment["SIDECAR_TEST_COMMAND_LOG"] = str(commands)
+    tools = tmp_path / "tools"
+    tools.mkdir()
+    packaged = tmp_path / "npm-invoked"
+    npm = tools / "npm"
+    # Even a failed rejection cannot fall through from the shim into Cargo.
+    npm.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(packaged)!r}).touch()\n"
+        "raise SystemExit(1)\n"
+    )
+    npm.chmod(0o755)
+    environment["PATH"] = str(tools) + os.pathsep + environment.get("PATH", "")
+    result = subprocess.run(
+        [
+            "bash", str(root / "scripts" / "build_desktop_sidecar.sh"),
+            "--target", target, "--python", sys.executable, "--skip-sidecar",
+        ],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    assert result.returncode != 0 and "desktop_proof_invalid" in result.stderr
+    assert not commands.exists() and not packaged.exists()

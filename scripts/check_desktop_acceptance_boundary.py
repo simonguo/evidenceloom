@@ -17,6 +17,11 @@ import stat
 import subprocess
 import sys
 
+if __package__:
+    from .sidecar_architecture import TARGETS as NATIVE_TARGETS
+else:
+    from sidecar_architecture import TARGETS as NATIVE_TARGETS
+
 MAX_JSON = 1024 * 1024
 MAX_ENTRIES = 1024
 MAX_ARTIFACTS = 64
@@ -25,7 +30,16 @@ MAX_FIXTURE = 256 * 1024**2
 SHARED_FRONTEND_PREFIXES = ("docs/contracts", "tests/fixtures")
 MAX_SHARED_FRONTEND_TREE_BYTES = 16 * MAX_JSON
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
-TARGETS = ("aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc")
+# Normal native sidecar/shipping grammar preserves the architecture checker's six targets.
+SIDECAR_TARGETS = tuple(NATIVE_TARGETS)
+SHIPPING_TARGETS = SIDECAR_TARGETS
+# Acceptance tooling and the public release entry points retain their narrower scope.
+ACCEPTANCE_TARGETS = (
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+)
+MACOS_RELEASE_TARGETS = ("aarch64-apple-darwin", "x86_64-apple-darwin")
 STAMP_KEYS = {
     "schemaVersion",
     "mode",
@@ -285,7 +299,8 @@ def validate_stamp(stamp, shipping=False):
     require(
         stamp["enabledFeatures"] == ([] if stamp["mode"] == "shipping" else ["desktop-acceptance"])
     )
-    require(stamp["target"] in TARGETS)
+    targets = SHIPPING_TARGETS if stamp["mode"] == "shipping" else ACCEPTANCE_TARGETS
+    require(stamp["target"] in targets)
     for key in STAMP_KEYS:
         if key.endswith("Sha256") or key == "buildId":
             require(isinstance(stamp[key], str) and HEX64.fullmatch(stamp[key]))
@@ -318,7 +333,7 @@ def source_binding(repo):
 
 
 def sidecar_proof(repo, target, binary, base_commit, completion):
-    require(target in TARGETS and re.fullmatch(r"[0-9a-f]{40}", base_commit))
+    require(target in SIDECAR_TARGETS and re.fullmatch(r"[0-9a-f]{40}", base_commit))
     require(
         completion
         == {
@@ -360,7 +375,7 @@ def build_shipping_sidecar(repo, target, python, proof_path, base_commit):
     not invoked by unit validation; subprocess boundaries are mocked there.
     """
     repo = Path(repo).resolve(strict=True)
-    require(target in TARGETS and re.fullmatch(r"[0-9a-f]{40}", base_commit))
+    require(target in SIDECAR_TARGETS and re.fullmatch(r"[0-9a-f]{40}", base_commit))
     before = source_binding(repo)
     environment = dict(os.environ)
     environment["PYTHON"] = str(python)
@@ -403,6 +418,7 @@ def build_shipping_sidecar(repo, target, python, proof_path, base_commit):
 
 
 def verify_sidecar(repo, target, binary, proof):
+    require(target in SIDECAR_TARGETS)
     require(
         set(proof)
         == {
@@ -665,7 +681,7 @@ def seal_batch(directory, proof_paths, output):
     directory = Path(directory)
     require(len(proof_paths) == 2)
     proofs = [validate_proof(load_json(path)) for path in proof_paths]
-    require({proof["target"] for proof in proofs} == set(TARGETS[:2]))
+    require({proof["target"] for proof in proofs} == set(MACOS_RELEASE_TARGETS))
     # Platform config/frontend outputs can differ; source commit/locks must agree.
     for key in ("baseCommit", "sourceInventorySha256", "cargoLockSha256", "frontendLockSha256"):
         require(proofs[0][key] == proofs[1][key])
