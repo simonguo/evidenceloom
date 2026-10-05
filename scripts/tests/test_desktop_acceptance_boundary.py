@@ -699,7 +699,12 @@ class DesktopBoundaryTests(unittest.TestCase):
                 )
                 self.assertEqual(
                     run.call_args_list[1].args[0],
-                    ["owned-python", str(self.repo / "scripts/sidecar_probe.py"), "all", str(binary)],
+                    [
+                        "owned-python",
+                        str(self.repo / "scripts/sidecar_probe.py"),
+                        "all",
+                        str(binary),
+                    ],
                 )
                 boundary.verify_sidecar(self.repo, target, binary, boundary.load_json(path))
 
@@ -712,16 +717,16 @@ class DesktopBoundaryTests(unittest.TestCase):
                 path = self.root / f"linux-input-{target}.json"
                 boundary.write_json(
                     path,
-                    boundary.sidecar_proof(
-                        self.repo, target, binary, self.commit, self.completion
-                    ),
+                    boundary.sidecar_proof(self.repo, target, binary, self.commit, self.completion),
                 )
                 directory = self.root / f"linux-stage-{target}"
                 stamp = boundary.prepare_shipping(
                     self.repo, directory, target, self.commit, binary, path, {}, self.typed
                 )
                 executable = self.root / f"inert-desktop-{target}"
-                executable.write_bytes(b"unit bytes, never executable\n" + boundary.canonical(stamp))
+                executable.write_bytes(
+                    b"unit bytes, never executable\n" + boundary.canonical(stamp)
+                )
                 proof = boundary.seal_build(directory, executable)
                 self.assertEqual(boundary.validate_proof(proof)["target"], target)
                 self.assertIsNone(proof["packagedSidecar"])
@@ -754,9 +759,7 @@ class DesktopBoundaryTests(unittest.TestCase):
         for target, parent_path in zip(targets, parent_paths):
             proof = boundary.load_json(parent_path)
             proof["target"] = target
-            proof["buildId"] = boundary.build_id(
-                {key: proof[key] for key in boundary.STAMP_KEYS}
-            )
+            proof["buildId"] = boundary.build_id({key: proof[key] for key in boundary.STAMP_KEYS})
             path = self.root / f"linux-package-proof-{target}.json"
             boundary.write_json(path, proof)
             artifact = public / proof["artifacts"][0]["logicalName"]
@@ -807,7 +810,9 @@ class DesktopBoundaryTests(unittest.TestCase):
                         "logicalResource": "evidenceloom-desktop-fixture",
                         "sha256": "0" * 64,
                         "bytes": 1,
-                    } if stage == "app" else None,
+                    }
+                    if stage == "app"
+                    else None,
                 }
                 stamp["buildId"] = boundary.build_id(stamp)
                 boundary.validate_stamp(stamp)
@@ -880,7 +885,10 @@ class DesktopBoundaryTests(unittest.TestCase):
 
     def test_reuse_rejects_source_target_bytes_and_completion_changes(self):
         original = boundary.load_json(self.sidecar_path)
-        for field, value in [("target", boundary.ACCEPTANCE_TARGETS[1]), ("producer", "hash-only-record")]:
+        for field, value in [
+            ("target", boundary.ACCEPTANCE_TARGETS[1]),
+            ("producer", "hash-only-record"),
+        ]:
             proof = copy.deepcopy(original)
             proof[field] = value
             with self.assertRaises(boundary.BoundaryError):

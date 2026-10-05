@@ -318,7 +318,8 @@ def pipeline(args):
     work = work.parent.resolve(strict=True) / work.name
     boundary.require(work != repo and repo not in work.parents)
     boundary.require(
-        args.target in boundary.ACCEPTANCE_TARGETS and re.fullmatch(r"[0-9a-f]{40}", args.base_commit)
+        args.target in boundary.ACCEPTANCE_TARGETS
+        and re.fullmatch(r"[0-9a-f]{40}", args.base_commit)
     )
     # Signing inputs are rejected before starting any tool, not merely ignored.
     boundary.require(

@@ -473,7 +473,9 @@ def test_desktop_wrapper_rejects_false_readiness_before_distribution(tmp_path, m
 
 @pytest.mark.skipif(os.name == "nt", reason="Disposable npm shim requires POSIX executable scripts")
 @pytest.mark.parametrize("damage", ["missing", "tampered_bytes", "stale_source"])
-def test_desktop_wrapper_rejects_invalid_shipping_proof_before_probe_and_packaging(tmp_path, damage):
+def test_desktop_wrapper_rejects_invalid_shipping_proof_before_probe_and_packaging(
+    tmp_path, damage
+):
     target = _native_target()
     root = _fixture_repo(tmp_path)
     sidecar = root / "src-tauri" / "binaries" / ("evidenceloom-runner-" + target)
@@ -501,8 +503,13 @@ def test_desktop_wrapper_rejects_invalid_shipping_proof_before_probe_and_packagi
     environment["PATH"] = str(tools) + os.pathsep + environment.get("PATH", "")
     result = subprocess.run(
         [
-            "bash", str(root / "scripts" / "build_desktop_sidecar.sh"),
-            "--target", target, "--python", sys.executable, "--skip-sidecar",
+            "bash",
+            str(root / "scripts" / "build_desktop_sidecar.sh"),
+            "--target",
+            target,
+            "--python",
+            sys.executable,
+            "--skip-sidecar",
         ],
         env=environment,
         capture_output=True,
