@@ -5,7 +5,7 @@ credential store and runner through several helpers. A runner override alone can
 isolate a desktop acceptance test from an analyst's research data or credentials.
 This source slice centralizes those dependencies before the Tauri Builder is constructed.
 
-Implementation: `ba910a77592fca406695b125faf14ebb04f643ea`. Parent: `3a4a971ac1c436fb5883b479c86868c859fa06ed`. Six production paths and one test path.
+Implementation: `ba910a77592fca406695b125faf14ebb04f643ea`. Parent: `3a4a971ac1c436fb5883b479c86868c859fa06ed`. Six production paths and one test path; the final test-only portability fix is signed as `2f74a794eddc0d30f46273b7a41c523fdf73a312`.
 The [machine record](2026-10-05-desktop-application-environment.json) binds the exact
 source, original logs and independent review. Published-head three-platform CI is a
 separate pending gate at this document's creation.
@@ -31,16 +31,16 @@ binary. This phase supplies dependency routing, not a packaged acceptance featur
 
 ## Actual local checks
 
-| Check | Result |
-| --- | --- |
-| Cargo format | Exit 0 |
-| All-target locked offline test compilation | Exit 0; no compiler diagnostics |
-| All-target strict Clippy (`-D warnings`) | Exit 0 |
-| New application-environment routing tests | 12 passed, zero failures/ignores |
-| Complete Rust suite | 272 passed, zero failures, 3 explicit ignores |
+| Check | Source scope | Result |
+| --- | --- | --- |
+| Cargo format | Final04 | Exit 0 |
+| All-target strict Clippy (`-D warnings`) | Final04 | Exit 0 |
+| Application-environment routing on the owned alias | Final04 | 12 passed, zero failures/ignores; all targets compiled |
+| Original all-target locked offline test compilation | Historical03 | Exit 0; no compiler diagnostics |
+| Original complete Rust suite | Historical03 | 272 passed, zero failures, 3 explicit ignores |
 
 The x86_64-apple-darwin lane uses owned caches, home/temp and build output.
-Each final check records 53 source/config entries before and after with identical
+Each 03 and 04 check records 53 source/config entries before and after with identical
 bytes. Those snapshots cover 13 of the 15 frozen boundaries; the two unchanged
 sidecar build scripts were independently checked against the final freeze and parent
 Git blobs, without claiming check-time snapshots for them. No unchanged frontend or
@@ -52,7 +52,7 @@ effects. System controls inspect lazy callbacks and commands without calling the
 credential backend or running commands. Unix declares 12 cases; Windows declares 11,
 because the symlink-path control is Unix only. This is not a Windows execution result.
 
-Seven retained panic prints come from fixed existing owned failure injections; their
+Seven retained panic prints in the original03 full-suite log come from fixed existing owned failure injections; their
 corresponding cleanup/worker regression cases pass. The three ignored entries are the
 stdin-controlled native bridge and two tests requiring an explicitly packaged sidecar.
 Their local acceptance remains unexecuted. The compile-only exit-127 placeholder was
@@ -72,6 +72,45 @@ An earlier static receipt counted 13 tests. An append-only correction and the fi
 freeze record the actual 12 Unix/11 Windows declarations. A proposed runtime-info
 bypass was disproved by the frozen lazy project-root callback; no product change was
 made for that hypothesis. Original evidence is retained rather than overwritten.
+
+## CI routing coverage addendum
+
+Signed workflow commit: `5e41fc6c48cce47bf1d0c0d905214372c35e61ed`. The first publication head
+`56085e61eb5b830d5dc66168456882c42c0a4dfc` lacked an explicit
+application-environment filter in the three native jobs. Those jobs' existing filters
+could compile the new cases without executing all of them. Their incomplete CI
+observations remain retained and are superseded as a final gate, not classified as a
+product failure.
+
+One command now runs that filter on macOS ARM, macOS Intel and Windows. Linux's full
+Rust job already includes the cases. Independent review confirms the single-line
+change, seven native source/test files unchanged at that CI-only commit, and unchanged triggers, permissions,
+signing and upload behavior. No local Rust, frontend or Python check was repeated.
+The original source/check snapshots predate this CI-only edit; they are not a claim
+about the new workflow's check-time bytes. The cumulative PR now has eleven paths:
+six production files, one test, one CI workflow and three documents. Actual results at
+the new publication head remain a separate pending gate.
+
+## Test-fixture portability addendum
+
+Signed test-only commit: `2f74a794eddc0d30f46273b7a41c523fdf73a312`. The original fixture retained its
+raw directory spelling while the owned environment canonicalized that directory.
+A controlled symlink alias entirely inside the validation workspace reproduced the
+original exact case's assertion failure: zero passes, one failure, exit 101. This is
+a test expectation defect, not evidence that the production isolation policy failed.
+
+The final04 fixture canonicalizes its newly created root before creating the inert
+runner and retaining expected paths. Exactly one line changes; all six production
+files remain identical to the original03. On the same owned alias, all twelve routing
+cases pass, including the original failing case. Format and strict all-target Clippy
+also pass. Original and corrected logs and frozen test bytes remain separate.
+
+The original03 full-suite 272 passes and seven injected prints remain historical03
+observations. Full Rust was not repeated locally for this helper-only correction;
+the affected twelve cases were rerun and the Cargo routing command compiled all
+targets. The new PR head's complete Rust and three native targets remain pending.
+This owned Unix alias control is not an actual Windows extended-path or macOS `/var`
+execution result. No marker, application or GUI was launched.
 
 ## Acceptance still open
 

@@ -56,11 +56,163 @@
     },
     {
       "path": "src-tauri/src/application_environment/tests.rs",
+      "bytes": 24801,
+      "sha256": "19ea1eeb6905826af4aaa8c78acd6b456493b1dbea4fc6ce8ada289f1570a8b5"
+    }
+  ],
+  "controlledPanicCount": 7,
+  "controlledPanicClassification": [
+    {
+      "source": "src/analysis_execution/tests.rs:817:35",
+      "fixedFixtureMessage": "owned reader injection",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_execution/tests.rs:840:9",
+      "fixedFixtureMessage": "owned failed-cleanup worker injection",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_execution/tests.rs:420:9",
+      "fixedFixtureMessage": "owned worker injection",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_recovery/runtime_tests.rs:988:13",
+      "fixedFixtureMessage": "owned controlled read panic",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_recovery/runtime_tests.rs:970:46",
+      "fixedFixtureMessage": "owned controlled launch panic",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/main.rs:2082:13",
+      "fixedFixtureMessage": "owned Tauri worker after successful cleanup",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/main.rs:2054:13",
+      "fixedFixtureMessage": "owned Tauri worker with unfinished output",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    }
+  ],
+  "ignoredActualLines": [
+    "test analysis_recovery::runtime::tests::analysis_recovery_command_bridge ... ignored, owned frontend/native command bridge; stdin-controlled",
+    "test research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory ... ignored, requires explicitly built sidecar and fixture memory store",
+    "test runtime_probe::tests::packaged_artifact_verifies_actual_runtime ... ignored, requires explicitly built sidecar"
+  ],
+  "initialRoutingFailure": {
+    "passed": 11,
+    "failed": 1,
+    "classification": "test observation oracle: Command env_clear/env_remove yields absent entry rather than a None-valued deletion tombstone; original evidence preserved. Both have no forwarded credential value. Test-only assertion corrected; all production bytes unchanged."
+  },
+  "staticRecordCorrection": "freeze02 wrote13 test count; append-only correction records actual12/Windows11; old record unchanged.",
+  "boundaryScope": "53-source before/after covers 13 of 15 frozen boundaries; two build scripts verified separately, not claimed as check-time snapshots",
+  "shippingConstruction": "System only, selected before Builder; Owned factory and backend are cfg(test) only",
+  "publicContracts": "IPC DTOs, protocol, database schema13, CAS/journal/domain hashes, frontend, Python, dependencies and release configuration unchanged",
+  "remainingLimitations": [
+    "Phase A shipping factory remains System only; owned factory/backend cfg(test), not a production acceptance feature or settings/env/URL/RPC activation.",
+    "No app Builder startup, window/WebView, real Tauri invoke/listen, GUI or packaged sidecar launch occurred.",
+    "No user database, System credential API/Keychain, real provider/model/API or user profile was touched by these checks.",
+    "System path/credential default preservation is source-level plus pure-callback/owned-path control proof; no run against user state.",
+    "No full OS sandbox/all OS writes owned claim, no post-construction hostile filesystem race guarantee.",
+    "Mac Intel local engineering only; native platform CI and actual packaged GUI/IPC remain separate later gates.",
+    "No frontend checks repeated; copied final104 frontend/out serves compile resource only.",
+    "Two packaged bridges and JSONL fixture entry remained actual ignored; compile-only exit127 placeholder never executed or packaged.",
+    "All twelve professional acceptance groups OPEN, zero analyst/human acceptance, broader readiness UNKNOWN."
+  ],
+  "previousMergedSlice": {
+    "pr": "https://github.com/simonguo/evidenceloom/pull/104",
+    "merge": "3a4a971ac1c436fb5883b479c86868c859fa06ed",
+    "mainPushReview": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/main-push-ci-review/main-3a4a971-final-review-20261005T081453173077Z/review.json",
+      "bytes": 51799,
+      "sha256": "b2848009ff89dfdb585f16c75ff4f6a9810fa9d99b43c7bc92f9f7a9bc29272b"
+    },
+    "mainPushChecks": {
+      "success": 11,
+      "expectedSkipped": 3,
+      "failed": 0
+    },
+    "scope": "Actual main-push jobs/stages; no new passing raw-log counts or native/release trigger claim"
+  },
+  "publishedHeadCi": "pending at documentation creation; actual PR head is a separate gate",
+  "professionalObjective": {
+    "allTwelveAreasOpenOrPartial": true,
+    "completedExternalParticipants": 0,
+    "expertApprovedClaims": 0,
+    "participantAvailability": "unknown"
+  },
+  "ciCoverageAddendum": {
+    "signedWorkflowCommit": "5e41fc6c48cce47bf1d0c0d905214372c35e61ed",
+    "workflow": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/desktop-application-environment/.github/workflows/sidecar-diagnostics.yml",
+      "bytes": 10391,
+      "sha256": "70fe8da6cb6d46de5093cf790846e71b5caaedfe0b64ed84e179cc8a12936715"
+    },
+    "sourceCommitReceipt": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/root-ci-routing-source-20261005T084731830009Z/record.json",
+      "bytes": 10623,
+      "sha256": "e6e10c02f1d3319ac387df96da133f20028aaf25df3a68bdca7dfe2ad799c0e4"
+    },
+    "independentLineReview": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/independent-phase-a-ci-routing-line-review-20261005T084650922974Z/review.json",
+      "bytes": 2904,
+      "sha256": "07d08e144aacbb73ace5979bb7fc4e5273be3ee6e5c636ba700798bea920518b"
+    },
+    "previousPublishedHead": "56085e61eb5b830d5dc66168456882c42c0a4dfc",
+    "previousMonitorExit": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/pr-ci-review/superseded-old-head-confirmed-exit.json",
+      "bytes": 2794,
+      "sha256": "487c8ed2fa4dee7f2cbc36be0a8d26efb87f689a316f9a725561ae8c06c7111f"
+    },
+    "previousHeadFinalGateSuperseded": true,
+    "change": "Explicit application_environment Cargo filter on macOS ARM/Intel and Windows native jobs. Linux complete Rust already includes the cases. New-head CI remains pending.",
+    "counts": "12 Unix/11 Windows declarations; actual platform execution not predeclared. At CI commit5e the seven native files were unchanged; final04 has the separate test-only canonical-root correction.",
+    "snapshotBoundary": "Original 53-entry inventories and 15-boundary freeze predate this CI-only change. They do not describe check-time bytes of the new workflow.",
+    "totalChangedPaths": 11
+  },
+  "implementationCommitScope": "Original six production modules and original test03; final test fixture portability commit is bound separately.",
+  "initialNativeSourcePaths03": [
+    {
+      "path": "src-tauri/src/application_environment.rs",
+      "bytes": 11116,
+      "sha256": "06471df4e5e12d9bd813fd4414c4d0caebc43dad646c7d1732984fb8cf75e484"
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "bytes": 73216,
+      "sha256": "6927b1bf436d38106f4a1b410f86e8bba945f8947839e58b7938a2f958746f20"
+    },
+    {
+      "path": "src-tauri/src/storage.rs",
+      "bytes": 185200,
+      "sha256": "ff7d7b31814e3e00b5595dff78feb2ac9f9b025a5119c9c23122f17e28b1929a"
+    },
+    {
+      "path": "src-tauri/src/secrets.rs",
+      "bytes": 8722,
+      "sha256": "7b457f2aed638bcf566864eb09df4de7e4194126288d45a0d8a91c0ab45e515e"
+    },
+    {
+      "path": "src-tauri/src/runtime_probe.rs",
+      "bytes": 32790,
+      "sha256": "4727ebb8b466612dbea2f1f34c1c1ddb018424d8e602517f6439a576485e0294"
+    },
+    {
+      "path": "src-tauri/src/research_memory_inventory.rs",
+      "bytes": 14716,
+      "sha256": "77c88c50e2c1ab6128cc595bcb5e24fbea08d74e33f46679edeaa5da92f2622c"
+    },
+    {
+      "path": "src-tauri/src/application_environment/tests.rs",
       "bytes": 24752,
       "sha256": "2a1d4dcdfe710906f504997058c3c7da4fc4f0d78cef2fd44a2c6ed4809614ca"
     }
   ],
-  "checks": [
+  "initialChecks03": [
     {
       "name": "native-fmt-check-02",
       "receipt": {
@@ -253,7 +405,7 @@
       "compilerDiagnosticCount": null
     }
   ],
-  "actualFinalCounts": {
+  "initialCounts03": {
     "routing": {
       "passed": 12,
       "failed": 0,
@@ -267,89 +419,198 @@
     "strictAllTargetClippyExit": 0,
     "compilerWarningsOrErrors": 0
   },
-  "controlledPanicCount": 7,
-  "controlledPanicClassification": [
+  "finalNativeChecks04": [
     {
-      "source": "src/analysis_execution/tests.rs:817:35",
-      "fixedFixtureMessage": "owned reader injection",
-      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+      "name": "native-alias-fmt-04",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-fmt-04/receipt.json",
+        "bytes": 22196,
+        "sha256": "304b2bc557929f1bd916495d0ab0df2e8983778ba7f0690334e69967434f24ac"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.47877837499254383,
+      "sourceStable": true,
+      "currentSourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-fmt-04/stdout.raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-fmt-04/stderr.raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "aliasFixtureRoot": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/owned-fixture-root-alias-01/alias-fixtures"
     },
     {
-      "source": "src/analysis_execution/tests.rs:840:9",
-      "fixedFixtureMessage": "owned failed-cleanup worker injection",
-      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+      "name": "native-alias-clippy-04",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-clippy-04/receipt.json",
+        "bytes": 22274,
+        "sha256": "825745f6d8086e96089bd2091bc2104d5475fab6bad61c16d7cd8ad6d24cf409"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "clippy",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 8.22770849999506,
+      "sourceStable": true,
+      "currentSourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-clippy-04/stdout.raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-clippy-04/stderr.raw",
+          "bytes": 225,
+          "sha256": "9ae41141672f7fceabab28c962415f561f5b119ac77cf4daaa13fa6ef885111b"
+        }
+      ],
+      "aliasFixtureRoot": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/owned-fixture-root-alias-01/alias-fixtures"
     },
     {
-      "source": "src/analysis_execution/tests.rs:420:9",
-      "fixedFixtureMessage": "owned worker injection",
-      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
-    },
-    {
-      "source": "src/analysis_recovery/runtime_tests.rs:988:13",
-      "fixedFixtureMessage": "owned controlled read panic",
-      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
-    },
-    {
-      "source": "src/analysis_recovery/runtime_tests.rs:970:46",
-      "fixedFixtureMessage": "owned controlled launch panic",
-      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
-    },
-    {
-      "source": "src/main.rs:2082:13",
-      "fixedFixtureMessage": "owned Tauri worker after successful cleanup",
-      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
-    },
-    {
-      "source": "src/main.rs:2054:13",
-      "fixedFixtureMessage": "owned Tauri worker with unfinished output",
-      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+      "name": "native-alias-routing-04",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-routing-04/receipt.json",
+        "bytes": 22309,
+        "sha256": "21ca8a576368c398c2e1f58555649c7b3d14f556173e1e211c9f064d3c1f18b4"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "test",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "application_environment",
+        "--",
+        "--nocapture"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 13.449421249999432,
+      "sourceStable": true,
+      "currentSourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-routing-04/stdout.raw",
+          "bytes": 1632,
+          "sha256": "0bb4cb8814de79528ce460d77d1573031de8322a490f4d79032ce6a818e5b6b5"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-routing-04/stderr.raw",
+          "bytes": 419,
+          "sha256": "8d456dc20f1288d52a0d55c3292d020fe9855e3f94a76f7f50fd216ce5ac2b47"
+        }
+      ],
+      "aliasFixtureRoot": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/owned-fixture-root-alias-01/alias-fixtures"
     }
   ],
-  "ignoredActualLines": [
-    "test analysis_recovery::runtime::tests::analysis_recovery_command_bridge ... ignored, owned frontend/native command bridge; stdin-controlled",
-    "test research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory ... ignored, requires explicitly built sidecar and fixture memory store",
-    "test runtime_probe::tests::packaged_artifact_verifies_actual_runtime ... ignored, requires explicitly built sidecar"
-  ],
-  "initialRoutingFailure": {
-    "passed": 11,
-    "failed": 1,
-    "classification": "test observation oracle: Command env_clear/env_remove yields absent entry rather than a None-valued deletion tombstone; original evidence preserved. Both have no forwarded credential value. Test-only assertion corrected; all production bytes unchanged."
+  "finalRoutingCounts04": {
+    "passed": 12,
+    "failed": 0,
+    "ignored": 0,
+    "filteredOut": 263,
+    "sameAliasUsed": true,
+    "originalNegativeCaseNowPassed": "application_environment::tests::application_environment_owned_resolvers_never_evaluate_system_fallbacks",
+    "tests": "All targets compiled and 12 application_environment cases executed; no marker run."
   },
-  "staticRecordCorrection": "freeze02 wrote13 test count; append-only correction records actual12/Windows11; old record unchanged.",
-  "boundaryScope": "53-source before/after covers 13 of 15 frozen boundaries; two build scripts verified separately, not claimed as check-time snapshots",
-  "shippingConstruction": "System only, selected before Builder; Owned factory and backend are cfg(test) only",
-  "publicContracts": "IPC DTOs, protocol, database schema13, CAS/journal/domain hashes, frontend, Python, dependencies and release configuration unchanged",
-  "remainingLimitations": [
-    "Phase A shipping factory remains System only; owned factory/backend cfg(test), not a production acceptance feature or settings/env/URL/RPC activation.",
-    "No app Builder startup, window/WebView, real Tauri invoke/listen, GUI or packaged sidecar launch occurred.",
-    "No user database, System credential API/Keychain, real provider/model/API or user profile was touched by these checks.",
-    "System path/credential default preservation is source-level plus pure-callback/owned-path control proof; no run against user state.",
-    "No full OS sandbox/all OS writes owned claim, no post-construction hostile filesystem race guarantee.",
-    "Mac Intel local engineering only; native platform CI and actual packaged GUI/IPC remain separate later gates.",
-    "No frontend checks repeated; copied final104 frontend/out serves compile resource only.",
-    "Two packaged bridges and JSONL fixture entry remained actual ignored; compile-only exit127 placeholder never executed or packaged.",
-    "All twelve professional acceptance groups OPEN, zero analyst/human acceptance, broader readiness UNKNOWN."
-  ],
-  "previousMergedSlice": {
-    "pr": "https://github.com/simonguo/evidenceloom/pull/104",
-    "merge": "3a4a971ac1c436fb5883b479c86868c859fa06ed",
-    "mainPushReview": {
-      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/main-push-ci-review/main-3a4a971-final-review-20261005T081453173077Z/review.json",
-      "bytes": 51799,
-      "sha256": "b2848009ff89dfdb585f16c75ff4f6a9810fa9d99b43c7bc92f9f7a9bc29272b"
+  "priorFullSuiteHistory03": {
+    "receipt": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-full-rust-01/receipt.json",
+      "bytes": 22252,
+      "sha256": "1ea2ebed215723461af917c9596f2ad25d41553e1d8cbcdde63e4c36e45d2629"
     },
-    "mainPushChecks": {
-      "success": 11,
-      "expectedSkipped": 3,
-      "failed": 0
-    },
-    "scope": "Actual main-push jobs/stages; no new passing raw-log counts or native/release trigger claim"
+    "testSourceSHA": "2a1d4dcdfe710906f504997058c3c7da4fc4f0d78cef2fd44a2c6ed4809614ca",
+    "passed": 272,
+    "failed": 0,
+    "ignored": 3,
+    "belongsToFrozen03Only": true,
+    "rerunFor04": false
   },
-  "publishedHeadCi": "pending at documentation creation; actual PR head is a separate gate",
-  "professionalObjective": {
-    "allTwelveAreasOpenOrPartial": true,
-    "completedExternalParticipants": 0,
-    "expertApprovedClaims": 0,
-    "participantAvailability": "unknown"
+  "controlledPanicScope": "Seven retained prints from original03 full suite only; not a new04 full-suite or routing observation.",
+  "testPortabilityAddendum": {
+    "signedTestCommit": "2f74a794eddc0d30f46273b7a41c523fdf73a312",
+    "sourceCommitReceipt": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/root-test-portability-source-20261005T090127386199Z/record.json",
+      "bytes": 9488,
+      "sha256": "978992b9cadb742a7195e5623f9961813dc21f7d5eedfaadd6cca1a5b9e20fc4"
+    },
+    "authorEngineering": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-final-engineering-04/receipt.json",
+      "bytes": 10974,
+      "sha256": "5c7231000c466406203ac396125d3e398f7e9e043ee3657dff0b708dee5e20de"
+    },
+    "independentReview": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/independent-phase-a-test04-gate-20261005T085937660381Z/review.json",
+      "bytes": 9749,
+      "sha256": "8845b6a391cfc933804b2d4376d107b83316036e00fa21f3903551aa2731f2a5"
+    },
+    "finalTestSource": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-worktrees/desktop-application-environment/src-tauri/src/application_environment/tests.rs",
+      "bytes": 24801,
+      "sha256": "19ea1eeb6905826af4aaa8c78acd6b456493b1dbea4fc6ce8ada289f1570a8b5"
+    },
+    "negative03": {
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-negative-03/receipt.json",
+        "bytes": 22413,
+        "sha256": "3d5c06c36fdb6eeb889b6c4244096d2e82cd8eba0b2ab2180f23c74444d829eb"
+      },
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-negative-03/stdout.raw",
+          "bytes": 368,
+          "sha256": "c8f889b51f5b7d363a33b93b6b2f34221cc203dbc46c45d9d566bb4d2a75ecb5"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-alias-negative-03/stderr.raw",
+          "bytes": 1004,
+          "sha256": "6171ea2e4295110ddc5c9bcb9e66e9b9cc9f830a886d505e776b5f5bd1a5da0a"
+        }
+      ],
+      "passed": 0,
+      "failed": 1,
+      "ignored": 0,
+      "filteredOut": 274,
+      "testSource": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-candidate-freeze-03/source/src-tauri/src/application_environment/tests.rs",
+        "bytes": 24752,
+        "sha256": "2a1d4dcdfe710906f504997058c3c7da4fc4f0d78cef2fd44a2c6ed4809614ca"
+      },
+      "case": "application_environment::tests::application_environment_owned_resolvers_never_evaluate_system_fallbacks",
+      "classification": "Actual owned alias/canonical path representation mismatch; left is VAL real-fixtures and right VAL alias-fixtures, no external paths. Old03 preserved."
+    },
+    "positive04": {
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0,
+      "filteredOut": 263,
+      "sameAliasUsed": true,
+      "originalNegativeCaseNowPassed": "application_environment::tests::application_environment_owned_resolvers_never_evaluate_system_fallbacks",
+      "tests": "All targets compiled and 12 application_environment cases executed; no marker run."
+    },
+    "productionSixUnchanged": true,
+    "priorFull272Is03Only": true,
+    "full272RerunFor04": false,
+    "change": "Canonicalize the newly created test fixture root before creating the marker runner and retaining expected paths. No production code change.",
+    "actualComparisonScope": "Owned Unix symlink alias, not an observed Windows extended-path or macOS /var execution. New publication-head platform CI pending."
   }
 }
