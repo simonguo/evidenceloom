@@ -1,0 +1,355 @@
+{
+  "createdAtUtc": "2026-10-05T08:24:30.322032+00:00",
+  "slice": "Immutable desktop application dependencies, Phase A",
+  "base": "3a4a971ac1c436fb5883b479c86868c859fa06ed",
+  "implementationCommit": "ba910a77592fca406695b125faf14ebb04f643ea",
+  "sourceCommitReceipt": {
+    "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/root-source-commit-20261005T082420935304Z/record.json",
+    "bytes": 13754,
+    "sha256": "2a840a1e31205236c7298cb3905256cea78f931173b1540d32fc0a2155e40bd6"
+  },
+  "rootLocalAcceptance": {
+    "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/root-final-local-acceptance-01.json",
+    "bytes": 11191,
+    "sha256": "c637ac26478daf3af4bddb192d07b644bed72048ec75a8aed378716a7cd0699f"
+  },
+  "authorEngineering": {
+    "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-final-engineering-03/receipt.json",
+    "bytes": 19124,
+    "sha256": "4e910392db11a5abb0256017173625cc7fe469e4016ed44b24932a4cfc35d154"
+  },
+  "independentReview": {
+    "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/independent-phase-a-final-review-20261005T081907278549Z/final-index.json",
+    "bytes": 9544,
+    "sha256": "4ebc0b217851337d06c9595319421aedfe3da37c0fe5d27b557d90f1e7561ebe"
+  },
+  "sourcePaths": [
+    {
+      "path": "src-tauri/src/application_environment.rs",
+      "bytes": 11116,
+      "sha256": "06471df4e5e12d9bd813fd4414c4d0caebc43dad646c7d1732984fb8cf75e484"
+    },
+    {
+      "path": "src-tauri/src/main.rs",
+      "bytes": 73216,
+      "sha256": "6927b1bf436d38106f4a1b410f86e8bba945f8947839e58b7938a2f958746f20"
+    },
+    {
+      "path": "src-tauri/src/storage.rs",
+      "bytes": 185200,
+      "sha256": "ff7d7b31814e3e00b5595dff78feb2ac9f9b025a5119c9c23122f17e28b1929a"
+    },
+    {
+      "path": "src-tauri/src/secrets.rs",
+      "bytes": 8722,
+      "sha256": "7b457f2aed638bcf566864eb09df4de7e4194126288d45a0d8a91c0ab45e515e"
+    },
+    {
+      "path": "src-tauri/src/runtime_probe.rs",
+      "bytes": 32790,
+      "sha256": "4727ebb8b466612dbea2f1f34c1c1ddb018424d8e602517f6439a576485e0294"
+    },
+    {
+      "path": "src-tauri/src/research_memory_inventory.rs",
+      "bytes": 14716,
+      "sha256": "77c88c50e2c1ab6128cc595bcb5e24fbea08d74e33f46679edeaa5da92f2622c"
+    },
+    {
+      "path": "src-tauri/src/application_environment/tests.rs",
+      "bytes": 24752,
+      "sha256": "2a1d4dcdfe710906f504997058c3c7da4fc4f0d78cef2fd44a2c6ed4809614ca"
+    }
+  ],
+  "checks": [
+    {
+      "name": "native-fmt-check-02",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-fmt-check-02/receipt.json",
+        "bytes": 22199,
+        "sha256": "ea510829c37bfc428bfd38bbbb000cafeb9dbbdd2357d0032bbc32a8a8b754d3"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.5207012080063578,
+      "sourceStable": true,
+      "sourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-fmt-check-02/stdout.raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-fmt-check-02/stderr.raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "testSummaries": [],
+      "compilerDiagnosticCount": null
+    },
+    {
+      "name": "native-no-run-02",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-no-run-02/receipt.json",
+        "bytes": 22241,
+        "sha256": "497437a6d87daf5f970d627c834cf1cd47787b8deedd785ab95ab4bd883ad24f"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "test",
+        "--all-targets",
+        "--no-run",
+        "--locked",
+        "--offline",
+        "--message-format=json"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 12.501941375012393,
+      "sourceStable": true,
+      "sourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-no-run-02/stdout.raw",
+          "bytes": 406189,
+          "sha256": "5a0c8cb6ba4563398ea09971976da14680e1d9099141024656dbab49a9740c8e"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-no-run-02/stderr.raw",
+          "bytes": 227,
+          "sha256": "7bfff726a0d811cfdd717b15a828130ae5c18991799219e6c94c4e876cd29bea"
+        }
+      ],
+      "testSummaries": [],
+      "compilerDiagnosticCount": 0
+    },
+    {
+      "name": "native-clippy-02",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-clippy-02/receipt.json",
+        "bytes": 22228,
+        "sha256": "9fed2a32d295e67b890976597afaaa5474d6a5e017fea9da61d0551341376695"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "clippy",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 7.744320707992301,
+      "sourceStable": true,
+      "sourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-clippy-02/stdout.raw",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-clippy-02/stderr.raw",
+          "bytes": 225,
+          "sha256": "8cbf76cb5e595d8d6c60836f8239a2edb694d86a92e83c42e4fad27e48996b04"
+        }
+      ],
+      "testSummaries": [],
+      "compilerDiagnosticCount": null
+    },
+    {
+      "name": "native-routing-tests-02",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-routing-tests-02/receipt.json",
+        "bytes": 22316,
+        "sha256": "1c948822a5d71ef9e431ea7bccdbf842ded1452d4f74e19fc14184d6bf3e1cc3"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "test",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "application_environment",
+        "--",
+        "--nocapture"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 2.523575291997986,
+      "sourceStable": true,
+      "sourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-routing-tests-02/stdout.raw",
+          "bytes": 1632,
+          "sha256": "a5ed1616953d3794c855e3b02473447331d4642957576a6449e83f0b0fcdea8c"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-routing-tests-02/stderr.raw",
+          "bytes": 265,
+          "sha256": "a778fea07efefa000a0066b21aa565679111a1798ddf0cfd9f3bc86c4a59f165"
+        }
+      ],
+      "testSummaries": [
+        {
+          "passed": 12,
+          "failed": 0,
+          "ignored": 0,
+          "measured": 0,
+          "filteredOut": 263
+        }
+      ],
+      "compilerDiagnosticCount": null
+    },
+    {
+      "name": "native-full-rust-01",
+      "receipt": {
+        "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-full-rust-01/receipt.json",
+        "bytes": 22252,
+        "sha256": "1ea2ebed215723461af917c9596f2ad25d41553e1d8cbcdde63e4c36e45d2629"
+      },
+      "argv": [
+        "/Users/apple/.rustup/toolchains/1.95.0-x86_64-apple-darwin/bin/cargo",
+        "test",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--",
+        "--nocapture"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 13.726873999999953,
+      "sourceStable": true,
+      "sourceRows": 53,
+      "streams": [
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-full-rust-01/stdout.raw",
+          "bytes": 30540,
+          "sha256": "3826d7e87da4bfc838f051c5e856b4b1e84d3908c8a73f754290d127d1adf479"
+        },
+        {
+          "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/desktop-application-environment/native-full-rust-01/stderr.raw",
+          "bytes": 1221,
+          "sha256": "f5368d31f863fa6dc0a93fca860755491adfedd4aeb85d0625e8fd2fb439b661"
+        }
+      ],
+      "testSummaries": [
+        {
+          "passed": 272,
+          "failed": 0,
+          "ignored": 3,
+          "measured": 0,
+          "filteredOut": 0
+        }
+      ],
+      "compilerDiagnosticCount": null
+    }
+  ],
+  "actualFinalCounts": {
+    "routing": {
+      "passed": 12,
+      "failed": 0,
+      "ignored": 0
+    },
+    "fullRust": {
+      "passed": 272,
+      "failed": 0,
+      "ignored": 3
+    },
+    "strictAllTargetClippyExit": 0,
+    "compilerWarningsOrErrors": 0
+  },
+  "controlledPanicCount": 7,
+  "controlledPanicClassification": [
+    {
+      "source": "src/analysis_execution/tests.rs:817:35",
+      "fixedFixtureMessage": "owned reader injection",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_execution/tests.rs:840:9",
+      "fixedFixtureMessage": "owned failed-cleanup worker injection",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_execution/tests.rs:420:9",
+      "fixedFixtureMessage": "owned worker injection",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_recovery/runtime_tests.rs:988:13",
+      "fixedFixtureMessage": "owned controlled read panic",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/analysis_recovery/runtime_tests.rs:970:46",
+      "fixedFixtureMessage": "owned controlled launch panic",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/main.rs:2082:13",
+      "fixedFixtureMessage": "owned Tauri worker after successful cleanup",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    },
+    {
+      "source": "src/main.rs:2054:13",
+      "fixedFixtureMessage": "owned Tauri worker with unfinished output",
+      "classification": "intentional owned injection consumed by corresponding permanent regression; not runtime/provider GUI proof"
+    }
+  ],
+  "ignoredActualLines": [
+    "test analysis_recovery::runtime::tests::analysis_recovery_command_bridge ... ignored, owned frontend/native command bridge; stdin-controlled",
+    "test research_memory_inventory::tests::packaged_artifact_reads_saved_memory_inventory ... ignored, requires explicitly built sidecar and fixture memory store",
+    "test runtime_probe::tests::packaged_artifact_verifies_actual_runtime ... ignored, requires explicitly built sidecar"
+  ],
+  "initialRoutingFailure": {
+    "passed": 11,
+    "failed": 1,
+    "classification": "test observation oracle: Command env_clear/env_remove yields absent entry rather than a None-valued deletion tombstone; original evidence preserved. Both have no forwarded credential value. Test-only assertion corrected; all production bytes unchanged."
+  },
+  "staticRecordCorrection": "freeze02 wrote13 test count; append-only correction records actual12/Windows11; old record unchanged.",
+  "boundaryScope": "53-source before/after covers 13 of 15 frozen boundaries; two build scripts verified separately, not claimed as check-time snapshots",
+  "shippingConstruction": "System only, selected before Builder; Owned factory and backend are cfg(test) only",
+  "publicContracts": "IPC DTOs, protocol, database schema13, CAS/journal/domain hashes, frontend, Python, dependencies and release configuration unchanged",
+  "remainingLimitations": [
+    "Phase A shipping factory remains System only; owned factory/backend cfg(test), not a production acceptance feature or settings/env/URL/RPC activation.",
+    "No app Builder startup, window/WebView, real Tauri invoke/listen, GUI or packaged sidecar launch occurred.",
+    "No user database, System credential API/Keychain, real provider/model/API or user profile was touched by these checks.",
+    "System path/credential default preservation is source-level plus pure-callback/owned-path control proof; no run against user state.",
+    "No full OS sandbox/all OS writes owned claim, no post-construction hostile filesystem race guarantee.",
+    "Mac Intel local engineering only; native platform CI and actual packaged GUI/IPC remain separate later gates.",
+    "No frontend checks repeated; copied final104 frontend/out serves compile resource only.",
+    "Two packaged bridges and JSONL fixture entry remained actual ignored; compile-only exit127 placeholder never executed or packaged.",
+    "All twelve professional acceptance groups OPEN, zero analyst/human acceptance, broader readiness UNKNOWN."
+  ],
+  "previousMergedSlice": {
+    "pr": "https://github.com/simonguo/evidenceloom/pull/104",
+    "merge": "3a4a971ac1c436fb5883b479c86868c859fa06ed",
+    "mainPushReview": {
+      "path": "/Users/apple/workspace/TradingAgents/evidenceloom-validation/saved-numeric-review-context/main-push-ci-review/main-3a4a971-final-review-20261005T081453173077Z/review.json",
+      "bytes": 51799,
+      "sha256": "b2848009ff89dfdb585f16c75ff4f6a9810fa9d99b43c7bc92f9f7a9bc29272b"
+    },
+    "mainPushChecks": {
+      "success": 11,
+      "expectedSkipped": 3,
+      "failed": 0
+    },
+    "scope": "Actual main-push jobs/stages; no new passing raw-log counts or native/release trigger claim"
+  },
+  "publishedHeadCi": "pending at documentation creation; actual PR head is a separate gate",
+  "professionalObjective": {
+    "allTwelveAreasOpenOrPartial": true,
+    "completedExternalParticipants": 0,
+    "expertApprovedClaims": 0,
+    "participantAvailability": "unknown"
+  }
+}
