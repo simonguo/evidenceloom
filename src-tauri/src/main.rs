@@ -527,15 +527,29 @@ fn load_ohlcv_chart_data_process(
         &child_environment.secrets,
     );
     if !output.status.success() {
-        return Err(readable_runner_error(&stdout, &stderr));
+        return Err(redact_text(
+            &readable_runner_error(&stdout, &stderr),
+            &child_environment.secrets,
+        ));
     }
 
-    serde_json::from_str::<Vec<OhlcvBar>>(&stdout).map_err(|error| {
-        format!(
-            "Failed to parse OHLCV chart data: {error}. Output: {}",
-            stdout.chars().take(500).collect::<String>()
+    parse_ohlcv_stdout(&stdout, &child_environment.secrets)
+}
+
+fn parse_ohlcv_stdout(stdout: &str, secrets: &[String]) -> Result<Vec<OhlcvBar>, String> {
+    let mut bars = serde_json::from_str::<Vec<OhlcvBar>>(stdout).map_err(|error| {
+        redact_text(
+            &format!(
+                "Failed to parse OHLCV chart data: {error}. Output: {}",
+                stdout.chars().take(500).collect::<String>()
+            ),
+            secrets,
         )
-    })
+    })?;
+    for bar in &mut bars {
+        bar.time = redact_text(&bar.time, secrets);
+    }
+    Ok(bars)
 }
 
 #[tauri::command]
@@ -768,14 +782,19 @@ fn run_json_command(
         &child_environment.secrets,
     );
     if !output.status.success() {
-        return Err(readable_runner_error(&stdout, &stderr));
+        return Err(redact_text(
+            &readable_runner_error(&stdout, &stderr),
+            &child_environment.secrets,
+        ));
     }
-    serde_json::from_str::<Value>(&stdout).map_err(|error| {
+    let mut value = serde_json::from_str::<Value>(&stdout).map_err(|error| {
         format!(
             "Failed to parse {label} output: {error}. Output: {}",
             stdout.chars().take(500).collect::<String>()
         )
-    })
+    })?;
+    redact_json_strings(&mut value, &child_environment.secrets)?;
+    Ok(value)
 }
 
 fn readable_runner_error(stdout: &str, stderr: &str) -> String {
@@ -1852,6 +1871,31 @@ fn redact_text(text: &str, secrets: &[String]) -> String {
             redacted.replace(secret, "[REDACTED]")
         }
     })
+}
+
+fn redact_json_strings(value: &mut Value, secrets: &[String]) -> Result<(), String> {
+    match value {
+        Value::String(text) => *text = redact_text(text, secrets),
+        Value::Array(values) => {
+            for value in values {
+                redact_json_strings(value, secrets)?;
+            }
+        }
+        Value::Object(fields) => {
+            for (key, value) in fields {
+                // Do not rename decoded keys or collapse fields on collision.
+                if secrets
+                    .iter()
+                    .any(|secret| !secret.is_empty() && key.contains(secret.as_str()))
+                {
+                    return Err("Runner output contains a credential in a field name.".to_string());
+                }
+                redact_json_strings(value, secrets)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
 }
 
 fn sanitize_payload(payload: &Value) -> Value {

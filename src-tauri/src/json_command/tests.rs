@@ -3,7 +3,7 @@ use crate::{ApplicationEnvironment, ChildEnvironment, JsonCommandContext};
 use serde_json::json;
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{atomic::AtomicU64, OnceLock},
     thread::JoinHandle,
 };
@@ -80,6 +80,50 @@ impl Fixture {
         until(|| self.directory.join("ready").exists());
     }
 
+    fn await_ready_with_running(&self, running: &mut Running) -> Result<(), ReadyFailure> {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            let failure = match running.peek_result() {
+                Ok(Some(_)) => Some(ReadyFailure::Completed),
+                Err(_) => Some(ReadyFailure::Disconnected),
+                Ok(None) => None,
+            };
+            if let Some(failure) = failure {
+                self.record_ready_failure(failure, running)?;
+                return Err(failure);
+            }
+            if self.directory.join("ready").exists() {
+                return Ok(());
+            }
+            if Instant::now() >= deadline {
+                self.record_ready_failure(ReadyFailure::Timeout, running)?;
+                return Err(ReadyFailure::Timeout);
+            }
+            thread::sleep(Duration::from_millis(5));
+        }
+    }
+
+    fn record_ready_failure(
+        &self,
+        failure: ReadyFailure,
+        running: &Running,
+    ) -> Result<(), ReadyFailure> {
+        let value = json!({
+            "failure":format!("{failure:?}"),
+            "readyObserved":self.directory.join("ready").exists(),
+            "inputObserved":self.directory.join("input").exists(),
+            "originalResultCached":running.cached_result.as_ref().map(running_result_summary),
+            "callerHandleFinished":running.handle.as_ref().is_some_and(|handle| handle.is_finished()),
+            "actualCallerJoinObserved":false,
+            "cleanupCertified":false
+        });
+        fs::write(
+            self.directory.join("ready-observation.json"),
+            value.to_string(),
+        )
+        .map_err(|_| ReadyFailure::EvidenceWrite)
+    }
+
     fn counter(&self) -> u64 {
         fs::read_to_string(self.directory.join("heartbeat"))
             .unwrap()
@@ -95,6 +139,12 @@ impl Fixture {
         let first = self.counter();
         thread::sleep(Duration::from_millis(100));
         assert_eq!(first, self.counter(), "owned descendant still writing");
+    }
+
+    fn raw(&self, supervisor: &Supervisor, mode: &str) -> Output {
+        supervisor
+            .execute_with_policy(CommandKind::Chart, self.command(mode), None, policy())
+            .unwrap()
     }
 
     fn json(&self, supervisor: &Supervisor, mode: &str) -> Result<Value, String> {
@@ -159,21 +209,116 @@ fn policy() -> Policy {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ReadyFailure {
+    Completed,
+    Disconnected,
+    Timeout,
+    EvidenceWrite,
+}
+
+fn running_result_summary(result: &Result<Output, CommandFailure>) -> Value {
+    match result {
+        Ok(output) => json!({
+            "kind":"output",
+            "exitSuccess":output.status.success(),
+            "exitCode":output.status.code(),
+            "exitStatus":format!("{:?}", output.status),
+            "stdoutBytes":output.stdout.len(),
+            "stderrBytes":output.stderr.len()
+        }),
+        Err(error) => json!({
+            "kind":"failure",
+            "cause":format!("{:?}", error.cause),
+            "cleanupPending":error.cleanup_pending,
+            "message":error.message(),
+            "returnedRawStreamsAvailable":false
+        }),
+    }
+}
+
+fn record_running_result(directory: &Path, result: &Result<Output, CommandFailure>) {
+    let write = || -> io::Result<()> {
+        if let Ok(output) = result {
+            fs::write(directory.join("running.stdout.raw"), &output.stdout)?;
+            fs::write(directory.join("running.stderr.raw"), &output.stderr)?;
+        }
+        fs::write(
+            directory.join("running-result.json"),
+            json!({
+                "actualOriginalCallerResultObserved":true,
+                "result":running_result_summary(result),
+                "actualCallerJoinObserved":false,
+                "cleanupCertified":false
+            })
+            .to_string(),
+        )
+    };
+    if let Err(error) = write() {
+        eprintln!(
+            "owned running result evidence write failed: {:?}",
+            error.kind()
+        );
+    }
+}
+
+fn record_running_join(directory: &Path, panicked: bool, cached: bool) -> io::Result<()> {
+    fs::write(
+        directory.join("running-join.json"),
+        json!({
+            "actualOriginalCallerJoinObserved":true,
+            "callerPanicked":panicked,
+            "cachedOriginalResultObserved":cached,
+            "cleanupCertified":false
+        })
+        .to_string(),
+    )
+}
+
 struct Running {
     result: Receiver<Result<Output, CommandFailure>>,
+    cached_result: Option<Result<Output, CommandFailure>>,
     handle: Option<JoinHandle<()>>,
+    directory: PathBuf,
 }
 impl Running {
+    fn peek_result(&mut self) -> Result<Option<&Result<Output, CommandFailure>>, TryRecvError> {
+        if self.cached_result.is_none() {
+            match self.result.try_recv() {
+                Ok(result) => self.cached_result = Some(result),
+                Err(TryRecvError::Empty) => return Ok(None),
+                Err(error) => return Err(error),
+            }
+        }
+        Ok(self.cached_result.as_ref())
+    }
+
     fn finish(mut self) -> Result<Output, CommandFailure> {
-        let result = self.result.recv_timeout(Duration::from_secs(12)).unwrap();
-        self.handle.take().unwrap().join().unwrap();
+        let cached = self.cached_result.is_some();
+        let result = self
+            .cached_result
+            .take()
+            .unwrap_or_else(|| self.result.recv_timeout(Duration::from_secs(12)).unwrap());
+        let joined = self.handle.take().unwrap().join();
+        record_running_join(&self.directory, joined.is_err(), cached).unwrap();
+        joined.unwrap();
         result
     }
 }
 impl Drop for Running {
     fn drop(&mut self) {
         if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
+            let joined = handle.join();
+            if let Err(error) = record_running_join(
+                &self.directory,
+                joined.is_err(),
+                self.cached_result.is_some(),
+            ) {
+                eprintln!(
+                    "owned running join evidence write failed: {:?}",
+                    error.kind()
+                );
+            }
         }
     }
 }
@@ -185,17 +330,31 @@ fn launch(
     input: Option<Value>,
     policy: Policy,
 ) -> Running {
+    launch_command(supervisor, fixture, fixture.command(mode), input, policy)
+}
+
+fn launch_command(
+    supervisor: &Arc<Supervisor>,
+    fixture: &Fixture,
+    command: Command,
+    input: Option<Value>,
+    policy: Policy,
+) -> Running {
     let supervisor = supervisor.clone();
-    let command = fixture.command(mode);
+    let directory = fixture.directory.clone();
+    let result_directory = directory.clone();
     let (send, result) = mpsc::channel();
     let handle = thread::spawn(move || {
         let outcome =
             supervisor.execute_with_policy(CommandKind::Chart, command, input.as_ref(), policy);
+        record_running_result(&result_directory, &outcome);
         let _ = send.send(outcome);
     });
     Running {
         result,
+        cached_result: None,
         handle: Some(handle),
+        directory,
     }
 }
 
@@ -209,6 +368,8 @@ fn launch_with_setup(
 ) -> Running {
     let supervisor = supervisor.clone();
     let command = fixture.command(mode);
+    let directory = fixture.directory.clone();
+    let result_directory = directory.clone();
     let (send, result) = mpsc::channel();
     let handle = thread::spawn(move || {
         let outcome = supervisor.execute_with_setup(
@@ -218,11 +379,14 @@ fn launch_with_setup(
             policy,
             setup,
         );
+        record_running_result(&result_directory, &outcome);
         let _ = send.send(outcome);
     });
     Running {
         result,
+        cached_result: None,
         handle: Some(handle),
+        directory,
     }
 }
 
@@ -357,6 +521,116 @@ fn json_callers_preserve_result_redaction_utf8_errors_and_parse_excerpt() {
         "Runner exited without an error message."
     );
     assert_eq!(owner_count(&supervisor), 0);
+}
+
+#[test]
+fn decoded_json_error_redacts_escaped_credential_after_stderr_selection() {
+    let fixture = Fixture::new();
+    let supervisor = Supervisor::default();
+    assert_eq!(
+        fixture.json(&supervisor, "escaped-error").unwrap_err(),
+        "[REDACTED] concrete failure"
+    );
+    assert_eq!(owner_count(&supervisor), 0);
+}
+
+#[test]
+fn decoded_json_message_redacts_escaped_credential_after_stdout_fallback() {
+    let fixture = Fixture::new();
+    let supervisor = Supervisor::default();
+    assert_eq!(
+        fixture.json(&supervisor, "escaped-message").unwrap_err(),
+        "[REDACTED] stdout failure"
+    );
+    assert_eq!(owner_count(&supervisor), 0);
+}
+
+#[test]
+fn decoded_json_success_redacts_nested_strings_and_preserves_ordinary_shape() {
+    let fixture = Fixture::new();
+    let supervisor = Supervisor::default();
+    assert_eq!(
+        fixture.json(&supervisor, "escaped-success").unwrap(),
+        json!({
+            "ok":true,
+            "message":"[REDACTED]",
+            "nested":{
+                "values":["ordinary","[REDACTED]",{"message":"prefix-[REDACTED]-suffix"}],
+                "[REDACTED]":"ordinary marker key"
+            },
+            "count":3,
+            "empty":null,
+            "flag":false
+        })
+    );
+    assert_eq!(owner_count(&supervisor), 0);
+}
+
+#[test]
+fn decoded_json_secret_key_rejects_response_without_renaming_or_collapsing_fields() {
+    let fixture = Fixture::new();
+    let supervisor = Supervisor::default();
+    assert_eq!(
+        fixture.json(&supervisor, "escaped-key").unwrap_err(),
+        "Runner output contains a credential in a field name."
+    );
+    assert_eq!(owner_count(&supervisor), 0);
+}
+
+#[test]
+fn decoded_json_python_ohlcv_time_redacts_escaped_credential_and_preserves_typed_shape() {
+    let fixture = Fixture::new();
+    let supervisor = Supervisor::default();
+    let output = fixture.raw(&supervisor, "escaped-chart-time");
+    assert!(output.status.success());
+    assert_eq!(owner_count(&supervisor), 0);
+    assert!(fs::read(fixture.directory.join("input"))
+        .unwrap()
+        .is_empty());
+    let secrets = vec![String::new(), "fictional-secret".into()];
+    let stdout = crate::redact_text(String::from_utf8_lossy(&output.stdout).trim(), &secrets);
+    assert!(!stdout.contains("fictional-secret"));
+    assert!(stdout.contains(r"\u0066ictional-secret"));
+    let bars = crate::parse_ohlcv_stdout(&stdout, &secrets).unwrap();
+    assert_eq!(bars.len(), 2);
+    assert_eq!(bars[0].time, "prefix-[REDACTED]-suffix");
+    assert_eq!(
+        serde_json::to_value(&bars).unwrap(),
+        json!([
+            {
+                "time":"prefix-[REDACTED]-suffix",
+                "open":1.25,"high":2.0,"low":0.5,"close":1.75,"volume":3.0
+            },
+            {
+                "time":"2026-01-02",
+                "open":10.0,"high":12.0,"low":9.0,"close":11.0,"volume":99.0
+            }
+        ])
+    );
+}
+
+#[test]
+fn decoded_json_python_ohlcv_type_error_redacts_decoded_credential_and_preserves_excerpt() {
+    let fixture = Fixture::new();
+    let supervisor = Supervisor::default();
+    let output = fixture.raw(&supervisor, "escaped-chart-number-error");
+    assert!(output.status.success());
+    assert_eq!(owner_count(&supervisor), 0);
+    let secrets = vec!["fictional-secret".into()];
+    let stdout = crate::redact_text(String::from_utf8_lossy(&output.stdout).trim(), &secrets);
+    assert!(!stdout.contains("fictional-secret"));
+    assert!(stdout.contains(r"\u0066ictional-secret"));
+    assert!(stdout.chars().count() > 500);
+    let error = crate::parse_ohlcv_stdout(&stdout, &secrets)
+        .err()
+        .expect("an escaped string must not parse as an OHLCV number");
+    assert!(error.starts_with("Failed to parse OHLCV chart data: invalid type: string "));
+    assert!(!error.contains("fictional-secret"), "{error}");
+    assert!(error.contains("[REDACTED]"), "{error}");
+    assert_eq!(
+        error.rsplit_once("Output: ").unwrap().1,
+        stdout.chars().take(500).collect::<String>()
+    );
 }
 
 #[test]
@@ -571,12 +845,12 @@ fn healthy_same_purpose_chart_requests_overlap_without_superseding() {
 fn full_pool_rejects_a_ninth_request_without_cancelling_the_eight() {
     let supervisor = Arc::new(Supervisor::default());
     let fixtures: Vec<_> = (0..MAX_OWNERS).map(|_| Fixture::new()).collect();
-    let running: Vec<_> = fixtures
+    let mut running: Vec<_> = fixtures
         .iter()
         .map(|fixture| launch(&supervisor, fixture, "gate", Some(json!({})), policy()))
         .collect();
-    for fixture in &fixtures {
-        fixture.await_ready();
+    for (fixture, operation) in fixtures.iter().zip(&mut running) {
+        fixture.await_ready_with_running(operation).unwrap();
     }
     let ninth = Fixture::new();
     let started = Instant::now();
@@ -601,6 +875,49 @@ fn full_pool_rejects_a_ninth_request_without_cancelling_the_eight() {
     for result in results {
         assert!(result.unwrap().status.success());
     }
+    assert_eq!(owner_count(&supervisor), 0);
+}
+
+#[test]
+fn missing_executable_preserves_the_original_start_failure_through_ready_observation_and_join() {
+    let fixture = Fixture::new();
+    let supervisor = Arc::new(Supervisor::default());
+    let missing = fixture.directory.join("owned-nonexistent-executable");
+    assert!(!missing.exists());
+    let mut command = Command::new(&missing);
+    command.current_dir(&fixture.directory).env_clear();
+    let mut running = launch_command(&supervisor, &fixture, command, Some(json!({})), policy());
+    assert_eq!(
+        fixture.await_ready_with_running(&mut running),
+        Err(ReadyFailure::Completed)
+    );
+    let original = running
+        .peek_result()
+        .unwrap()
+        .unwrap()
+        .as_ref()
+        .unwrap_err();
+    assert_eq!(original.cause, Cause::Start);
+    assert!(!original.cleanup_pending);
+    assert_eq!(owner_count(&supervisor), 0);
+    assert!(!fixture.directory.join("ready").exists());
+    assert!(!fixture.directory.join("input").exists());
+    let result_record: Value =
+        serde_json::from_slice(&fs::read(fixture.directory.join("running-result.json")).unwrap())
+            .unwrap();
+    assert_eq!(result_record["result"]["cause"], "Start");
+    assert_eq!(result_record["result"]["cleanupPending"], false);
+    assert_eq!(result_record["actualCallerJoinObserved"], false);
+    let original_cause = original.cause;
+    let finished = running.finish().unwrap_err();
+    assert_eq!(finished.cause, original_cause);
+    assert!(!finished.cleanup_pending);
+    let joined: Value =
+        serde_json::from_slice(&fs::read(fixture.directory.join("running-join.json")).unwrap())
+            .unwrap();
+    assert_eq!(joined["actualOriginalCallerJoinObserved"], true);
+    assert_eq!(joined["callerPanicked"], false);
+    assert_eq!(joined["cachedOriginalResultObserved"], true);
     assert_eq!(owner_count(&supervisor), 0);
 }
 

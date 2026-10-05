@@ -116,6 +116,37 @@ fn main() {
             eprintln!("{{\"error\":\"fictional-secret concrete failure\"}}");
             process::exit(1);
         }
+        "escaped-error" => {
+            println!("{}", r#"{"error":"stdout fallback"}"#);
+            eprintln!("{}", r#"{"error":"\u0066ictional-secret concrete failure"}"#);
+            process::exit(1);
+        }
+        "escaped-message" => {
+            println!("{}", r#"{"message":"\u0066ictional-secret stdout failure"}"#);
+            process::exit(1);
+        }
+        "escaped-success" => println!(
+            "{}",
+            r#"{"ok":true,"message":"\u0066ictional-secret","nested":{"values":["ordinary","\u0066ictional-secret",{"message":"prefix-\u0066ictional-secret-suffix"}],"[REDACTED]":"ordinary marker key"},"count":3,"empty":null,"flag":false}"#
+        ),
+        "escaped-key" => println!(
+            "{}",
+            r#"{"\u0066ictional-secret":"private value","[REDACTED]":"ordinary marker key","ordinary":7}"#
+        ),
+        "escaped-chart-time" => {
+            assert!(input.is_empty());
+            println!(
+                "{}",
+                r#"[{"time":"prefix-\u0066ictional-secret-suffix","open":1.25,"high":2,"low":0.5,"close":1.75,"volume":3},{"time":"2026-01-02","open":10,"high":12,"low":9,"close":11,"volume":99}]"#
+            );
+        }
+        "escaped-chart-number-error" => {
+            assert!(input.is_empty());
+            println!(
+                r#"[{{"time":"2026-01-02","open":"\u0066ictional-secret","high":2,"low":1,"close":2,"volume":3,"trailer":"{}"}}]"#,
+                "x".repeat(600)
+            );
+        }
         "stdout-limit" => io::stdout().write_all(&vec![b'x'; 1024 * 1024 + 1]).unwrap(),
         "stderr-limit" => io::stderr().write_all(&vec![b'x'; 256 * 1024 + 1]).unwrap(),
         "fill-both" => {}
