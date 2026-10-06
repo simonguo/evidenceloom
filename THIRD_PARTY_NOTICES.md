@@ -694,7 +694,7 @@ uv run python scripts/generate_third_party_notices.py
 | `side-channel-map` | `1.0.1` | MIT | — |
 | `side-channel-weakmap` | `1.0.2` | MIT | — |
 | `siginfo` | `2.0.0` | ISC | — |
-| `source-map-js` | `1.2.1` | BSD-3-Clause | — |
+| `source-map-js` | `1.2.2` | BSD-3-Clause | — |
 | `space-separated-tokens` | `2.0.2` | MIT | — |
 | `stable-hash` | `0.0.5` | MIT | — |
 | `stackback` | `0.0.2` | MIT | — |

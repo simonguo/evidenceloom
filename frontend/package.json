@@ -47,6 +47,7 @@
   },
   "overrides": {
     "postcss": "$postcss",
-    "sharp": "$sharp"
+    "sharp": "$sharp",
+    "source-map-js": "1.2.2"
   }
 }
