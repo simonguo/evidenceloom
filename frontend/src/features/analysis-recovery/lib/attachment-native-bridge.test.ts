@@ -84,7 +84,16 @@ it.skipIf(!executable).each(["same-realm-stop", "fresh-realm-stop", "completion-
         await releaseWorker();
         // Completion is actual worker output committed by native helpers while listener ACK is withheld.
         const deadline = Date.now() + 10000; let sealed = false;
-        while (!sealed && Date.now() < deadline) { const cut = await bridge.invoke("load_analysis_recovery", { requestJson: protocol }) as { journals: { journalId: string; sealedThroughSeq: string | null }[] }; sealed = cut.journals.some((journal) => journal.journalId === original.journalId && journal.sealedThroughSeq !== null); if (!sealed) await new Promise((resolve) => setTimeout(resolve, 20)); }
+        while (!sealed && Date.now() < deadline) {
+          try {
+            const cut = await bridge.invoke("load_analysis_recovery", { requestJson: protocol }) as { journals: { journalId: string; sealedThroughSeq: string | null }[] };
+            sealed = cut.journals.some((journal) => journal.journalId === original.journalId && journal.sealedThroughSeq !== null);
+          } catch (cause) {
+            // The native snapshot can reject a cut while the original worker changes its revision.
+            if (typeof cause !== "object" || cause === null || !("code" in cause) || cause.code !== "analysis_observation_changed") throw cause;
+          }
+          if (!sealed) await new Promise((resolve) => setTimeout(resolve, 20));
+        }
         expect(sealed).toBe(true);
         listenerAck.resolve(); holdRegistration = false; dropWakes = false;
         await watching;
