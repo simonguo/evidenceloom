@@ -22,11 +22,12 @@ path = "src/desktop_acceptance/sidecar.rs"
 required-features = ["desktop-acceptance"]
 
 [build-dependencies]
+quote = "1"
 tauri-build = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip", "raw_value"] }
 sha2 = "0.10"
-tauri-utils = { version = "=2.9.3", default-features = false }
+tauri-utils = { version = "=2.9.3", default-features = false, features = ["build-2"] }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

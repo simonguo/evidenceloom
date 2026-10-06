@@ -18,6 +18,11 @@
 #   scripts/build_desktop_sidecar.sh --skip-sidecar   # re-package Tauri after fixing hiddenimports
 set -euo pipefail
 
+if [[ ${EVIDENCELOOM_DESKTOP_FRONTEND_ENTRY+x} ]]; then
+  echo "desktop_proof_invalid: shipping frontend selector must be absent" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 TARGET_TRIPLE=""
@@ -143,11 +148,14 @@ if [[ "$SKIP_TAURI" -eq 0 ]]; then
   echo ""
   echo "==> Step 3: Building Tauri app (EVIDENCELOOM_RUNNER_MODE=$RUNNER_MODE)..."
   PROOF_DIR="$REPO_ROOT/src-tauri/target/$TARGET_TRIPLE/release/desktop-shipping-proofs/$($PYTHON -c 'import uuid; print(uuid.uuid4().hex)')"
-  mkdir -p "$PROOF_DIR"
+  mkdir -m 700 -p "$PROOF_DIR"
   # The frontend is built exactly once. The subsequent CLI hook is removed from
   # the effective overlay so Next's per-build identifier cannot invalidate proof.
   cd "$REPO_ROOT/frontend"
-  npm run build:tauri
+  "$PYTHON" "$REPO_ROOT/scripts/desktop_frontend_evidence.py" \
+    --frontend "$REPO_ROOT/frontend" --evidence-parent "$PROOF_DIR" \
+    --receipt-output "$PROOF_DIR/frontend-receipt.json"
+  FRONTEND_PROOF="$($PYTHON -c 'import json,sys; print(json.load(open(sys.argv[1]))["frontendProof"])' "$PROOF_DIR/frontend-receipt.json")"
   "$PYTHON" - "$TAURI_CONFIG" "$PROOF_DIR/tauri-overlay.json" <<'PY'
 import json
 from pathlib import Path
@@ -175,7 +183,8 @@ PY
   )"
   "$PYTHON" "$BOUNDARY" prepare-shipping --repo "$REPO_ROOT" --target "$TARGET_TRIPLE" \
     --binary "$SIDECAR_BIN" --proof "$SIDECAR_PROOF" --base-commit "$BASE_COMMIT" \
-    --directory "$PROOF_DIR/app-stage" --overlay "$PROOF_DIR/tauri-overlay.json" --typed-config "$TYPED_CONFIG"
+    --directory "$PROOF_DIR/app-stage" --overlay "$PROOF_DIR/tauri-overlay.json" --typed-config "$TYPED_CONFIG" \
+    --frontend-proof "$FRONTEND_PROOF"
   cd "$REPO_ROOT/frontend"
   EVIDENCELOOM_RUNNER_MODE="$RUNNER_MODE" \
     EVIDENCELOOM_DESKTOP_BUILD_STAMP="$PROOF_DIR/app-stage/desktop-build-stamp.json" \

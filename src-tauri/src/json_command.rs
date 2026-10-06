@@ -27,6 +27,12 @@ pub(crate) enum CommandKind {
     Instrument,
     ConnectionTest,
     Chart,
+    #[cfg(feature = "desktop-acceptance")]
+    RuntimeProbe,
+    #[cfg(feature = "desktop-acceptance")]
+    MemoryInventory,
+    #[cfg(feature = "desktop-acceptance")]
+    PythonDiagnostic,
 }
 impl CommandKind {
     fn tag(self) -> &'static str {
@@ -34,6 +40,12 @@ impl CommandKind {
             Self::Instrument => "auxiliary-instrument",
             Self::ConnectionTest => "auxiliary-connection",
             Self::Chart => "auxiliary-chart",
+            #[cfg(feature = "desktop-acceptance")]
+            Self::RuntimeProbe => "acceptance-runtime-probe",
+            #[cfg(feature = "desktop-acceptance")]
+            Self::MemoryInventory => "acceptance-memory-inventory",
+            #[cfg(feature = "desktop-acceptance")]
+            Self::PythonDiagnostic => "acceptance-python-diagnostic",
         }
     }
 }
@@ -68,6 +80,22 @@ impl CommandFailure {
         }
     }
 
+    #[cfg(feature = "desktop-acceptance")]
+    pub(crate) fn native_read_failure(&self) -> crate::runtime_probe::ProbeFailure {
+        use crate::runtime_probe::ProbeFailure as Failure;
+        if self.cleanup_pending {
+            return Failure::Cleanup;
+        }
+        match self.cause {
+            Cause::Start | Cause::Identity => Failure::Start,
+            Cause::Input | Cause::InputLimit => Failure::Input,
+            Cause::Read | Cause::Worker => Failure::Read,
+            Cause::StdoutLimit | Cause::StderrLimit => Failure::OutputLimit,
+            Cause::Wait => Failure::Wait,
+            Cause::Timeout => Failure::Timeout,
+            Cause::Cancelled | Cause::Capacity | Cause::Cleanup => Failure::Cleanup,
+        }
+    }
     pub(crate) fn message(&self) -> &'static str {
         if self.cleanup_pending {
             return "Auxiliary command cleanup incomplete. Try again to retry cleanup.";
@@ -119,7 +147,7 @@ pub(crate) struct Supervisor {
 struct Pool {
     next_id: u64,
     owners: BTreeMap<u64, Arc<Owner>>,
-    #[cfg(test)]
+    #[cfg(any(test, feature = "desktop-acceptance"))]
     closed: bool,
 }
 struct Owner {
@@ -191,6 +219,30 @@ impl Supervisor {
         self.execute_with_policy(kind, command, input, Policy::default())
     }
 
+    /// Feature-only adapters use this same pool, Registry, OwnedProcess and
+    /// registered I/O handles. Distinct purpose tags never supersede a run.
+    #[cfg(feature = "desktop-acceptance")]
+    pub(crate) fn execute_native_read(
+        &self,
+        kind: CommandKind,
+        command: Command,
+        input: Option<&Value>,
+        timeout: Duration,
+        stdout_bytes: usize,
+    ) -> Result<Output, CommandFailure> {
+        self.execute_with_policy(
+            kind,
+            command,
+            input,
+            Policy {
+                timeout,
+                input_bytes: 64 * 1024,
+                stdout_bytes,
+                stderr_bytes: 64 * 1024,
+            },
+        )
+    }
+
     fn execute_with_policy(
         &self,
         kind: CommandKind,
@@ -217,6 +269,10 @@ impl Supervisor {
         #[cfg(test)] mut setup: WorkerSetup,
     ) -> Result<Output, CommandFailure> {
         let started = Instant::now();
+        #[cfg(test)]
+        let trace = setup.trace.clone();
+        #[cfg(test)]
+        diagnostic_mark(&trace, "caller_entered");
         let deadline = started + policy.timeout;
         let reserve = CLEANUP_TIMEOUT.min(policy.timeout / 4);
         let work_deadline = deadline - reserve;
@@ -224,11 +280,23 @@ impl Supervisor {
             .map(|value| encode_input(value, policy.input_bytes))
             .transpose()
             .map_err(CommandFailure::complete)?;
+        #[cfg(test)]
+        diagnostic_mark(&trace, "input_encoded");
+        #[cfg(test)]
+        diagnostic_mark(&trace, "pending_retry_begin");
         self.retry_pending((Instant::now() + reserve).min(work_deadline));
+        #[cfg(test)]
+        diagnostic_mark(&trace, "pending_retry_returned");
         if Instant::now() >= work_deadline {
             return Err(CommandFailure::complete(Cause::Timeout));
         }
+        #[cfg(test)]
+        diagnostic_mark(&trace, "admit_begin");
         let mut lease = self.admit(kind)?;
+        #[cfg(test)]
+        if let Some(trace) = &trace {
+            trace.admitted(&lease.owner);
+        }
         lease.cleanup_deadline = deadline;
         let mut received = Received::new(bytes.is_none());
         #[cfg(test)]
@@ -242,15 +310,23 @@ impl Supervisor {
             #[cfg(test)]
             setup,
         );
+        #[cfg(test)]
+        diagnostic_mark(&trace, "prepare_returned");
         let operation = match prepared.as_ref() {
             Ok(events) => monitor(lease.guard(), events, &mut received, work_deadline),
             Err(cause) => Err(*cause),
         };
         #[cfg(test)]
+        diagnostic_mark(&trace, "monitor_or_prepare_result");
+        #[cfg(test)]
         if let (Some(witness), Ok(status)) = (observed_exit, operation.as_ref()) {
             let _ = witness.send(*status);
         }
+        #[cfg(test)]
+        diagnostic_mark(&trace, "finish_begin");
         lease.finish(operation.as_ref().err().copied(), deadline)?;
+        #[cfg(test)]
+        diagnostic_mark(&trace, "finish_returned_ok");
         let status = operation.map_err(CommandFailure::complete)?;
         let events = prepared.map_err(CommandFailure::complete)?;
         // All workers have been joined. Their final bounded messages can now
@@ -264,7 +340,7 @@ impl Supervisor {
 
     fn admit(&self, kind: CommandKind) -> Result<Lease<'_>, CommandFailure> {
         let mut pool = self.pool.lock().unwrap_or_else(|e| e.into_inner());
-        #[cfg(test)]
+        #[cfg(any(test, feature = "desktop-acceptance"))]
         if pool.closed {
             return Err(CommandFailure::complete(Cause::Cancelled));
         }
@@ -342,14 +418,14 @@ impl Supervisor {
         }
     }
 
-    // Lifecycle APIs are test-only until an actual lifecycle caller is added.
-    #[cfg(test)]
-    fn close_admission(&self) {
+    // Feature adapter shares this exact pool with production execute.
+    #[cfg(any(test, feature = "desktop-acceptance"))]
+    pub(crate) fn close_admission(&self) {
         self.pool.lock().unwrap_or_else(|e| e.into_inner()).closed = true;
     }
 
-    #[cfg(test)]
-    fn cleanup_all(&self, deadline: Instant) -> Result<(), CommandFailure> {
+    #[cfg(any(test, feature = "desktop-acceptance"))]
+    pub(crate) fn cleanup_all(&self, deadline: Instant) -> Result<(), CommandFailure> {
         let owners: Vec<_> = {
             let mut pool = self.pool.lock().unwrap_or_else(|e| e.into_inner());
             pool.closed = true;
@@ -469,6 +545,8 @@ fn prepare(
     deadline: Instant,
     #[cfg(test)] setup: WorkerSetup,
 ) -> Result<Receiver<Event>, Cause> {
+    #[cfg(test)]
+    let trace = setup.trace.clone();
     if guard.cancelled() {
         return Err(Cause::Cancelled);
     }
@@ -483,6 +561,8 @@ fn prepare(
         })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    #[cfg(test)]
+    diagnostic_mark(&trace, "owned_spawn_begin");
     let mut process = match OwnedProcess::spawn_owned(command, deadline) {
         Ok(process) => process,
         Err(failure) => {
@@ -493,6 +573,10 @@ fn prepare(
             return Err(Cause::Start);
         }
     };
+    #[cfg(test)]
+    if let Some(trace) = &trace {
+        trace.spawned(process.child.id());
+    }
     let stdin = process.child.stdin.take();
     let stdout = process.child.stdout.take();
     let stderr = process.child.stderr.take();
@@ -504,11 +588,14 @@ fn prepare(
         input: input_fault,
         attached,
         observed_exit: _,
+        trace: _,
     } = setup;
     #[cfg(test)]
     if let Some(witness) = attached {
         let _ = witness.send(guard.ownership());
     }
+    #[cfg(test)]
+    diagnostic_mark(&trace, "original_process_attached");
     if guard.cancelled() {
         return Err(Cause::Cancelled);
     }
@@ -516,6 +603,8 @@ fn prepare(
     let stderr = stderr.ok_or(Cause::Read)?;
     let (sender, events) = mpsc::channel();
     let output_sender = sender.clone();
+    #[cfg(test)]
+    diagnostic_mark(&trace, "stdout_register_begin");
     register_worker(
         guard,
         move || {
@@ -525,7 +614,11 @@ fn prepare(
         #[cfg(test)]
         stdout_fault,
     )?;
+    #[cfg(test)]
+    diagnostic_mark(&trace, "stdout_registered");
     let error_sender = sender.clone();
+    #[cfg(test)]
+    diagnostic_mark(&trace, "stderr_register_begin");
     register_worker(
         guard,
         move || {
@@ -535,18 +628,43 @@ fn prepare(
         #[cfg(test)]
         stderr_fault,
     )?;
+    #[cfg(test)]
+    diagnostic_mark(&trace, "stderr_registered");
     if let Some(bytes) = input {
         let mut stdin = stdin.ok_or(Cause::Input)?;
+        #[cfg(test)]
+        let input_trace = trace.clone();
+        #[cfg(test)]
+        diagnostic_mark(&trace, "input_register_begin");
         register_worker(
             guard,
             move || {
+                #[cfg(test)]
+                diagnostic_mark(&input_trace, "input_worker_entered");
+                #[cfg(test)]
+                diagnostic_mark(&input_trace, "input_write_begin");
                 let result = stdin.write_all(&bytes).map_err(|_| Cause::Input);
+                #[cfg(test)]
+                diagnostic_mark(
+                    &input_trace,
+                    if result.is_ok() {
+                        "input_write_ok"
+                    } else {
+                        "input_write_failed"
+                    },
+                );
                 drop(stdin);
+                #[cfg(test)]
+                diagnostic_mark(&input_trace, "original_stdin_closed");
                 let _ = sender.send(Event::Input(result));
+                #[cfg(test)]
+                diagnostic_mark(&input_trace, "input_event_send_returned");
             },
             #[cfg(test)]
             input_fault,
         )?;
+        #[cfg(test)]
+        diagnostic_mark(&trace, "input_registered");
     }
     Ok(events)
 }
@@ -559,6 +677,74 @@ struct WorkerSetup {
     input: WorkerFault,
     attached: Option<mpsc::Sender<OwnershipObservation>>,
     observed_exit: Option<mpsc::Sender<ExitStatus>>,
+    trace: Option<Arc<WorkerTrace>>,
+}
+
+#[cfg(test)]
+struct WorkerTrace {
+    epoch: Instant,
+    state: Mutex<WorkerTraceState>,
+}
+#[cfg(test)]
+#[derive(Default)]
+struct WorkerTraceState {
+    owner_id: Option<u64>,
+    tag: Option<&'static str>,
+    run_id: Option<String>,
+    original_pid: Option<u32>,
+    stages: Vec<Value>,
+    capped: bool,
+}
+#[cfg(test)]
+impl WorkerTrace {
+    fn new(epoch: Instant) -> Self {
+        Self {
+            epoch,
+            state: Mutex::new(WorkerTraceState::default()),
+        }
+    }
+    fn mark(&self, stage: &str) {
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        let elapsed = self.epoch.elapsed().as_nanos().to_string();
+        if state.stages.len() < 32 {
+            state
+                .stages
+                .push(serde_json::json!({"stage":stage,"elapsedNanos":elapsed}));
+        } else {
+            state.capped = true;
+        }
+    }
+    fn admitted(&self, owner: &Owner) {
+        {
+            let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+            state.owner_id = Some(owner.id);
+            state.tag = Some(owner.tag);
+            state.run_id = Some(owner.run_id.clone());
+        }
+        self.mark("original_owner_admitted");
+    }
+    fn spawned(&self, original_pid: u32) {
+        self.state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .original_pid = Some(original_pid);
+        self.mark("owned_spawn_returned");
+    }
+    fn snapshot(&self) -> Value {
+        let state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        serde_json::json!({
+            "elapsedNanos":self.epoch.elapsed().as_nanos().to_string(),
+            "originalOwnerId":state.owner_id,"originalTag":state.tag,"originalRunId":state.run_id,
+            "originalChildPid":state.original_pid,"stages":state.stages,"capped":state.capped,
+            "cleanupCertified":false
+        })
+    }
+}
+#[cfg(test)]
+fn diagnostic_mark(trace: &Option<Arc<WorkerTrace>>, stage: &str) {
+    if let Some(trace) = trace {
+        trace.mark(stage);
+    }
 }
 
 #[cfg(test)]

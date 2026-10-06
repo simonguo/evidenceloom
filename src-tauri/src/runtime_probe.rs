@@ -1,20 +1,25 @@
 use crate::application_environment::ApplicationEnvironment;
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 #[path = "runtime_probe/process.rs"]
 pub(crate) mod process;
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 use process::ProbeProcess;
 use serde::Deserialize;
+use std::{path::Path, process::Command, time::Duration};
+
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 use std::{
     io::{Read, Write},
-    path::Path,
-    process::{Command, Stdio},
+    process::Stdio,
     sync::mpsc,
     thread,
-    time::{Duration, Instant},
+    time::Instant,
 };
 
 const PROBE_TIMEOUT: Duration = Duration::from_secs(90);
 const MAX_STDOUT_BYTES: usize = 64 * 1024;
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 const PROBE_REQUEST: &[u8] = b"{\"__command\":\"smoke_test\",\"verifyRuntime\":true}\n";
 
 #[derive(Debug, PartialEq, Eq)]
@@ -56,6 +61,7 @@ pub fn probe_sidecar(path: &Path, work_dir: &Path) -> Result<(), ProbeFailure> {
     probe_sidecar_in_environment(&ApplicationEnvironment::system(), path, work_dir)
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 pub(crate) fn probe_sidecar_in_environment(
     environment: &ApplicationEnvironment,
     path: &Path,
@@ -63,6 +69,36 @@ pub(crate) fn probe_sidecar_in_environment(
 ) -> Result<(), ProbeFailure> {
     let command = sidecar_command_in_environment(environment, path, work_dir)?;
     probe_command(command, PROBE_TIMEOUT)
+}
+
+/// Native acceptance path: original shared auxiliary owner retains process
+/// containment and every actual input/stdout/stderr JoinHandle through cleanup.
+#[cfg(feature = "desktop-acceptance")]
+pub(crate) fn probe_owned(
+    environment: &ApplicationEnvironment,
+    path: &Path,
+    work_dir: &Path,
+    supervisor: &crate::json_command::Supervisor,
+) -> Result<(), ProbeFailure> {
+    let mut command = sidecar_command_in_environment(environment, path, work_dir)?;
+    command
+        .env("PYTHON_DOTENV_DISABLED", "1")
+        .env("LANGSMITH_TRACING", "false")
+        .env("LANGCHAIN_TRACING_V2", "false");
+    let request = serde_json::json!({"__command":"smoke_test","verifyRuntime":true});
+    let output = supervisor
+        .execute_native_read(
+            crate::json_command::CommandKind::RuntimeProbe,
+            command,
+            Some(&request),
+            PROBE_TIMEOUT,
+            MAX_STDOUT_BYTES,
+        )
+        .map_err(|failure| failure.native_read_failure())?;
+    if !output.status.success() {
+        return Err(ProbeFailure::RuntimeUnavailable);
+    }
+    validate_response(&output.stdout)
 }
 
 pub(crate) fn sidecar_command_in_environment(
@@ -78,10 +114,12 @@ pub(crate) fn sidecar_command_in_environment(
     Ok(command)
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn probe_command(command: Command, timeout: Duration) -> Result<(), ProbeFailure> {
     probe_command_with_cleanup(command, timeout, ProbeProcess::stop)
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn probe_command_with_cleanup(
     mut command: Command,
     timeout: Duration,
@@ -168,6 +206,7 @@ fn probe_command_with_cleanup(
     }
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn read_stdout(mut stdout: impl Read) -> Result<Vec<u8>, ProbeFailure> {
     let mut output = Vec::new();
     let mut buffer = [0; 4096];

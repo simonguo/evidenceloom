@@ -1045,6 +1045,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "keyring",
+ "quote",
  "regex",
  "rusqlite",
  "security-framework",

@@ -1,3 +1,4 @@
+use quote::ToTokens;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -328,7 +329,16 @@ fn run() -> Result<(), String> {
     }
     let typed: tauri_utils::config::Config =
         serde_json::from_value(config.clone()).map_err(|_| "desktop_proof_invalid")?;
-    let typed_value = serde_json::to_value(typed).map_err(|_| "desktop_proof_invalid")?;
+    // Preserve the full typed configuration for its existing stamp identity.
+    // Acceptance also embeds the locked SDK's exact runtime representation.
+    if feature {
+        fs::write(
+            out.join("desktop-runtime-config.rs"),
+            typed.to_token_stream().to_string(),
+        )
+        .map_err(|_| "desktop_proof_invalid")?;
+    }
+    let typed_value = serde_json::to_value(&typed).map_err(|_| "desktop_proof_invalid")?;
     fs::write(
         out.join("desktop-effective-config.json"),
         canonical(&typed_value)?,
@@ -582,7 +592,12 @@ fn run() -> Result<(), String> {
             .plugin(
                 "desktop-acceptance",
                 tauri_build::InlinedPlugin::new()
-                    .commands(&["checkpoint", "release_worker"])
+                    .commands(&[
+                        "checkpoint",
+                        "release_worker",
+                        "driver_report",
+                        "finish_session",
+                    ])
                     .permissions_path_pattern("acceptance/permissions/*.toml"),
             )
     } else {

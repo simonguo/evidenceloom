@@ -12,10 +12,11 @@ export function deferred<T>() {
 
 /** A narrow fictional transport for frontend ordering tests, not native CAS/digest proof. */
 let fixtureNumber = 0;
-export function transportFixture(options: { captured?: CapturedAdmission; taskId?: string; events?: AnalysisEvent[]; pageSize?: number; listenerFailure?: boolean; cleanupFailure?: boolean; rejectedAdmission?: boolean } = {}) {
+export function transportFixture(options: { captured?: CapturedAdmission; taskId?: string; events?: AnalysisEvent[]; pageSize?: number; listenerFailure?: boolean; cleanupFailure?: boolean; rejectedAdmission?: boolean; workerPending?: boolean } = {}) {
   const admission = options.captured ?? captured(options.taskId ?? `owned-run-${++fixtureNumber}`), base = header();
   const h: JournalHeader = { ...base, origin: { ...base.origin, runtimeEpoch: admission.packet.request.runtimeEpoch, taskId: admission.task.id }, binding: { collection: admission.packet.request.collection, generation: admission.packet.request.expectedHead.generation, taskId: admission.task.id }, reservedHead: admission.packet.request.expectedHead, admissionRequestId: admission.packet.request.requestId, context: admission.packet.request.context };
   let task = admission.task, head = { ...h.reservedHead }, applied = "0", started = false, cleaned = false, sealed: string | null = null, revision = 0;
+  let workerOutcome: "succeeded" | "cancelled" | "not_started" | null = null;
   const rows = [envelope(h, 1, "accepted", { resetVersion: 1 })];
   const outcomes = new Map<string, OutcomeReply | AdmissionReply>();
   const calls: { command: string; args: { requestJson: string; executionInputJson?: string } }[] = [];
@@ -27,7 +28,7 @@ export function transportFixture(options: { captured?: CapturedAdmission; taskId
     if (!ready) { r.runtimeGate = "occupied"; r.journalGate = "blocked"; r.owner = { origin: h.origin, binding: h.binding, journalId: h.journalId, admissionRequestId: h.admissionRequestId, admissionDigest: h.admissionDigest, phase: cleaned ? "result_pending" : started && options.cleanupFailure ? "cleanup_failed" : started ? "running" : "reserved", controlRevision: cleaned || started && options.cleanupFailure ? "1" : "0", cleanupState: cleaned ? "confirmed" : started && options.cleanupFailure ? "failed" : "pending" }; }
     return r;
   };
-  const journal = () => ({ ...summary(h, String(rows.length), applied), sealedThroughSeq: sealed, cleanupState: cleaned ? "confirmed" as const : started && options.cleanupFailure ? "failed" as const : "pending" as const, workerOutcome: sealed ? started ? "succeeded" as const : "not_started" as const : null, resultState: sealed ? applied === sealed ? "projected" as const : "pending" as const : "unsealed" as const });
+  const journal = () => ({ ...summary(h, String(rows.length), applied), sealedThroughSeq: sealed, cleanupState: cleaned ? "confirmed" as const : started && options.cleanupFailure ? "failed" as const : "pending" as const, workerOutcome, resultState: sealed ? applied === sealed ? "projected" as const : "pending" as const : "unsealed" as const });
   const current = (): RecoveryCurrent => ({ state: "coherent", storage: { collection: h.binding.collection, heads: [head] }, task, head, journal: options.rejectedAdmission ? null : journal(), runtime: observe() });
   const receipt = (): AdmissionReceipt => ({ recoveryProtocolVersion: 1, requestId: h.admissionRequestId, digest: h.admissionDigest, origin: h.origin, journalId: h.journalId, binding: h.binding, headerDigest: h.headerDigest, acceptedSeq: "1", sqlCommitted: true });
   function outcome(scope: OutcomeReply["scope"], request: { requestId: string }, fields: Record<string, unknown>): OutcomeReply {
@@ -59,18 +60,20 @@ export function transportFixture(options: { captured?: CapturedAdmission; taskId
         if (p.expectedHead.revision !== head.revision || p.expectedAppliedSeq !== applied) {
           reply = { recoveryProtocolVersion: 1, scope: "analysis_projection_sql", receipt: null, rejection: { code: "analysis_conflict", message: recoveryMessages.analysis_conflict }, current: current() }; outcomes.set(p.requestId, reply); throw reply.rejection;
         }
-        task = { ...p.projection.task, status: p.projection.task.status === "running" ? "stopped" : p.projection.task.status };
+        task = { ...p.projection.task };
         applied = p.throughSeq; head = { ...head, revision: String(BigInt(head.revision) + BigInt(1)) };
         reply = outcome("analysis_projection_sql", p, { binding: h.binding, fromSeq: p.expectedAppliedSeq, throughSeq: p.throughSeq, rangeDigest: p.rangeDigest, head });
       } else if (command === "start_analysis") {
         const s = request as unknown as StartRequest;
         started = true;
         for (const event of options.events ?? [{ type: "completed", reportSections: { market_report: "Fictional report" } }]) rows.push(envelope(h, rows.length + 1, "analysis", { event }));
-        rows.push(envelope(h, rows.length + 1, "worker_outcome", { outcome: "succeeded", code: null })); sealed = String(rows.length); cleaned = !options.cleanupFailure;
+        if (!options.workerPending) {
+          workerOutcome = "succeeded"; rows.push(envelope(h, rows.length + 1, "worker_outcome", { outcome: workerOutcome, code: null })); sealed = String(rows.length); cleaned = !options.cleanupFailure;
+        }
         reply = outcome("analysis_start", s, { binding: h.binding, accepted: true });
       } else if (command === "stop_analysis") {
         const s = request as unknown as StopRequest; await stopBarrier;
-        if (!sealed) { rows.push(envelope(h, rows.length + 1, "worker_outcome", { outcome: started ? "cancelled" : "not_started", code: null })); sealed = String(rows.length); }
+        if (!sealed) { workerOutcome = started ? "cancelled" : "not_started"; rows.push(envelope(h, rows.length + 1, "worker_outcome", { outcome: workerOutcome, code: null })); sealed = String(rows.length); }
         cleaned = !options.cleanupFailure || s.mode === "retry_cleanup";
         reply = outcome("analysis_control", s, { controlRevision: s.mode === "retry_cleanup" ? "2" : "1", outcome: cleaned ? "cleanup_confirmed" : "cleanup_incomplete" });
       } else throw new Error(`Unsupported owned fixture command: ${command}`);

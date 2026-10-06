@@ -1586,3 +1586,136 @@ fn analysis_journal_attachment_never_projects_an_original_binding_into_a_copied_
         cut.current.journal.unwrap().binding.collection
     );
 }
+
+#[test]
+fn analysis_journal_verified_projection_preserves_running_until_cancelled_in_sql_current_query_and_bootstrap(
+) {
+    let conn = db();
+    let (_, s) = reserve(&conn);
+    let accepted = page(&conn, &s, "0", 1);
+    let mut task = load_tasks_from_conn(&conn).unwrap().remove(0);
+    task.status = "running".into();
+    task.updated_at = accepted.rows[0].observed_at.clone();
+    let accepted_packet = projection(&conn, &accepted, &task, "verified-running-accepted");
+    let accepted_reply = project(&conn, &accepted_packet).unwrap();
+    assert!(accepted_reply.rejection.is_none());
+    assert_eq!(accepted_reply.receipt.unwrap().through_seq, "1");
+    assert_eq!(
+        conn.query_row("SELECT status FROM tasks WHERE id='fiction'", [], |row| {
+            row.get::<_, String>(0)
+        })
+        .unwrap(),
+        "running"
+    );
+    assert_eq!(
+        accepted_reply.current.unwrap().task.unwrap().status,
+        "running"
+    );
+    assert_eq!(
+        query_projection(&conn, &accepted_packet)
+            .unwrap()
+            .current
+            .unwrap()
+            .task
+            .unwrap()
+            .status,
+        "running"
+    );
+    assert_eq!(bootstrap(&conn).unwrap().tasks[0].status, "running");
+    assert_eq!(summary(&conn, &s.journal_id).unwrap().applied_seq, "1");
+
+    let row = publish(
+        &conn,
+        &s,
+        "analysis",
+        json!({"event":{"type":"progress","message":"Verified worker progress","messageType":"info","agent":"market","timestamp":""}}),
+    );
+    let progress = page(&conn, &s, "1", 1);
+    task = load_tasks_from_conn(&conn).unwrap().remove(0);
+    task.updated_at = row.observed_at.clone();
+    task.logs = json!([{"id":row.seed.log_id,"type":"info","message":"Verified worker progress","timestamp":"","agent":"market"}]);
+    let mut forged = task.clone();
+    forged.status = "completed".into();
+    let forged_packet = projection(&conn, &progress, &forged, "forged-active-completed");
+    assert_eq!(
+        project(&conn, &forged_packet)
+            .unwrap()
+            .rejection
+            .unwrap()
+            .code,
+        "analysis_invalid_request"
+    );
+    assert_eq!(summary(&conn, &s.journal_id).unwrap().applied_seq, "1");
+    assert_eq!(load_tasks_from_conn(&conn).unwrap()[0].status, "running");
+
+    let progress_packet = projection(&conn, &progress, &task, "verified-running-progress");
+    let progress_reply = project(&conn, &progress_packet).unwrap();
+    assert!(progress_reply.rejection.is_none());
+    assert_eq!(progress_reply.receipt.unwrap().through_seq, "2");
+    assert_eq!(
+        conn.query_row("SELECT status FROM tasks WHERE id='fiction'", [], |row| {
+            row.get::<_, String>(0)
+        })
+        .unwrap(),
+        "running"
+    );
+    assert_eq!(
+        progress_reply.current.unwrap().task.unwrap().status,
+        "running"
+    );
+    let queried = query_projection(&conn, &progress_packet).unwrap();
+    assert!(queried.rejection.is_none());
+    assert_eq!(queried.receipt.unwrap().through_seq, "2");
+    let canonical = queried.current.unwrap().task.unwrap();
+    assert_eq!(canonical.status, "running");
+    assert_eq!(canonical.logs, task.logs);
+    let boot = bootstrap(&conn).unwrap();
+    assert_eq!(boot.tasks[0].status, "running");
+    assert_eq!(boot.tasks[0].logs, task.logs);
+    assert_eq!(boot.journals[0].applied_seq, "2");
+    assert_eq!(boot.journals[0].sealed_through_seq, None);
+    assert!(boot.tasks[0].report_versions.as_array().unwrap().is_empty());
+
+    let cancelled_row = seal_and_clean(&conn, &s, "cancelled", None);
+    let cancelled = page(&conn, &s, "2", 1);
+    task = load_tasks_from_conn(&conn).unwrap().remove(0);
+    task.status = "stopped".into();
+    task.updated_at = cancelled_row.observed_at.clone();
+    let cancelled_packet = projection(&conn, &cancelled, &task, "verified-cancelled-stopped");
+    let cancelled_reply = project(&conn, &cancelled_packet).unwrap();
+    assert!(cancelled_reply.rejection.is_none());
+    assert_eq!(cancelled_reply.receipt.unwrap().through_seq, "3");
+    assert_eq!(
+        conn.query_row("SELECT status FROM tasks WHERE id='fiction'", [], |row| {
+            row.get::<_, String>(0)
+        })
+        .unwrap(),
+        "stopped"
+    );
+    assert_eq!(
+        cancelled_reply.current.unwrap().task.unwrap().status,
+        "stopped"
+    );
+    assert_eq!(
+        query_projection(&conn, &cancelled_packet)
+            .unwrap()
+            .current
+            .unwrap()
+            .task
+            .unwrap()
+            .status,
+        "stopped"
+    );
+    let boot = bootstrap(&conn).unwrap();
+    assert_eq!(boot.tasks[0].status, "stopped");
+    assert_eq!(boot.tasks[0].logs, task.logs);
+    assert_eq!(boot.journals[0].applied_seq, "3");
+    assert_eq!(boot.journals[0].sealed_through_seq.as_deref(), Some("3"));
+    assert_eq!(
+        boot.journals[0].worker_outcome.as_deref(),
+        Some("cancelled")
+    );
+    assert_eq!(boot.journals[0].cleanup_state, "confirmed");
+    assert_eq!(boot.journals[0].result_state, "projected");
+    assert!(boot.tasks[0].report_versions.as_array().unwrap().is_empty());
+}

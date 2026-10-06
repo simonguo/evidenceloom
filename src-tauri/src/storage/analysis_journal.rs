@@ -1768,13 +1768,14 @@ pub fn project(
         let ordinary = json!({"protocolVersion":1,"requestId":p["requestId"],"collection":s.binding.collection,"operation":"update","expectedHead":p["expectedHead"],"task":p["projection"]["task"]});
         let ordinary = task_mutation::parse(ordinary, &["update"])
             .map_err(|_| error("analysis_invalid_request"))?;
-        let heads = task_mutation::effects(&tx, &ordinary).map_err(|e| {
-            if e.code == "storage_conflict" {
-                error("analysis_conflict")
-            } else {
-                error("analysis_invalid_request")
-            }
-        })?;
+        let heads = task_mutation::effects_for_verified_journal_projection(&tx, &ordinary)
+            .map_err(|e| {
+                if e.code == "storage_conflict" {
+                    error("analysis_conflict")
+                } else {
+                    error("analysis_invalid_request")
+                }
+            })?;
         tx.execute("UPDATE analysis_journals SET applied_seq=?2,result_state=CASE WHEN sealed_seq=?2 THEN 'projected' WHEN sealed_seq IS NULL THEN 'unsealed' ELSE 'pending' END,projection_failure_code=?3,projection_completed=?4,projection_terminal_observed=?5 WHERE journal_id=?1",params![s.journal_id,through,failure,i64::from(completed),i64::from(terminal)]).map_err(unavailable)?;
         Ok(
             json!({"recoveryProtocolVersion":1,"requestId":p["requestId"],"digest":packet.digest,"journalId":s.journal_id,"origin":s.origin,"binding":s.binding,"fromSeq":from.to_string(),"throughSeq":through.to_string(),"rangeDigest":p["rangeDigest"],"head":heads[0],"sqlCommitted":true}),

@@ -26,6 +26,7 @@ type TaskQueueControllerOptions = {
   persistTask: (task: AnalysisTask) => void;
   onEvent: (taskId: string, event: AnalysisEvent, runContext?: RunContext, owner?: RunOwner) => void;
   storageReady?: boolean;
+  admissionReady?: boolean;
   mutateDesktopTask?: (task: AnalysisTask, updater: (task: AnalysisTask) => AnalysisTask, owner?: RunOwner) => TaskAction | undefined;
   beginDesktopRun?: (task: AnalysisTask) => Promise<RunOwner | undefined>;
   confirmDesktopAction?: (action: TaskAction) => Promise<unknown>;
@@ -44,6 +45,7 @@ export function useTaskQueueController({
   onEvent,
   setNotice,
   storageReady = true,
+  admissionReady = storageReady,
   mutateDesktopTask,
   retireDesktopRun,
   prepareDesktopRun,
@@ -106,7 +108,7 @@ export function useTaskQueueController({
   }, [patchTask]);
 
   const startQueuedTask = useCallback(async (taskId: string) => {
-    if (!storageReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return false;
+    if (!storageReady || !admissionReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return false;
     const task = tasksRef.current.find((item) => item.id === taskId);
     if (!task || task.status !== "queued") return false;
 
@@ -209,7 +211,7 @@ export function useTaskQueueController({
         setSchedulerVersion((version) => version + 1);
       }
     }
-  }, [failTask, onEvent, patchTask, prepareDesktopRun, retireDesktopRun, runtimeAdapterRef, setNotice, settings, storageReady]);
+  }, [admissionReady, failTask, onEvent, patchTask, prepareDesktopRun, retireDesktopRun, runtimeAdapterRef, setNotice, settings, storageReady]);
 
   useEffect(() => {
     if (!hydrated || !storageReady || queueInitializedRef.current) return;
@@ -225,11 +227,11 @@ export function useTaskQueueController({
   }, [hydrated, mutateTasks, storageReady]);
 
   useEffect(() => {
-    if (!hydrated || !storageReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
+    if (!hydrated || !storageReady || !admissionReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
     if (tasks.some((task) => task.status === "running")) return;
     const nextTask = sortQueuedTasks(tasks).find((task) => rejectedAdmissionsRef.current.get(task.id) !== task);
     if (nextTask) void startQueuedTask(nextTask.id);
-  }, [hydrated, schedulerVersion, startQueuedTask, storageReady, tasks]);
+  }, [admissionReady, hydrated, schedulerVersion, startQueuedTask, storageReady, tasks]);
 
   const queueTask = useCallback((taskId: string, taskOverride?: AnalysisTask) => {
     if (!storageReady) return false;

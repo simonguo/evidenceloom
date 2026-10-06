@@ -207,3 +207,48 @@ describe("same-session journal consumer with fictional transport", () => {
     await expect(ordinary.retryResult()).rejects.toThrow(); expect(retired).not.toHaveBeenCalled(); expect(ordinary.phase).toBe("result_pending"); ordinary.dispose();
   });
 });
+
+
+describe("same-session active journal status with fictional pending worker", () => {
+  it("publishes canonical running for accepted and progress projections until the original pending worker is cancelled", async () => {
+    const f = transportFixture({ workerPending: true, pageSize: 1, events: [{ type: "progress", message: "Fictional active worker", messageType: "info" }] });
+    const publications: RecoveryCurrent[] = [], progressPublished = deferred<void>();
+    const session = new SameSessionConsumer(f.captured, async () => f.api, {
+      relevant: () => true,
+      publish: (current) => {
+        publications.push(current);
+        if (current.state === "coherent" && current.journal?.appliedSeq === "2") progressPublished.resolve();
+        return true;
+      },
+      changed: () => undefined,
+    });
+    const attempt = session.run();
+    try {
+      await Promise.race([progressPublished.promise, attempt.then(() => { throw new Error("The original pending worker ended before progress publication."); })]);
+      expect(publications.some((current) => current.state === "coherent" && current.journal?.appliedSeq === "1" && current.task?.status === "running")).toBe(true);
+      expect(publications.some((current) => current.state === "coherent" && current.journal?.appliedSeq === "2" && current.task?.status === "running")).toBe(true);
+      expect(f.task().status).toBe("running");
+      const active = f.current();
+      expect(active.state).toBe("coherent");
+      if (active.state !== "coherent") throw new Error("Expected the original active journal current.");
+      expect(active.journal?.sealedThroughSeq).toBeNull();
+      expect(active.journal?.cleanupState).toBe("pending");
+      expect(active.runtime.owner?.phase).toBe("running");
+      expect(f.rows.map((row) => row.kind)).toEqual(["accepted", "analysis"]);
+      expect(f.task().logs.some((log) => log.message === "Fictional active worker")).toBe(true);
+      expect(f.calls.filter((call) => call.command === "start_analysis")).toHaveLength(1);
+    } finally {
+      await session.stop();
+      await attempt;
+      session.dispose();
+    }
+    expect(session.phase).toBe("ready");
+    expect(f.task().status).toBe("stopped");
+    const cancelled = f.current();
+    if (cancelled.state !== "coherent") throw new Error("Expected the original cancelled journal current.");
+    expect(cancelled.journal?.workerOutcome).toBe("cancelled");
+    expect(cancelled.journal?.appliedSeq).toBe(cancelled.journal?.sealedThroughSeq);
+    expect(f.rows[f.rows.length - 1].payload).toEqual({ outcome: "cancelled", code: null });
+    expect(f.calls.filter((call) => call.command === "stop_analysis")).toHaveLength(1);
+  });
+});

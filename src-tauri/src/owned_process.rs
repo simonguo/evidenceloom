@@ -27,17 +27,20 @@ pub struct OwnedProcess {
 }
 
 pub struct SpawnFailure {
-    pub error: io::Error,
+    // Fixed-error workers retain this cause without publishing it; legacy
+    // probes and test diagnostics still read the original I/O error.
+    pub _error: io::Error,
     pub pending: Option<OwnedProcess>,
 }
 
 impl OwnedProcess {
+    #[cfg(any(test, not(feature = "desktop-acceptance")))]
     pub fn spawn(command: Command, deadline: Instant) -> io::Result<Self> {
         Self::spawn_owned(command, deadline).map_err(|mut failure| {
             if let Some(tree) = failure.pending.as_mut() {
                 let _ = tree.stop(deadline);
             }
-            failure.error
+            failure._error
         })
     }
 
@@ -52,7 +55,7 @@ impl OwnedProcess {
                 .process_group(0)
                 .spawn()
                 .map_err(|error| SpawnFailure {
-                    error,
+                    _error: error,
                     pending: None,
                 })?;
             let group_id = anchor.id();
@@ -69,7 +72,7 @@ impl OwnedProcess {
                     child_reaped: false,
                 }),
                 Err(error) => Err(SpawnFailure {
-                    error,
+                    _error: error,
                     // The anchor itself is the only child at this boundary.
                     pending: Some(Self {
                         child: anchor,
@@ -87,12 +90,12 @@ impl OwnedProcess {
         {
             use std::os::windows::process::CommandExt;
             let job = windows_job::Job::new().map_err(|error| SpawnFailure {
-                error,
+                _error: error,
                 pending: None,
             })?;
             command.creation_flags(0x08000000 | 0x00000004);
             let child = command.spawn().map_err(|error| SpawnFailure {
-                error,
+                _error: error,
                 pending: None,
             })?;
             let tree = Self {
@@ -104,7 +107,7 @@ impl OwnedProcess {
             };
             if let Err(error) = tree.job.attach_and_resume(&tree.child, _deadline) {
                 return Err(SpawnFailure {
-                    error,
+                    _error: error,
                     pending: Some(tree),
                 });
             }

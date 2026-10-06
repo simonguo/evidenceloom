@@ -59,8 +59,10 @@ jobs:
           uv run ruff format --check .
       - name: Test
         run: uv run pytest
-      - name: Check desktop publication and acceptance boundaries
-        run: python -m unittest discover -s scripts/tests -p test_desktop_acceptance_boundary.py -v
+      - name: Test desktop build evidence and acceptance boundaries
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: python -m unittest discover -s scripts/tests -p 'test_desktop*.py' -v
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         if: matrix.python-version == '3.12'
         with:
@@ -94,6 +96,10 @@ jobs:
       - name: Install frozen dependencies
         working-directory: frontend
         run: npm ci
+      - name: Test desktop frontend scanner and compiler plugin
+        env:
+          TMPDIR: ${{ runner.temp }}
+        run: node --test scripts/tests/desktop_frontend_export.test.mjs
       - name: Lint, typecheck, and test
         working-directory: frontend
         run: |

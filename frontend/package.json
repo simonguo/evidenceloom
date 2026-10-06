@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build:tauri": "cross-env TAURI=1 next build",
+    "build:tauri": "node ../scripts/build_desktop_frontend.mjs",
     "tauri": "cd .. && npm --prefix frontend exec -- tauri",
     "tauri:dev": "cd .. && scripts/ensure_sidecar_placeholder.sh && npm --prefix frontend exec -- tauri dev",
     "tauri:build": "cd .. && npm --prefix frontend exec -- tauri build"

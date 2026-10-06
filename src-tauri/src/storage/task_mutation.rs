@@ -684,7 +684,35 @@ fn next_heads(packet: &Packet) -> Result<Vec<TaskHead>, StorageError> {
     Ok(heads)
 }
 
+#[derive(Clone, Copy)]
+enum TaskStatusPolicy {
+    NormalizeSaved,
+    PreserveVerifiedJournal,
+}
+
 pub(super) fn effects(conn: &Connection, packet: &Packet) -> Result<Vec<TaskHead>, StorageError> {
+    effects_with_status_policy(conn, packet, TaskStatusPolicy::NormalizeSaved)
+}
+
+// Called only after analysis_journal::project validates the binding, head,
+// journal range proof, and projection_truth in its original SQL transaction.
+pub(super) fn effects_for_verified_journal_projection(
+    conn: &Connection,
+    packet: &Packet,
+) -> Result<Vec<TaskHead>, StorageError> {
+    if packet.operation != "update" || packet.tasks.len() != 1 || packet.expected_heads.len() != 1 {
+        return Err(StorageError::invalid(
+            "A verified journal projection requires one task update.",
+        ));
+    }
+    effects_with_status_policy(conn, packet, TaskStatusPolicy::PreserveVerifiedJournal)
+}
+
+fn effects_with_status_policy(
+    conn: &Connection,
+    packet: &Packet,
+    status_policy: TaskStatusPolicy,
+) -> Result<Vec<TaskHead>, StorageError> {
     check_authority(conn, packet)?;
     if packet.operation == "import" {
         let closed: bool = conn
@@ -702,7 +730,10 @@ pub(super) fn effects(conn: &Connection, packet: &Packet) -> Result<Vec<TaskHead
     for value in &packet.tasks {
         let task: AnalysisTaskRecord = serde_json::from_value(value.clone())
             .map_err(|_| StorageError::invalid("The task body could not be decoded."))?;
-        let task = normalize_task(task);
+        let task = match status_policy {
+            TaskStatusPolicy::NormalizeSaved => normalize_task(task),
+            TaskStatusPolicy::PreserveVerifiedJournal => task,
+        };
         validate_task_input(&task)
             .map_err(|_| StorageError::invalid("The task research attachments are invalid."))?;
         // Existing immutable-history errors and SQLite errors remain distinct conservative outcomes.

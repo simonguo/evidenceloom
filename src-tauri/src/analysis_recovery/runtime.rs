@@ -96,6 +96,8 @@ struct CoordinatorState {
     journal_gate: String,
     blockers: Vec<RuntimeBlocker>,
     attachments: HashMap<String, AttachmentOutcome>,
+    #[cfg(any(test, feature = "desktop-acceptance"))]
+    admission_closed: bool,
 }
 #[derive(Clone)]
 struct AttachmentOutcome {
@@ -154,6 +156,12 @@ struct CleanupFlight {
     result: Mutex<Option<Result<bool, RecoveryError>>>,
     changed: Condvar,
 }
+#[cfg(any(test, feature = "desktop-acceptance"))]
+pub(crate) struct ShutdownCapture {
+    pub(crate) owner: Option<Arc<Session>>,
+    pub(crate) ownership: Option<crate::analysis_execution::OwnershipObservation>,
+}
+
 impl Coordinator {
     pub fn new(registry: Arc<Registry>) -> Self {
         Self {
@@ -168,9 +176,39 @@ impl Coordinator {
                 journal_gate: "checking".into(),
                 blockers: Vec::new(),
                 attachments: HashMap::new(),
+                #[cfg(any(test, feature = "desktop-acceptance"))]
+                admission_closed: false,
             }),
         }
     }
+    /// Feature/test-only production adapter. Capture original Session and
+    /// Registry witness under the same mutex that admits and claims start.
+    /// The auxiliary pool closure uses its own original admission mutex.
+    #[cfg(any(test, feature = "desktop-acceptance"))]
+    pub(crate) fn close_admission_capture(
+        &self,
+        close_auxiliary: impl FnOnce(),
+    ) -> ShutdownCapture {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        let owner = state.owner.clone();
+        state.admission_closed = true;
+        let ownership = self.registry.close_admission();
+        if let Some(run) = &owner {
+            run.cancelled.store(true, Ordering::SeqCst);
+        }
+        Self::bump(&mut state);
+        drop(state);
+        // No sink, SQL, physical cancellation or auxiliary admission lock is
+        // acquired while holding Coordinator.state. Captured Arc is immutable.
+        close_auxiliary();
+        if let Some(run) = &owner {
+            let _ = self
+                .registry
+                .cancel(&run.origin.task_id, &run.origin.run_id);
+        }
+        ShutdownCapture { owner, ownership }
+    }
+
     pub fn backend(&self) -> Result<Arc<dyn JournalBackend>, RecoveryError> {
         self.backend
             .get()
@@ -327,6 +365,10 @@ impl Coordinator {
         p: &ParsedRecoveryRequest<AdmissionRequest>,
     ) -> Result<Arc<Session>, RecoveryError> {
         let mut s = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        #[cfg(any(test, feature = "desktop-acceptance"))]
+        if s.admission_closed {
+            return Err(RecoveryError::fixed("analysis_busy"));
+        }
         if s.initialization != "ready" {
             return Err(RecoveryError::fixed("analysis_identity_unavailable"));
         }
@@ -429,6 +471,17 @@ impl Coordinator {
         run: &Arc<Session>,
         request: &StartRequest,
     ) -> Result<RunGuard, RecoveryError> {
+        #[cfg(any(test, feature = "desktop-acceptance"))]
+        let mut coordinator = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        #[cfg(any(test, feature = "desktop-acceptance"))]
+        if coordinator.admission_closed
+            || !coordinator
+                .owner
+                .as_ref()
+                .is_some_and(|owner| Arc::ptr_eq(owner, run))
+        {
+            return Err(RecoveryError::fixed("analysis_busy"));
+        }
         if request.binding != run.binding
             || run
                 .state
@@ -452,6 +505,9 @@ impl Coordinator {
             .take()
             .ok_or_else(|| RecoveryError::fixed("analysis_start_unknown"))?;
         run.state.lock().unwrap_or_else(|e| e.into_inner()).phase = "preparing".into();
+        #[cfg(any(test, feature = "desktop-acceptance"))]
+        Self::bump(&mut coordinator);
+        #[cfg(not(any(test, feature = "desktop-acceptance")))]
         self.changed();
         Ok(execution)
     }
@@ -1337,23 +1393,73 @@ impl Coordinator {
                     // silently removes a committed accepted/reset event.
                     let coordinator = self.clone();
                     let expiring = run.clone();
-                    std::thread::spawn(move || {
-                        std::thread::sleep(
-                            expiring.expires.saturating_duration_since(Instant::now()),
-                        );
-                        if coordinator.expired(&expiring)
-                            && coordinator
-                                .exact_session(&expiring.origin, &expiring.journal_id)
-                                .is_ok()
-                        {
-                            coordinator.mark_cancel(&expiring);
-                            let _ = coordinator.finish_prestart(
-                                &expiring,
-                                wake,
-                                Some("analysis_reservation_expired"),
+                    #[cfg(feature = "desktop-acceptance")]
+                    {
+                        // Original expiry worker is captured before it runs and
+                        // joins before final SQL observation. The existing exact
+                        // Session cancellation latch releases its bounded wait.
+                        let fallback_coordinator = coordinator.clone();
+                        let fallback_run = expiring.clone();
+                        let fallback_wake = wake.clone();
+                        let expiry =
+                            crate::desktop_acceptance::tasks::spawn_original_thread(move || {
+                                while !expiring.cancelled.load(Ordering::SeqCst)
+                                    && !expiring.start_claimed.load(Ordering::SeqCst)
+                                    && Instant::now() < expiring.expires
+                                {
+                                    std::thread::park_timeout(
+                                        std::time::Duration::from_millis(10).min(
+                                            expiring
+                                                .expires
+                                                .saturating_duration_since(Instant::now()),
+                                        ),
+                                    );
+                                }
+                                if coordinator.expired(&expiring)
+                                    && coordinator
+                                        .exact_session(&expiring.origin, &expiring.journal_id)
+                                        .is_ok()
+                                {
+                                    coordinator.mark_cancel(&expiring);
+                                    let _ = coordinator.finish_prestart(
+                                        &expiring,
+                                        wake,
+                                        Some("analysis_reservation_expired"),
+                                    );
+                                }
+                            });
+                        if expiry.is_err() {
+                            // Capacity/closed admission cannot silently lose the
+                            // exact owner's expiry supervision. Parent is still
+                            // admitted and settles the original failure SQL here.
+                            fallback_coordinator.mark_cancel(&fallback_run);
+                            let _ = fallback_coordinator.finish_prestart(
+                                &fallback_run,
+                                fallback_wake,
+                                Some("analysis_identity_unavailable"),
                             );
                         }
-                    });
+                    }
+                    #[cfg(not(feature = "desktop-acceptance"))]
+                    {
+                        std::thread::spawn(move || {
+                            std::thread::sleep(
+                                expiring.expires.saturating_duration_since(Instant::now()),
+                            );
+                            if coordinator.expired(&expiring)
+                                && coordinator
+                                    .exact_session(&expiring.origin, &expiring.journal_id)
+                                    .is_ok()
+                            {
+                                coordinator.mark_cancel(&expiring);
+                                let _ = coordinator.finish_prestart(
+                                    &expiring,
+                                    wake,
+                                    Some("analysis_reservation_expired"),
+                                );
+                            }
+                        });
+                    }
                 }
                 Ok(self.admission_reply(&packet, result, &run.journal_id))
             }
@@ -1975,6 +2081,15 @@ impl Coordinator {
         let prior = backend.query_start(&packet)?;
         if prior.receipt.is_some() || prior.rejection.is_some() {
             return Ok(self.outcome(prior, "analysis_start", &packet.request.journal_id));
+        }
+        #[cfg(any(test, feature = "desktop-acceptance"))]
+        if self
+            .state
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .admission_closed
+        {
+            return Err(RecoveryError::fixed("analysis_busy"));
         }
         let run = self.exact_session(&packet.request.origin, &packet.request.journal_id)?;
         publication::input_matches_context(&input, &run.context)?;

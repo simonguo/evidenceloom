@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import check_desktop_acceptance_boundary as boundary  # noqa: E402
 import build_desktop_acceptance as acceptance_builder  # noqa: E402
 import sidecar_architecture as architecture  # noqa: E402
+import desktop_frontend_evidence as frontend_evidence  # noqa: E402
 
 
 class DesktopBoundaryTests(unittest.TestCase):
@@ -75,6 +76,15 @@ class DesktopBoundaryTests(unittest.TestCase):
         )
         self.typed = self.root / "typed-config.json"
         boundary.write_json(self.typed, config)
+        # Existing proof-publication tests use an explicit mocked compiler gate;
+        # new dedicated evidence tests exercise the real closure validator.
+        self.frontend_proof = self.root / "mocked-compiler-proof.json"
+        boundary.write_json(self.frontend_proof, {"mockOnly": True})
+        self.frontend_gate = patch.object(
+            frontend_evidence, "verify_frontend_proof", return_value={}
+        )
+        self.frontend_gate.start()
+        self.addCleanup(self.frontend_gate.stop)
 
     def app_stage(self):
         directory = self.root / "app-stage"
@@ -87,6 +97,7 @@ class DesktopBoundaryTests(unittest.TestCase):
             self.sidecar_path,
             {},
             self.typed,
+            self.frontend_proof,
         )
         executable = self.root / "evidenceloom-desktop"
         executable.write_bytes(b"unit fixture, never executable\n" + boundary.canonical(stamp))
@@ -346,17 +357,21 @@ class DesktopBoundaryTests(unittest.TestCase):
                 )
             return output
 
-        def frontend(*_args, **kwargs):
-            self.assertEqual(kwargs["cwd"], work / "frontend")
-            output = kwargs["cwd"] / "out"
+        def frontend(path, evidence_parent, mode, environment):
+            self.assertEqual(path, work / "frontend")
+            self.assertEqual(evidence_parent, work)
+            self.assertEqual(mode, "acceptance")
+            self.assertNotIn("EVIDENCELOOM_DESKTOP_FRONTEND_ENTRY", environment)
+            output = path / "out"
             output.mkdir()
             (output / "index.html").write_bytes(b"inert simulated frontend export")
+            return self.frontend_proof
 
         with (
             patch.dict(os.environ, {}, clear=True),
             patch.object(acceptance_builder, "cargo_metadata", side_effect=cargo),
-            patch.object(acceptance_builder.shutil, "which", return_value="owned-mocked-npm"),
-            patch.object(acceptance_builder.subprocess, "run", side_effect=frontend) as run,
+            patch.object(frontend_evidence, "run_frontend", side_effect=frontend) as run,
+            patch.object(frontend_evidence, "reseal_acceptance", return_value=self.frontend_proof),
         ):
             app = acceptance_builder.pipeline(args)
         self.assertTrue(app.is_dir())
@@ -721,7 +736,15 @@ class DesktopBoundaryTests(unittest.TestCase):
                 )
                 directory = self.root / f"linux-stage-{target}"
                 stamp = boundary.prepare_shipping(
-                    self.repo, directory, target, self.commit, binary, path, {}, self.typed
+                    self.repo,
+                    directory,
+                    target,
+                    self.commit,
+                    binary,
+                    path,
+                    {},
+                    self.typed,
+                    self.frontend_proof,
                 )
                 executable = self.root / f"inert-desktop-{target}"
                 executable.write_bytes(
@@ -1167,6 +1190,7 @@ class DesktopBoundaryTests(unittest.TestCase):
                 self.sidecar_path,
                 {},
                 self.typed,
+                self.frontend_proof,
             )
         config = boundary.load_json(self.typed)
         config["bundle"]["externalBin"] = ["renamed-fixture"]

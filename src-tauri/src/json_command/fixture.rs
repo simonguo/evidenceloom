@@ -34,10 +34,7 @@ fn descendant(directory: &Path, stream: &str) {
         })
         .spawn()
         .unwrap();
-    until(|| {
-        fs::metadata(directory.join("heartbeat"))
-            .is_ok_and(|metadata| metadata.len() > 0)
-    });
+    until(|| fs::metadata(directory.join("heartbeat")).is_ok_and(|metadata| metadata.len() > 0));
 }
 
 fn close_stdin() {
@@ -118,11 +115,17 @@ fn main() {
         }
         "escaped-error" => {
             println!("{}", r#"{"error":"stdout fallback"}"#);
-            eprintln!("{}", r#"{"error":"\u0066ictional-secret concrete failure"}"#);
+            eprintln!(
+                "{}",
+                r#"{"error":"\u0066ictional-secret concrete failure"}"#
+            );
             process::exit(1);
         }
         "escaped-message" => {
-            println!("{}", r#"{"message":"\u0066ictional-secret stdout failure"}"#);
+            println!(
+                "{}",
+                r#"{"message":"\u0066ictional-secret stdout failure"}"#
+            );
             process::exit(1);
         }
         "escaped-success" => println!(
@@ -147,7 +150,9 @@ fn main() {
                 "x".repeat(600)
             );
         }
-        "stdout-limit" => io::stdout().write_all(&vec![b'x'; 1024 * 1024 + 1]).unwrap(),
+        "stdout-limit" => io::stdout()
+            .write_all(&vec![b'x'; 1024 * 1024 + 1])
+            .unwrap(),
         "stderr-limit" => io::stderr().write_all(&vec![b'x'; 256 * 1024 + 1]).unwrap(),
         "fill-both" => {}
         "held-stdout" | "held-stderr" => {
@@ -166,7 +171,10 @@ fn main() {
             println!("{{\"ok\":true}}");
         }
         "inspect" => {
-            assert_eq!(env::var("EVIDENCELOOM_LLM_PROVIDER").unwrap(), "fictional-public");
+            assert_eq!(
+                env::var("EVIDENCELOOM_LLM_PROVIDER").unwrap(),
+                "fictional-public"
+            );
             assert_eq!(
                 env::current_dir().unwrap().canonicalize().unwrap(),
                 PathBuf::from(&args[4])

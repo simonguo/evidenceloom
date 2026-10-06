@@ -1,14 +1,19 @@
 //! Read-only, legacy-safe inventory with the same process containment as startup.
 use crate::application_environment::ApplicationEnvironment;
 use crate::research_memory as memory;
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 use crate::runtime_probe::process::ProbeProcess;
 use serde_json::Value;
 use std::{
-    io::{Read, Write},
     process::{Command, Stdio},
+    time::{Duration, Instant},
+};
+
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
+use std::{
+    io::{Read, Write},
     sync::mpsc,
     thread,
-    time::{Duration, Instant},
 };
 
 const TIMEOUT: Duration = Duration::from_secs(90);
@@ -23,12 +28,56 @@ pub fn read(command: Command, ids: &[String]) -> Result<Value, String> {
     read_in_environment(command, ids, &ApplicationEnvironment::system())
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 pub(crate) fn read_in_environment(
     command: Command,
     ids: &[String],
     environment: &ApplicationEnvironment,
 ) -> Result<Value, String> {
     read_with_environment_and_timeout(command, ids, environment, TIMEOUT)
+}
+
+/// Feature-only validation stays inside the original admitted Tauri blocking
+/// worker. Its real JoinHandle cannot retire until CPU validation returns. No
+/// detached validator thread or local reader handle can disappear on timeout.
+#[cfg(feature = "desktop-acceptance")]
+pub(crate) fn read_owned(
+    mut command: Command,
+    ids: &[String],
+    environment: &ApplicationEnvironment,
+    supervisor: &crate::json_command::Supervisor,
+) -> Result<Value, String> {
+    memory::validate_requested_ids(ids)?;
+    let deadline = Instant::now() + TIMEOUT;
+    configure_in_environment(&mut command, environment)?;
+    let request = serde_json::json!({
+        "__command":"smoke_test", "memoryInventory":true, "decisionIds":ids
+    });
+    let output = supervisor
+        .execute_native_read(
+            crate::json_command::CommandKind::MemoryInventory,
+            command,
+            Some(&request),
+            TIMEOUT,
+            memory::MAX_BYTES,
+        )
+        .map_err(|failure| match failure.native_read_failure() {
+            crate::runtime_probe::ProbeFailure::Timeout => TIMED_OUT.to_string(),
+            crate::runtime_probe::ProbeFailure::OutputLimit => TOO_LARGE.to_string(),
+            _ => FAILURE.to_string(),
+        })?;
+    if !output.status.success() {
+        return Err(FAILURE.into());
+    }
+    if Instant::now() >= deadline {
+        return Err(TIMED_OUT.into());
+    }
+    let result = validate_response(&output.stdout, ids);
+    if Instant::now() >= deadline {
+        Err(TIMED_OUT.into())
+    } else {
+        result
+    }
 }
 
 pub(crate) fn configure_in_environment(
@@ -88,6 +137,7 @@ fn read_with_timeout(command: Command, ids: &[String], timeout: Duration) -> Res
     read_with_environment_and_timeout(command, ids, &ApplicationEnvironment::system(), timeout)
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn read_with_environment_and_timeout(
     mut command: Command,
     ids: &[String],
@@ -165,6 +215,7 @@ fn read_with_environment_and_timeout(
     validate_bounded(bytes, ids.to_vec(), deadline, validate_response)
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn validate_bounded(
     bytes: Vec<u8>,
     ids: Vec<String>,
@@ -199,6 +250,7 @@ fn validate_bounded(
     }
 }
 
+#[cfg(any(test, not(feature = "desktop-acceptance")))]
 fn read_stdout(mut stdout: impl Read) -> Result<Vec<u8>, &'static str> {
     let mut output = Vec::new();
     let mut buffer = [0; 16 * 1024];

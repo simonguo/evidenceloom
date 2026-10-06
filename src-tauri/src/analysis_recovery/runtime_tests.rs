@@ -50,6 +50,8 @@ struct OwnedBackend {
 }
 impl OwnedBackend {
     fn new() -> Self {
+        #[cfg(feature = "desktop-acceptance")]
+        crate::desktop_acceptance::tasks::install_for_command_unit_tests();
         let conn = Connection::open_in_memory().unwrap();
         storage::initialize_analysis_journal_fixture(&conn).unwrap();
         let collection = task_mutation::current(&conn).unwrap().collection;
@@ -2307,5 +2309,54 @@ fn analysis_recovery_late_failed_receipt_preserves_real_join_and_exact_sql_retry
         harness.coordinator.observe().runtime_gate,
         "occupied",
         "result cursor remains a separate gate"
+    );
+}
+
+// UNEXECUTED: coherent SQL fixture only; no runner launch in these bodies.
+#[test]
+fn shutdown_closes_previously_admitted_owner_start_and_keeps_exact_arc() {
+    let h = Harness::new();
+    let receipt = h.reserve("admitted-before-closure");
+    let original = h
+        .coordinator
+        .exact_session(&receipt.origin, &receipt.journal_id)
+        .unwrap();
+    let capture = h.coordinator.close_admission_capture(|| {});
+    assert!(Arc::ptr_eq(capture.owner.as_ref().unwrap(), &original));
+    assert!(capture.ownership.as_ref().unwrap().retained());
+    let request = StartRequest {
+        recovery_protocol_version: 1,
+        request_id: "late-start".into(),
+        origin: receipt.origin,
+        journal_id: receipt.journal_id,
+        binding: receipt.binding,
+        header_digest: receipt.header_digest,
+    };
+    assert_eq!(
+        h.coordinator
+            .claim_start(&original, &request)
+            .err()
+            .unwrap()
+            .code,
+        "analysis_busy"
+    );
+    assert!(!original.start_claimed.load(Ordering::SeqCst));
+    assert!(original.cancelled.load(Ordering::SeqCst));
+}
+#[test]
+fn admission_closure_never_invents_new_runtime_wire_state() {
+    let h = Harness::new();
+    let capture = h.coordinator.close_admission_capture(|| {});
+    assert!(capture.owner.is_none() && capture.ownership.is_none());
+    let observed = h.coordinator.observe();
+    assert_eq!(observed.runtime_gate, "vacant");
+    assert_eq!(observed.journal_gate, "ready");
+    assert_eq!(
+        h.coordinator
+            .begin(&h.admission("new-after-close"))
+            .err()
+            .unwrap()
+            .code,
+        "analysis_busy"
     );
 }
