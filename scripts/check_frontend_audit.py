@@ -72,177 +72,6 @@ RANGES = {
 }
 
 
-# Third whole graph: fresh explicitly complete npm 11 report, 7 high/3 moderate.
-# These thirteen development instances and both advisories remain UNRESOLVED.
-SELECTOR = "postcss-selector-parser"
-SELECTOR_ADVISORY = "GHSA-rj75-hqrm-r3gf"
-SELECTOR_LEAF = {
-    "cvss": {"score": 5.9, "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"},
-    "cwe": ["CWE-400", "CWE-407"],
-    "dependency": "postcss-selector-parser",
-    "name": "postcss-selector-parser",
-    "range": "<7.1.6",
-    "severity": "moderate",
-    "source": 1241232,
-    "title": "PostCSS: Quadratic complexity in flat selector parsing allows CPU exhaustion",
-    "url": "https://github.com/advisories/GHSA-rj75-hqrm-r3gf",
-}
-TEN_INSTANCES = {
-    "node_modules/@next/eslint-plugin-next": ("@next/eslint-plugin-next", "15.5.27"),
-    "node_modules/@tailwindcss/typography": ("@tailwindcss/typography", "0.5.20"),
-    "node_modules/braces": ("braces", "3.0.3"),
-    "node_modules/chokidar": ("chokidar", "3.6.0"),
-    "node_modules/eslint-config-next": ("eslint-config-next", "15.5.27"),
-    "node_modules/fast-glob": ("fast-glob", "3.3.1"),
-    "node_modules/micromatch": ("micromatch", "4.0.8"),
-    "node_modules/postcss-nested": ("postcss-nested", "6.2.0"),
-    "node_modules/postcss-nested/node_modules/postcss-selector-parser": (
-        "postcss-selector-parser",
-        "6.1.4",
-    ),
-    "node_modules/postcss-selector-parser": ("postcss-selector-parser", "6.0.10"),
-    "node_modules/tailwindcss": ("tailwindcss", "3.4.19"),
-    "node_modules/tailwindcss/node_modules/fast-glob": ("fast-glob", "3.3.3"),
-    "node_modules/tailwindcss/node_modules/postcss-selector-parser": (
-        "postcss-selector-parser",
-        "6.1.4",
-    ),
-}
-TEN_VIA = {
-    "@next/eslint-plugin-next": {"fast-glob"},
-    "@tailwindcss/typography": {"postcss-selector-parser"},
-    "braces": set(),
-    "chokidar": {"braces"},
-    "eslint-config-next": {"@next/eslint-plugin-next"},
-    "fast-glob": {"micromatch"},
-    "micromatch": {"braces"},
-    "postcss-nested": {"postcss-selector-parser"},
-    "postcss-selector-parser": set(),
-    "tailwindcss": {
-        "chokidar",
-        "fast-glob",
-        "micromatch",
-        "postcss-nested",
-        "postcss-selector-parser",
-    },
-}
-TEN_EFFECTS = {
-    "@next/eslint-plugin-next": {"eslint-config-next"},
-    "@tailwindcss/typography": set(),
-    "braces": {"chokidar", "micromatch"},
-    "chokidar": {"tailwindcss"},
-    "eslint-config-next": set(),
-    "fast-glob": {"@next/eslint-plugin-next"},
-    "micromatch": {"fast-glob", "tailwindcss"},
-    "postcss-nested": set(),
-    "postcss-selector-parser": {"@tailwindcss/typography", "tailwindcss", "postcss-nested"},
-    "tailwindcss": set(),
-}
-TEN_RANGES = {
-    "@next/eslint-plugin-next": ">=14.3.0-canary.0",
-    "@tailwindcss/typography": "<=0.0.0-insiders.fda8ce5 || >=0.5.5",
-    "braces": "*",
-    "chokidar": "2.0.0 - 3.6.0",
-    "eslint-config-next": ">=14.3.0-canary.0",
-    "fast-glob": "*",
-    "micromatch": ">=0.2.0",
-    "postcss-nested": "2.0.3 - 6.2.0",
-    "postcss-selector-parser": "<7.1.6",
-    "tailwindcss": "<=0.0.0-oxide-insiders.ff2c25f || 0.5.0 - 3.4.19",
-}
-TEN_SEVERITIES = {
-    "@next/eslint-plugin-next": "high",
-    "@tailwindcss/typography": "moderate",
-    "braces": "high",
-    "chokidar": "high",
-    "eslint-config-next": "high",
-    "fast-glob": "high",
-    "micromatch": "high",
-    "postcss-nested": "moderate",
-    "postcss-selector-parser": "moderate",
-    "tailwindcss": "high",
-}
-TEN_EDGES = {
-    "node_modules/@next/eslint-plugin-next": {"fast-glob": "3.3.1"},
-    "node_modules/@tailwindcss/typography": {"postcss-selector-parser": "6.0.10"},
-    "node_modules/braces": {},
-    "node_modules/chokidar": {"braces": "~3.0.2"},
-    "node_modules/eslint-config-next": {"@next/eslint-plugin-next": "15.5.27"},
-    "node_modules/fast-glob": {"micromatch": "^4.0.4"},
-    "node_modules/micromatch": {"braces": "^3.0.3"},
-    "node_modules/postcss-nested": {"postcss-selector-parser": "^6.1.1"},
-    "node_modules/postcss-nested/node_modules/postcss-selector-parser": {},
-    "node_modules/postcss-selector-parser": {},
-    "node_modules/tailwindcss": {
-        "chokidar": "^3.6.0",
-        "fast-glob": "^3.3.2",
-        "micromatch": "^4.0.8",
-        "postcss-nested": "^6.2.0",
-        "postcss-selector-parser": "^6.1.2",
-    },
-    "node_modules/tailwindcss/node_modules/fast-glob": {"micromatch": "^4.0.8"},
-    "node_modules/tailwindcss/node_modules/postcss-selector-parser": {},
-}
-TEN_PEER_EDGES = {
-    "node_modules/@next/eslint-plugin-next": {},
-    "node_modules/@tailwindcss/typography": {"tailwindcss": ">=3.0.0 || >=4.0.0 || insiders"},
-    "node_modules/braces": {},
-    "node_modules/chokidar": {},
-    "node_modules/eslint-config-next": {},
-    "node_modules/fast-glob": {},
-    "node_modules/micromatch": {},
-    "node_modules/postcss-nested": {},
-    "node_modules/postcss-nested/node_modules/postcss-selector-parser": {},
-    "node_modules/postcss-selector-parser": {},
-    "node_modules/tailwindcss": {},
-    "node_modules/tailwindcss/node_modules/fast-glob": {},
-    "node_modules/tailwindcss/node_modules/postcss-selector-parser": {},
-}
-TEN_PEER_FLAGS = {
-    "node_modules/@next/eslint-plugin-next": False,
-    "node_modules/@tailwindcss/typography": False,
-    "node_modules/braces": False,
-    "node_modules/chokidar": False,
-    "node_modules/eslint-config-next": False,
-    "node_modules/fast-glob": False,
-    "node_modules/micromatch": False,
-    "node_modules/postcss-nested": False,
-    "node_modules/postcss-nested/node_modules/postcss-selector-parser": False,
-    "node_modules/postcss-selector-parser": False,
-    "node_modules/tailwindcss": True,
-    "node_modules/tailwindcss/node_modules/fast-glob": False,
-    "node_modules/tailwindcss/node_modules/postcss-selector-parser": False,
-}
-TEN_FIXES = {
-    "@next/eslint-plugin-next": {
-        "isSemVerMajor": True,
-        "name": "eslint-config-next",
-        "version": "14.2.35",
-    },
-    "@tailwindcss/typography": {
-        "isSemVerMajor": True,
-        "name": "@tailwindcss/typography",
-        "version": "0.5.4",
-    },
-    "braces": {"isSemVerMajor": True, "name": "tailwindcss", "version": "4.3.3"},
-    "chokidar": {"isSemVerMajor": True, "name": "tailwindcss", "version": "4.3.3"},
-    "eslint-config-next": {
-        "isSemVerMajor": True,
-        "name": "eslint-config-next",
-        "version": "14.2.35",
-    },
-    "fast-glob": {"isSemVerMajor": True, "name": "eslint-config-next", "version": "14.2.35"},
-    "micromatch": {"isSemVerMajor": True, "name": "tailwindcss", "version": "4.3.3"},
-    "postcss-nested": True,
-    "postcss-selector-parser": {
-        "isSemVerMajor": True,
-        "name": "@tailwindcss/typography",
-        "version": "0.5.4",
-    },
-    "tailwindcss": {"isSemVerMajor": True, "name": "tailwindcss", "version": "4.3.3"},
-}
-
-
 class FrontendAuditError(ValueError):
     """Fixed diagnostics intentionally exclude raw registry errors and local paths."""
 
@@ -430,56 +259,6 @@ def _fix(value: Any, name: str) -> None:
     )
 
 
-def _selector_advisory(value: Any) -> None:
-    _keys(value, set(SELECTOR_LEAF))
-    _keys(value["cvss"], {"score", "vectorString"})
-    score = value["cvss"]["score"]
-    _require(
-        type(value["source"]) is int
-        and type(score) in (int, float)
-        and math.isfinite(score)
-        and value == SELECTOR_LEAF,
-        "An unreviewed selector advisory is present.",
-    )
-
-
-def _ten_fix(value: Any, name: str) -> None:
-    expected = TEN_FIXES[name]
-    if type(expected) is bool:
-        _require(type(value) is bool and value == expected, "Unreviewed suggested fix metadata.")
-        return
-    _keys(value, {"name", "version", "isSemVerMajor"})
-    _require(
-        type(value["name"]) is str
-        and type(value["version"]) is str
-        and type(value["isSemVerMajor"]) is bool
-        and value == expected,
-        "Unreviewed suggested fix metadata.",
-    )
-
-
-def _ten_lock_edges(packages: dict[str, Any], node: str) -> None:
-    package = packages[node]
-    for group, contracts in (
-        ("dependencies", TEN_EDGES),
-        ("peerDependencies", TEN_PEER_EDGES),
-        ("optionalDependencies", None),
-    ):
-        values = package.get(group, {})
-        _require(
-            type(values) is dict
-            and all(type(k) is str and type(v) is str for k, v in values.items()),
-            "Unsupported reviewed dependency contracts.",
-        )
-        affected_edges = {name: spec for name, spec in values.items() if name in TEN_VIA}
-        expected = {} if contracts is None else contracts[node]
-        _require(affected_edges == expected, "Unreviewed locked dependency contracts.")
-    _require(
-        package.get("optional") is not True and package.get("peer", False) == TEN_PEER_FLAGS[node],
-        "Unreviewed development instance flags.",
-    )
-
-
 def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
     """Return a clear/exception result, or reject an incomplete/unreviewed report."""
     _keys(report, {"auditReportVersion", "vulnerabilities", "metadata"})
@@ -501,16 +280,12 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
             "unresolved_advisory": None,
         }
     # Select one complete reviewed graph, never optional names/effects/edges.
-    ten = set(findings) == set(TEN_VIA)
     _require(
-        set(findings) in (set(VIA), set(VIA) | {TYPOGRAPHY}, set(TEN_VIA)),
+        set(findings) in (set(VIA), set(VIA) | {TYPOGRAPHY}),
         "Findings differ from the reviewed exception chain.",
     )
     via_graph, effects, instances, ranges = dict(VIA), dict(EFFECTS), dict(INSTANCES), dict(RANGES)
-    if ten:
-        via_graph, effects = dict(TEN_VIA), dict(TEN_EFFECTS)
-        instances, ranges = dict(TEN_INSTANCES), dict(TEN_RANGES)
-    elif TYPOGRAPHY in findings:
+    if TYPOGRAPHY in findings:
         via_graph[TYPOGRAPHY] = {"tailwindcss"}
         effects[TYPOGRAPHY] = set()
         effects["tailwindcss"] = {TYPOGRAPHY}
@@ -519,14 +294,6 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
     observed = {
         node for node in packages if node and node.rsplit("node_modules/", 1)[-1] in via_graph
     }
-    if ten:
-        for node, package in packages.items():
-            _require(
-                "name" not in package or type(package["name"]) is str,
-                "Unsupported lock package identity.",
-            )
-            if node and package.get("name") in via_graph:
-                observed.add(node)
     _require(observed == set(instances), "Lock instances differ from the reviewed exception.")
     root = packages[""]
     # Validate referenced node lists before following edges. JSON object order
@@ -542,7 +309,7 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
         direct = name in root.get("devDependencies", {})
         _require(
             finding["name"] == name
-            and finding["severity"] == (TEN_SEVERITIES[name] if ten else "high")
+            and finding["severity"] == "high"
             and type(finding["isDirect"]) is bool
             and finding["isDirect"] == direct
             and (name != TYPOGRAPHY or direct)
@@ -562,18 +329,12 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
         if name == "braces":
             _require(len(via) == 1, "Incomplete advisory leaf.")
             _advisory(via[0])
-        elif ten and name == SELECTOR:
-            _require(len(via) == 1, "Incomplete selector advisory leaf.")
-            _selector_advisory(via[0])
         else:
             _require(
                 _strings(via) and set(via) == via_graph[name],
                 "Incomplete or unreviewed vulnerability references.",
             )
-        if ten:
-            _ten_fix(finding["fixAvailable"], name)
-        else:
-            _fix(finding["fixAvailable"], name)
+        _fix(finding["fixAvailable"], name)
         for node in nodes:
             package = packages[node]
             _require(
@@ -583,14 +344,12 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
                 and package.get("devOptional") is not True,
                 "Unreviewed lock version or runtime instance.",
             )
-            if ten:
-                _ten_lock_edges(packages, node)
             for dependency in via_graph[name]:
-                group = "peerDependencies" if name == TYPOGRAPHY and not ten else "dependencies"
+                group = "peerDependencies" if name == TYPOGRAPHY else "dependencies"
                 _require(
                     type(package.get(group)) is dict
                     and type(package[group].get(dependency)) is str
-                    and (name != TYPOGRAPHY or ten or package[group][dependency] == TYPOGRAPHY_PEER)
+                    and (name != TYPOGRAPHY or package[group][dependency] == TYPOGRAPHY_PEER)
                     and _resolved_dependency(packages, node, dependency)
                     in findings[dependency]["nodes"],
                     "Vulnerability references do not match locked dependency edges.",
@@ -601,9 +360,6 @@ def validate_audit(report: Any, lock: Any) -> dict[str, Any]:
         "reviewed_lock_instances": len(instances),
         "unresolved_advisory": ADVISORY,
     }
-    if ten:
-        result["unresolved_advisories"] = [ADVISORY, SELECTOR_ADVISORY]
-        result["severity_counts"] = {"high": 7, "moderate": 3}
     return result
 
 
@@ -628,11 +384,9 @@ def main(argv: list[str] | None = None) -> int:
     if result["status"] == "clear":
         print("Frontend audit clear: zero reported vulnerabilities.")
     else:
-        advisories = ", ".join(result.get("unresolved_advisories", [result["unresolved_advisory"]]))
-        severity = "7 high, 3 moderate; " if "severity_counts" in result else ""
         print(
-            f"Frontend audit accepted with UNRESOLVED development exception {advisories}: "
-            f"{severity}"
+            "Frontend audit accepted with UNRESOLVED development exception "
+            f"{result['unresolved_advisory']}: "
             f"{result['vulnerable_packages']} vulnerable package names, "
             f"{result['reviewed_lock_instances']} reviewed dev-only lock instances. "
             "This is not zero vulnerabilities; the separate production audit is still required."
