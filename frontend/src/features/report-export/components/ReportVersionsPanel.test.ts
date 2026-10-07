@@ -198,4 +198,81 @@ describe("selected immutable report review", () => {
     expect(disclosure.textContent).not.toContain("OWNED-PRIVATE");
     expect(JSON.stringify(retained)).toBe(frozen);
   });
+
+  it("binds the prominent frozen dates, report text and checks to the selected version rather than the live task", async () => {
+    const original = createFictionalDemoTask("en");
+    const first = { ...original.reportVersions[0], id: "guide-first", runId: "guide-run-first", versionNumber: 1,
+      createdAt: "2024-01-02T10:00:00.000Z", task: { ...original.reportVersions[0].task, analysisDate: "2024-01-01" },
+      reportSections: { market_report: "FIRST-SAVED-REPORT" },
+      outputQuality: { portfolio_manager: { status: "unvalidated_text", schema: "PortfolioDecision", source: "raw_response", reason: "no_tool_call" } } as const };
+    const second = { ...first, id: "guide-second", runId: "guide-run-second", versionNumber: 2,
+      createdAt: "2025-02-04T11:00:00.000Z", task: { ...first.task, analysisDate: "2025-02-03" },
+      reportSections: { market_report: "SECOND-SAVED-REPORT" },
+      outputQuality: { portfolio_manager: { status: "validated_schema", schema: "PortfolioDecision", source: "structured" } } as const };
+    const task = { ...original, analysisDate: "2026-10-07", reportSections: { market_report: "CURRENT-UNSAVED-REPORT" }, reportVersions: [first, second] };
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task, language: "en" })));
+    const selected = container.querySelector<HTMLSelectElement>("#report-version-select")!;
+    const context = () => container.querySelector('[aria-label="Selected saved report v' + (selected.value === first.id ? "1" : "2") + '"]')!;
+    expect(context().querySelector('time[datetime="2025-02-04T11:00:00.000Z"]')).not.toBeNull();
+    expect(context().querySelector('time[datetime="2025-02-03"]')).not.toBeNull();
+    const checks = container.querySelector("#selected-report-evidence")!;
+    expect(checks.textContent).toContain("Format validated");
+    await act(async () => { selected.value = first.id; selected.dispatchEvent(new Event("change", { bubbles: true })); });
+    expect(context().querySelector('time[datetime="2024-01-02T10:00:00.000Z"]')).not.toBeNull();
+    expect(context().querySelector('time[datetime="2024-01-01"]')).not.toBeNull();
+    expect(context().textContent).not.toContain("2026-10-07");
+    expect(container.querySelector("#selected-report-body")?.textContent).toContain("FIRST-SAVED-REPORT");
+    expect(container.querySelector("#selected-report-body")?.textContent).not.toContain("SECOND-SAVED-REPORT");
+    expect(checks.textContent).toContain("Text fallback · format unvalidated");
+    await act(async () => root.render(createElement(ReportVersionsPanel, { task: { ...task, reportSections: { market_report: "ARRIVING-UNSAVED-REPORT" } }, language: "en" })));
+    expect(selected.value).toBe(first.id);
+    expect(container.textContent).not.toContain("CURRENT-UNSAVED-REPORT");
+    expect(container.textContent).not.toContain("ARRIVING-UNSAVED-REPORT");
+  });
+
+  it("opens the actual collapsed selected report and moves focus when its bilingual navigation is activated", async () => {
+    const task = createFictionalDemoTask("en");
+    for (const language of ["en", "zh"] as const) {
+      await act(async () => root.render(createElement(ReportVersionsPanel, { task, language })));
+      const preview = container.querySelector<HTMLDetailsElement>("#selected-report-body")!;
+      preview.open = false;
+      const navigation = container.querySelector(language === "zh" ? '[aria-label="所选报告导览"]' : '[aria-label="Selected report navigation"]')!;
+      const textLink = navigation.querySelector<HTMLAnchorElement>('a[href="#selected-report-body"]')!;
+      textLink.focus();
+      expect(document.activeElement).toBe(textLink);
+      await act(async () => textLink.click());
+      expect(preview.open).toBe(true);
+      expect(document.activeElement).toBe(preview);
+      expect(preview.querySelector('[aria-label]')?.getAttribute("aria-label")).toBe(language === "zh" ? "报告版本 v1 预览" : "Report version v1 preview");
+      for (const href of ["#selected-report-evidence", "#selected-report-review"]) {
+        expect(navigation.querySelector(`a[href="${href}"]`)).not.toBeNull();
+        expect(container.querySelector(href)?.getAttribute("tabindex")).toBe("-1");
+      }
+    }
+  });
+
+  it("does not synthesize saved versions from completed prose and keeps persisted legacy and fictional boundaries explicit", async () => {
+    const original = createFictionalDemoTask("en");
+    const unsaved = { ...original, origin: "analysis" as const, status: "completed" as const,
+      reportVersions: [], reportSections: { market_report: "COMPLETED-BUT-NOT-A-SAVED-VERSION" } };
+    for (const language of ["en", "zh"] as const) {
+      await act(async () => root.render(createElement(ReportVersionsPanel, { task: unsaved, language })));
+      expect(container.querySelector("#report-version-select")).toBeNull();
+      expect(container.querySelector("#selected-report-body")).toBeNull();
+      expect(container.textContent).not.toContain("COMPLETED-BUT-NOT-A-SAVED-VERSION");
+      expect(container.textContent).toContain(language === "zh" ? "任务成功完成后即可导出只读报告。" : "A read-only report becomes available after a successful run.");
+      const legacy = { ...original.reportVersions[0], legacy: true, run: null, id: "persisted-legacy-guide", runId: "persisted-legacy-run" };
+      const saved = { ...unsaved, reportVersions: [legacy] };
+      await act(async () => root.render(createElement(ReportVersionsPanel, { task: saved, language })));
+      expect(container.querySelector<HTMLSelectElement>("#report-version-select")?.value).toBe(legacy.id);
+      expect(container.textContent).toContain(language === "zh" ? "历史版本未记录" : "Not recorded for this historical version");
+      const preview = container.querySelector("#selected-report-body")!;
+      expect(preview.textContent).toContain(language === "zh" ? "仅供研究参考，不构成金融、投资、法律或交易建议" : "for research only. It is not financial, investment, legal, or trading advice");
+      expect(preview.textContent).not.toContain(language === "zh" ? "完全虚构的演示报告：" : "Entirely fictional demo report:");
+      await act(async () => root.render(createElement(ReportVersionsPanel, { task: original, language })));
+      expect(container.querySelector("#selected-report-body")?.textContent).toContain(language === "zh" ? "完全虚构的演示报告：" : "Entirely fictional demo report:");
+    }
+    expect(unsaved.reportVersions).toEqual([]);
+    expect(saveTextExport).not.toHaveBeenCalled();
+  });
 });
