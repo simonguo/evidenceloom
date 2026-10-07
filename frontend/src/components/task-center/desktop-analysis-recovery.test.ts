@@ -143,7 +143,7 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
     await act(async () => { pending = center.retryNativeResult(); });
     expect(center.nativeAnalysis?.refreshing).toBe(true);
     desktopRead = undefined; loadFailure = false;
-    await act(async () => root.render(createElement(TaskCenterProvider, { key: "replacement" }, createElement(AppShell, null, createElement(Panel)))));
+    await act(async () => root.render(createElement(TaskCenterProvider, { key: "replacement", children: createElement(AppShell, null, createElement(Panel)) })));
     await settled(() => { expect(center.hydrated).toBe(true); expect(center.storageState).toBe("ready"); expect(center.nativeAnalysis).toBeNull(); });
     const loads = recoveryLoads;
     await act(async () => { barrier.resolve(); await pending; });
