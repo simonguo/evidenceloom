@@ -26,6 +26,7 @@ type TaskQueueControllerOptions = {
   persistTask: (task: AnalysisTask) => void;
   onEvent: (taskId: string, event: AnalysisEvent, runContext?: RunContext, owner?: RunOwner) => void;
   storageReady?: boolean;
+  blockedQueueNotice?: string;
   mutateDesktopTask?: (task: AnalysisTask, updater: (task: AnalysisTask) => AnalysisTask, owner?: RunOwner) => TaskAction | undefined;
   beginDesktopRun?: (task: AnalysisTask) => Promise<RunOwner | undefined>;
   confirmDesktopAction?: (action: TaskAction) => Promise<unknown>;
@@ -44,6 +45,7 @@ export function useTaskQueueController({
   onEvent,
   setNotice,
   storageReady = true,
+  blockedQueueNotice,
   mutateDesktopTask,
   retireDesktopRun,
   prepareDesktopRun,
@@ -232,7 +234,10 @@ export function useTaskQueueController({
   }, [hydrated, schedulerVersion, startQueuedTask, storageReady, tasks]);
 
   const queueTask = useCallback((taskId: string, taskOverride?: AnalysisTask) => {
-    if (!storageReady) return false;
+    if (!storageReady) {
+      setNotice(blockedQueueNotice ?? createTranslator(settings.systemLanguage)("taskStorageUnconfirmed"));
+      return false;
+    }
     const task = taskOverride ?? tasksRef.current.find((item) => item.id === taskId);
     if (!task || task.status === "running" || activeExecutionRef.current?.taskId === taskId && !cleanupBlockedRef.current) return false;
     if (cleanupBlockedRef.current?.taskId === taskId) {
@@ -262,7 +267,7 @@ export function useTaskQueueController({
     if (isTauriRuntime() && mutateDesktopTask) return !!mutateDesktopTask(task, (current) => resetTaskForQueue(current, queuedAt, queueOrder));
     patchTask(taskId, (current) => resetTaskForQueue(current, queuedAt, queueOrder));
     return true;
-  }, [mutateDesktopTask, patchTask, setNotice, settings, storageReady]);
+  }, [blockedQueueNotice, mutateDesktopTask, patchTask, setNotice, settings, storageReady]);
 
   const cancelQueuedTask = useCallback((taskId: string, selectedTask?: AnalysisTask) => {
     if (isTauriRuntime() && mutateDesktopTask) {

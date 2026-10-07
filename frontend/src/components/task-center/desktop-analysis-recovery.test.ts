@@ -21,6 +21,7 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
   let root: Root, element: HTMLDivElement, center: ReturnType<typeof useTaskCenter>;
   let rows: Map<string, AnalysisTask>, heads: Map<string, TaskHead>, active: ReturnType<typeof transportFixture> | undefined;
   let configure: ((fixture: ReturnType<typeof transportFixture>, id: string) => void) | undefined, rejectId: string | undefined, cleanupFailureId: string | undefined, loadFailure: boolean;
+  let refreshFailure: boolean, recoveryLoads: number;
   let collection: { collectionId: string; epoch: string };
   const calls = (command: string) => ipc.invoke.mock.calls.filter(([name]) => name === command);
   function authority() { return { collection, heads: [...heads.values()] }; }
@@ -43,10 +44,11 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); localStorage.clear();
     const initial = ["owned-A", "owned-B"].map((id, index) => ({ ...task(), id, status: "queued" as const, queueOrder: index + 1, queuedAt: "2026-01-01T00:00:00.000Z" }));
     collection = { collectionId: "a".repeat(64), epoch: "0" }; rows = new Map(initial.map((row) => [row.id, row])); heads = new Map(initial.map((row) => [row.id, { taskId: row.id, generation: "1", revision: "1", state: "live" }])); active = undefined; configure = undefined; rejectId = undefined; cleanupFailureId = undefined; loadFailure = false;
+    refreshFailure = false; recoveryLoads = 0;
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: { invoke: (command: string, args: Record<string, unknown>) => ipc.invoke(command, args) }, configurable: true });
     ipc.listen.mockReset().mockResolvedValue(vi.fn()); ipc.invoke.mockReset().mockImplementation(async (command, args) => {
       if (command === "load_desktop_data") return { settings: { ...defaultGlobalSettings(), systemLanguage: "en" }, tasks: [...rows.values()], storage: { ...authority(), legacyTaskImportAllowed: false } };
-      if (command === "load_analysis_recovery") { if (loadFailure) throw new Error("Owned native runtime unavailable"); return { recoveryProtocolVersion: 1, storage: { ...authority(), legacyTaskImportAllowed: false }, tasks: [...rows.values()], journals: [], clearBlockers: [], runtime: runtime(), coherent: true }; }
+      if (command === "load_analysis_recovery") { recoveryLoads += 1; if (loadFailure || refreshFailure && recoveryLoads > 1) throw new Error("Owned native runtime unavailable"); return { recoveryProtocolVersion: 1, storage: { ...authority(), legacyTaskImportAllowed: false }, tasks: [...rows.values()], journals: [], clearBlockers: [], runtime: runtime(), coherent: true }; }
       if (command === "save_desktop_task") return sql(args.request);
       if (command === "query_desktop_task_mutation") return { scope: "sql", receipt: null, rejection: null, current: authority() };
       if (command === "reserve_analysis") {
@@ -72,6 +74,22 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
   });
   it("keeps native bootstrap failure failclosed with visible retained queued tasks", async () => {
     loadFailure = true; await mount(); await act(async () => {}); expect(center.tasks).toHaveLength(2); expect(calls("reserve_analysis")).toHaveLength(0); expect(center.notice).toContain("Dispatch remains paused");
+  });
+  it("explains a blocked failed-task requeue and exposes refresh even when the last runtime observation is idle", async () => {
+    const failed = { ...task(), id: "owned-A", status: "error" as const, error: "Error code: 400 - unsupported model gpt-5.4-mini" };
+    rows = new Map([[failed.id, failed]]); heads.delete("owned-B"); refreshFailure = true;
+    await mount(); expect(center.storageState).toBe("ready"); expect(center.runningTask).toBeNull();
+    await act(async () => expect(center.queueTask(failed.id, center.getTask(failed.id))).toBe(false));
+    expect(center.notice).toContain("Refresh its state"); expect(center.nativeAnalysis).not.toBeNull();
+    expect(calls("reserve_analysis")).toHaveLength(0); expect(rows.get(failed.id)?.status).toBe("error");
+    const refresh = [...element.querySelectorAll("button")].find((button) => button.textContent === "Refresh analysis state");
+    expect(refresh).toBeDefined(); refreshFailure = false;
+    await act(async () => refresh!.click());
+    await settled(() => expect(center.nativeAnalysis).toBeNull()); expect(center.notice).toBe("");
+    expect(calls("reserve_analysis")).toHaveLength(0);
+    await act(async () => expect(center.queueTask(failed.id, center.getTask(failed.id))).toBe(true));
+    await settled(() => expect(center.getTask(failed.id)?.status).toBe("completed"));
+    expect(calls("start_analysis")).toHaveLength(1); expect(center.getTask(failed.id)?.error).toBe("");
   });
   it("the real stop button retains the owner until ACK and shares abort/control without false cleanup failure", async () => {
     const registration = deferred<() => void>(), listenerEntered = deferred<void>(), stopped = deferred<void>();

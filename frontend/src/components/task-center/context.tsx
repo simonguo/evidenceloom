@@ -451,6 +451,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     runtimeAdapterRef,
     persistTask,
     storageReady: !isTauriRuntime() || recoveryReady && (storageState === "ready" || storageState === "pending"),
+    blockedQueueNotice: t(storageState === "ready" || storageState === "pending" ? "analysisRecoveryBlocked" : "taskStorageUnconfirmed"),
     mutateDesktopTask,
     beginDesktopRun: async (task) => {
       const mutations = mutationsRef.current;
@@ -537,7 +538,13 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   async function retryNativeResult() {
     const session = attachedRef.current;
     if (session && nativeObservation?.owner && (!sameOrigin(session.origin, nativeObservation.owner.origin) || session.captured.request.journalId !== nativeObservation.owner.journalId)) return;
-    if (!session) { try { if (!mutationsRef.current?.ready) await bootstrapRetryRef.current?.(); else await refreshAnalysisRecovery(); } catch { setRecoveryReady(false); setNotice(t("analysisRecoveryBlocked")); } return; }
+    if (!session) {
+      try {
+        if (!mutationsRef.current?.ready) await bootstrapRetryRef.current?.();
+        setNotice(await refreshAnalysisRecovery() === true ? "" : t("analysisRecoveryBlocked"));
+      } catch { setRecoveryReady(false); setNotice(t("analysisRecoveryBlocked")); }
+      return;
+    }
     try { await session.retryResult(); } catch { if (attachedRef.current === session) setNotice(t("analysisResultPending")); }
   }
   async function stopNativeAnalysis() {
@@ -553,7 +560,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     try { await session.retryResult(); } catch { if (attachedRef.current === session) setNotice(t("analysisResultPending")); }
   }
   const localExecution = [...recoverySessionsRef.current].some((session) => !session.isDisposed && session.phase !== "ready" && !!session.origin && !!nativeObservation?.owner && sameOrigin(session.origin, nativeObservation.owner.origin));
-  const nativeAnalysis = isTauriRuntime() && !localExecution && (nativeObservation?.owner || nativeBlocked || nativeObservation && !gateReady(nativeObservation))
+  const nativeAnalysis = isTauriRuntime() && !localExecution && (!recoveryReady || nativeObservation?.owner || nativeBlocked || nativeObservation && !gateReady(nativeObservation))
     ? { taskId: nativeObservation?.owner?.origin.taskId ?? null, phase: attached ? attachmentPhase : "checking" as RecoveryPhase, attached: attached && !attachedRef.current?.knownRejected,
       canRetryCleanup: (attachedRef.current?.attachment?.control.state === "known" && attachedRef.current.attachment.control.receipt.outcome === "cleanup_incomplete") === true }
     : null;
