@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const executionTask = resultPendingTask ?? cleanupFailedTask ?? startingTask ?? runningTask ?? sortedTasks.find((task) => task.id === nativeAnalysis?.taskId);
   const executionStatus = executionTask ? getTaskDisplayStatus?.(executionTask) ?? executionTask.status : null;
   const workspaceItems = [
-    { href: "/", label: t("tasks"), icon: Home },
+    { href: "/", label: t("workspace"), icon: Home },
     { href: "/tasks/new", label: t("newTask"), icon: Plus },
   ];
   const systemItems = [
@@ -46,10 +46,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className={clsx("min-h-screen bg-black text-zinc-100", titlebarOverlay && "pt-8")}>
+    <div className={clsx("min-h-screen bg-zinc-950 text-zinc-100", titlebarOverlay && "pt-8")}>
       <DesktopTitleBar enabled={titlebarOverlay} />
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-zinc-900 bg-black lg:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-zinc-800 bg-zinc-950 lg:block">
         <div className="flex h-full flex-col">
           <Link href="/" className={clsx("block shrink-0 border-b border-zinc-900 px-5 pb-5", titlebarOverlay ? "pt-14" : "pt-5")}>
             <div className="flex items-center gap-3">
@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
               <div className="min-w-0">
                 <div className="truncate text-sm font-semibold text-white">Evidence Loom</div>
-                <div className="text-xs text-zinc-500">{t("taskCenter")}</div>
+                <div className="text-xs text-zinc-500">{t("workspaceBrandHint")}</div>
               </div>
             </div>
           </Link>
@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="lg:pl-64">
-        <header className={clsx("sticky z-20 border-b border-zinc-900 bg-black/85 backdrop-blur-xl", titlebarOverlay ? "top-8" : "top-0")}>
+        <header className={clsx("sticky z-20 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-xl", titlebarOverlay ? "top-8" : "top-0")}>
           <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-3 lg:px-8">
             <div className="flex items-center gap-3">
               {showBackButton && (
@@ -100,8 +100,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               )}
               <div>
-                <div className="text-sm font-medium text-white">{pageTitle(pathname, settings.systemLanguage)}</div>
-                <div className="text-xs text-zinc-500">{t("localWorkspace")}</div>
+                <div className="text-sm font-medium text-white">{pathname === "/" ? t("workspace") : pageTitle(pathname, settings.systemLanguage)}</div>
+                <div className="text-xs text-zinc-400">{t("localWorkspace")}</div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 function SidebarSection({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section className="mb-5">
-      <div className="mb-2 px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-600">{label}</div>
+      <div className="mb-2 px-3 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">{label}</div>
       <div className="space-y-1">{children}</div>
     </section>
   );
