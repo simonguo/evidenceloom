@@ -1,6 +1,16 @@
-import type { AnalysisTask, TaskStatus } from "@/lib/types";
+import type { AgentStatus, AnalysisTask, TaskStatus } from "@/lib/types";
 
 export type TaskDisplayStatus = TaskStatus | "starting" | "stopping" | "result_pending" | "cleanup_failed";
+export type AgentDisplayStatus = AgentStatus | "sync_pending" | "stopped";
+
+export function agentDisplayStatus(status: AgentStatus, taskStatus: TaskDisplayStatus): AgentDisplayStatus {
+  if (status !== "in_progress") return status;
+  if (taskStatus === "running") return status;
+  if (taskStatus === "stopped") return "stopped";
+  if (taskStatus === "error") return "error";
+  if (taskStatus === "idle" || taskStatus === "queued" || taskStatus === "starting") return "pending";
+  return "sync_pending";
+}
 
 export function taskDisplayStatus(task: AnalysisTask, execution: {
   runningTask?: AnalysisTask | null;

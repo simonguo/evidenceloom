@@ -8,6 +8,7 @@ import { createTranslator } from "@/lib/i18n";
 import type { AnalysisTask, LogEntry, SystemLanguage } from "@/lib/types";
 import { reportWorkflow } from "../constants";
 import { agentLabel, agentRole, reportTitle } from "../utils";
+import { agentDisplayStatus, type TaskDisplayStatus } from "../queue/task-display-status";
 
 const ReportMarkdown = dynamic(
   () => import("./ReportMarkdown").then((module) => module.ReportMarkdown),
@@ -19,6 +20,7 @@ const ReportMarkdown = dynamic(
 
 export function AgentProcessDrawer({
   task,
+  taskStatus,
   agent,
   activeReports,
   language,
@@ -26,6 +28,7 @@ export function AgentProcessDrawer({
   onClose,
 }: {
   task: AnalysisTask;
+  taskStatus: TaskDisplayStatus;
   agent: string;
   activeReports: Array<[string, string | null]>;
   language: SystemLanguage;
@@ -36,6 +39,8 @@ export function AgentProcessDrawer({
 
   const t = createTranslator(language);
   const status = task.agentStatuses[agent];
+  const displayStatus = agentDisplayStatus(status ?? "pending", taskStatus);
+  const progressUnconfirmed = status === "in_progress" && displayStatus !== "in_progress";
   const reportKey = reportWorkflow.find((item) => item.agent === agent)?.key ?? "";
   const reportContent = reportKey ? textValue(task.reportSections[reportKey]) : "";
   const liveContent = status === "in_progress" ? visibleProcessContent(task, agent) : "";
@@ -50,7 +55,7 @@ export function AgentProcessDrawer({
         <div className="border-b border-zinc-900 px-5 py-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">{showingProcess ? t("thinkingProcess") : t("currentReport")}</div>
+              <div className="text-xs uppercase tracking-[0.24em] text-zinc-500">{progressUnconfirmed ? t("lastConfirmedProgress") : showingProcess ? t("thinkingProcess") : t("currentReport")}</div>
               <h3 className="mt-1 text-lg font-semibold text-white">{agentLabel(agent, language)}</h3>
               <p className="mt-1 text-sm text-zinc-500">{agentRole(agent, language)}</p>
             </div>
@@ -83,7 +88,7 @@ export function AgentProcessDrawer({
           {mainContent ? (
             <article className="min-w-0 rounded-xl border border-zinc-900 bg-zinc-950/50 p-5 md:p-6">
               <div className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">
-                {showingProcess ? t("visibleProcess") : reportKey ? reportTitle(reportKey, language) : t("currentReport")}
+                {progressUnconfirmed ? t("lastConfirmedProgress") : showingProcess ? t("visibleProcess") : reportKey ? reportTitle(reportKey, language) : t("currentReport")}
               </div>
               <ReportMarkdown content={mainContent} />
             </article>
@@ -96,7 +101,7 @@ export function AgentProcessDrawer({
 
           {agentLogs.length > 0 && (
             <section className="mt-5 rounded-xl border border-zinc-900 bg-zinc-950/30 p-5">
-              <div className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">{t("liveEvents")}</div>
+              <div className="mb-4 text-xs font-medium uppercase tracking-[0.18em] text-zinc-600">{t(progressUnconfirmed ? "lastConfirmedProgress" : "liveEvents")}</div>
               <div className="space-y-3">
                 {agentLogs.map((log) => <AgentLogItem key={log.id} log={log} />)}
               </div>

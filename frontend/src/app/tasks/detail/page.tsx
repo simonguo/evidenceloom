@@ -187,6 +187,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
     ? (
       <AgentProcessDrawer
         task={task}
+        taskStatus={displayStatus}
         agent={drawerAgent}
         activeReports={activeReports}
         language={settings.systemLanguage}
@@ -319,6 +320,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
 
       <section className="space-y-6">
         <Panel title={t("agentProgressReports")} sticky>
+          {(displayStatus === "result_pending" || displayStatus === "cleanup_failed") && <p role="status" className="mb-5 rounded-lg border border-amber-900/70 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">{t("agentProgressUnconfirmed")}</p>}
           {visibleTeams.length === 0 && activeReports.length === 0 ? <p className="text-sm text-zinc-500">{t("workflowEmpty")}</p> : (
             <div className="space-y-5">
               <div className="grid gap-4 lg:grid-cols-2">
@@ -328,6 +330,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                     team={team.team}
                     agents={team.agents}
                     statuses={task.agentStatuses}
+                    taskStatus={displayStatus}
                     activeReports={activeReports.map(([key]) => key)}
                     activeAgent={drawerAgent}
                     language={settings.systemLanguage}

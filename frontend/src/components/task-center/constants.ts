@@ -1,18 +1,23 @@
-import type { AgentStatus, TaskStatus } from "@/lib/types";
+import type { TaskStatus } from "@/lib/types";
 import type { I18nKey } from "@/lib/i18n";
+import type { AgentDisplayStatus } from "./queue/task-display-status";
 
-export const agentStatusDotStyle: Record<AgentStatus, string> = {
+export const agentStatusDotStyle: Record<AgentDisplayStatus, string> = {
   pending: "bg-zinc-600",
   in_progress: "bg-sky-400 shadow-[0_0_18px_rgba(56,189,248,0.6)]",
   completed: "bg-emerald-400 shadow-[0_0_18px_rgba(52,211,153,0.45)]",
   error: "bg-rose-400 shadow-[0_0_18px_rgba(251,113,133,0.5)]",
+  sync_pending: "bg-amber-300",
+  stopped: "bg-zinc-500",
 };
 
-export const agentStatusTextStyle: Record<AgentStatus, string> = {
+export const agentStatusTextStyle: Record<AgentDisplayStatus, string> = {
   pending: "text-zinc-500",
   in_progress: "text-sky-300",
   completed: "text-emerald-300",
   error: "text-rose-300",
+  sync_pending: "text-amber-200",
+  stopped: "text-zinc-400",
 };
 
 export const taskStatusStyle: Record<TaskStatus, string> = {

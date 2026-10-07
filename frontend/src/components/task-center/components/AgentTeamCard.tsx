@@ -4,11 +4,13 @@ import { reportWorkflow } from "../constants";
 import { teamLabel, teamMandate } from "../utils";
 import { AgentMemberCard } from "./AgentMemberCard";
 import { TeamIcon } from "./TeamIcon";
+import type { TaskDisplayStatus } from "../queue/task-display-status";
 
 export function AgentTeamCard({
   team,
   agents,
   statuses,
+  taskStatus,
   activeReports,
   activeAgent,
   language,
@@ -17,6 +19,7 @@ export function AgentTeamCard({
   team: string;
   agents: string[];
   statuses: Record<string, AgentStatus>;
+  taskStatus: TaskDisplayStatus;
   activeReports: string[];
   activeAgent: string;
   language: SystemLanguage;
@@ -50,6 +53,7 @@ export function AgentTeamCard({
               key={agent}
               agent={agent}
               status={statuses[agent] ?? "pending"}
+              taskStatus={taskStatus}
               language={language}
               active={active}
               reportKey={report?.key}
