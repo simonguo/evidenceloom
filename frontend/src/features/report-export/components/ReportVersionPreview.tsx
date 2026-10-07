@@ -13,6 +13,8 @@ export function ReportVersionPreview({
   const document = buildReportDocument(taskId, origin, version, language);
   return (
     <div className="mt-4 space-y-5" aria-label={language === "zh" ? `报告版本 v${version.versionNumber} 预览` : `Report version v${version.versionNumber} preview`}>
+      <p className="text-sm leading-6 text-zinc-300">{document.disclaimer}</p>
+      {document.fictionalNotice && <p className="rounded-md border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm leading-6 text-amber-200">{document.fictionalNotice}</p>}
       <details className="rounded-lg border border-zinc-800 p-4">
         <summary className="cursor-pointer text-sm font-medium text-zinc-200 focus-visible:outline focus-visible:outline-offset-4">
           {language === "zh" ? "版本与运行配置" : "Version and run metadata"}

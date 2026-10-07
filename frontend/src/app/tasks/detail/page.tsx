@@ -173,6 +173,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
     .map((team) => ({ ...team, agents: team.agents.filter((agent) => agent in task.agentStatuses) }))
     .filter((team) => team.agents.length > 0);
   const displayStatus = getTaskDisplayStatus?.(task) ?? task.status;
+  const queuePosition = displayStatus === "queued" ? getQueuePosition(task.id) : null;
   const topTabs = task.origin === "demo"
     ? [{ key: "overview", label: settings.systemLanguage === "en" ? "Overview" : "任务概览" }]
     : settings.systemLanguage === "en"
@@ -202,6 +203,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
       <section className="rounded-xl border border-zinc-900 bg-black p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
+            <p className="mb-2 text-xs font-medium text-zinc-400">{settings.systemLanguage === "zh" ? "当前任务" : "Current task"}</p>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-3xl font-semibold text-white">{task.ticker}</h2>
               <StatusPill status={task.status} taskId={task.id} />
@@ -210,14 +212,20 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                   <FlaskConical className="size-3.5" /> {t("fictionalDemoBadge")}
                 </span>
               )}
-              {displayStatus === "queued" && <span className="text-xs text-amber-200">{t("queuePosition", { position: getQueuePosition(task.id) ?? 1 })}</span>}
+              {displayStatus === "queued" && queuePosition !== null && Number.isSafeInteger(queuePosition) && queuePosition > 0 && <span className="text-xs text-amber-200">{t("queuePosition", { position: queuePosition })}</span>}
             </div>
             {task.instrumentName && <div className="mt-2 text-lg font-medium text-zinc-300">{task.instrumentName}</div>}
             <p className="mt-2 text-sm text-zinc-500">
               {task.analysisDate} · {assetTypeLabel(task.assetType, settings.systemLanguage)} · {depthLabel(task.researchDepth, settings.systemLanguage)} · {task.analysts.join(", ")} · {t("createdAt")} {formatDateTime(task.createdAt)}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {task.reportVersions.length > 0 && (
+              <a href="#saved-report-versions" className="inline-flex items-center gap-2 rounded-md border border-sky-800 px-3 py-2 text-sm text-sky-200 transition hover:border-sky-500 hover:bg-sky-950/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300">
+                <FileText className="size-4" aria-hidden="true" />
+                {settings.systemLanguage === "zh" ? "查看已存报告" : "View saved reports"}
+              </a>
+            )}
             {task.origin === "demo" ? null : cleanupFailedTask?.id === task.id ? (
               <button type="button" onClick={() => { void retryCleanup(); }} className="vercel-button">{t("retryAnalysisCleanup")}</button>
             ) : resultPendingTask?.id === task.id ? (
