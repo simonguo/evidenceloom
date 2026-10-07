@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TaskCenterProvider, useTaskCenter } from "./context";
 import { createEmptyTask, defaultGlobalSettings, defaultTaskDraft } from "@/lib/analysis";
+import { createTranslator } from "@/lib/i18n";
 import { FICTIONAL_DEMO_TASK_ID } from "@/features/report-export/fixtures/fictional-demo";
 import * as runtime from "@/lib/runtime";
 import type { AnalysisEvent, AnalysisTask } from "@/lib/types";
@@ -232,14 +233,14 @@ describe("desktop task mutation boundaries through the actual provider", () => {
   it("resumes unknown legacy bootstrap import by querying its original packet", async () => {
     const legacy = createEmptyTask(defaultTaskDraft(), "owned-bootstrap-import"); localStorage.setItem("evidenceloom.analysisTasks.v1", JSON.stringify([legacy])); store = ownedStore([], true); loseImportBeforeCommit = true;
     await mount(); expect(center.storageState).not.toBe("ready"); expect(commands("import_legacy_desktop_tasks")).toHaveLength(1); const original = commands("import_legacy_desktop_tasks")[0][1].request; expect(original).toMatchObject({ operation: "import", protocolVersion: 1 }); store.apply(original);
-    await act(async () => element.querySelector<HTMLButtonElement>('[role="alert"] button')!.click());
+    await act(async () => [...element.querySelectorAll<HTMLButtonElement>('aside[role="alert"] button')].find((button) => button.textContent === createTranslator(center.settings.systemLanguage)("refreshAnalysisState"))!.click());
     await vi.waitFor(async () => { await act(async () => {}); expect(center.storageState).toBe("ready"); });
     expect(center.tasks[0].id).toBe(legacy.id); expect(commands("import_legacy_desktop_tasks")).toHaveLength(1); expect(commands("query_desktop_task_mutation").map(([, args]) => args.request)).toEqual([original, original]);
   });
   it("resumes an unknown captured history repair without creating a replacement write", async () => {
     const raw = createEmptyTask(defaultTaskDraft(), "owned-bootstrap-repair"); raw.reportSections.final_trade_decision = "Final rating: BUY"; store = ownedStore([raw]); loseSaveBeforeCommit = true;
     await mount(); expect(center.storageState).not.toBe("ready"); const original = commands("save_desktop_task")[0][1].request; expect(original).toMatchObject({ operation: "update", protocolVersion: 1 }); store.apply(original);
-    await act(async () => element.querySelector<HTMLButtonElement>('[role="alert"] button')!.click());
+    await act(async () => [...element.querySelectorAll<HTMLButtonElement>('aside[role="alert"] button')].find((button) => button.textContent === createTranslator(center.settings.systemLanguage)("refreshAnalysisState"))!.click());
     await vi.waitFor(async () => { await act(async () => {}); expect(center.storageState).toBe("ready"); });
     expect(center.tasks[0].origin).toBe("analysis"); expect(commands("save_desktop_task")).toHaveLength(1); expect(commands("query_desktop_task_mutation").map(([, args]) => args.request)).toEqual([original, original]);
   });

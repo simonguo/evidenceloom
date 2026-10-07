@@ -97,6 +97,21 @@ describe("global native controls through the actual Provider", () => {
     expect(JSON.parse(calls("attach_analysis_recovery")[0].args.requestJson).origin).toEqual(current.header.origin);
     expect(calls("commit_analysis_projection")).toHaveLength(0); // No canonical B parent was bootstrapped.
   });
+  it("keeps the same owner dismissed across refreshes but shows a replacement run of the same task", async () => {
+    await mount(); const previous = fixture, staleDismiss = center.dismissNativeAnalysis;
+    await act(async () => center.dismissNativeAnalysis());
+    expect(center.nativeAnalysisPanelOpen).toBe(false); expect(center.nativeAnalysis).not.toBeNull();
+    await act(async () => center.retryTaskStorage());
+    expect(center.nativeAnalysisPanelOpen).toBe(false);
+    fixture = await attachmentFixture({ taskId: previous.header.origin.taskId, runId: "analysis-1", journalId: "7".repeat(64) });
+    expect(fixture.header.origin.taskId).toBe(previous.header.origin.taskId);
+    expect(fixture.header.journalId).not.toBe(previous.header.journalId);
+    await act(async () => center.retryTaskStorage());
+    expect(center.nativeAnalysisPanelOpen).toBe(true);
+    await act(async () => staleDismiss());
+    expect(center.nativeAnalysisPanelOpen).toBe(true);
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis", "stop_analysis"].includes(call.command))).toBe(false);
+  });
   it("refreshes the whole recovery snapshot after a retained attachment is ready and a global refresh fails", async () => {
     await mount();
     await act(async () => center.watchNativeAnalysis());

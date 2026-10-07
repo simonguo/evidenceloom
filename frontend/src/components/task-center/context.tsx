@@ -104,6 +104,9 @@ type TaskCenterContextValue = {
   storageState: TaskStoreState;
   retryTaskStorage: () => Promise<void>;
   nativeAnalysis: NativeAnalysisView | null;
+  nativeAnalysisPanelOpen: boolean;
+  dismissNativeAnalysis: () => void;
+  showNativeAnalysis: () => void;
   watchNativeAnalysis: () => Promise<void>;
   stopNativeAnalysis: () => Promise<void>;
   retryNativeResult: () => Promise<void>;
@@ -142,6 +145,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const nativeRefreshRef = useRef<Promise<void> | null>(null);
   const [nativeRefreshing, setNativeRefreshing] = useState(false);
   const [nativeRefreshOutcome, setNativeRefreshOutcome] = useState<AnalysisRefreshOutcome | null>(null);
+  const [dismissedNativeAnalysisScope, setDismissedNativeAnalysisScope] = useState<string | null>(null);
   const t = createTranslator(settings.systemLanguage);
 
   const refreshAnalysisRecovery = useCallback(async () => {
@@ -187,6 +191,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     mutationsRef.current = mutations;
     nativeRefreshRef.current = null; recoveryInterruptedRef.current = false;
     setNativeRefreshing(false); setNativeRefreshOutcome(null);
+    setDismissedNativeAnalysisScope(null);
     let pendingBootstrap: { action: TaskAction; continuation: () => Promise<void> } | undefined;
     let bootstrapInFlight: Promise<void> | undefined, legacyImported = false, displaySnapshot: DesktopSnapshot | undefined, nativeCutUnavailable = false;
     async function observeRuntimeOnly() {
@@ -603,6 +608,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       canRetryCleanup: (attachedRef.current?.attachment?.control.state === "known" && attachedRef.current.attachment.control.receipt.outcome === "cleanup_incomplete") === true,
       refreshing: nativeRefreshing, refreshOutcome: nativeRefreshOutcome }
     : null;
+  const nativeAnalysisScope = nativeAnalysis ? JSON.stringify(nativeObservation?.owner
+    ? ["owner", nativeObservation.runtimeEpoch, nativeObservation.owner.origin, nativeObservation.owner.journalId, nativeObservation.owner.admissionDigest]
+    : ["global", nativeObservation?.runtimeEpoch ?? null]) : null;
+  const nativeAnalysisPanelOpen = !!nativeAnalysis && dismissedNativeAnalysisScope !== nativeAnalysisScope;
 
   async function saveSettingsAction(nextSettings: GlobalSettings) {
     const normalizedSettings = normalizeSettingsForSave(nextSettings);
@@ -981,7 +990,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     saveNumericReviews,
     beginReview,
     storageState,
-    nativeAnalysis, watchNativeAnalysis, stopNativeAnalysis, retryNativeResult, retryNativeCleanup,
+    nativeAnalysis, nativeAnalysisPanelOpen,
+    dismissNativeAnalysis: () => { if (nativeAnalysisScope !== null) setDismissedNativeAnalysisScope(nativeAnalysisScope); },
+    showNativeAnalysis: () => setDismissedNativeAnalysisScope(null),
+    watchNativeAnalysis, stopNativeAnalysis, retryNativeResult, retryNativeCleanup,
     retryTaskStorage: async () => {
       if (isTauriRuntime()) { try { await refreshAnalysisRecovery(); } catch { setRecoveryReady(false); } }
       if (!unknownActionsRef.current.size && storageState !== "ready" && storageState !== "pending") { await bootstrapRetryRef.current?.(); return; }
@@ -1001,7 +1013,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <TaskCenterContext.Provider value={value}>{children}{hydrated && nativeAnalysis && <NativeAnalysisControls view={nativeAnalysis} label={tasks.find((task) => task.id === nativeAnalysis.taskId)?.ticker} language={settings.systemLanguage} onWatch={() => void watchNativeAnalysis()} onStop={() => void stopNativeAnalysis()} onResult={() => void retryNativeResult()} onCleanup={() => void retryNativeCleanup()} />}{hydrated && isTauriRuntime() && (storageState === "unavailable" || storageState === "unknown" || storageState === "conflict") && <div role="alert" className="fixed bottom-5 right-5 z-50 max-w-sm rounded-lg border border-amber-800 bg-zinc-950 p-4 text-sm text-amber-100"><p>{t("taskStorageUnconfirmed")}</p><button type="button" className="mt-3 rounded border border-amber-700 px-3 py-1" onClick={() => void value.retryTaskStorage()}>{t("taskStorageRetry")}</button></div>}</TaskCenterContext.Provider>;
+  return <TaskCenterContext.Provider value={value}>{children}{hydrated && nativeAnalysis && nativeAnalysisPanelOpen && <NativeAnalysisControls view={nativeAnalysis} label={tasks.find((task) => task.id === nativeAnalysis.taskId)?.ticker} language={settings.systemLanguage} onWatch={() => void watchNativeAnalysis()} onStop={() => void stopNativeAnalysis()} onResult={() => void retryNativeResult()} onCleanup={() => void retryNativeCleanup()} onDismiss={value.dismissNativeAnalysis} />}{hydrated && isTauriRuntime() && (storageState === "unavailable" || storageState === "unknown" || storageState === "conflict") && <div role="alert" className="fixed bottom-5 right-5 z-50 max-w-sm rounded-lg border border-amber-800 bg-zinc-950 p-4 text-sm text-amber-100"><p>{t("taskStorageUnconfirmed")}</p><button type="button" className="mt-3 rounded border border-amber-700 px-3 py-1" onClick={() => void value.retryTaskStorage()}>{t("taskStorageRetry")}</button></div>}</TaskCenterContext.Provider>;
 }
 
 export function useTaskCenter() {

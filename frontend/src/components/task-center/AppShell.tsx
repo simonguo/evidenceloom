@@ -13,10 +13,11 @@ import { BrandMark } from "./components/BrandMark";
 import { useTaskCenter } from "./context";
 import { pageTitle, taskDetailHref } from "./utils";
 import type { TaskDisplayStatus } from "./queue/task-display-status";
+import { NATIVE_ANALYSIS_CONTROLS_ID, NATIVE_ANALYSIS_STATUS_ID } from "@/features/analysis-recovery/components/NativeAnalysisControls";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { notice, setNotice, runningTask, startingTask, resultPendingTask, cleanupFailedTask, nativeAnalysis, queuedTasks, getQueuePosition, getTaskDisplayStatus, activeTaskId, settings, hydrated, sortedTasks } = useTaskCenter();
+  const { notice, setNotice, runningTask, startingTask, resultPendingTask, cleanupFailedTask, nativeAnalysis, nativeAnalysisPanelOpen, showNativeAnalysis, queuedTasks, getQueuePosition, getTaskDisplayStatus, activeTaskId, settings, hydrated, sortedTasks } = useTaskCenter();
   const [titlebarOverlay, setTitlebarOverlay] = useState(false);
   const t = createTranslator(settings.systemLanguage);
   const isNewTaskPage = pathname === "/tasks/new";
@@ -105,6 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {hydrated && nativeAnalysis && <button id={NATIVE_ANALYSIS_STATUS_ID} type="button" aria-label={t("showAnalysisRecovery")} aria-controls={NATIVE_ANALYSIS_CONTROLS_ID} aria-expanded={nativeAnalysisPanelOpen} onClick={showNativeAnalysis} className="inline-flex shrink-0 rounded-full border border-amber-900/70 px-3 py-1.5 text-xs text-amber-200 transition hover:border-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">{t("analysisQueuePaused")}</button>}
               {executionTask && executionStatus && <Link href={taskDetailHref(executionTask.id)} className={clsx("hidden rounded-full border px-3 py-1.5 text-xs md:inline-flex", executionStatus === "result_pending" || executionStatus === "cleanup_failed" ? "border-amber-900/70 text-amber-200 hover:border-amber-700" : "border-zinc-800 text-zinc-300 hover:border-zinc-600")}>{t(executionStatus)} {executionTask.ticker}</Link>}
               {queuedTasks.length > 0 && <Link href="/" className="hidden rounded-full border border-amber-900/70 px-3 py-1.5 text-xs text-amber-200 hover:border-amber-700 md:inline-flex">{t("queuedCount", { count: queuedTasks.length })}</Link>}
             </div>
