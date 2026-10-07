@@ -109,7 +109,8 @@ describe("global native controls through the actual Provider", () => {
     await act(async () => center.retryNativeResult());
     expect(recoveryLoads).toBe(loadsAfterFailure + 1);
     expect(center.nativeAnalysis).not.toBeNull();
-    expect(center.notice).toContain("Refresh its state");
+    expect(center.notice).toContain("Refresh failed");
+    expect(center.nativeAnalysis?.refreshOutcome).toBe("unavailable");
     expect(calls("query_analysis_attachment")).toHaveLength(oldAttachmentQueries);
     sqlUnavailable = false;
     await act(async () => center.retryNativeResult());
@@ -134,5 +135,25 @@ describe("global native controls through the actual Provider", () => {
     expect(calls("stop_analysis")).toHaveLength(1); expect(calls("commit_analysis_projection")).toHaveLength(0);
     expect(center.nativeAnalysis).not.toBeNull();
     expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis"].includes(call.command))).toBe(false);
+  });
+  it("refreshes globally with no owner while retaining an unconfirmed attachment instead of querying its old packet", async () => {
+    fixture.setHook((command) => {
+      if (command === "commit_analysis_projection") throw new Error("Owned lost final projection acknowledgement");
+      if (command === "query_analysis_projection") throw new Error("Owned unavailable projection query");
+    });
+    await mount();
+    await act(async () => center.watchNativeAnalysis());
+    expect(center.nativeAnalysis?.phase).toBe("result_pending");
+    await act(async () => center.retryTaskStorage());
+    expect(center.nativeAnalysis?.taskId).toBeNull();
+    const oldQueries = calls("query_analysis_attachment").length, loads = recoveryLoads;
+    await act(async () => center.retryNativeResult());
+    expect(recoveryLoads).toBe(loads + 1);
+    expect(calls("query_analysis_attachment")).toHaveLength(oldQueries);
+    expect(center.nativeAnalysis?.phase).toBe("result_pending");
+    expect(center.nativeAnalysis?.attached).toBe(true);
+    expect(center.nativeAnalysis?.refreshOutcome).toBe("blocked");
+    expect(center.notice).toContain("Refresh completed");
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis", "stop_analysis"].includes(call.command))).toBe(false);
   });
 });

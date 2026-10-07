@@ -1,6 +1,7 @@
 "use client";
 
 import { NativeAnalysisControls } from "@/features/analysis-recovery/components/NativeAnalysisControls";
+import type { AnalysisRefreshOutcome, NativeAnalysisView } from "@/features/analysis-recovery/components/NativeAnalysisControls";
 import { AttachedRunConsumer, captureAttachment } from "@/features/analysis-recovery/lib/attachment";
 import type { RecoveryPhase, RuntimeObservation } from "@/features/analysis-recovery/types";
 import { normalizeIdentityTasks, normalizeIdentityTaskFields, verifyIdentityTask, verifyIdentityTasks } from "@/features/source-identity/lib/tasks";
@@ -102,7 +103,7 @@ type TaskCenterContextValue = {
   saveEvaluationReviews: (taskId: string, versionId: string, reviews: ReviewAttachment[], action?: unknown) => Promise<void>;
   storageState: TaskStoreState;
   retryTaskStorage: () => Promise<void>;
-  nativeAnalysis: { taskId: string | null; phase: RecoveryPhase; attached: boolean; canRetryCleanup: boolean } | null;
+  nativeAnalysis: NativeAnalysisView | null;
   watchNativeAnalysis: () => Promise<void>;
   stopNativeAnalysis: () => Promise<void>;
   retryNativeResult: () => Promise<void>;
@@ -137,6 +138,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const attachedRef = useRef<AttachedRunConsumer | null>(null);
   const recoverySessionsRef = useRef<Set<SameSessionConsumer>>(new Set());
   const [recoveryReady, setRecoveryReady] = useState(false);
+  const recoveryInterruptedRef = useRef(false);
+  const nativeRefreshRef = useRef<Promise<void> | null>(null);
+  const [nativeRefreshing, setNativeRefreshing] = useState(false);
+  const [nativeRefreshOutcome, setNativeRefreshOutcome] = useState<AnalysisRefreshOutcome | null>(null);
   const t = createTranslator(settings.systemLanguage);
 
   const refreshAnalysisRecovery = useCallback(async () => {
@@ -145,6 +150,8 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     if (!adapter?.getAnalysisRecoveryApi || !mutations) throw new Error("Native analysis authority is unavailable.");
     const snapshot = await loadRecovery(await adapter.getAnalysisRecoveryApi());
     if (mutationsRef.current !== mutations || !mutations.initialized) return;
+    recoveryInterruptedRef.current = snapshot.runtime.blockers.some((blocker) => blocker.code === "analysis_interrupted")
+      || snapshot.journals.some((journal) => journal.historyState === "interrupted" && !finished(journal));
     recoveryRuntimeRef.current = snapshot.runtime; setNativeObservation(snapshot.runtime);
     setNativeBlocked(snapshot.clearBlockers.length > 0 || snapshot.journals.some((journal) => journal.historyState !== "discarded" && !finished(journal)));
     const ready = gateReady(snapshot.runtime) && snapshot.clearBlockers.length === 0 && snapshot.journals.every((journal) => journal.historyState === "discarded" || finished(journal));
@@ -178,6 +185,8 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       query: (request) => adapter.queryDesktopTaskMutation(request),
     }, setStorageState);
     mutationsRef.current = mutations;
+    nativeRefreshRef.current = null; recoveryInterruptedRef.current = false;
+    setNativeRefreshing(false); setNativeRefreshOutcome(null);
     let pendingBootstrap: { action: TaskAction; continuation: () => Promise<void> } | undefined;
     let bootstrapInFlight: Promise<void> | undefined, legacyImported = false, displaySnapshot: DesktopSnapshot | undefined, nativeCutUnavailable = false;
     async function observeRuntimeOnly() {
@@ -541,18 +550,40 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     const session = prepareNativeAttachment(); if (!session) return;
     try { await session.run(); } catch { if (attachedRef.current === session) setNotice(t("analysisResultPending")); }
   }
-  async function retryNativeResult() {
+  async function retryNativeResultAttempt() {
+    const lifetime = mutationsRef.current;
     const session = attachedRef.current;
     if (!session && nativeObservation?.owner) { await watchNativeAnalysis(); return; }
     if (session && nativeObservation?.owner && (!sameOrigin(session.origin, nativeObservation.owner.origin) || session.captured.request.journalId !== nativeObservation.owner.journalId)) return;
-    if (!session || !nativeObservation?.owner && session.phase === "ready") {
+    if (!session || !nativeObservation?.owner) {
       try {
         if (!mutationsRef.current?.ready) await bootstrapRetryRef.current?.();
-        setNotice(await refreshAnalysisRecovery() === true ? "" : t("analysisRecoveryBlocked"));
-      } catch { setRecoveryReady(false); setNotice(t("analysisRecoveryBlocked")); }
+        if (mutationsRef.current !== lifetime) return;
+        const ready = await refreshAnalysisRecovery();
+        if (mutationsRef.current !== lifetime) return;
+        if (ready === true) { setNativeRefreshOutcome(null); setNotice(""); }
+        else {
+          const outcome = recoveryInterruptedRef.current ? "interrupted" : "blocked";
+          setNativeRefreshOutcome(outcome);
+          setNotice(t(outcome === "interrupted" ? "analysisRefreshInterrupted" : "analysisRefreshBlocked"));
+        }
+      } catch { if (mutationsRef.current === lifetime) { setRecoveryReady(false); setNativeRefreshOutcome("unavailable"); setNotice(t("analysisRefreshUnavailable")); } }
       return;
     }
     try { await session.retryResult(); } catch { if (attachedRef.current === session) setNotice(t("analysisResultPending")); }
+  }
+  function retryNativeResult(): Promise<void> {
+    if (nativeRefreshRef.current) return nativeRefreshRef.current;
+    const lifetime = mutationsRef.current;
+    setNativeRefreshing(true); setNativeRefreshOutcome(null);
+    const attempt = retryNativeResultAttempt().finally(() => {
+      if (nativeRefreshRef.current === attempt) {
+        nativeRefreshRef.current = null;
+        if (mutationsRef.current === lifetime) setNativeRefreshing(false);
+      }
+    });
+    nativeRefreshRef.current = attempt;
+    return attempt;
   }
   async function stopNativeAnalysis() {
     // Capture the displayed exact owner synchronously, including when an old ready/rejected
@@ -569,7 +600,8 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   const localExecution = [...recoverySessionsRef.current].some((session) => !session.isDisposed && session.phase !== "ready" && !!session.origin && !!nativeObservation?.owner && sameOrigin(session.origin, nativeObservation.owner.origin));
   const nativeAnalysis = isTauriRuntime() && !localExecution && (!recoveryReady || nativeObservation?.owner || nativeBlocked || nativeObservation && !gateReady(nativeObservation))
     ? { taskId: nativeObservation?.owner?.origin.taskId ?? null, phase: attached ? attachmentPhase : "checking" as RecoveryPhase, attached: attached && !attachedRef.current?.knownRejected,
-      canRetryCleanup: (attachedRef.current?.attachment?.control.state === "known" && attachedRef.current.attachment.control.receipt.outcome === "cleanup_incomplete") === true }
+      canRetryCleanup: (attachedRef.current?.attachment?.control.state === "known" && attachedRef.current.attachment.control.receipt.outcome === "cleanup_incomplete") === true,
+      refreshing: nativeRefreshing, refreshOutcome: nativeRefreshOutcome }
     : null;
 
   async function saveSettingsAction(nextSettings: GlobalSettings) {
