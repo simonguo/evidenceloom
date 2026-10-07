@@ -648,8 +648,7 @@ uv run python scripts/generate_third_party_notices.py
 | `postcss-js` | `4.1.0` | MIT | — |
 | `postcss-load-config` | `6.0.1` | MIT | — |
 | `postcss-nested` | `6.2.0` | MIT | — |
-| `postcss-selector-parser` | `6.0.10` | MIT | — |
-| `postcss-selector-parser` | `6.1.4` | MIT | — |
+| `postcss-selector-parser` | `7.1.6` | MIT | — |
 | `postcss-value-parser` | `4.2.0` | MIT | — |
 | `prelude-ls` | `1.2.1` | MIT | — |
 | `prop-types` | `15.8.1` | MIT | — |

@@ -1,10 +1,12 @@
 # Dependency security record
 
-Initial review on 2026-10-04; frontend follow-up on 2026-10-06. This record distinguishes registry audits, bundled code, and actual build observations. A clear registry audit does not establish that every bundled library or operating-system component is free of vulnerabilities.
+Initial review on 2026-10-04; frontend follow-ups on 2026-10-06 and 2026-10-07. This record distinguishes registry audits, bundled code, and actual build observations. A clear registry audit does not establish that every bundled library or operating-system component is free of vulnerabilities.
 
 ## Current frontend follow-up
 
-The [2026-10-06 validation](validation/2026-10-06-source-map-security.md) records the exact source-map-js 1.2.1 → 1.2.2 override and isolated installation. Both frontend build modes, lint, types and the full frontend suite pass. The current production audit reports zero findings; the full audit retains ten affected development package names (seven high, three moderate), including the newly reviewed selector-parser advisory. Earlier audit counts below are historical observations.
+The [2026-10-07 validation](validation/2026-10-07-selector-parser-security.md) records the exact selector-parser 7.1.6 override, independent installation and unchanged generated CSS. Lint, types, 893 frontend tests, 52 focused audit tests and the normal desktop frontend build pass. The current production audit reports zero findings; the explicitly complete audit retains seven high development package names for the single braces advisory. The old selector-parser exception is retired. Earlier audit counts below are historical observations.
+
+The [2026-10-06 validation](validation/2026-10-06-source-map-security.md) retains the source-map-js 1.2.1 → 1.2.2 update and its original build/audit observations.
 
 The ordinary indexed-map lookup case fails on both source-map-js versions, with the relevant function body unchanged. This observed vendor defect is retained as contrary evidence; project exposure is unknown. Production audit results do not assess every vendored component or certify a shipped application.
 
@@ -12,6 +14,7 @@ The ordinary indexed-map lookup case fails on both source-map-js versions, with 
 
 | Dependency | Previous version | Candidate version | Basis |
 | --- | --- | --- | --- |
+| postcss-selector-parser (development CSS compiler dependency) | 6.0.10 / 6.1.4 | 7.1.6 | [Flat-selector CPU exhaustion](https://github.com/advisories/GHSA-rj75-hqrm-r3gf) |
 | source-map-js | 1.2.1 | 1.2.2 | [Indexed-map offset denial of service](https://github.com/advisories/GHSA-68fv-2mgg-jv7q) |
 | urllib3 | 2.7.0 | 2.8.0 | [Chunk-size allocation](https://github.com/urllib3/urllib3/security/advisories/GHSA-vxq7-64xx-v4gw), [proxy TLS handling](https://github.com/urllib3/urllib3/security/advisories/GHSA-8988-9cw3-xx77), and [chunked deflate loop](https://github.com/urllib3/urllib3/security/advisories/GHSA-gh4c-6fx4-qh6g) |
 | cryptography | 49.0.0 | 50.0.2 | [PKCS#7 decryption advisory](https://github.com/pyca/cryptography/security/advisories/GHSA-g6cj-pr64-35w5) and subsequent [50.0.x packaging updates](https://cryptography.io/en/latest/changelog/) |
@@ -29,6 +32,12 @@ Browserslist also requires the supporting data updates `caniuse-lite` 1.0.300018
 
 The fresh Python runtime requirements audit found five unique advisory IDs across three packages before the updates and none afterward. Its raw baseline output contains six findings because one cryptography advisory appears twice. The initial full npm measurements changed from 14 affected package entries to seven, and from 27 unique advisory URLs to one. A later explicit complete audit reported eight entries for the same patched lockfile because npm again attributed the Tailwind chain to `@tailwindcss/typography`; an ordinary full audit produced a byte-identical report. Earlier observations likewise reported 15 entries for the original lockfile. These attribution changes were not package updates or additional advisories. Both fresh npm production-only audits reported zero findings.
 
+### Selector-parser migration
+
+The override replaces root 6.0.10 and two nested 6.1.4 instances with one 7.1.6 instance. Typography still declares exact 6.0.10, postcss-nested declares ^6.1.1 and Tailwind declares ^6.1.2. This is a reviewed migration outside those parent contracts. All three installed parents resolve to the patched instance. Other locked package records remain unchanged.
+
+The normal desktop frontend build emits byte-identical CSS to the validated workspace baseline: one 60,370-byte file. This establishes compatibility for the current project sources and configuration, not every possible selector or parent API. The historical ten-name selector/braces fixture is now rejected by both the checker and CLI. Its earlier audit observations remain in the dated validation record; no audit threshold or inclusion flag is relaxed.
+
 ## Open exceptions
 
 ### braces development dependency chain
@@ -37,17 +46,9 @@ The fresh Python runtime requirements audit found five unique advisory IDs acros
 
 The seven core npm entries are `braces`, `chokidar`, `micromatch`, `fast-glob`, `@next/eslint-plugin-next`, `eslint-config-next`, and `tailwindcss`. The reviewed eighth-entry variant adds only `@tailwindcss/typography` 0.5.20 through its locked Tailwind peer dependency. All affected locked instances are development dependencies. Ordinary tests use `vitest run`; no test API/UI listener is enabled. Project lint/build patterns come from repository configuration. This exception does not establish that untrusted patterns are safe.
 
-The full-audit checker retains the two historical braces-only shapes and separately checks the complete ten-name graph documented below. The historical shapes permit only the exact reviewed braces advisory. The eighth-entry variant requires the exact typography version, its locked peer edge and the matching Tailwind effect; these cannot be mixed with the seven-entry shape. New advisories, runtime nodes, altered versions or graph edges, malformed reports, and incomplete dependency references fail the check. Any other attribution or dependency change requires renewed review. The independent production audit keeps its existing threshold. The exception remains an unresolved finding.
+The full-audit checker accepts only the two exact reviewed braces-only shapes. The eighth-entry variant requires the exact typography version, its locked peer edge and the matching Tailwind effect; these cannot be mixed with the seven-entry shape. The old selector/braces ten-name exception has been removed. New advisories, runtime nodes, altered reviewed versions or graph edges, malformed reports, and incomplete dependency references fail the check. Any other attribution or dependency change requires renewed review. The independent production audit keeps its existing threshold. The braces exception remains an unresolved finding.
 
 The JSON report does not attest which dependency types npm audited. In particular, full and production-only reports can contain identical dependency counts. A coherent zero-findings report is accepted to support a future complete audit after fixes; its shape and lockfile consistency alone do not establish complete audit coverage. The trusted workflow invocation explicitly includes development, optional and peer dependencies, overriding omission settings such as `NODE_ENV=production` or `npm_config_omit=dev`.
-
-### Selector-parser development dependency chain
-
-The 2026-10-06 explicitly complete audit reports [GHSA-rj75-hqrm-r3gf](https://github.com/postcss/postcss-selector-parser/security/advisories/GHSA-rj75-hqrm-r3gf), a selector-parsing CPU-exhaustion issue fixed in 7.1.6. The current root parser is 6.0.10, with 6.1.4 instances under postcss-nested and Tailwind. Typography requires exact 6.0.10, postcss-nested requires ^6.1.1 and Tailwind requires ^6.1.2. The fixed major version falls outside these parent contracts; a compatible parent upgrade or reviewed migration remains open.
-
-The separately reviewed whole report contains ten names and thirteen development-only instances: seven high braces-chain names and three moderate names (typography, postcss-nested and selector-parser). Typography now attributes its finding to its ordinary selector dependency; Tailwind's combined references include both chains. The checker freezes this complete graph, both direct advisories, severities, ranges, exact versions, physical nodes, relevant parent dependency contracts and reported fix metadata. It rejects mixed historical/current shapes, added aliases, unknown advisories, missing references, changed affected versions and runtime instances. Its CLI names both advisories and all residual counts as UNRESOLVED. This is a reviewed exception, not a vulnerability fix or a claim that untrusted selectors are safe; application exposure is not demonstrated.
-
-The explicit complete report is byte-identical to the earlier ordinary audit observation. Report metadata does not attest invocation scope: CI still explicitly includes development, optional and peer dependencies, and the independent production audit remains required. No severity threshold or vulnerability-ignore option was changed.
 
 ### Next.js vendored Browserslist
 

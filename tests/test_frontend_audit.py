@@ -402,7 +402,7 @@ def test_malformed_leaf_types_cannot_trigger_raw_exception(inputs, field):
         validate_audit(report, lock)
 
 
-# Regression cases for the separately reviewed complete development audit graph.
+# Historical ten-name selector/braces graph: retained only as a rejection fixture.
 @pytest.fixture
 def inputs_ten(inputs_eight):
     report, lock = inputs_eight
@@ -488,216 +488,44 @@ def inputs_ten(inputs_eight):
     return report, lock
 
 
-def test_exact_ten_name_graph_exposes_both_unresolved_advisories(inputs_ten):
+def test_historical_selector_and_braces_ten_name_graph_is_rejected(inputs_ten):
     report, lock = inputs_ten
-    assert validate_audit(report, lock) == {
-        "status": "unresolved_development_exception",
-        "vulnerable_packages": 10,
-        "reviewed_lock_instances": 13,
-        "unresolved_advisory": "GHSA-vfj7-8cjw-p6xm",
-        "unresolved_advisories": ["GHSA-vfj7-8cjw-p6xm", "GHSA-rj75-hqrm-r3gf"],
-        "severity_counts": {"high": 7, "moderate": 3},
-    }
-
-
-@pytest.mark.parametrize(
-    "change",
-    [
-        "missing_selector_leaf",
-        "unknown_selector_advisory",
-        "wrong_source",
-        "wrong_cwe",
-        "wrong_cvss",
-        "wrong_vector",
-        "wrong_advisory_range",
-        "wrong_selector_range",
-        "extra_selector_leaf",
-        "changed_selector_severity",
-        "mixed_old_typography",
-        "mixed_old_tailwind",
-        "missing_nested_finding",
-        "missing_selector_node",
-        "extra_selector_alias",
-        "wrong_typography_fix",
-        "wrong_nested_fix",
-        "bool_fix_as_int",
-        "wrong_selector_direct",
-        "new_unknown_name",
-        "metadata_zero",
-    ],
-)
-def test_ten_graph_rejects_unreviewed_advisory_and_mixed_report_shapes(inputs_ten, change):
-    report, lock = inputs_ten
-    findings = report["vulnerabilities"]
-    item = findings["postcss-selector-parser"]
-    leaf = item["via"][0]
-    if change == "missing_selector_leaf":
-        item["via"] = []
-    elif change == "unknown_selector_advisory":
-        leaf["url"] = "https://github.com/advisories/GHSA-xxxx-yyyy-zzzz"
-    elif change == "wrong_source":
-        leaf["source"] = 1241233
-    elif change == "wrong_cwe":
-        leaf["cwe"] = ["CWE-400"]
-    elif change == "wrong_cvss":
-        leaf["cvss"]["score"] = 5.8
-    elif change == "wrong_vector":
-        leaf["cvss"]["vectorString"] = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
-    elif change == "wrong_advisory_range":
-        leaf["range"] = "*"
-    elif change == "wrong_selector_range":
-        item["range"] = "*"
-    elif change == "extra_selector_leaf":
-        item["via"].append(copy.deepcopy(leaf))
-    elif change == "changed_selector_severity":
-        item["severity"] = "high"
-        report["metadata"]["vulnerabilities"].update(high=8, moderate=2)
-    elif change == "mixed_old_typography":
-        findings["@tailwindcss/typography"].update(severity="high", via=["tailwindcss"])
-        report["metadata"]["vulnerabilities"].update(high=8, moderate=2)
-    elif change == "mixed_old_tailwind":
-        findings["tailwindcss"]["via"] = ["chokidar", "fast-glob", "micromatch"]
-    elif change == "missing_nested_finding":
-        del findings["postcss-nested"]
-        report["metadata"]["vulnerabilities"].update(moderate=2, total=9)
-    elif change == "missing_selector_node":
-        item["nodes"].pop()
-    elif change == "extra_selector_alias":
-        lock["packages"]["node_modules/other/node_modules/postcss-selector-parser"] = {
-            "version": "6.1.4",
-            "dev": True,
-        }
-        report["metadata"]["dependencies"].update(dev=14, total=14)
-    elif change == "wrong_typography_fix":
-        findings["@tailwindcss/typography"]["fixAvailable"]["version"] = "0.4.1"
-    elif change == "wrong_nested_fix":
-        findings["postcss-nested"]["fixAvailable"] = False
-    elif change == "bool_fix_as_int":
-        findings["postcss-nested"]["fixAvailable"] = 1
-    elif change == "wrong_selector_direct":
-        item["isDirect"] = True
-    elif change == "new_unknown_name":
-        findings["unknown"] = copy.deepcopy(item)
-        report["metadata"]["vulnerabilities"].update(moderate=4, total=11)
-    else:
-        report["metadata"]["vulnerabilities"].update(high=0, moderate=0, total=0)
-    with pytest.raises(FrontendAuditError):
+    with pytest.raises(
+        FrontendAuditError, match="Findings differ from the reviewed exception chain"
+    ):
         validate_audit(report, lock)
 
 
-@pytest.mark.parametrize(
-    "node",
-    [
-        "node_modules/postcss-selector-parser",
-        "node_modules/postcss-nested/node_modules/postcss-selector-parser",
-        "node_modules/tailwindcss/node_modules/postcss-selector-parser",
-    ],
-)
-@pytest.mark.parametrize("change", ["runtime", "version", "alias", "dev_optional"])
-def test_each_selector_instance_must_retain_exact_dev_identity(inputs_ten, node, change):
-    report, lock = inputs_ten
-    package = lock["packages"][node]
-    if change == "runtime":
-        package["dev"] = False
-        report["metadata"]["dependencies"].update(prod=2, dev=12)
-    elif change == "version":
-        package["version"] = "7.1.6"
-    elif change == "alias":
-        package["name"] = "unreviewed-alias"
-    else:
-        package["devOptional"] = True
-    with pytest.raises(FrontendAuditError):
-        validate_audit(report, lock)
-
-
-@pytest.mark.parametrize(
-    "parent,dependency",
-    [
-        ("node_modules/@tailwindcss/typography", "postcss-selector-parser"),
-        ("node_modules/postcss-nested", "postcss-selector-parser"),
-        ("node_modules/tailwindcss", "postcss-selector-parser"),
-        ("node_modules/tailwindcss", "postcss-nested"),
-    ],
-)
-@pytest.mark.parametrize("change", ["remove", "change_range", "peer_substitute"])
-def test_new_graph_requires_original_parent_dependency_contract(
-    inputs_ten, parent, dependency, change
+def test_cli_rejects_historical_ten_name_graph_without_exception_output(
+    tmp_path, inputs_ten, capsys
 ):
-    report, lock = inputs_ten
-    package = lock["packages"][parent]
-    if change == "remove":
-        del package["dependencies"][dependency]
-    elif change == "change_range":
-        package["dependencies"][dependency] = "^7.1.6"
-    else:
-        spec = package["dependencies"].pop(dependency)
-        package.setdefault("peerDependencies", {})[dependency] = spec
-    with pytest.raises(FrontendAuditError):
-        validate_audit(report, lock)
-
-
-def test_new_graph_rejects_unreported_extra_affected_edge(inputs_ten):
-    report, lock = inputs_ten
-    lock["packages"]["node_modules/chokidar"]["dependencies"]["postcss-selector-parser"] = "6.0.10"
-    with pytest.raises(FrontendAuditError):
-        validate_audit(report, lock)
-
-
-def test_cli_ten_graph_names_both_advisories_and_residual_counts(tmp_path, inputs_ten, capsys):
     from scripts.check_frontend_audit import main
 
     report, lock = inputs_ten
     report_path, lock_path = tmp_path / "audit.json", tmp_path / "lock.json"
     report_path.write_text(json.dumps(report), encoding="utf-8")
     lock_path.write_text(json.dumps(lock), encoding="utf-8")
-    assert main(["--report", str(report_path), "--lock", str(lock_path)]) == 0
-    output = capsys.readouterr().out
-    assert "GHSA-vfj7-8cjw-p6xm" in output and "GHSA-rj75-hqrm-r3gf" in output
-    assert "UNRESOLVED" in output and "7 high, 3 moderate" in output
-    assert "13 reviewed dev-only lock instances" in output and "not zero vulnerabilities" in output
+    assert main(["--report", str(report_path), "--lock", str(lock_path)]) == 1
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == (
+        "Frontend audit rejected: Findings differ from the reviewed exception chain.\n"
+    )
 
 
-# Reject unreported affected optional edges and noncanonical package aliases.
-@pytest.mark.parametrize(
-    "parent,dependency,spec",
-    [
-        ("node_modules/postcss-selector-parser", "braces", "^3.0.3"),
-        ("node_modules/@tailwindcss/typography", "postcss-selector-parser", "6.0.10"),
-        ("node_modules/chokidar", "postcss-selector-parser", "6.0.10"),
-    ],
-)
-def test_ten_graph_rejects_extra_affected_optional_edges(inputs_ten, parent, dependency, spec):
-    report, lock = inputs_ten
-    lock["packages"][parent].setdefault("optionalDependencies", {})[dependency] = spec
-    # No node/count change can disguise the new unreviewed edge group.
-    with pytest.raises(FrontendAuditError):
-        validate_audit(report, lock)
-
-
-def test_ten_graph_keeps_unrelated_chokidar_optional_dependency_allowed(inputs_ten):
-    report, lock = inputs_ten
-    lock["packages"]["node_modules/chokidar"]["optionalDependencies"] = {"fsevents": "~2.3.2"}
-    assert validate_audit(report, lock)["reviewed_lock_instances"] == 13
-
-
-@pytest.mark.parametrize(
-    "declared_name",
-    [
-        "postcss-selector-parser",
-        ["postcss-selector-parser"],
-        {"name": "postcss-selector-parser"},
-    ],
-)
-def test_ten_graph_rejects_different_basename_known_alias_and_malformed_names(
-    inputs_ten, declared_name
+@pytest.mark.parametrize("input_fixture", ["inputs", "inputs_eight"])
+def test_cli_allowed_braces_graph_does_not_report_retired_selector_exception(
+    tmp_path, request, input_fixture, capsys
 ):
-    report, lock = inputs_ten
-    lock["packages"]["node_modules/selector-alias"] = {
-        "name": declared_name,
-        "version": "6.1.4",
-        "dev": True,
-    }
-    report["metadata"]["dependencies"].update(dev=14, total=14)
-    # The actual ten-name report still has only the original thirteen nodes.
-    with pytest.raises(FrontendAuditError):
-        validate_audit(report, lock)
+    from scripts.check_frontend_audit import main
+
+    report, lock = request.getfixturevalue(input_fixture)
+    report_path, lock_path = tmp_path / "audit.json", tmp_path / "lock.json"
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    lock_path.write_text(json.dumps(lock), encoding="utf-8")
+    assert main(["--report", str(report_path), "--lock", str(lock_path)]) == 0
+    output = capsys.readouterr()
+    assert output.err == ""
+    assert "UNRESOLVED development exception GHSA-vfj7-8cjw-p6xm" in output.out
+    assert "GHSA-rj75-hqrm-r3gf" not in output.out
+    assert "not zero vulnerabilities" in output.out
