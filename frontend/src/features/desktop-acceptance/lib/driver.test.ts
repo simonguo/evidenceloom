@@ -314,6 +314,7 @@ describe("visible task navigation through the actual list page (mocked router, n
     navigation.router.push.mockReset().mockImplementation((href: string) => history.replaceState(null, "", href));
     const listTasks = taskIds.map((id, index) => ({ ...recoveryTask(), id, ticker: "FICTION", status: (["stopped", "completed", "running", "queued"] as const)[index] })).filter(task => includeB || task.id !== taskIds[1]);
     navigation.center.mockReturnValue({ settings: { systemLanguage: "en" }, sortedTasks: listTasks,
+      getTask: (id: string) => listTasks.find((task) => task.id === id), getTaskDisplayStatus: (task: ReturnType<typeof recoveryTask>) => task.status,
       runningTask: null, queuedTasks: [], cleanupFailedTask: null, cleanupRetrying: false, cleanupUnconfirmed: false,
       resultPendingTask: null, resultRetrying: false, stopping: false, retryCleanup: vi.fn(), retryResult: vi.fn(),
       getQueuePosition: () => 1, stopRunningTask: vi.fn(), cancelQueuedTask: vi.fn(), moveQueuedTask: vi.fn() });

@@ -15,11 +15,11 @@ import { useTaskFilters } from "@/components/task-center/task-list/useTaskFilter
 
 export default function Page() {
   const router = useRouter();
-  const { settings, sortedTasks, runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, cleanupUnconfirmed, retryCleanup, resultPendingTask, resultRetrying, retryResult, stopping, getQueuePosition, stopRunningTask, cancelQueuedTask, moveQueuedTask } = useTaskCenter();
+  const { settings, sortedTasks, runningTask, startingTask, queuedTasks, cleanupFailedTask, cleanupRetrying, cleanupUnconfirmed, retryCleanup, resultPendingTask, resultRetrying, retryResult, stopping, getQueuePosition, stopRunningTask, cancelQueuedTask, moveQueuedTask, getTaskDisplayStatus } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const completed = sortedTasks.filter((task) => task.status === "completed").length;
   const failed = sortedTasks.filter((task) => task.status === "error").length;
-  const running = sortedTasks.filter((task) => task.status === "running").length;
+  const running = sortedTasks.filter((task) => (getTaskDisplayStatus?.(task) ?? task.status) === "running").length;
   const { query, setQuery, decisionFilter, setDecisionFilter, filteredTasks } = useTaskFilters(sortedTasks);
 
   return (
@@ -32,9 +32,10 @@ export default function Page() {
         <SummaryTile label={t("failed")} value={failed.toString()} />
       </section>
 
-      {(runningTask || cleanupFailedTask || resultPendingTask || queuedTasks.length > 0) && (
+      {(runningTask || startingTask || cleanupFailedTask || resultPendingTask || queuedTasks.length > 0) && (
         <TaskQueuePanel
           runningTask={runningTask}
+          startingTask={startingTask}
           queuedTasks={queuedTasks}
           cleanupFailedTask={cleanupFailedTask}
           cleanupRetrying={cleanupRetrying}
@@ -122,8 +123,8 @@ export default function Page() {
                       </td>
                       <td className="dashboard-table-cell w-28 whitespace-nowrap">
                         <div className="flex flex-col items-start gap-1">
-                          <StatusPill status={task.status} />
-                          {task.status === "queued" && <span className="text-[11px] text-amber-200">{t("queuePosition", { position: getQueuePosition(task.id) ?? 1 })}</span>}
+                          <StatusPill status={task.status} taskId={task.id} />
+                          {(getTaskDisplayStatus?.(task) ?? task.status) === "queued" && <span className="text-[11px] text-amber-200">{t("queuePosition", { position: getQueuePosition(task.id) ?? 1 })}</span>}
                         </div>
                       </td>
                       <td className="dashboard-table-cell">{task.analysts.length}</td>

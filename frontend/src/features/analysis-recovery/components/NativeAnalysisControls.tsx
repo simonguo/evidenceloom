@@ -16,7 +16,7 @@ export function NativeAnalysisControls({ view, label, language, onWatch, onStop,
     <div className="mt-3 flex flex-wrap gap-2">
       {view.taskId !== null && !view.attached && <button type="button" onClick={onWatch} className="vercel-button">{t("watchExistingAnalysis")}</button>}
       {view.taskId !== null && <button type="button" disabled={view.phase === "stopping"} onClick={onStop} className="vercel-button">{t("stopTask")}</button>}
-      <button type="button" onClick={onResult} className="vercel-button">{t("retryAnalysisResult")}</button>
+      <button type="button" onClick={onResult} className="vercel-button">{t(view.taskId === null ? "refreshAnalysisState" : "retryAnalysisResult")}</button>
       {view.canRetryCleanup && <button type="button" onClick={onCleanup} className="vercel-button">{t("retryAnalysisCleanup")}</button>}
     </div>
   </aside>;

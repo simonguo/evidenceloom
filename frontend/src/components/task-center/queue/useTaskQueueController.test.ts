@@ -23,6 +23,7 @@ describe("queue cleanup acknowledgement and retry controls", () => {
   let root: Root, container: HTMLDivElement, queue: ReturnType<typeof useTaskQueueController>, tasks: AnalysisTask[];
   let initial: AnalysisTask[], runs: Map<string, ReturnType<typeof deferred>>, handlers: Map<string, (event: AnalysisEvent) => void>;
   let adapter: RuntimeAdapter;
+  let storageReady: boolean, blockedQueueNotice: string | undefined;
   const events = vi.fn(), notice = vi.fn(), persist = vi.fn();
   const settings = { ...defaultGlobalSettings(), systemLanguage: "en" as const };
   function Harness() {
@@ -31,7 +32,7 @@ describe("queue cleanup acknowledgement and retry controls", () => {
       runtimeAdapterRef: { current: adapter }, persistTask: persist, onEvent: (id, event) => {
         events(id, event);
         if (event.type === "completed") setTasks((current) => current.map((task) => task.id === id ? { ...task, status: "completed" } : task));
-      }, setNotice: notice });
+      }, setNotice: notice, storageReady, blockedQueueNotice });
     return createElement(TaskQueuePanel, { runningTask: queue.runningTask, queuedTasks: queue.queuedTasks,
       cleanupFailedTask: queue.cleanupFailedTask, cleanupRetrying: queue.cleanupRetrying, stopping: queue.stopping,
       language: "en", onStop: queue.stopRunningTask, onRetryCleanup: () => { void queue.retryCleanup(); },
@@ -42,12 +43,22 @@ describe("queue cleanup acknowledgement and retry controls", () => {
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
     initial = [queued("owned-first", 1), queued("owned-second", 2)]; runs = new Map(); handlers = new Map();
     events.mockReset(); notice.mockReset(); persist.mockReset();
+    storageReady = true; blockedQueueNotice = undefined;
     adapter = { runAnalysis: vi.fn((id, _payload, callback) => {
       const run = deferred(); runs.set(id, run); handlers.set(id, callback); return run.promise;
     }), stopAnalysis: vi.fn().mockResolvedValue(undefined) } as unknown as RuntimeAdapter;
     container = document.createElement("div"); document.body.appendChild(container); root = createRoot(container);
   });
   afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+  it.each([undefined, "Confirm analysis state before retrying."])("explains a blocked requeue without changing the failed task (%s)", async (reason) => {
+    initial = [{ ...queued("owned-first", 1), status: "error", error: "Previous model request failed." }];
+    storageReady = false; blockedQueueNotice = reason; await mount();
+    await act(async () => expect(queue.queueTask("owned-first", tasks[0])).toBe(false));
+    expect(notice).toHaveBeenLastCalledWith(reason ?? createTranslator("en")("taskStorageUnconfirmed"));
+    expect(tasks[0].status).toBe("error"); expect(tasks[0].error).toBe("Previous model request failed.");
+    expect(persist).not.toHaveBeenCalled(); expect(adapter.runAnalysis).not.toHaveBeenCalled();
+  });
 
   it("keeps stopping visible and the queue paused until stop acknowledgement", async () => {
     const stop = deferred(); vi.mocked(adapter.stopAnalysis).mockReturnValue(stop.promise); await mount();

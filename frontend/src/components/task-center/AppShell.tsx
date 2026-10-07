@@ -4,18 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import clsx from "clsx";
-import { Activity, ArrowLeft, Clock3, Home, Plus, Settings, type LucideIcon } from "lucide-react";
+import { Activity, ArrowLeft, Home, Plus, Settings, type LucideIcon } from "lucide-react";
 import { createTranslator } from "@/lib/i18n";
 import { isTauriRuntime } from "@/lib/runtime";
-import type { AgentStatus, AnalysisTask, SystemLanguage } from "@/lib/types";
+import type { AnalysisTask, SystemLanguage } from "@/lib/types";
 import { DesktopTitleBar } from "./components/DesktopTitleBar";
 import { BrandMark } from "./components/BrandMark";
 import { useTaskCenter } from "./context";
-import { agentLabel, pageTitle, taskDetailHref } from "./utils";
+import { pageTitle, taskDetailHref } from "./utils";
+import type { TaskDisplayStatus } from "./queue/task-display-status";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { notice, setNotice, runningTask, queuedTasks, getQueuePosition, activeTaskId, settings, hydrated, sortedTasks } = useTaskCenter();
+  const { notice, setNotice, runningTask, startingTask, resultPendingTask, cleanupFailedTask, nativeAnalysis, queuedTasks, getQueuePosition, getTaskDisplayStatus, activeTaskId, settings, hydrated, sortedTasks } = useTaskCenter();
   const [titlebarOverlay, setTitlebarOverlay] = useState(false);
   const t = createTranslator(settings.systemLanguage);
   const isNewTaskPage = pathname === "/tasks/new";
@@ -29,7 +30,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     && !isSettingsPage
     && activeTask?.origin !== "demo";
   const recentInstruments = deriveRecentInstruments(sortedTasks).slice(0, 5);
-  const runningAgent = runningTask ? findRunningAgent(runningTask.agentStatuses, settings.systemLanguage) : "";
+  const executionTask = resultPendingTask ?? cleanupFailedTask ?? startingTask ?? runningTask ?? sortedTasks.find((task) => task.id === nativeAnalysis?.taskId);
+  const executionStatus = executionTask ? getTaskDisplayStatus?.(executionTask) ?? executionTask.status : null;
   const workspaceItems = [
     { href: "/", label: t("tasks"), icon: Home },
     { href: "/tasks/new", label: t("newTask"), icon: Plus },
@@ -49,7 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-zinc-900 bg-black lg:block">
         <div className="flex h-full flex-col">
-          <Link href="/" className={clsx("block border-b border-zinc-900 px-5 pb-5", titlebarOverlay ? "pt-14" : "pt-5")}>
+          <Link href="/" className={clsx("block shrink-0 border-b border-zinc-900 px-5 pb-5", titlebarOverlay ? "pt-14" : "pt-5")}>
             <div className="flex items-center gap-3">
               <div className="flex size-8 items-center justify-center rounded-md border border-zinc-800 bg-zinc-950">
                 <BrandMark className="size-5" />
@@ -60,7 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </Link>
-          <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
             <SidebarSection label={t("workspace")}>
               {workspaceItems.map((item) => <SidebarNavItem key={item.href} item={item} pathname={pathname} />)}
             </SidebarSection>
@@ -72,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <SidebarRecentTaskItem
                       key={task.ticker}
                       task={task}
+                      status={getTaskDisplayStatus?.(task) ?? task.status}
                       active={task.id === activeTaskId}
                       queuePosition={getQueuePosition(task.id)}
                       language={settings.systemLanguage}
@@ -80,37 +83,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </div>
               </SidebarSection>
             )}
-
-            <SidebarSection label={t("system")}>
-              {systemItems.map((item) => <SidebarNavItem key={item.href} item={item} pathname={pathname} />)}
-            </SidebarSection>
           </nav>
-          <div className="border-t border-zinc-900 px-4 py-4">
-            {runningTask ? (
-              <Link href={taskDetailHref(runningTask.id)} className="block rounded-lg border border-zinc-900 bg-zinc-950/60 p-3 transition hover:border-zinc-700 hover:bg-zinc-950">
-                <div className="flex items-center gap-2 text-xs font-medium text-zinc-200">
-                  <Activity className="size-3.5 animate-pulse text-emerald-300" />
-                  <span>{t("running")} {runningTask.ticker}</span>
-                </div>
-                <div className="mt-1 truncate text-xs text-zinc-500">{runningAgent || t("taskRunning")}</div>
-                {queuedTasks.length > 0 && <div className="mt-1 text-xs text-amber-200">{t("queuedCount", { count: queuedTasks.length })}</div>}
-                <div className="mt-3 text-xs text-zinc-400">{t("open")}</div>
-              </Link>
-            ) : queuedTasks.length > 0 ? (
-              <Link href={taskDetailHref(queuedTasks[0].id)} className="block rounded-lg border border-zinc-900 bg-zinc-950/60 p-3 transition hover:border-zinc-700 hover:bg-zinc-950">
-                <div className="flex items-center gap-2 text-xs font-medium text-amber-200">
-                  <Clock3 className="size-3.5" />
-                  <span>{t("taskQueue")}</span>
-                </div>
-                <div className="mt-1 text-xs text-zinc-500">{t("queuedCount", { count: queuedTasks.length })}</div>
-              </Link>
-            ) : (
-              <div className="rounded-lg border border-zinc-900 bg-zinc-950/40 p-3">
-                <div className="text-xs font-medium text-zinc-300">{t("localWorkspace")}</div>
-                <div className="mt-1 text-xs text-zinc-500">{t("noRunningTask")}</div>
-              </div>
-            )}
-          </div>
+          <nav aria-label={t("system")} className="shrink-0 border-t border-zinc-900 px-3 py-4">
+            {systemItems.map((item) => <SidebarNavItem key={item.href} item={item} pathname={pathname} />)}
+          </nav>
         </div>
       </aside>
 
@@ -129,7 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {runningTask && <Link href={taskDetailHref(runningTask.id)} className="hidden rounded-full border border-zinc-800 px-3 py-1.5 text-xs text-zinc-300 hover:border-zinc-600 md:inline-flex">{t("running")} {runningTask.ticker}</Link>}
+              {executionTask && executionStatus && <Link href={taskDetailHref(executionTask.id)} className={clsx("hidden rounded-full border px-3 py-1.5 text-xs md:inline-flex", executionStatus === "result_pending" || executionStatus === "cleanup_failed" ? "border-amber-900/70 text-amber-200 hover:border-amber-700" : "border-zinc-800 text-zinc-300 hover:border-zinc-600")}>{t(executionStatus)} {executionTask.ticker}</Link>}
               {queuedTasks.length > 0 && <Link href="/" className="hidden rounded-full border border-amber-900/70 px-3 py-1.5 text-xs text-amber-200 hover:border-amber-700 md:inline-flex">{t("queuedCount", { count: queuedTasks.length })}</Link>}
             </div>
           </div>
@@ -182,10 +158,10 @@ function SidebarNavItem({ item, pathname }: { item: { href: string; label: strin
   );
 }
 
-function SidebarRecentTaskItem({ task, active, queuePosition, language }: { task: AnalysisTask; active: boolean; queuePosition: number | null; language: SystemLanguage }) {
+function SidebarRecentTaskItem({ task, status, active, queuePosition, language }: { task: AnalysisTask; status: TaskDisplayStatus; active: boolean; queuePosition: number | null; language: SystemLanguage }) {
   const t = createTranslator(language);
-  const running = task.status === "running";
-  const queued = task.status === "queued";
+  const running = status === "running";
+  const queued = status === "queued";
 
   return (
     <Link
@@ -200,7 +176,7 @@ function SidebarRecentTaskItem({ task, active, queuePosition, language }: { task
     >
       <span className="relative flex size-2 shrink-0 items-center justify-center">
         {running && <span className="absolute size-3.5 animate-ping rounded-full bg-sky-400/35" />}
-        <span className={clsx("relative size-1.5 rounded-full", statusDotClass(task.status))} />
+        <span className={clsx("relative size-1.5 rounded-full", statusDotClass(status))} />
       </span>
       <span className="min-w-0 flex-1">
         <span className={clsx("block truncate text-sm font-medium", active && "text-white")}>{task.ticker}</span>
@@ -220,6 +196,9 @@ function SidebarRecentTaskItem({ task, active, queuePosition, language }: { task
         <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-200">
           {t("queuePosition", { position: queuePosition })}
         </span>
+      )}
+      {(status === "starting" || status === "stopping" || status === "result_pending" || status === "cleanup_failed") && (
+        <span className="inline-flex shrink-0 rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-medium text-zinc-300">{t(status)}</span>
       )}
     </Link>
   );
@@ -243,16 +222,11 @@ function deriveRecentInstruments(tasks: AnalysisTask[]) {
   return result;
 }
 
-function findRunningAgent(statuses: Record<string, AgentStatus>, language: SystemLanguage) {
-  const entry = Object.entries(statuses).find(([, status]) => status === "in_progress");
-  return entry ? agentLabel(entry[0], language) : "";
-}
-
-function statusDotClass(status: AnalysisTask["status"]) {
-  if (status === "running") return "bg-sky-300 shadow-[0_0_14px_rgba(125,211,252,0.8)]";
-  if (status === "queued") return "bg-amber-300";
+function statusDotClass(status: TaskDisplayStatus) {
+  if (status === "running" || status === "starting") return "bg-sky-300 shadow-[0_0_14px_rgba(125,211,252,0.8)]";
+  if (status === "queued" || status === "result_pending") return "bg-amber-300";
   if (status === "completed") return "bg-emerald-500";
-  if (status === "error") return "bg-rose-400";
-  if (status === "stopped") return "bg-zinc-500";
+  if (status === "error" || status === "cleanup_failed") return "bg-rose-400";
+  if (status === "stopped" || status === "stopping") return "bg-zinc-500";
   return "bg-zinc-600";
 }

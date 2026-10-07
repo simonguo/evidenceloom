@@ -2,8 +2,23 @@ import { describe, expect, it, vi } from "vitest";
 import { envelope, header, task } from "../test-support/fixtures";
 import { reduceJournalPage } from "./reducer";
 import { recoveryMessages } from "./protocol";
+import { ensureLegacyReportVersion } from "@/features/report-export/lib/versioning";
 
 describe("committed desktop journal reduction", () => {
+  it.each(["expired", "completed"])("preserves stored legacy history with omitted review fields when a run is %s", async (outcome) => {
+    const h = header(), prior = ensureLegacyReportVersion({ ...task(), status: "completed", reportSections: { market_report: "Original historical report" } });
+    Reflect.deleteProperty(prior.reportVersions[0], "evaluationReviews");
+    Reflect.deleteProperty(prior.reportVersions[0], "numericReviews");
+    const retained = JSON.parse(JSON.stringify(prior.reportVersions));
+    const terminal = outcome === "expired"
+      ? envelope(h, 2, "worker_outcome", { outcome: "not_started", code: "analysis_reservation_expired" })
+      : envelope(h, 2, "analysis", { event: { type: "completed", reportSections: { market_report: "New report" } } });
+    const result = await reduceJournalPage(prior, h, [envelope(h, 1, "accepted", { resetVersion: 1 }), terminal]);
+    expect(result.task.reportVersions.slice(0, retained.length)).toEqual(retained);
+    expect(result.task.status).toBe(outcome === "expired" ? "error" : "completed");
+    expect(result.task.reportVersions).toHaveLength(outcome === "expired" ? 1 : 2);
+    if (outcome === "completed") expect(result.task.reportVersions[1].versionNumber).toBe(2);
+  });
   it("uses committed IDs and literal time without replay-time Date/UUID", async () => {
     const h = header(), t = task(), rows = [envelope(h, 1, "accepted", { resetVersion: 1 }), envelope(h, 2, "analysis", { event: { type: "completed", timestamp: "", message: "done", reportSections: { market_report: "  Fictional\r\n报告  " } } })];
     const first = await reduceJournalPage(t, h, rows);

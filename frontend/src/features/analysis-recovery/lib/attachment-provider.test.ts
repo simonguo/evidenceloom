@@ -13,7 +13,7 @@ import type { AttachReply } from "../attachment-types";
 /** Actual Provider caller ordering, with fictional transport; no native/SQL/IPC proof. */
 describe("global native controls through the actual Provider", () => {
   let fixture: Awaited<ReturnType<typeof attachmentFixture>>, root: Root, element: HTMLDivElement, center: ReturnType<typeof useTaskCenter>;
-  let sqlUnavailable: boolean;
+  let sqlUnavailable: boolean, recoveryLoads: number;
   const actions: Promise<void>[] = [];
   function Consumer() { center = useTaskCenter(); return createElement("p", null, center.notice); }
   const snapshot = () => {
@@ -21,11 +21,12 @@ describe("global native controls through the actual Provider", () => {
     return { settings: { ...defaultGlobalSettings(), systemLanguage: "en" as const }, tasks: [current.task!], storage: { ...current.storage, legacyTaskImportAllowed: false } };
   };
   beforeEach(async () => {
-    fixture = await attachmentFixture(); sqlUnavailable = false; actions.length = 0;
+    fixture = await attachmentFixture(); sqlUnavailable = false; recoveryLoads = 0; actions.length = 0;
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); localStorage.clear();
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: {}, configurable: true });
     const invoke = (command: string, args: { requestJson: string }) => {
       if (command === "load_analysis_recovery") {
+        recoveryLoads++;
         if (sqlUnavailable) throw new Error("Owned SQL observation unavailable");
         const current = fixture.current(), saved = snapshot();
         return Promise.resolve({ recoveryProtocolVersion: 1, storage: saved.storage, tasks: saved.tasks, journals: current.state === "coherent" && current.journal ? [current.journal] : [], clearBlockers: [], runtime: current.runtime, coherent: true });
@@ -48,6 +49,22 @@ describe("global native controls through the actual Provider", () => {
     await vi.waitFor(async () => { await act(async () => {}); expect(center.hydrated).toBe(true); });
   }
   const calls = (command: string) => fixture.calls.filter((call) => call.command === command);
+  it("keeps a native pending result out of the waiting queue after reload even if its saved task says queued", async () => {
+    fixture.canonical({ ...fixture.task(), status: "queued", queuedAt: "2026-01-01T00:00:00.000Z", queueOrder: 1 });
+    const save = vi.spyOn(runtime.getRuntimeAdapter(), "saveDesktopTask");
+    await mount(); const saved = center.getTask(fixture.header.origin.taskId)!;
+    expect(center.runningTask).toBeNull(); expect(center.queuedTasks).toHaveLength(0);
+    expect(center.getTaskDisplayStatus(saved)).toBe("result_pending");
+    await act(async () => center.cancelQueuedTask(saved.id, saved));
+    expect(save).not.toHaveBeenCalled(); expect(center.getTask(saved.id)?.status).toBe("queued");
+    await act(async () => expect(await center.deleteTask(saved.id, saved)).toBe(false));
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis"].includes(call.command))).toBe(false);
+    await act(async () => center.retryNativeResult());
+    expect(center.nativeAnalysis).toBeNull(); expect(center.notice).toBe("");
+    expect(center.getTask(saved.id)?.status).toBe("completed");
+    expect(calls("attach_analysis_recovery")).toHaveLength(1);
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis"].includes(call.command))).toBe(false);
+  });
   it("direct Stop shares a pending original attachment and still stops the exact witness after an unknown query", async () => {
     const original = fixture.api.invoke, ack = deferred<void>(), entered = deferred<void>(), admissions: string[] = [];
     fixture.api.invoke = async (command, args) => {
@@ -79,6 +96,27 @@ describe("global native controls through the actual Provider", () => {
     expect(JSON.parse(calls("stop_analysis")[0].args.requestJson).origin).toEqual(current.header.origin);
     expect(JSON.parse(calls("attach_analysis_recovery")[0].args.requestJson).origin).toEqual(current.header.origin);
     expect(calls("commit_analysis_projection")).toHaveLength(0); // No canonical B parent was bootstrapped.
+  });
+  it("refreshes the whole recovery snapshot after a retained attachment is ready and a global refresh fails", async () => {
+    await mount();
+    await act(async () => center.watchNativeAnalysis());
+    expect(center.nativeAnalysis).toBeNull();
+    const oldAttachmentQueries = calls("query_analysis_attachment").length;
+    sqlUnavailable = true;
+    await act(async () => center.retryTaskStorage());
+    expect(center.nativeAnalysis?.taskId).toBeNull();
+    const loadsAfterFailure = recoveryLoads;
+    await act(async () => center.retryNativeResult());
+    expect(recoveryLoads).toBe(loadsAfterFailure + 1);
+    expect(center.nativeAnalysis).not.toBeNull();
+    expect(center.notice).toContain("Refresh its state");
+    expect(calls("query_analysis_attachment")).toHaveLength(oldAttachmentQueries);
+    sqlUnavailable = false;
+    await act(async () => center.retryNativeResult());
+    expect(recoveryLoads).toBe(loadsAfterFailure + 2);
+    expect(center.nativeAnalysis).toBeNull(); expect(center.notice).toBe("");
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis"].includes(call.command))).toBe(false);
+    expect(calls("attach_analysis_recovery")).toHaveLength(1);
   });
   it("keeps dispatch paused but exposes exact Stop from a pure runtime witness when SQL bootstrap is unavailable", async () => {
     sqlUnavailable = true;

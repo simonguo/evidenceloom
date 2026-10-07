@@ -11,6 +11,7 @@ import {
   teamMandateKeys,
 } from "./constants";
 import type { RuntimeInfo } from "@/lib/runtime";
+import type { AgentDisplayStatus } from "./queue/task-display-status";
 
 export function prependLog(logs: AnalysisTask["logs"], type: string, message: string, timestamp = new Date().toLocaleTimeString(), agent?: string) {
   return [{ id: crypto.randomUUID(), type, message, timestamp, agent }, ...logs].slice(0, 100);
@@ -80,11 +81,13 @@ export function runtimeLabel(runtimeInfo: RuntimeInfo, language: SystemLanguage)
   return runtimeInfo.kind === "tauri" ? t("tauriRuntime") : t("webRuntime");
 }
 
-export function agentWorkStateLabel(status: "pending" | "in_progress" | "completed" | "error", language: SystemLanguage) {
+export function agentWorkStateLabel(status: AgentDisplayStatus, language: SystemLanguage) {
   const t = createTranslator(language);
   if (status === "in_progress") return t("agentWorking");
   if (status === "completed") return t("agentDelivered");
   if (status === "error") return t("agentFailed");
+  if (status === "sync_pending") return t("agentSyncPending");
+  if (status === "stopped") return t("agentStopped");
   return t("agentQueued");
 }
 

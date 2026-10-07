@@ -59,7 +59,7 @@ function TaskDetailRouteContent() {
 
 function TaskDetailPage({ taskId }: { taskId: string }) {
   const router = useRouter();
-  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, runningTask, cleanupFailedTask, retryCleanup, resultPendingTask, retryResult, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews, beginReview, getTaskIdentity } = useTaskCenter();
+  const { getTask, queueTask, cancelQueuedTask, getQueuePosition, stopRunningTask, runningTask, startingTask, cleanupFailedTask, retryCleanup, resultPendingTask, retryResult, nativeAnalysis, watchNativeAnalysis, retryNativeResult, stopNativeAnalysis, retryNativeCleanup, deleteTask, settings, hydrated, setActiveTaskId, saveEvaluationReviews, saveNumericReviews, beginReview, getTaskIdentity, getTaskDisplayStatus } = useTaskCenter();
   const t = createTranslator(settings.systemLanguage);
   const task = getTask(taskId);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -172,6 +172,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
   const visibleTeams = agentTeams
     .map((team) => ({ ...team, agents: team.agents.filter((agent) => agent in task.agentStatuses) }))
     .filter((team) => team.agents.length > 0);
+  const displayStatus = getTaskDisplayStatus?.(task) ?? task.status;
   const topTabs = task.origin === "demo"
     ? [{ key: "overview", label: settings.systemLanguage === "en" ? "Overview" : "任务概览" }]
     : settings.systemLanguage === "en"
@@ -186,6 +187,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
     ? (
       <AgentProcessDrawer
         task={task}
+        taskStatus={displayStatus}
         agent={drawerAgent}
         activeReports={activeReports}
         language={settings.systemLanguage}
@@ -202,13 +204,13 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-3xl font-semibold text-white">{task.ticker}</h2>
-              <StatusPill status={task.status} />
+              <StatusPill status={task.status} taskId={task.id} />
               {task.origin === "demo" && (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-800/70 bg-amber-950/30 px-2.5 py-1 text-xs font-medium text-amber-200">
                   <FlaskConical className="size-3.5" /> {t("fictionalDemoBadge")}
                 </span>
               )}
-              {task.status === "queued" && <span className="text-xs text-amber-200">{t("queuePosition", { position: getQueuePosition(task.id) ?? 1 })}</span>}
+              {displayStatus === "queued" && <span className="text-xs text-amber-200">{t("queuePosition", { position: getQueuePosition(task.id) ?? 1 })}</span>}
             </div>
             {task.instrumentName && <div className="mt-2 text-lg font-medium text-zinc-300">{task.instrumentName}</div>}
             <p className="mt-2 text-sm text-zinc-500">
@@ -220,8 +222,12 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
               <button type="button" onClick={() => { void retryCleanup(); }} className="vercel-button">{t("retryAnalysisCleanup")}</button>
             ) : resultPendingTask?.id === task.id ? (
               <button type="button" onClick={() => { void retryResult(); }} className="vercel-button">{t("retryAnalysisResult")}</button>
-            ) : task.status === "running" || runningTask?.id === task.id ? (
-              <button type="button" onClick={() => stopRunningTask()} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-red-300 transition hover:border-zinc-600 hover:bg-red-950/40">
+            ) : nativeAnalysis?.taskId === task.id && displayStatus === "cleanup_failed" ? (
+              <button type="button" onClick={() => { void (nativeAnalysis.canRetryCleanup ? retryNativeCleanup() : stopNativeAnalysis()); }} className="vercel-button">{t("retryAnalysisCleanup")}</button>
+            ) : nativeAnalysis?.taskId === task.id && displayStatus === "result_pending" ? (
+              <button type="button" onClick={() => { void (nativeAnalysis.attached ? retryNativeResult() : watchNativeAnalysis()); }} className="vercel-button">{t("retryAnalysisResult")}</button>
+            ) : displayStatus === "running" || displayStatus === "starting" || displayStatus === "stopping" || runningTask?.id === task.id || startingTask?.id === task.id ? (
+              <button type="button" onClick={() => { if (nativeAnalysis?.taskId === task.id) void stopNativeAnalysis(); else stopRunningTask(); }} className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-transparent px-3 py-2 text-sm text-red-300 transition hover:border-zinc-600 hover:bg-red-950/40">
                 <Square className="size-4" /> {t("stopTask")}
               </button>
             ) : task.status === "queued" ? (
@@ -314,6 +320,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
 
       <section className="space-y-6">
         <Panel title={t("agentProgressReports")} sticky>
+          {(displayStatus === "result_pending" || displayStatus === "cleanup_failed") && <p role="status" className="mb-5 rounded-lg border border-amber-900/70 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">{t("agentProgressUnconfirmed")}</p>}
           {visibleTeams.length === 0 && activeReports.length === 0 ? <p className="text-sm text-zinc-500">{t("workflowEmpty")}</p> : (
             <div className="space-y-5">
               <div className="grid gap-4 lg:grid-cols-2">
@@ -323,6 +330,7 @@ function TaskDetailPage({ taskId }: { taskId: string }) {
                     team={team.team}
                     agents={team.agents}
                     statuses={task.agentStatuses}
+                    taskStatus={displayStatus}
                     activeReports={activeReports.map(([key]) => key)}
                     activeAgent={drawerAgent}
                     language={settings.systemLanguage}
