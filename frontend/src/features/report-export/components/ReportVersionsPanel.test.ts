@@ -260,11 +260,13 @@ describe("selected immutable report review", () => {
       expect(container.querySelector("#report-version-select")).toBeNull();
       expect(container.querySelector("#selected-report-body")).toBeNull();
       expect(container.textContent).not.toContain("COMPLETED-BUT-NOT-A-SAVED-VERSION");
-      expect(container.textContent).toContain(language === "zh" ? "任务成功完成后即可导出只读报告。" : "A read-only report becomes available after a successful run.");
+      expect(container.textContent).toContain(language === "zh" ? "暂无已保存报告版本" : "No saved report versions yet.");
+      expect(container.textContent).toContain(language === "zh" ? "已保存的报告正文按版本保留" : "Saved report text is retained by version");
       const legacy = { ...original.reportVersions[0], legacy: true, run: null, id: "persisted-legacy-guide", runId: "persisted-legacy-run" };
       const saved = { ...unsaved, reportVersions: [legacy] };
       await act(async () => root.render(createElement(ReportVersionsPanel, { task: saved, language })));
       expect(container.querySelector<HTMLSelectElement>("#report-version-select")?.value).toBe(legacy.id);
+      expect(container.textContent).not.toContain(language === "zh" ? "暂无已保存报告版本" : "No saved report versions yet.");
       expect(container.textContent).toContain(language === "zh" ? "历史版本未记录" : "Not recorded for this historical version");
       const preview = container.querySelector("#selected-report-body")!;
       expect(preview.textContent).toContain(language === "zh" ? "仅供研究参考，不构成金融、投资、法律或交易建议" : "for research only. It is not financial, investment, legal, or trading advice");

@@ -4,22 +4,24 @@ import type { SystemLanguage } from "@/lib/types";
 import type { EvidenceBundle, EvidenceValidation } from "../types";
 import { useEvidenceCheck } from "../hooks/useEvidenceCheck";
 
-export function EvidenceInspector({ bundle, invalid, reports, language, checkReportCitations = true }: {
+export function EvidenceInspector({ bundle, invalid, reports, language, checkReportCitations = true, recordScope }: {
   bundle?: EvidenceBundle;
   invalid?: EvidenceValidation;
   reports: Record<string, string | null>;
   language: SystemLanguage;
   checkReportCitations?: boolean;
+  recordScope?: string;
 }) {
   const zh = language === "zh";
-  const check = useEvidenceCheck(bundle, invalid, checkReportCitations ? reports : undefined);
+  const observed = useEvidenceCheck(invalid ? undefined : bundle, invalid, checkReportCitations ? reports : undefined);
+  const check = invalid ?? observed;
   const unknown = zh ? "未知 / 未观测" : "Unknown / not observed";
   const status = check.status === "verified" ? (zh ? "内容哈希已核验" : "Content hashes verified")
     : check.status === "checking" ? (zh ? "正在核验保存内容" : "Checking saved content")
       : check.status === "invalid" ? (zh ? "证据包无效，无法核验" : "Invalid evidence bundle; verification failed")
         : (zh ? "此版本未保存证据，来源状态未知" : "No evidence saved for this version; provenance unknown");
   return (
-    <section aria-label={zh ? "研究证据" : "Research evidence"} className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
+    <section id={recordScope} data-evidence-scope={recordScope} aria-label={zh ? "研究证据" : "Research evidence"} className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-zinc-200">{zh ? "研究证据" : "Research evidence"}</h3>
         <span aria-live="polite" className={`text-xs ${check.status === "invalid" ? "text-amber-400" : "text-zinc-400"}`}>{status}</span>
@@ -43,7 +45,7 @@ export function EvidenceInspector({ bundle, invalid, reports, language, checkRep
           </p>)}
           {!Object.keys(bundle.citation_audit).length && <p className="mt-2 text-zinc-500">{zh ? "未记录报告引用审计。" : "No report citation audit recorded."}</p>}
         </div>
-        {bundle.records.map((record) => <details key={record.id} id={record.id} className="rounded-md border border-zinc-800 p-3">
+        {bundle.records.map((record) => <details key={record.id} id={recordScope ? `${recordScope}:${record.id}` : record.id} data-evidence-record-id={recordScope ? record.id : undefined} tabIndex={recordScope ? -1 : undefined} className={`rounded-md border border-zinc-800 p-3${recordScope ? " scroll-mt-24 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300" : ""}`}>
           <summary className="cursor-pointer text-xs font-medium text-zinc-300">{record.tool} · {record.status} · {record.id}</summary>
           <div className="mt-3 space-y-3 text-xs text-zinc-400">
             <Fact label={zh ? "有效请求参数" : "Effective request parameters"} value={JSON.stringify(record.parameters)} />

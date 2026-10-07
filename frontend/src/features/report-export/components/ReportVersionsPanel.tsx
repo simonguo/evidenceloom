@@ -15,6 +15,7 @@ import { OutputQualityPanel } from "@/features/output-quality/components/OutputQ
 import { ReportVersionPreview } from "./ReportVersionPreview";
 import { EvidenceInspector } from "@/features/evidence/components/EvidenceInspector";
 import { ReportVersionComparison } from "./ReportVersionComparison";
+import { savedEvidenceScope } from "../lib/saved-report-citations";
 
 export function ReportVersionsPanel({
   task,
@@ -57,8 +58,8 @@ export function ReportVersionsPanel({
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
             {zh
-              ? "每次完成的研究运行都会冻结为只读版本；输入检查结果独立于运行完成。导出文件会离开本机，分享前请检查内容。"
-              : "Every completed research run is frozen as a read-only version; input-check results are separate from run completion. Exported files leave this device; review them before sharing."}
+              ? "已保存的报告正文按版本保留，输入检查独立于任务完成状态。导出文件包含研究内容，请在分享前检查。"
+              : "Saved report text is retained by version; input checks are separate from task completion. Exported files contain research content; review them before sharing."}
           </p>
         </div>
 
@@ -137,7 +138,7 @@ export function ReportVersionsPanel({
                 : (zh ? "历史版本未记录" : "Not recorded for this historical version")} />
             </div>
             <OutputQualityPanel quality={selectedVersion.outputQuality} language={language} />
-            <EvidenceInspector bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
+            <EvidenceInspector key={`evidence:${selectedVersion.id}`} recordScope={savedEvidenceScope(task.id, selectedVersion.id)} bundle={selectedVersion.evidenceBundle} invalid={selectedVersion.evidenceValidation} reports={selectedVersion.reportSections} language={language} />
             <IdentityInspector key={`identity:${selectedVersion.id}`} snapshot={selectedVersion} language={language} />
             <ReadinessInspector snapshot={selectedVersion} language={language} />
             <MemoryInspector snapshot={selectedVersion} language={language} />
@@ -150,7 +151,7 @@ export function ReportVersionsPanel({
         </div>
       ) : (
         <div className="mt-4 rounded-lg border border-dashed border-zinc-800 p-4 text-sm text-zinc-500">
-          {zh ? "任务成功完成后即可导出只读报告。" : "A read-only report becomes available after a successful run."}
+          {zh ? "暂无已保存报告版本" : "No saved report versions yet."}
         </div>
       )}
       <ReportVersionComparison taskId={task.id} reportVersions={task.reportVersions} language={language} />
