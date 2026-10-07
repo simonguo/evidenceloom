@@ -5,13 +5,57 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import type { useTaskCenter } from "@/components/task-center/context";
-import { defaultGlobalSettings } from "@/lib/analysis";
+import { buildRunForm, defaultGlobalSettings } from "@/lib/analysis";
+import { createRunContext, ensureLegacyReportVersion } from "@/features/report-export/lib/versioning";
+import type { AnalysisTask } from "@/lib/types";
+import type { DesktopSnapshot } from "@/lib/runtime";
+import type { SnapshotStorage } from "@/features/desktop-task-store/types";
 import { nativeCommandBridge } from "../test-support/native-command-bridge";
 import { finished, gateReady, readCurrent, readRuntime, sameOrigin } from "./protocol";
 import { deferred } from "../test-support/transport-fixture";
 import type { NativeOwner } from "../types";
+import { captureAdmission, loadRuntimeObservation, SameSessionConsumer, type ConsumerBridge } from "./consumer";
+import { AttachedRunConsumer, captureAttachment } from "./attachment";
 
 const executable = process.env.EVIDENCELOOM_RECOVERY_BRIDGE_EXE;
+
+it.skipIf(!executable)("confirms a cancelled unstarted native reservation with legacy history, then reruns the same task", async () => {
+  const bridge = await nativeCommandBridge(executable!, undefined, process.env.EVIDENCELOOM_RECOVERY_RUSTC_DIRECTORY);
+  vi.stubGlobal("crypto", webcrypto);
+  try {
+    const loadSnapshot = async () => await bridge.invoke("load_desktop_data") as DesktopSnapshot & { storage: SnapshotStorage };
+    let snapshot = await loadSnapshot();
+    const saved = ensureLegacyReportVersion({ ...snapshot.tasks[0], status: "completed", reportSections: { market_report: "Fictional historical report" } });
+    Reflect.deleteProperty(saved.reportVersions[0], "evaluationReviews"); Reflect.deleteProperty(saved.reportVersions[0], "numericReviews");
+    const retained = JSON.parse(JSON.stringify(saved.reportVersions));
+    await bridge.invoke("save_desktop_task", { request: { protocolVersion: 1, requestId: crypto.randomUUID(), collection: snapshot.storage.collection, operation: "update", expectedHead: snapshot.storage.heads[0], task: { ...saved, status: "queued" } } });
+    snapshot = await loadSnapshot();
+    const form = buildRunForm(snapshot.tasks[0], defaultGlobalSettings());
+    const admission = captureAdmission(snapshot.tasks[0], form, createRunContext(form), snapshot.storage.collection, snapshot.storage.heads[0], (await loadRuntimeObservation(bridge.api)).runtimeEpoch!);
+    await bridge.api.invoke("reserve_analysis", { requestJson: admission.packet.requestJson });
+    const owner = (await loadRuntimeObservation(bridge.api)).owner!;
+    // Reproduce the old queue-cancellation write before confirming the unstarted run.
+    await bridge.invoke("save_desktop_task", { request: { protocolVersion: 1, requestId: crypto.randomUUID(), collection: snapshot.storage.collection, operation: "update", expectedHead: snapshot.storage.heads[0], task: { ...snapshot.tasks[0], status: "idle", queuedAt: "", queueOrder: null } } });
+    await bridge.api.invoke("stop_analysis", { requestJson: JSON.stringify({ recoveryProtocolVersion: 1, requestId: crypto.randomUUID(), origin: owner.origin, journalId: owner.journalId, mode: "stop", expectedControlRevision: null }) });
+    const observed = await loadRuntimeObservation(bridge.api);
+    const attachment = captureAttachment({ runtimeEpoch: observed.runtimeEpoch!, expectedObservationRevision: observed.observationRevision, origin: owner.origin, journalId: owner.journalId, binding: owner.binding, admissionRequestId: owner.admissionRequestId, admissionDigest: owner.admissionDigest, expectedHeaderDigest: null });
+    let canonical: AnalysisTask | undefined;
+    const publish: ConsumerBridge["publish"] = (current) => { if (current.state === "coherent" && current.task) canonical = current.task; return true; };
+    const session = new AttachedRunConsumer(attachment, async () => bridge.api, { relevant: () => true, publish, changed: () => undefined });
+    await session.run();
+    expect(session.phase).toBe("ready"); expect(canonical!.status).toBe("stopped"); expect(canonical!.reportVersions).toEqual(retained);
+    expect(gateReady(await loadRuntimeObservation(bridge.api))).toBe(true);
+    expect(bridge.requests.some((line) => JSON.parse(line).command === "start_analysis")).toBe(false);
+    snapshot = await loadSnapshot();
+    const retryForm = buildRunForm(snapshot.tasks[0], defaultGlobalSettings());
+    const retryAdmission = captureAdmission(snapshot.tasks[0], retryForm, createRunContext(retryForm), snapshot.storage.collection, snapshot.storage.heads[0], observed.runtimeEpoch!);
+    const rerun = new SameSessionConsumer(retryAdmission, async () => bridge.api, { relevant: () => true, publish, changed: () => undefined });
+    await rerun.run();
+    expect(rerun.phase).toBe("ready"); expect(canonical!.status).toBe("completed"); expect(canonical!.reportVersions[0]).toEqual(retained[0]); expect(canonical!.reportVersions[1].versionNumber).toBe(2);
+    expect(bridge.requests.filter((line) => JSON.parse(line).command === "start_analysis")).toHaveLength(1);
+  } finally { vi.unstubAllGlobals(); expect(await bridge.close()).toBe(0); }
+}, 30000);
+
 it.skipIf(!executable).each(["same-realm-stop", "fresh-realm-stop", "completion-listener-gap"])("actual Provider %s attaches the original native worker and admits B only after both gates", async (scenario) => {
   const artifactRoot = process.env.EVIDENCELOOM_RECOVERY_BRIDGE_ARTIFACTS, artifacts = artifactRoot ? join(artifactRoot, scenario) : undefined;
   if (artifacts) await mkdir(artifacts);

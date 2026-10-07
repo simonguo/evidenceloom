@@ -232,9 +232,15 @@ export class SameSessionConsumer {
     await this.connect(); requireWire(this.eligible());
     await this.resolveAdmission(retry);
     if (await this.retireDiscarded()) return;
-    if (!this.header) { const page = await this.read("0", "1"); this.header = page.header; }
+    if (!this.header) {
+      const page = await this.read("0", "1"); this.header = page.header;
+      // The displayed task can contain normalized legacy history. Once its journal
+      // identity is known, reduce against the native canonical admission parent.
+      if (this.current) this.observe(this.current);
+    }
+    const sealed = this.current?.state === "coherent" && this.current.journal?.sealedThroughSeq != null;
     if (this.cancelled) await this.stop();
-    else {
+    else if (!sealed) {
       try { await this.register(); } catch (cause) { await this.stop(); this.change("result_pending"); throw new RecoveryPendingError("result", { cause }); }
       if (!this.cancelled) {
         if (BigInt(this.parent.appliedSeq) < BigInt(1) || this.projection?.packet.request.throughSeq === "1") await this.projectCut("1");

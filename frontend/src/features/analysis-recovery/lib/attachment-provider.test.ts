@@ -48,6 +48,22 @@ describe("global native controls through the actual Provider", () => {
     await vi.waitFor(async () => { await act(async () => {}); expect(center.hydrated).toBe(true); });
   }
   const calls = (command: string) => fixture.calls.filter((call) => call.command === command);
+  it("keeps a native pending result out of the waiting queue after reload even if its saved task says queued", async () => {
+    fixture.canonical({ ...fixture.task(), status: "queued", queuedAt: "2026-01-01T00:00:00.000Z", queueOrder: 1 });
+    const save = vi.spyOn(runtime.getRuntimeAdapter(), "saveDesktopTask");
+    await mount(); const saved = center.getTask(fixture.header.origin.taskId)!;
+    expect(center.runningTask).toBeNull(); expect(center.queuedTasks).toHaveLength(0);
+    expect(center.getTaskDisplayStatus(saved)).toBe("result_pending");
+    await act(async () => center.cancelQueuedTask(saved.id, saved));
+    expect(save).not.toHaveBeenCalled(); expect(center.getTask(saved.id)?.status).toBe("queued");
+    await act(async () => expect(await center.deleteTask(saved.id, saved)).toBe(false));
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis"].includes(call.command))).toBe(false);
+    await act(async () => center.retryNativeResult());
+    expect(center.nativeAnalysis).toBeNull(); expect(center.notice).toBe("");
+    expect(center.getTask(saved.id)?.status).toBe("completed");
+    expect(calls("attach_analysis_recovery")).toHaveLength(1);
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis"].includes(call.command))).toBe(false);
+  });
   it("direct Stop shares a pending original attachment and still stops the exact witness after an unknown query", async () => {
     const original = fixture.api.invoke, ack = deferred<void>(), entered = deferred<void>(), admissions: string[] = [];
     fixture.api.invoke = async (command, args) => {

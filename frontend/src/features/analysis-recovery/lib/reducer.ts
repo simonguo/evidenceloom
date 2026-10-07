@@ -64,11 +64,12 @@ async function transform(task: AnalysisTask, event: AnalysisEvent, seed: EventSe
   const agentStatuses = event.agentStatuses ?? task.agentStatuses;
   const logs = event.message || event.error ? prependSeededLog(task.logs, seed.logId, event.messageType ?? event.type, event.error ?? event.message ?? "", seed.logTimestamp, event.agent) : task.logs;
   let next = normalizeIdentityTaskFields(normalizeNumericTaskFields(normalizeReadinessTaskFields(normalizeMemoryTaskFields(evidenceMatchesSnapshot({
-    ...task, status, updatedAt: seed.updatedAt, decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event), stats: event.stats ?? task.stats,
+    ...task, reportVersions: [], status, updatedAt: seed.updatedAt, decision: resolveTaskDecision(task.decision, reportSections.final_trade_decision, event), stats: event.stats ?? task.stats,
     agentStatuses: status === "error" ? finalize(agentStatuses) : agentStatuses, reportSections, outputQuality: mergeEventOutputQuality(task.outputQuality, event),
     ...((event.evidenceBundle !== undefined || event.finalState?.evidence_bundle !== undefined) ? evidence : {}), ...(memory ?? {}), ...(readiness ?? {}), ...(numeric ?? {}), ...(identity ?? {}), logs,
     error: event.error ?? (status === "running" || event.type === "completed" ? "" : task.error),
   })))));
+  next = { ...next, reportVersions: task.reportVersions };
   next = overlayIssues(next, issues);
   if (issues.length) next = { ...next, logs: prependSeededLog(next.logs, seed.logId, "warning", recoveryMessages.analysis_publication_unavailable, seed.logTimestamp, event.agent) };
   return next;
@@ -77,6 +78,7 @@ async function transform(task: AnalysisTask, event: AnalysisEvent, seed: EventSe
 /** All causal input is detached synchronously, before research validation awaits. */
 export async function reduceJournalPage(input: AnalysisTask, inputHeader: JournalHeader, inputRows: readonly JournalEnvelope[], inputProgress: RunReduction = initialReduction): Promise<{ task: AnalysisTask; progress: RunReduction }> {
   let task = detached(input), progress = detached(inputProgress);
+  const retainedVersions = detached(task.reportVersions);
   const header = detached(inputHeader), rows = detached(inputRows);
   for (const row of rows) {
     if (row.kind === "accepted") { task = reset(task, row.seed); continue; }
@@ -108,6 +110,9 @@ export async function reduceJournalPage(input: AnalysisTask, inputHeader: Journa
       else task = { ...task, updatedAt: row.seed.updatedAt };
     }
   }
-  task = await verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(normalizeTaskEvidence(task))))));
+  // Previously committed versions are native immutable history. Verification may
+  // add defaults for display, but a projection must preserve their original shape.
+  task = await verifyIdentityTask(await verifyNumericTask(await verifyTaskReadiness(await verifyTaskMemory(await verifyTaskEvidence(normalizeTaskEvidence({ ...task, reportVersions: task.reportVersions.slice(retainedVersions.length) }))))));
+  task = { ...task, reportVersions: [...retainedVersions, ...task.reportVersions] };
   return detached({ task, progress });
 }

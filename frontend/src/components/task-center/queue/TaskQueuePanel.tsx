@@ -6,6 +6,7 @@ import { taskDetailHref } from "../utils";
 
 type TaskQueuePanelProps = {
   runningTask: AnalysisTask | null;
+  startingTask?: AnalysisTask | null;
   queuedTasks: AnalysisTask[];
   cleanupFailedTask: AnalysisTask | null;
   cleanupRetrying: boolean;
@@ -21,8 +22,9 @@ type TaskQueuePanelProps = {
   onMove: (taskId: string, direction: "up" | "down", task?: AnalysisTask) => void;
 };
 
-export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cleanupRetrying, cleanupUnconfirmed = false, resultPendingTask = null, resultRetrying = false, onRetryResult, stopping, onRetryCleanup, language, onStop, onCancel, onMove }: TaskQueuePanelProps) {
+export function TaskQueuePanel({ runningTask, startingTask = null, queuedTasks, cleanupFailedTask, cleanupRetrying, cleanupUnconfirmed = false, resultPendingTask = null, resultRetrying = false, onRetryResult, stopping, onRetryCleanup, language, onStop, onCancel, onMove }: TaskQueuePanelProps) {
   const t = createTranslator(language);
+  const activeTask = runningTask ?? startingTask;
 
   return (
     <section className="overflow-hidden rounded-lg border border-zinc-900 bg-black">
@@ -52,15 +54,15 @@ export function TaskQueuePanel({ runningTask, queuedTasks, cleanupFailedTask, cl
         </div>
       )}
 
-      {runningTask && (
+      {activeTask && (
         <div className="flex items-center gap-3 border-b border-zinc-900 px-5 py-3">
           <Activity className="size-4 shrink-0 animate-pulse text-sky-300" />
-          <Link href={taskDetailHref(runningTask.id)} className="min-w-0 flex-1">
+          <Link href={taskDetailHref(activeTask.id)} className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-medium text-white">{runningTask.ticker}</span>
-              <span className="text-xs text-sky-300">{stopping ? t("analysisStopping") : t("queueCurrent")}</span>
+              <span className="font-medium text-white">{activeTask.ticker}</span>
+              <span className="text-xs text-sky-300">{stopping ? t("analysisStopping") : startingTask ? t("starting") : t("queueCurrent")}</span>
             </div>
-            {runningTask.instrumentName && <div className="mt-0.5 truncate text-xs text-zinc-500">{runningTask.instrumentName}</div>}
+            {activeTask.instrumentName && <div className="mt-0.5 truncate text-xs text-zinc-500">{activeTask.instrumentName}</div>}
           </Link>
           <button type="button" disabled={stopping} onClick={onStop} title={t("stopTask")} aria-label={t("stopTask")} className="inline-flex size-8 shrink-0 items-center justify-center rounded-md border border-zinc-800 text-rose-300 transition hover:border-zinc-600 hover:bg-rose-950/30">
             <Square className="size-3.5" />

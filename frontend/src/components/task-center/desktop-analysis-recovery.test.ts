@@ -4,9 +4,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TaskCenterProvider, useTaskCenter } from "./context";
 import { TaskQueuePanel } from "./queue/TaskQueuePanel";
+import { AppShell } from "./AppShell";
 import { defaultGlobalSettings } from "@/lib/analysis";
 import * as runtimeAdapter from "@/lib/runtime";
-import { task, runtime } from "@/features/analysis-recovery/test-support/fixtures";
+import { task, runtime, envelope } from "@/features/analysis-recovery/test-support/fixtures";
 import { deferred, transportFixture } from "@/features/analysis-recovery/test-support/transport-fixture";
 import { recoveryMessages } from "@/features/analysis-recovery/lib/protocol";
 import type { AdmissionRequest, RecoveryCurrent } from "@/features/analysis-recovery/types";
@@ -16,6 +17,7 @@ import type { TaskHead, TaskMutationRequest } from "@/features/desktop-task-stor
 const ipc = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: ipc.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: ipc.listen }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 
 describe("desktop analysis recovery through the actual Provider and queue", () => {
   let root: Root, element: HTMLDivElement, center: ReturnType<typeof useTaskCenter>;
@@ -27,9 +29,9 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
   function authority() { return { collection, heads: [...heads.values()] }; }
   function Panel() {
     center = useTaskCenter();
-    return createElement(TaskQueuePanel, { runningTask: center.runningTask, queuedTasks: center.queuedTasks, cleanupFailedTask: center.cleanupFailedTask, cleanupRetrying: center.cleanupRetrying, cleanupUnconfirmed: center.cleanupUnconfirmed, resultPendingTask: center.resultPendingTask, resultRetrying: center.resultRetrying, stopping: center.stopping, language: "en", onStop: center.stopRunningTask, onRetryCleanup: () => { void center.retryCleanup(); }, onRetryResult: () => { void center.retryResult(); }, onCancel: center.cancelQueuedTask, onMove: center.moveQueuedTask });
+    return createElement(TaskQueuePanel, { runningTask: center.runningTask, startingTask: center.startingTask, queuedTasks: center.queuedTasks, cleanupFailedTask: center.cleanupFailedTask, cleanupRetrying: center.cleanupRetrying, cleanupUnconfirmed: center.cleanupUnconfirmed, resultPendingTask: center.resultPendingTask, resultRetrying: center.resultRetrying, stopping: center.stopping, language: "en", onStop: center.stopRunningTask, onRetryCleanup: () => { void center.retryCleanup(); }, onRetryResult: () => { void center.retryResult(); }, onCancel: center.cancelQueuedTask, onMove: center.moveQueuedTask });
   }
-  async function mount() { await act(async () => root.render(createElement(TaskCenterProvider, null, createElement(Panel)))); await vi.waitFor(async () => { await act(async () => {}); expect(center.hydrated).toBe(true); }); }
+  async function mount() { await act(async () => root.render(createElement(TaskCenterProvider, null, createElement(AppShell, null, createElement(Panel))))); await vi.waitFor(async () => { await act(async () => {}); expect(center.hydrated).toBe(true); }); }
   async function settled(predicate: () => void) { await vi.waitFor(async () => { await act(async () => {}); predicate(); }); }
   function sql(request: TaskMutationRequest) {
     if (!("expectedHead" in request)) throw new Error("Unsupported owned SQL fixture operation");
@@ -96,6 +98,9 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
     ipc.listen.mockImplementation(() => { listenerEntered.resolve(); return registration.promise; });
     configure = (fixture, id) => { if (id === "owned-A") fixture.setStopBarrier(stopped.promise); };
     await mount(); await listenerEntered.promise;
+    expect(center.startingTask?.id).toBe("owned-A"); expect(center.runningTask).toBeNull();
+    expect(center.queuedTasks.map((row) => row.id)).toEqual(["owned-B"]);
+    expect(element.querySelector("header")?.textContent).toContain("Starting FICT");
     const button = element.querySelector<HTMLButtonElement>('button[aria-label="Stop task"]')!; expect(button).toBeDefined();
     await act(async () => button.click()); await settled(() => expect(calls("stop_analysis")).toHaveLength(1));
     expect(center.stopping).toBe(true); expect(center.runningTask?.id).toBe("owned-A"); expect(center.tasks.find((row) => row.id === "owned-B")?.status).toBe("queued"); expect(center.cleanupFailedTask).toBeNull();
@@ -118,9 +123,49 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
     let originalPage: string | undefined, firstQuery = true;
     configure = (fixture, id) => { if (id !== "owned-A") return; fixture.setHook((command, request) => { if (command === "commit_analysis_projection" && request.throughSeq === "3") { originalPage = JSON.stringify(request); throw new Error("Owned lost commit ACK"); } if (command === "query_analysis_projection" && firstQuery) { firstQuery = false; throw new Error("Owned query read unavailable"); } }); };
     await mount(); await settled(() => expect(center.resultPendingTask?.id).toBe("owned-A")); expect(calls("start_analysis")).toHaveLength(1); expect(center.tasks.find((row) => row.id === "owned-B")?.status).toBe("queued");
+    expect(center.runningTask).toBeNull(); expect(element.querySelector("header")?.textContent).toContain("Result pending FICT");
     const retry = [...element.querySelectorAll("button")].find((button) => button.textContent === "Retry result confirmation"); expect(retry).toBeDefined();
     await act(async () => retry!.click()); await settled(() => expect(center.tasks.find((row) => row.id === "owned-B")?.status).toBe("completed"));
     expect(calls("query_analysis_projection").some(([, args]) => args.requestJson === originalPage)).toBe(true); expect(calls("start_analysis")).toHaveLength(2); expect(center.resultPendingTask).toBeNull();
+  });
+  it("keeps a reserved pending result separate from waiting tasks and refuses cancellation of its owned task", async () => {
+    let restoreTransport!: () => void;
+    configure = (fixture, id) => {
+      if (id !== "owned-A") return;
+      const invoke = fixture.api.invoke;
+      restoreTransport = () => { fixture.api.invoke = invoke; };
+      let cancelledExternally = false;
+      fixture.api.invoke = async (command, args) => {
+        if (command === "commit_analysis_projection") {
+          if (!cancelledExternally) { cancelledExternally = true; fixture.canonical({ ...fixture.task(), status: "idle", queuedAt: "", queueOrder: null }); }
+          return { recoveryProtocolVersion: 1, scope: "analysis_projection_sql", receipt: null, rejection: { code: "analysis_conflict", message: recoveryMessages.analysis_conflict }, current: fixture.current() };
+        }
+        return invoke(command, args);
+      };
+    };
+    await mount(); await settled(() => expect(center.resultPendingTask?.id).toBe("owned-A"));
+    expect(calls("start_analysis")).toHaveLength(0); expect(center.runningTask).toBeNull();
+    expect(center.queuedTasks.map((row) => row.id)).toEqual(["owned-B"]); expect(center.getQueuePosition("owned-B")).toBe(1);
+    expect(center.getTaskDisplayStatus(center.getTask("owned-A")!)).toBe("result_pending");
+    expect(element.querySelector("header")?.textContent).toContain("Result pending FICT");
+    const writes = calls("save_desktop_task").length;
+    await act(async () => center.cancelQueuedTask("owned-A", center.getTask("owned-A")));
+    expect(calls("save_desktop_task")).toHaveLength(writes); expect(center.getTask("owned-A")?.status).toBe("idle");
+    await act(async () => expect(await center.deleteTask("owned-A", center.getTask("owned-A"))).toBe(false));
+    expect(calls("delete_desktop_task")).toHaveLength(0);
+    await act(async () => center.cancelQueuedTask("owned-B", center.getTask("owned-B")));
+    await settled(() => expect(center.getTask("owned-B")?.status).toBe("idle"));
+    expect(center.queuedTasks).toHaveLength(0); expect(center.runningTask).toBeNull();
+    expect(element.querySelector("header")?.textContent).toContain("Result pending FICT");
+    const original = active!; restoreTransport();
+    // Use the original journal's stop and rows so the pending consumer keeps its identity.
+    await original.api.invoke("stop_analysis", { requestJson: JSON.stringify({ recoveryProtocolVersion: 1, requestId: "owned-expired", origin: original.header.origin, journalId: original.header.journalId, mode: "stop", expectedControlRevision: null }) });
+    original.rows[1] = envelope(original.header, 2, "worker_outcome", { outcome: "not_started", code: "analysis_reservation_expired" });
+    await act(async () => center.retryResult());
+    await settled(() => expect(center.resultPendingTask).toBeNull());
+    expect(center.getTask("owned-A")?.status).toBe("error"); expect(calls("start_analysis")).toHaveLength(0);
+    expect(center.runningTask).toBeNull(); expect(center.queuedTasks).toHaveLength(0);
+    expect(center.notice).toBe("");
   });
   it.each(["delete", "clear"])("refreshes canonical authority after a fully projected external %s retires the original journal", async (operation) => {
     let firstQuery = true;

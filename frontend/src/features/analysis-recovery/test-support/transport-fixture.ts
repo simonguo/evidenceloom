@@ -12,10 +12,10 @@ export function deferred<T>() {
 
 /** A narrow fictional transport for frontend ordering tests, not native CAS/digest proof. */
 let fixtureNumber = 0;
-export function transportFixture(options: { captured?: CapturedAdmission; taskId?: string; events?: AnalysisEvent[]; pageSize?: number; listenerFailure?: boolean; cleanupFailure?: boolean; rejectedAdmission?: boolean } = {}) {
+export function transportFixture(options: { captured?: CapturedAdmission; canonicalTask?: AnalysisTask; taskId?: string; events?: AnalysisEvent[]; pageSize?: number; listenerFailure?: boolean; cleanupFailure?: boolean; rejectedAdmission?: boolean } = {}) {
   const admission = options.captured ?? captured(options.taskId ?? `owned-run-${++fixtureNumber}`), base = header();
   const h: JournalHeader = { ...base, origin: { ...base.origin, runtimeEpoch: admission.packet.request.runtimeEpoch, taskId: admission.task.id }, binding: { collection: admission.packet.request.collection, generation: admission.packet.request.expectedHead.generation, taskId: admission.task.id }, reservedHead: admission.packet.request.expectedHead, admissionRequestId: admission.packet.request.requestId, context: admission.packet.request.context };
-  let task = admission.task, head = { ...h.reservedHead }, applied = "0", started = false, cleaned = false, sealed: string | null = null, revision = 0;
+  let task = options.canonicalTask ?? admission.task, head = { ...h.reservedHead }, applied = "0", started = false, cleaned = false, sealed: string | null = null, revision = 0;
   const rows = [envelope(h, 1, "accepted", { resetVersion: 1 })];
   const outcomes = new Map<string, OutcomeReply | AdmissionReply>();
   const calls: { command: string; args: { requestJson: string; executionInputJson?: string } }[] = [];

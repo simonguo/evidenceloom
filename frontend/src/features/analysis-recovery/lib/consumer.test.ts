@@ -2,10 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { SameSessionConsumer } from "./consumer";
 import { RecoveryAdmissionRejectedError, RecoveryPendingError } from "./transport";
 import { recoveryMessages } from "./protocol";
-import { envelope } from "../test-support/fixtures";
+import { captured, envelope } from "../test-support/fixtures";
 import { deferred, transportFixture } from "../test-support/transport-fixture";
 import type { RecoveryCurrent, RecoveryPhase } from "../types";
 import { reduceJournalPage } from "./reducer";
+import { ensureLegacyReportVersion } from "@/features/report-export/lib/versioning";
+import type { AnalysisTask } from "@/lib/types";
 
 function consumer(fixture: ReturnType<typeof transportFixture>) {
   const publications: RecoveryCurrent[] = [], phases: RecoveryPhase[] = [];
@@ -14,6 +16,28 @@ function consumer(fixture: ReturnType<typeof transportFixture>) {
 }
 
 describe("same-session journal consumer with fictional transport", () => {
+  it("uses native immutable history for the first reset when the displayed legacy version differs", async () => {
+    const admission = captured();
+    const canonical: AnalysisTask = JSON.parse(JSON.stringify(ensureLegacyReportVersion({ ...admission.task, status: "completed", reportSections: { market_report: "Original saved report" } })));
+    const display = { ...canonical, reportVersions: canonical.reportVersions.map((version) => ({ ...version, decision: "display normalization" })) };
+    const f = transportFixture({ captured: { ...admission, task: display }, canonicalTask: canonical }), c = consumer(f);
+    await c.session.run();
+    const first = JSON.parse(f.calls.find((call) => call.command === "commit_analysis_projection")!.args.requestJson);
+    expect(first.projection.task.reportVersions).toEqual(canonical.reportVersions);
+    expect(f.task().reportVersions[0]).toEqual(canonical.reportVersions[0]);
+    expect(c.session.phase).toBe("ready");
+  });
+
+  it("confirms an expired not-started reservation without issuing a start for the sealed run", async () => {
+    const f = transportFixture(), c = consumer(f);
+    await f.api.invoke("stop_analysis", { requestJson: JSON.stringify({ recoveryProtocolVersion: 1, requestId: "owned-expired-reservation", origin: f.header.origin, journalId: f.header.journalId, mode: "stop", expectedControlRevision: null }) });
+    f.rows[1] = envelope(f.header, 2, "worker_outcome", { outcome: "not_started", code: "analysis_reservation_expired" });
+    await c.session.run();
+    expect(c.session.phase).toBe("ready"); expect(f.task().status).toBe("error");
+    expect(f.task().error).toBe(recoveryMessages.analysis_reservation_expired);
+    expect(f.calls.some((call) => call.command === "start_analysis")).toBe(false);
+    expect(f.current().state === "coherent" && f.current().runtime.owner).toBeNull();
+  });
   it.each(["1", "3"])("confirms a known projection receipt through %s using only the original read-only query after a transient unavailable current", async (throughSeq) => {
     const f = transportFixture(), c = consumer(f), invoke = f.api.invoke;
     let original: string | undefined, queries = 0;

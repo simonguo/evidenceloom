@@ -52,6 +52,7 @@ import { createTranslator } from "@/lib/i18n";
 import { prependLog } from "./utils";
 import { resolveTaskDecision } from "./decisions";
 import { useTaskQueueController } from "./queue/useTaskQueueController";
+import { taskDisplayStatus, type TaskDisplayStatus } from "./queue/task-display-status";
 import { DesktopTaskMutations } from "@/features/desktop-task-store/lib/mutations";
 import { detached } from "@/features/desktop-task-store/lib/protocol";
 import type { RunOwner, TaskAction, TaskStoreState } from "@/features/desktop-task-store/types";
@@ -64,6 +65,7 @@ type TaskCenterContextValue = {
   sortedTasks: AnalysisTask[];
   hydrated: boolean;
   runningTask: AnalysisTask | null;
+  startingTask: AnalysisTask | null;
   queuedTasks: AnalysisTask[];
   cleanupFailedTask: AnalysisTask | null;
   cleanupRetrying: boolean;
@@ -92,6 +94,7 @@ type TaskCenterContextValue = {
   stopRunningTask: () => void;
   getTask: (taskId: string) => AnalysisTask | undefined;
   getTaskIdentity: (task: AnalysisTask) => object | string | undefined;
+  getTaskDisplayStatus: (task: AnalysisTask) => TaskDisplayStatus;
   runtimeInfo: RuntimeInfo;
   checkRuntime: (settingsOverride?: GlobalSettings) => Promise<RuntimeCheck>;
   beginReview: (task: AnalysisTask, versionId: string) => unknown;
@@ -428,6 +431,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
 
   const {
     runningTask,
+    startingTask,
     queuedTasks,
     queueTask,
     cancelQueuedTask,
@@ -452,6 +456,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     persistTask,
     storageReady: !isTauriRuntime() || recoveryReady && (storageState === "ready" || storageState === "pending"),
     blockedQueueNotice: t(storageState === "ready" || storageState === "pending" ? "analysisRecoveryBlocked" : "taskStorageUnconfirmed"),
+    nativeOwnedTaskId: nativeObservation?.owner?.binding.taskId,
     mutateDesktopTask,
     beginDesktopRun: async (task) => {
       const mutations = mutationsRef.current;
@@ -525,7 +530,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         if (attachedRef.current !== session || mutationsRef.current !== mutations) return;
         if (runtime) { recoveryRuntimeRef.current = runtime; setNativeObservation(runtime); }
         setAttachmentPhase(phase); setRecoveryReady(phase === "ready" && !!runtime && gateReady(runtime));
-        if (phase === "ready") { setNativeBlocked(false); setAttached(false); }
+        if (phase === "ready") { setNativeBlocked(false); setAttached(false); setNotice(""); }
       },
     });
     attachedRef.current?.dispose(); attachedRef.current = session; setAttached(true); setAttachmentPhase("checking"); setRecoveryReady(false);
@@ -537,6 +542,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
   }
   async function retryNativeResult() {
     const session = attachedRef.current;
+    if (!session && nativeObservation?.owner) { await watchNativeAnalysis(); return; }
     if (session && nativeObservation?.owner && (!sameOrigin(session.origin, nativeObservation.owner.origin) || session.captured.request.journalId !== nativeObservation.owner.journalId)) return;
     if (!session) {
       try {
@@ -734,7 +740,15 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
       setNotice(t("analysisCleanupFailed"));
       return Promise.resolve(false);
     }
-    if (task?.status === "running" || runningTask?.id === taskId) {
+    if (resultPendingTask?.id === taskId) {
+      setNotice(t("analysisResultPending"));
+      return Promise.resolve(false);
+    }
+    if (nativeObservation?.owner?.binding.taskId === taskId) {
+      setNotice(t("analysisRecoveryBlocked"));
+      return Promise.resolve(false);
+    }
+    if (task?.status === "running" || runningTask?.id === taskId || startingTask?.id === taskId) {
       setNotice(t("cannotDeleteRunning"));
       return Promise.resolve(false);
     }
@@ -888,6 +902,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     sortedTasks,
     hydrated,
     runningTask,
+    startingTask,
     queuedTasks,
     cleanupFailedTask,
     cleanupRetrying,
@@ -916,6 +931,14 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     stopRunningTask,
     getTask: (taskId) => tasks.find((task) => task.id === taskId),
     getTaskIdentity: (task) => isTauriRuntime() ? mutationsRef.current?.identity(task) : task.id,
+    getTaskDisplayStatus: (task) => {
+      const status = taskDisplayStatus(task, { runningTask, startingTask, resultPendingTask, cleanupFailedTask, stopping });
+      if (nativeAnalysis?.taskId !== task.id) return status;
+      if (nativeAnalysis.phase === "stopping") return "stopping";
+      if (nativeAnalysis.phase === "cleanup_failed" || nativeObservation?.owner?.phase === "cleanup_failed") return "cleanup_failed";
+      if (nativeAnalysis.phase === "result_pending" || nativeObservation?.owner?.phase === "result_pending") return "result_pending";
+      return nativeObservation?.owner?.phase === "running" ? "running" : "starting";
+    },
     runtimeInfo,
     checkRuntime: checkRuntimeAction,
     saveEvaluationReviews,
