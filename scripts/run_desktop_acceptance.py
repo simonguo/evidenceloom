@@ -368,7 +368,7 @@ def audit_database(path, controls):
                 and journal["latest_seq"] >= journal["applied_seq"]
             )
             versions = connection.execute(
-                "SELECT id,run_id,version_number,snapshot FROM task_report_versions WHERE task_id=? ORDER BY version_number LIMIT 3",
+                "SELECT id,run_id,version_number,created_at,snapshot FROM task_report_versions WHERE task_id=? ORDER BY version_number LIMIT 3",
                 (task["taskId"],),
             ).fetchall()
             stop_receipts = []
@@ -398,23 +398,87 @@ def audit_database(path, controls):
                         boundary.require(
                             seal is not None
                             and seal["outcome"] == "cleanup_confirmed"
-                            and revision == journal["control_revision"]
+                            and 0 < revision <= journal["control_revision"]
                         )
                         stop_receipts.append(receipt)
-                boundary.require(stop_receipts)
+                # Earlier confirmed revisions remain valid history. A matching
+                # confirmation for the current revision is still mandatory.
+                boundary.require(
+                    stop_receipts
+                    and any(
+                        int(receipt["controlRevision"]) == journal["control_revision"]
+                        for receipt in stop_receipts
+                    )
+                )
             else:
                 boundary.require(journal["worker_outcome"] == "succeeded" and len(versions) == 1)
+                # Native origin.runId remains analysis-N. Reports retain the
+                # original research UUID, bound through this same journal header.
+                context = header.get("context")
+                boundary.require(isinstance(context, dict))
+                original_run = context.get("originalRunContext")
+                boundary.require(isinstance(original_run, dict))
+                research_run_id = original_run.get("runId")
+                boundary.require(
+                    isinstance(research_run_id, str)
+                    and re.fullmatch(
+                        r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}",
+                        research_run_id,
+                    )
+                    is not None
+                    and isinstance(original_run.get("manifest"), dict)
+                )
+                completions = connection.execute(
+                    "SELECT seq,envelope_json FROM analysis_events WHERE journal_id=? AND json_extract(envelope_json,'$.kind')='analysis' AND json_extract(envelope_json,'$.payload.event.type')='completed' LIMIT 2",
+                    (journal["journal_id"],),
+                ).fetchall()
+                boundary.require(len(completions) == 1)
+                completion = completions[0]
+                boundary.require(
+                    type(completion["seq"]) is int
+                    and 0 < completion["seq"] <= journal["sealed_seq"]
+                )
+                envelope = strict_raw(completion["envelope_json"].encode(), 1024 * 1024)
+                boundary.require(
+                    envelope["recoveryProtocolVersion"] == 1
+                    and type(envelope["recoveryProtocolVersion"]) is int
+                    and envelope["seq"] == str(completion["seq"])
+                    and envelope["kind"] == "analysis"
+                    and envelope["journalId"] == journal["journal_id"]
+                    and envelope["origin"] == origin
+                    and envelope["binding"] == binding
+                )
+                event, seed = envelope["payload"]["event"], envelope["seed"]
+                boundary.require(event["type"] == "completed")
                 version = versions[0]
                 boundary.require(
                     version["id"] == task["reportVersionId"]
-                    and version["run_id"] == task["runId"]
+                    and version["run_id"] == research_run_id
                     and version["version_number"] == 1
                     and version["id"].startswith("report:" + journal["journal_id"] + ":")
                 )
                 snapshot = strict_raw(version["snapshot"].encode(), 1024 * 1024)
                 boundary.require(
-                    snapshot["id"] == version["id"] and snapshot["runId"] == task["runId"]
+                    snapshot["id"] == version["id"]
+                    and snapshot["runId"] == research_run_id
+                    and type(snapshot["versionNumber"]) is int
+                    and snapshot["versionNumber"] == version["version_number"]
+                    and snapshot["legacy"] is False
+                    and snapshot["run"] == original_run["manifest"]
+                    and version["id"]
+                    == "report:" + journal["journal_id"] + ":" + str(completion["seq"])
+                    and seed["completionVersionId"] == version["id"]
+                    and seed["completionCreatedAt"]
+                    == version["created_at"]
+                    == snapshot["createdAt"]
                 )
+                event_evidence = event.get("evidenceBundle")
+                boundary.require(snapshot.get("evidenceBundle") == event_evidence)
+                if event_evidence is not None:
+                    boundary.require(
+                        isinstance(event_evidence, dict)
+                        and event_evidence.get("run_id") == research_run_id
+                    )
                 frozen_task = {
                     "ticker": actual["ticker"],
                     "instrumentName": actual["instrument_name"],
@@ -424,10 +488,16 @@ def audit_database(path, controls):
                     "analysts": strict_raw(actual["analysts"].encode(), 65536),
                     "outputLanguage": actual["output_language"],
                 }
-                boundary.require(snapshot["task"] == frozen_task)
+                boundary.require(
+                    snapshot["task"] == frozen_task == context.get("originalTaskSnapshot")
+                    and context.get("input")
+                    == {key: value for key, value in frozen_task.items() if key != "instrumentName"}
+                )
                 boundary.require(
                     snapshot["reportSections"] == {"market_report": FIXTURE_REPORT}
                     and snapshot["stats"] == FIXTURE_STATS
+                    and event["reportSections"] == snapshot["reportSections"]
+                    and event["stats"] == snapshot["stats"]
                 )
                 boundary.require(
                     strict_raw(actual["report_sections"].encode(), 1024 * 1024)
@@ -450,6 +520,8 @@ def audit_database(path, controls):
                     "cleanupState": journal["cleanup_state"],
                     "resultState": journal["result_state"],
                     "reportVersionId": task["reportVersionId"],
+                    "researchRunId": None if task["slot"] in ("a", "c") else research_run_id,
+                    "completionSeq": None if task["slot"] in ("a", "c") else str(completion["seq"]),
                     "stopReceipts": stop_receipts,
                 }
             )

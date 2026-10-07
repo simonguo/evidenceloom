@@ -1,7 +1,7 @@
 import { createTranslator } from "@/lib/i18n";
 import { compactNumber, formatDuration, taskDetailHref } from "@/components/task-center/utils";
-import { gateReady, sameBinding, sameOrigin } from "@/features/analysis-recovery/lib/protocol";
-import type { JournalSummary, RecoverySnapshot, RuntimeObservation } from "@/features/analysis-recovery/types";
+import { gateReady, readHeader, readSummary, sameBinding, sameOrigin } from "@/features/analysis-recovery/lib/protocol";
+import type { JournalSummary, ReadReply, RecoverySnapshot, RuntimeObservation } from "@/features/analysis-recovery/types";
 import type { AnalysisTask, ReportVersion } from "@/lib/types";
 import { boundedJson, createAcceptanceApi, DriverFault, exact, hex, readBootstrap, requireDriver, runId, uuid, validateReport, versionId } from "./api";
 import type { AcceptanceApi } from "./api";
@@ -40,15 +40,54 @@ export async function digest(value: unknown): Promise<string> {
   return [...new Uint8Array(result)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 export function reportFingerprint(version: ReportVersion) {
-  requireDriver(versionId(version.id) && runId(version.runId) && !version.legacy && version.reportSections.market_report === FIXTURE_REPORT && Object.keys(version.reportSections).filter(key => version.reportSections[key]).length === 1 && Object.entries(FIXTURE_STATS).every(([key, value]) => version.stats[key as keyof typeof FIXTURE_STATS] === value), "report_mismatch");
+  requireDriver(versionId(version.id) && uuid(version.runId) && !version.legacy && version.reportSections.market_report === FIXTURE_REPORT && Object.keys(version.reportSections).filter(key => version.reportSections[key]).length === 1 && Object.entries(FIXTURE_STATS).every(([key, value]) => version.stats[key as keyof typeof FIXTURE_STATS] === value), "report_mismatch");
   return { id: version.id, runId: version.runId,
     stats: { llmCalls: version.stats.llmCalls, toolCalls: version.stats.toolCalls, tokensIn: version.stats.tokensIn, tokensOut: version.stats.tokensOut, elapsedSeconds: version.stats.elapsedSeconds },
     reportSections: Object.fromEntries(Object.keys(version.reportSections).sort().map(key => [key, version.reportSections[key]])),
   };
 }
+/** Bind research identity to its committed completion; runtime counters remain a separate domain. */
+export function savedReportFingerprint(page: ReadReply, scope: Pick<WorkerWitness, "origin" | "binding" | "journalId">,
+  version: ReportVersion, nativeVersion: ReportVersion, expectedHeaderDigest: string | null) {
+  const header = readHeader(page.header), summary = readSummary(page.summary);
+  requireDriver(header.journalId === scope.journalId && summary.journalId === scope.journalId && sameOrigin(header.origin, scope.origin) && sameOrigin(summary.origin, scope.origin) && sameBinding(header.binding, scope.binding) && sameBinding(summary.binding, scope.binding) && (expectedHeaderDigest === null || header.headerDigest === expectedHeaderDigest), "report_mismatch");
+  requireDriver(summary.workerOutcome === "succeeded" && summary.cleanupState === "confirmed" && summary.resultState === "projected" && summary.sealedThroughSeq !== null && summary.appliedSeq === summary.sealedThroughSeq && page.afterSeq === "0" && page.throughSeq === summary.sealedThroughSeq && page.lastSeq === page.throughSeq && !page.hasMore, "report_mismatch");
+  requireDriver(uuid(header.context.originalRunContext.runId), "report_mismatch");
+  const completed = page.rows.filter(row => row.kind === "analysis" && row.payload.event.type === "completed");
+  requireDriver(completed.length === 1, "report_mismatch"); const row = completed[0];
+  requireDriver(row.kind === "analysis" && row.journalId === header.journalId && sameOrigin(row.origin, header.origin) && sameBinding(row.binding, header.binding) && row.seed.completionVersionId === version.id && row.seed.completionCreatedAt === version.createdAt && row.seed.completionCreatedAt === nativeVersion.createdAt, "report_mismatch");
+  const researchRunId = row.payload.event.evidenceBundle?.run_id ?? header.context.originalRunContext.runId;
+  requireDriver(uuid(researchRunId) && version.runId === researchRunId && nativeVersion.runId === researchRunId && version.evidenceBundle?.run_id === row.payload.event.evidenceBundle?.run_id && nativeVersion.evidenceBundle?.run_id === row.payload.event.evidenceBundle?.run_id, "report_mismatch");
+  const fingerprint = reportFingerprint(version);
+  requireDriver(JSON.stringify(fingerprint) === JSON.stringify(reportFingerprint(nativeVersion)), "report_mismatch");
+  return { journalId: header.journalId,
+    origin: { runtimeEpoch: header.origin.runtimeEpoch, taskId: header.origin.taskId, runId: header.origin.runId },
+    binding: { collection: { collectionId: header.binding.collection.collectionId, epoch: header.binding.collection.epoch }, taskId: header.binding.taskId, generation: header.binding.generation },
+    headerDigest: header.headerDigest, researchRunId, report: fingerprint };
+}
 function visible(element: Element): element is HTMLElement {
   if (!(element instanceof HTMLElement) || !element.isConnected || element.getClientRects().length === 0 || element.closest("[hidden]")) return false;
   const style = getComputedStyle(element); return style.display !== "none" && style.visibility !== "hidden";
+}
+/** Use existing visible links and exact task rows, within the caller's original lookup wait. */
+export async function navigateVisibleRoute(path: string, expectedTaskId: string | undefined,
+  wait: <T>(read: () => Promise<T | null> | T | null) => Promise<T>) {
+  if (expectedTaskId !== undefined) requireDriver(uuid(expectedTaskId) && path === taskDetailHref(expectedTaskId), "identity_mismatch");
+  const current = () => location.pathname + location.search;
+  if (current() === path) return;
+  const anchor = (href: string) => [...document.querySelectorAll<HTMLAnchorElement>("a[href]")].find(candidate => visible(candidate) && candidate.getAttribute("href") === href) ?? null;
+  let listRequested = false;
+  const control = await wait<HTMLElement>(() => {
+    const direct = anchor(path); if (direct) return direct;
+    if (expectedTaskId === undefined) return null;
+    if (current() !== "/") {
+      if (!listRequested) { const list = anchor("/"); if (list) { listRequested = true; list.click(); } }
+      return null;
+    }
+    const rows = [...document.querySelectorAll<HTMLTableRowElement>('main tr[role="link"][tabindex="0"][data-task-id]')].filter(candidate => visible(candidate) && candidate.getAttribute("data-task-id") === expectedTaskId);
+    requireDriver(rows.length <= 1, "control_unavailable"); return rows[0] ?? null;
+  });
+  control.click(); await wait(() => current() === path && document.querySelector("main") ? true : null);
 }
 export function setControlValue(control: HTMLInputElement | HTMLSelectElement, value: string) {
   requireDriver(!control.disabled && visible(control), "control_unavailable");
@@ -111,6 +150,7 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
   const deadline = hint?.expiresAt ?? started + TOTAL_MS; const api = createAcceptanceApi(bootstrap, realm, hint !== null);
   const slots = new Map<TaskSlot, string>(hint?.tasks.map(task => [task.slot, task.taskId]) ?? []);
   const runs = new Map<TaskSlot, string>(hint?.tasks.filter(task => task.runId !== null).map(task => [task.slot, task.runId!]) ?? []);
+  const savedReports = new Map<TaskSlot, ReturnType<typeof savedReportFingerprint>>();
   let step: DriverStep = hint ? "realm_reloaded" : "renderer_ready"; let reloadRequested = false; let wakeCount = 0;
   const onPageHide = async () => { try { await api.close(); } catch { /* Native unlisten may remain unconfirmed on external realm destruction. */ } }; window.addEventListener("pagehide", onPageHide, { once: true });
   function remaining() { requireDriver(!signal.aborted && Date.now() < deadline, "deadline_exceeded"); return deadline - Date.now(); }
@@ -146,7 +186,7 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
       const task = viewTask(slot); const version = taskVersion(task);
       const statuses = { queued: "queued", running: "running", completed: "succeeded", stopped: "stopped", error: "failed" } as const;
       requireDriver(task.status in statuses, "unexpected_state");
-      return { slot, taskId: task.id, status: statuses[task.status as keyof typeof statuses], reportVersionId: version?.id ?? null, runId: runs.get(slot) ?? version?.runId ?? null };
+      return { slot, taskId: task.id, status: statuses[task.status as keyof typeof statuses], reportVersionId: version?.id ?? null, runId: runs.get(slot) ?? null };
     });
   }
   function globalControls() { return [...document.querySelectorAll<HTMLElement>('aside[role="alert"]')].find(aside => aside.getAttribute("aria-label") === createTranslator(readView().settings.systemLanguage)("analysisRecoveryTitle") && visible(aside)) ?? null; }
@@ -154,11 +194,7 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
     step = nextStep; const controls = globalControls(); const t = createTranslator(readView().settings.systemLanguage);
     await bounded(api.report({ schemaVersion: 1, planVersion: 1, sessionId: bootstrap.sessionId, buildId: bootstrap.buildId, realmNonce: realm, driverMarker: DRIVER_MARKER, step, verdict: code === null ? "pass" : "fail", errorCode: code, route: route(), tasks: attest(), renderedReport, stopControlVisible: [...document.querySelectorAll("button")].some(control => visible(control) && normalized(control.textContent ?? "") === t("stopTask")), watchControlVisible: !!controls && [...controls.querySelectorAll("button")].some(control => visible(control) && normalized(control.textContent ?? "") === t("watchExistingAnalysis")) }), terminal ? 3000 : 15_000, terminal);
   }
-  async function navigate(path: string) {
-    if (location.pathname + location.search === path) return;
-    const anchor = await wait(() => [...document.querySelectorAll<HTMLAnchorElement>("a[href]")].find(candidate => visible(candidate) && candidate.getAttribute("href") === path) ?? null);
-    anchor.click(); await wait(() => location.pathname + location.search === path && document.querySelector("main") ? true : null);
-  }
+  async function navigate(path: string, expectedTaskId?: string) { await navigateVisibleRoute(path, expectedTaskId, wait); }
   async function snapshot() { return bounded(api.recovery()); }
   async function create(slot: TaskSlot) {
     requireDriver(!slots.has(slot) && slots.size < 4 && readView().tasks.length === slots.size, "identity_mismatch");
@@ -199,7 +235,7 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
     try {
       const t = createTranslator(readView().settings.systemLanguage);
       if (global) { const controls = await wait(globalControls); requireDriver(readView().nativeAnalysis?.taskId === witness.origin.taskId && readView().nativeAnalysis?.attached, "identity_mismatch"); button(controls, t("stopTask")).click(); }
-      else { await navigate(taskDetailHref(witness.origin.taskId)); const main = document.querySelector("main"); requireDriver(main, "control_unavailable"); button(main, t("stopTask")).click(); }
+      else { await navigate(taskDetailHref(witness.origin.taskId), witness.origin.taskId); const main = document.querySelector("main"); requireDriver(main, "control_unavailable"); button(main, t("stopTask")).click(); }
       await wait(async () => { const current = await snapshot(); const task = current.tasks.find(candidate => candidate.id === witness.origin.taskId); return stoppedProjection(current, witness) && task?.status === "stopped" && task.reportVersions.length === 0 && viewTask(slot).status === "stopped" && viewTask(slot).reportVersions.length === 0 ? true : null; });
     } finally { await bounded(drop(), 3000, true); }
     // No listener cleanup or wake count is interpreted as native process cleanup.
@@ -210,11 +246,13 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
       const nativeTask = current.tasks.find(candidate => candidate.id === witness.origin.taskId); const task = viewTask(slot);
       if (!(summary && summary.cleanupState === "confirmed" && summary.workerOutcome === "succeeded" && summary.sealedThroughSeq !== null && summary.appliedSeq === summary.sealedThroughSeq && summary.resultState === "projected" && nativeTask?.status === "completed" && task.status === "completed")) return null;
       const version = taskVersion(task); const nativeVersion = taskVersion(nativeTask);
-      requireDriver(version && nativeVersion && version.runId === witness.origin.runId && version.id.startsWith(`report:${witness.journalId}:`) && JSON.stringify(reportFingerprint(version)) === JSON.stringify(reportFingerprint(nativeVersion)), "report_mismatch"); return version;
+      requireDriver(version && nativeVersion, "report_mismatch");
+      const page = await bounded(api.reportJournal(witness, summary.sealedThroughSeq));
+      savedReports.set(slot, savedReportFingerprint(page, witness, version, nativeVersion, witness.headerDigest)); return version;
     });
   }
   async function rendered(slot: "b" | "d", version: ReportVersion): Promise<string> {
-    reportFingerprint(version); await navigate(taskDetailHref(viewTask(slot).id));
+    reportFingerprint(version); const taskId = viewTask(slot).id; await navigate(taskDetailHref(taskId), taskId);
     const select = await wait(() => document.querySelector<HTMLSelectElement>("#report-version-select"));
     requireDriver([...select.options].length === 1 && select.value === version.id, "report_mismatch");
     const language = readView().settings.systemLanguage; const title = language === "zh" ? `审阅选中的报告 v${version.versionNumber}` : `Review selected report v${version.versionNumber}`;
@@ -246,7 +284,8 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
       const b = await worker("b"); await bounded(api.release(b)); const bVersion = await success("b", b); const bRenderedDigest = await rendered("b", bVersion); await report("b_saved", null, true);
       await wait(async () => gateReady((await snapshot()).runtime) ? true : null);
       await create("c"); const c = await worker("c"); await report("c_started"); await create("d"); await queued("d", c); await report("d_queued");
-      const nextHint: ReloadHint = { schemaVersion: 1, sessionId: bootstrap.sessionId, buildId: bootstrap.buildId, stage: "cd_queued", firstRealmNonce: realm, expiresAt: deadline, tasks: attest(), bReportDigest: await digest(reportFingerprint(bVersion)), bRenderedDigest };
+      const savedB = savedReports.get("b"); requireDriver(savedB, "report_mismatch");
+      const nextHint: ReloadHint = { schemaVersion: 1, sessionId: bootstrap.sessionId, buildId: bootstrap.buildId, stage: "cd_queued", firstRealmNonce: realm, expiresAt: deadline, tasks: attest(), bReportDigest: await digest(savedB), bRenderedDigest };
       const hintJson = boundedJson(nextHint, 4096);
       requireDriver(api.pendingCount() === 0, "ipc_rejected"); await bounded(api.disposeListeners(), 3000); requireDriver(api.listenerCount() === 0 && api.pendingCount() === 0, "ipc_rejected");
       sessionStorage.setItem(HINT_KEY, hintJson); reloadRequested = true; location.reload(); return { reloadRequested: true };
@@ -255,7 +294,10 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
     const c = await worker("c"); await queued("d", c);
     const bVersion = taskVersion(viewTask("b")); const nativeBTask = recovered.tasks.find(task => task.id === slots.get("b"));
     const nativeBVersion = nativeBTask && taskVersion(nativeBTask);
-    requireDriver(bVersion && nativeBVersion && bVersion.id === hint.tasks.find(task => task.slot === "b")?.reportVersionId && bVersion.runId === runs.get("b") && await digest(reportFingerprint(bVersion)) === hint.bReportDigest && await digest(reportFingerprint(nativeBVersion)) === hint.bReportDigest, "report_mismatch");
+    const nativeBJournal = recovered.journals.find(journal => journal.origin.taskId === slots.get("b") && journal.origin.runId === runs.get("b"));
+    requireDriver(bVersion && nativeBVersion && nativeBTask && nativeBTask.status === "completed" && viewTask("b").status === "completed" && nativeBJournal && nativeBJournal.sealedThroughSeq !== null && bVersion.id === hint.tasks.find(task => task.slot === "b")?.reportVersionId, "report_mismatch");
+    const restoredB = savedReportFingerprint(await bounded(api.reportJournal(nativeBJournal, nativeBJournal.sealedThroughSeq)), nativeBJournal, bVersion, nativeBVersion, null);
+    requireDriver(await digest(restoredB) === hint.bReportDigest, "report_mismatch"); savedReports.set("b", restoredB);
     requireDriver(await rendered("b", bVersion) === hint.bRenderedDigest, "report_mismatch"); await report("b_report_restored", null, true);
     const controls = await wait(globalControls); const t = createTranslator(readView().settings.systemLanguage);
     requireDriver(readView().nativeAnalysis?.taskId === c.origin.taskId && !readView().nativeAnalysis?.attached, "identity_mismatch"); button(controls, t("watchExistingAnalysis")).click(); await wait(() => readView().nativeAnalysis?.taskId === c.origin.taskId && readView().nativeAnalysis?.attached ? true : null);
@@ -267,7 +309,13 @@ export async function runPrivateDriver(readView: () => DriverView, signal: Abort
       const journal = final.journals.find(candidate => candidate.origin.taskId === attestation.taskId && candidate.origin.runId === attestation.runId);
       requireDriver(nativeTask && journal && journal.cleanupState === "confirmed" && journal.resultState === "projected" && journal.sealedThroughSeq !== null && journal.appliedSeq === journal.sealedThroughSeq, "report_mismatch");
       const saved = taskVersion(nativeTask);
-      requireDriver((attestation.status === "stopped" && nativeTask.status === "stopped" && saved === null && journal.workerOutcome === "cancelled") || (attestation.status === "succeeded" && nativeTask.status === "completed" && saved && saved.id === attestation.reportVersionId && saved.runId === attestation.runId && saved.id.startsWith(`report:${journal.journalId}:`) && journal.workerOutcome === "succeeded"), "report_mismatch");
+      requireDriver((attestation.status === "stopped" && nativeTask.status === "stopped" && saved === null && journal.workerOutcome === "cancelled") || (attestation.status === "succeeded" && nativeTask.status === "completed" && saved && saved.id === attestation.reportVersionId && saved.id.startsWith(`report:${journal.journalId}:`) && journal.workerOutcome === "succeeded"), "report_mismatch");
+      if (attestation.status === "succeeded") {
+        const shown = taskVersion(viewTask(attestation.slot)), prior = savedReports.get(attestation.slot);
+        requireDriver(shown && saved && prior, "report_mismatch");
+        const currentReport = savedReportFingerprint(await bounded(api.reportJournal(journal, journal.sealedThroughSeq)), journal, shown, saved, prior.headerDigest);
+        requireDriver(await digest(currentReport) === await digest(prior), "report_mismatch");
+      }
     }
     await bounded(api.disposeListeners(), 3000); requireDriver(api.listenerCount() === 0 && api.pendingCount() === 0, "ipc_rejected"); await report("complete", null, true);
     const finish = await bounded(api.finish("complete"), 3000); sessionStorage.removeItem(HINT_KEY);

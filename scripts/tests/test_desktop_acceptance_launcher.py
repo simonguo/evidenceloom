@@ -179,13 +179,14 @@ class LauncherTests(unittest.TestCase):
                 launcher.write_heartbeat(control, session, self.build, counter)
             self.assertEqual((control / "launcher-heartbeat.json").read_bytes(), original)
 
-    def database_fixture(self):
-        path = self.root / "owned-fictional.db"
+    def database_fixture(self, name="owned-fictional.db"):
+        path = self.root / name
         connection = sqlite3.connect(path)
         connection.executescript("""
             CREATE TABLE tasks(id TEXT PRIMARY KEY,status TEXT,report_sections TEXT,stats TEXT,ticker TEXT,instrument_name TEXT,analysis_date TEXT,asset_type TEXT,research_depth INTEGER,analysts TEXT,output_language TEXT);
             CREATE TABLE analysis_journals(journal_id TEXT PRIMARY KEY,origin_json TEXT,binding_json TEXT,header_json TEXT,cleanup_state TEXT,result_state TEXT,body_state TEXT,sealed_seq INTEGER,applied_seq INTEGER,latest_seq INTEGER,worker_outcome TEXT,control_revision INTEGER);
-            CREATE TABLE task_report_versions(id TEXT PRIMARY KEY,task_id TEXT,run_id TEXT,version_number INTEGER,snapshot TEXT);
+            CREATE TABLE task_report_versions(id TEXT PRIMARY KEY,task_id TEXT,run_id TEXT,version_number INTEGER,created_at TEXT,snapshot TEXT);
+            CREATE TABLE analysis_events(journal_id TEXT,seq INTEGER,envelope_json TEXT,PRIMARY KEY(journal_id,seq));
             CREATE TABLE analysis_requests(journal_id TEXT,kind TEXT,outcome TEXT,origin_json TEXT,binding_json TEXT,receipt_json TEXT);
             CREATE TABLE analysis_controls(journal_id TEXT,revision INTEGER,outcome TEXT);
         """)
@@ -209,7 +210,21 @@ class LauncherTests(unittest.TestCase):
                 "taskId": task_id,
                 "generation": "0",
             }
+            research_run = f"10000000-0000-4000-8000-{index:012d}"
+            manifest = {
+                "appVersion": "fictional-unit",
+                "llmProvider": "openai",
+                "quickThinkLlm": "fictional-quick",
+            }
+            created_at = "2000-01-01T00:00:01.000Z"
             header = {
+                "context": {
+                    "originalRunContext": {"runId": research_run, "manifest": manifest},
+                    "originalTaskSnapshot": frozen_task,
+                    "input": {
+                        key: value for key, value in frozen_task.items() if key != "instrumentName"
+                    },
+                },
                 "journalId": journal,
                 "origin": origin,
                 "binding": binding,
@@ -296,14 +311,46 @@ class LauncherTests(unittest.TestCase):
             else:
                 snapshot = {
                     "id": version_id,
-                    "runId": run,
+                    "runId": research_run,
+                    "versionNumber": 1,
+                    "createdAt": created_at,
+                    "legacy": False,
+                    "run": manifest,
                     "task": frozen_task,
                     "reportSections": sections,
                     "stats": launcher.FIXTURE_STATS,
                 }
                 connection.execute(
-                    "INSERT INTO task_report_versions VALUES(?,?,?,?,?)",
-                    (version_id, task_id, run, 1, json.dumps(snapshot)),
+                    "INSERT INTO task_report_versions VALUES(?,?,?,?,?,?)",
+                    (version_id, task_id, research_run, 1, created_at, json.dumps(snapshot)),
+                )
+                connection.execute(
+                    "INSERT INTO analysis_events VALUES(?,?,?)",
+                    (
+                        journal,
+                        2,
+                        json.dumps(
+                            {
+                                "recoveryProtocolVersion": 1,
+                                "journalId": journal,
+                                "origin": origin,
+                                "binding": binding,
+                                "seq": "2",
+                                "kind": "analysis",
+                                "seed": {
+                                    "completionVersionId": version_id,
+                                    "completionCreatedAt": created_at,
+                                },
+                                "payload": {
+                                    "event": {
+                                        "type": "completed",
+                                        "reportSections": sections,
+                                        "stats": launcher.FIXTURE_STATS,
+                                    }
+                                },
+                            }
+                        ),
+                    ),
                 )
         connection.commit()
         connection.close()
@@ -338,6 +385,306 @@ class LauncherTests(unittest.TestCase):
         connection.close()
         with self.assertRaises(boundary.BoundaryError):
             launcher.audit_database(path, controls)
+
+    def test_sqlite_report_research_uuid_is_bound_without_relabeling_native_run(self):
+        # Actual SQLite/production audit, inert corpus reproducing the frozen
+        # C21 original-run/manifest/completion-seed shape; no App is executed.
+        path, controls = self.database_fixture()
+        rows = launcher.audit_database(path, controls)
+        self.assertEqual(
+            [row["runId"] for row in rows], ["analysis-1", "analysis-2", "analysis-3", "analysis-4"]
+        )
+        self.assertEqual(
+            [row["researchRunId"] for row in rows],
+            [
+                None,
+                "10000000-0000-4000-8000-000000000002",
+                None,
+                "10000000-0000-4000-8000-000000000004",
+            ],
+        )
+        self.assertEqual([row["completionSeq"] for row in rows], [None, "2", None, "2"])
+        self.assertEqual([bool(row["stopReceipts"]) for row in rows], [True, False, True, False])
+
+    def report_corpus_documents(self, connection, controls):
+        task_id = controls["tasks"][1]["taskId"]
+        journal = controls["witnesses"][1]["journalId"]
+        header = json.loads(
+            connection.execute(
+                "SELECT header_json FROM analysis_journals WHERE journal_id=?", (journal,)
+            ).fetchone()[0]
+        )
+        snapshot = json.loads(
+            connection.execute(
+                "SELECT snapshot FROM task_report_versions WHERE task_id=?", (task_id,)
+            ).fetchone()[0]
+        )
+        envelope = json.loads(
+            connection.execute(
+                "SELECT envelope_json FROM analysis_events WHERE journal_id=?", (journal,)
+            ).fetchone()[0]
+        )
+        return task_id, journal, header, snapshot, envelope
+
+    def save_report_corpus_documents(
+        self, connection, task_id, journal, header, snapshot, envelope
+    ):
+        connection.execute(
+            "UPDATE analysis_journals SET header_json=? WHERE journal_id=?",
+            (json.dumps(header), journal),
+        )
+        connection.execute(
+            "UPDATE task_report_versions SET snapshot=? WHERE task_id=?",
+            (json.dumps(snapshot), task_id),
+        )
+        connection.execute(
+            "UPDATE analysis_events SET envelope_json=? WHERE journal_id=? AND seq=2",
+            (json.dumps(envelope), journal),
+        )
+
+    def test_sqlite_coherent_wrong_research_pairs_and_native_alias_cannot_pass(self):
+        cases = (
+            "native-alias",
+            "other-research",
+            "invalid-header-id",
+            "different-header-id",
+            "wrong-native-attestation",
+        )
+        for index, case in enumerate(cases):
+            with self.subTest(case=case):
+                path, controls = self.database_fixture("cross-run-" + str(index) + ".db")
+                launcher.audit_database(path, controls)
+                with sqlite3.connect(path) as connection:
+                    task_id, journal, header, snapshot, envelope = self.report_corpus_documents(
+                        connection, controls
+                    )
+                    if case in ("native-alias", "other-research"):
+                        wrong = (
+                            controls["tasks"][1]["runId"]
+                            if case == "native-alias"
+                            else "90000000-0000-4000-8000-000000000009"
+                        )
+                        snapshot["runId"] = wrong
+                        connection.execute(
+                            "UPDATE task_report_versions SET run_id=? WHERE task_id=?",
+                            (wrong, task_id),
+                        )
+                    elif case == "invalid-header-id":
+                        header["context"]["originalRunContext"]["runId"] = "analysis-2"
+                    elif case == "different-header-id":
+                        header["context"]["originalRunContext"]["runId"] = (
+                            "90000000-0000-4000-8000-000000000009"
+                        )
+                    else:
+                        controls["tasks"][1]["runId"] = "analysis-999"
+                    self.save_report_corpus_documents(
+                        connection, task_id, journal, header, snapshot, envelope
+                    )
+                with self.assertRaises(boundary.BoundaryError):
+                    launcher.audit_database(path, controls)
+
+    def test_sqlite_report_task_manifest_and_evidence_require_original_causal_binding(self):
+        cases = (
+            "manifest",
+            "original-task",
+            "input",
+            "evidence-other-run",
+            "snapshot-only-evidence",
+            "evidence-body",
+        )
+        for index, case in enumerate(cases):
+            with self.subTest(case=case):
+                path, controls = self.database_fixture("context-binding-" + str(index) + ".db")
+                launcher.audit_database(path, controls)
+                with sqlite3.connect(path) as connection:
+                    task_id, journal, header, snapshot, envelope = self.report_corpus_documents(
+                        connection, controls
+                    )
+                    if case == "manifest":
+                        snapshot["run"]["quickThinkLlm"] = "other-fictional-model"
+                    elif case == "original-task":
+                        header["context"]["originalTaskSnapshot"]["ticker"] = "OTHER"
+                    elif case == "input":
+                        header["context"]["input"]["ticker"] = "OTHER"
+                    elif case == "evidence-other-run":
+                        evidence = {"run_id": "90000000-0000-4000-8000-000000000009"}
+                        snapshot["evidenceBundle"] = evidence
+                        envelope["payload"]["event"]["evidenceBundle"] = evidence
+                    elif case == "snapshot-only-evidence":
+                        snapshot["evidenceBundle"] = {"run_id": snapshot["runId"]}
+                    else:
+                        snapshot["evidenceBundle"] = {
+                            "run_id": snapshot["runId"],
+                            "fixtureMarker": "different",
+                        }
+                        envelope["payload"]["event"]["evidenceBundle"] = {
+                            "run_id": snapshot["runId"],
+                            "fixtureMarker": "original",
+                        }
+                    self.save_report_corpus_documents(
+                        connection, task_id, journal, header, snapshot, envelope
+                    )
+                with self.assertRaises(boundary.BoundaryError):
+                    launcher.audit_database(path, controls)
+
+    def test_sqlite_completion_seed_original_envelope_and_unique_row_are_required(self):
+        cases = (
+            "seed-version",
+            "seed-created-at",
+            "sql-created-at",
+            "envelope-journal",
+            "envelope-native-origin",
+            "envelope-task-binding",
+            "envelope-seq",
+            "after-seal",
+            "missing",
+            "duplicate",
+            "event-report",
+            "event-stats",
+            "snapshot-version",
+            "legacy",
+        )
+        for index, case in enumerate(cases):
+            with self.subTest(case=case):
+                path, controls = self.database_fixture("completion-binding-" + str(index) + ".db")
+                launcher.audit_database(path, controls)
+                with sqlite3.connect(path) as connection:
+                    task_id, journal, header, snapshot, envelope = self.report_corpus_documents(
+                        connection, controls
+                    )
+                    if case == "seed-version":
+                        envelope["seed"]["completionVersionId"] = "report:" + "f" * 64 + ":2"
+                    elif case == "seed-created-at":
+                        envelope["seed"]["completionCreatedAt"] = "2000-01-02T00:00:01.000Z"
+                    elif case == "sql-created-at":
+                        connection.execute(
+                            "UPDATE task_report_versions SET created_at=? WHERE task_id=?",
+                            ("2000-01-02T00:00:01.000Z", task_id),
+                        )
+                    elif case == "envelope-journal":
+                        envelope["journalId"] = "f" * 64
+                    elif case == "envelope-native-origin":
+                        envelope["origin"]["runId"] = "analysis-999"
+                    elif case == "envelope-task-binding":
+                        envelope["binding"]["taskId"] = controls["tasks"][3]["taskId"]
+                    elif case == "envelope-seq":
+                        envelope["seq"] = "3"
+                    elif case == "after-seal":
+                        connection.execute(
+                            "UPDATE analysis_events SET seq=4 WHERE journal_id=?", (journal,)
+                        )
+                    elif case == "missing":
+                        connection.execute(
+                            "DELETE FROM analysis_events WHERE journal_id=?", (journal,)
+                        )
+                    elif case == "duplicate":
+                        connection.execute(
+                            "INSERT INTO analysis_events VALUES(?,?,?)",
+                            (journal, 3, json.dumps(envelope)),
+                        )
+                    elif case == "event-report":
+                        envelope["payload"]["event"]["reportSections"]["market_report"] = (
+                            "different literal report"
+                        )
+                    elif case == "event-stats":
+                        envelope["payload"]["event"]["stats"]["llmCalls"] = 1
+                    elif case == "snapshot-version":
+                        snapshot["versionNumber"] = True
+                    else:
+                        snapshot["legacy"] = True
+                    self.save_report_corpus_documents(
+                        connection, task_id, journal, header, snapshot, envelope
+                    )
+                with self.assertRaises(boundary.BoundaryError):
+                    launcher.audit_database(path, controls)
+
+    def test_sqlite_evidence_research_identity_requires_the_same_full_completion_object(self):
+        path, controls = self.database_fixture()
+        with sqlite3.connect(path) as connection:
+            task_id, journal, header, snapshot, envelope = self.report_corpus_documents(
+                connection, controls
+            )
+            evidence = {"run_id": snapshot["runId"], "fixtureMarker": "original-inert-unit"}
+            snapshot["evidenceBundle"] = evidence
+            envelope["payload"]["event"]["evidenceBundle"] = evidence
+            self.save_report_corpus_documents(
+                connection, task_id, journal, header, snapshot, envelope
+            )
+        rows = launcher.audit_database(path, controls)
+        self.assertEqual(rows[1]["researchRunId"], snapshot["runId"])
+        self.assertEqual(rows[1]["runId"], "analysis-2")
+
+    def test_sqlite_cleanup_history_requires_its_own_seals_and_current_confirmation(self):
+        cases = (
+            "valid-history",
+            "only-old-receipt",
+            "old-seal-missing",
+            "old-seal-wrong",
+            "current-seal-missing",
+            "current-seal-wrong",
+            "future-confirmation",
+        )
+        for index, case in enumerate(cases):
+            with self.subTest(case=case):
+                path, controls = self.database_fixture("cleanup-history-" + str(index) + ".db")
+                launcher.audit_database(path, controls)
+                journal = controls["witnesses"][0]["journalId"]
+                with sqlite3.connect(path) as connection:
+                    origin, binding, raw = connection.execute(
+                        "SELECT origin_json,binding_json,receipt_json FROM analysis_requests WHERE journal_id=?",
+                        (journal,),
+                    ).fetchone()
+                    current = json.loads(raw)
+                    current["controlRevision"] = "2"
+                    current["requestId"] = "cleanup:" + journal
+                    connection.execute(
+                        "INSERT INTO analysis_requests VALUES(?,?,?,?,?,?)",
+                        (journal, "control", "committed", origin, binding, json.dumps(current)),
+                    )
+                    connection.execute(
+                        "INSERT INTO analysis_controls VALUES(?,?,?)",
+                        (journal, 2, "cleanup_confirmed"),
+                    )
+                    connection.execute(
+                        "UPDATE analysis_journals SET control_revision=2 WHERE journal_id=?",
+                        (journal,),
+                    )
+                    if case == "only-old-receipt":
+                        connection.execute(
+                            "DELETE FROM analysis_requests WHERE journal_id=? AND json_extract(receipt_json,'$.controlRevision')='2'",
+                            (journal,),
+                        )
+                    elif case in ("old-seal-missing", "current-seal-missing"):
+                        connection.execute(
+                            "DELETE FROM analysis_controls WHERE journal_id=? AND revision=?",
+                            (journal, 1 if case.startswith("old") else 2),
+                        )
+                    elif case in ("old-seal-wrong", "current-seal-wrong"):
+                        connection.execute(
+                            "UPDATE analysis_controls SET outcome='cleanup_unknown' WHERE journal_id=? AND revision=?",
+                            (journal, 1 if case.startswith("old") else 2),
+                        )
+                    elif case == "future-confirmation":
+                        future = dict(current, controlRevision="3", requestId="future:" + journal)
+                        connection.execute(
+                            "INSERT INTO analysis_requests VALUES(?,?,?,?,?,?)",
+                            (journal, "control", "committed", origin, binding, json.dumps(future)),
+                        )
+                        connection.execute(
+                            "INSERT INTO analysis_controls VALUES(?,?,?)",
+                            (journal, 3, "cleanup_confirmed"),
+                        )
+                if case == "valid-history":
+                    audited = launcher.audit_database(path, controls)
+                    self.assertEqual(
+                        [r["controlRevision"] for r in audited[0]["stopReceipts"]], ["1", "2"]
+                    )
+                    self.assertEqual(
+                        [bool(r["stopReceipts"]) for r in audited], [True, False, True, False]
+                    )
+                else:
+                    with self.assertRaises(boundary.BoundaryError):
+                        launcher.audit_database(path, controls)
 
     def launched_fixture(self, return_code, alive=False):
         executable = self.root / "inert-App-file"

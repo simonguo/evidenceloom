@@ -1,8 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { loadRecovery, loadRuntimeObservation } from "@/features/analysis-recovery/lib/consumer";
-import { readBinding, readOrigin, readWake, sameOrigin } from "@/features/analysis-recovery/lib/protocol";
-import type { RecoveryApi } from "@/features/analysis-recovery/types";
+import { readBinding, readOrigin, readPage, readWake, sameOrigin } from "@/features/analysis-recovery/lib/protocol";
+import type { ReadRequest, RecoveryApi } from "@/features/analysis-recovery/types";
 import { BOOTSTRAP_KEY, BUILD_ASSET, DRIVER_MARKER, ERRORS, STEPS } from "../types";
 import type { Bootstrap, Checkpoint, ControlReply, DriverError, DriverReply, DriverReport, FinishReply, FinishRequest, WorkerWitness } from "../types";
 
@@ -153,6 +153,14 @@ export function createAcceptanceApi(bootstrap: Bootstrap, realm: string, secondR
       const o = exact(value, ["schemaVersion", "buildId"]); requireDriver(o.schemaVersion === 1 && o.buildId === bootstrap.buildId, "bootstrap_mismatch");
     },
     recovery: () => loadRecovery(native), runtime: () => loadRuntimeObservation(native),
+    async reportJournal(scope: Pick<WorkerWitness, "origin" | "binding" | "journalId">, throughSeq: string) {
+      requireDriver(hex(scope.journalId, 64) && /^[1-9][0-9]{0,18}$/.test(throughSeq) && BigInt(throughSeq) <= BigInt(16), "report_mismatch");
+      const request: ReadRequest = { recoveryProtocolVersion: 1, journalId: scope.journalId,
+        origin: readOrigin(scope.origin), binding: readBinding(scope.binding), afterSeq: "0", throughSeq, limit: 16 };
+      const page = readPage(await native.invoke("read_analysis_journal", { requestJson: boundedJson(request) }), request);
+      requireDriver(!page.hasMore && page.lastSeq === throughSeq && page.throughSeq === throughSeq, "report_mismatch");
+      return page;
+    },
     async checkpoint(checkpoint: Checkpoint) {
       const requestId = budget.next(); const requestJson = boundedJson({ schemaVersion: 1, sessionId: bootstrap.sessionId, requestId, checkpoint });
       return readControlReply(await command("checkpoint", requestJson), bootstrap, requestId, checkpoint);

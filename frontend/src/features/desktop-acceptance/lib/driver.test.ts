@@ -1,20 +1,30 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RecoverySnapshot, RuntimeObservation } from "@/features/analysis-recovery/types";
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import TaskListPage from "@/app/page";
+import { taskDetailHref } from "@/components/task-center/utils";
+import type { JournalHeader, ReadReply, RecoverySnapshot, RuntimeObservation } from "@/features/analysis-recovery/types";
+import { reduceJournalPage } from "@/features/analysis-recovery/lib/reducer";
+import { envelope, header as recoveryHeader, summary as recoverySummary, task as recoveryTask } from "@/features/analysis-recovery/test-support/fixtures";
 import type { ReportVersion } from "@/lib/types";
 import type { Bootstrap, ControlReply, DriverReport, FinishRequest, ReloadHint, TaskAttestation, WorkerWitness } from "../types";
 import { BOOTSTRAP_KEY, DRIVER_MARKER } from "../types";
 import { createAcceptanceApi, DriverFault, parseBootstrap, readBootstrap, readControlReply, readDriverReply, readFinishReply, readWorker, RequestBudget, validateReport, versionId } from "./api";
-import { assertFourTerminal, freshRealmNonce, modelConnectionSucceeded, parseReloadHint, reportFingerprint, setControlValue, stoppedProjection, waitForOriginalWorker, workerObservationReady } from "./driver";
+import { assertFourTerminal, freshRealmNonce, modelConnectionSucceeded, navigateVisibleRoute, parseReloadHint, reportFingerprint, savedReportFingerprint, setControlValue, stoppedProjection, waitForOriginalWorker, workerObservationReady } from "./driver";
 import { DesktopVerificationEntry as DisabledEntry } from "../../desktop-verification/disabled";
 import { DesktopVerificationEntry as PrivateEntry } from "../entry";
 
 const wire = vi.hoisted(() => ({ invoke: vi.fn(), listen: vi.fn() }));
+const navigation = vi.hoisted(() => ({ center: vi.fn(), router: { push: vi.fn(), prefetch: vi.fn() } }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: wire.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: wire.listen }));
+vi.mock("@/components/task-center/context", () => ({ useTaskCenter: () => navigation.center() }));
+vi.mock("next/navigation", () => ({ useRouter: () => navigation.router }));
 const sessionId = "1".repeat(32); const realm = "2".repeat(32); const buildId = "3".repeat(64);
 const taskIds = ["10000000-0000-4000-8000-000000000001", "10000000-0000-4000-8000-000000000002", "10000000-0000-4000-8000-000000000003", "10000000-0000-4000-8000-000000000004"];
 const bootstrap: Bootstrap = { schemaVersion: 1, planVersion: 1, sessionId, buildId, compiledStampSha256: "4".repeat(64), target: "aarch64-apple-darwin", driverMarker: DRIVER_MARKER };
 const witness: WorkerWitness = { origin: { runtimeEpoch: "5".repeat(64), taskId: taskIds[0], runId: "analysis-1" }, journalId: "6".repeat(64), binding: { collection: { collectionId: "7".repeat(64), epoch: "1" }, taskId: taskIds[0], generation: "1" }, headerDigest: "8".repeat(64), releaseNonce: "9".repeat(64) };
+const researchRunId = "20000000-0000-4000-8000-000000000001";
 const tasks = (): TaskAttestation[] => taskIds.map((taskId, index) => ({ slot: (["a", "b", "c", "d"] as const)[index], taskId, status: index % 2 ? "succeeded" : "stopped", reportVersionId: index % 2 ? `report:${String(index).repeat(64)}:4` : null, runId: `analysis-${index + 1}` }));
 const report = (): DriverReport => ({ schemaVersion: 1, planVersion: 1, sessionId, buildId, requestId: "real-request:1", realmNonce: realm, driverMarker: DRIVER_MARKER, step: "complete", verdict: "pass", errorCode: null, route: "report", tasks: tasks(), renderedReport: true, stopControlVisible: false, watchControlVisible: false });
 const hint = (): ReloadHint => ({ schemaVersion: 1, sessionId, buildId, stage: "cd_queued", firstRealmNonce: "a".repeat(32), expiresAt: 50000, tasks: tasks().map(task => task.slot === "c" ? { ...task, status: "running" } : task.slot === "d" ? { ...task, status: "queued", reportVersionId: null, runId: null } : task), bReportDigest: "b".repeat(64), bRenderedDigest: "c".repeat(64) });
@@ -22,7 +32,7 @@ const finishRequest: FinishRequest = { schemaVersion: 1, planVersion: 1, session
 const finishReply = () => ({ schemaVersion: 1, sessionId, buildId, requestId: finishRequest.requestId, status: "finish_requested", driverReason: "complete", privateControlsClosed: true, nativeLifecycleHookAttached: false, admissionState: "unverified", cleanupState: "unverified", nativeExitAuthorized: false });
 function fixtureReportVersion(reportSections: ReportVersion["reportSections"]): ReportVersion {
   return {
-    id: `report:${"a".repeat(64)}:4`, runId: "analysis-2", versionNumber: 4,
+    id: `report:${"a".repeat(64)}:4`, runId: researchRunId, versionNumber: 4,
     createdAt: "2025-01-01T00:00:00.000Z", legacy: false,
     task: { ticker: "FICTION", instrumentName: "Fictional acceptance fixture", analysisDate: "2025-01-01", assetType: "stock", researchDepth: 1, analysts: ["market"], outputLanguage: "en" },
     run: null, decision: "", reportSections,
@@ -31,6 +41,24 @@ function fixtureReportVersion(reportSections: ReportVersion["reportSections"]): 
   };
 }
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (reason: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
+async function committedReportFixture() {
+  const original = recoveryHeader();
+  const header: JournalHeader = { ...original, journalId: witness.journalId, origin: witness.origin, binding: witness.binding, headerDigest: witness.headerDigest,
+    reservedHead: { ...original.reservedHead, taskId: witness.origin.taskId, generation: witness.binding.generation },
+    context: { ...original.context, originalRunContext: { ...original.context.originalRunContext, runId: researchRunId } } };
+  const rows = [
+    envelope(header, 1, "accepted", { resetVersion: 1 }),
+    envelope(header, 2, "analysis", { event: { type: "progress", message: "Original worker progress" } }),
+    envelope(header, 3, "analysis", { event: { type: "completed", reportSections: { market_report: "Fictional saved research for isolated WebView acceptance." }, stats: { llmCalls: 0, toolCalls: 0, tokensIn: 0, tokensOut: 0, elapsedSeconds: 1 } } }),
+    envelope(header, 4, "reader_outcome", { stream: "stdout", outcome: "eof", code: null }),
+    envelope(header, 5, "reader_outcome", { stream: "stderr", outcome: "eof", code: null }),
+    envelope(header, 6, "worker_outcome", { outcome: "succeeded", code: null }),
+  ];
+  const reduced = await reduceJournalPage({ ...recoveryTask(), id: witness.origin.taskId }, header, rows);
+  const summary = { ...recoverySummary(header, "6", "6"), sealedThroughSeq: "6", workerOutcome: "succeeded" as const, cleanupState: "confirmed" as const, resultState: "projected" as const };
+  const page: ReadReply = { recoveryProtocolVersion: 1, header, summary, afterSeq: "0", throughSeq: "6", lastSeq: "6", hasMore: false, rows, rangeProof: { fromSeq: "0", throughSeq: "6", digest: "f".repeat(64) } };
+  return { page, version: reduced.task.reportVersions[0] };
+}
 beforeEach(() => { wire.invoke.mockReset(); wire.listen.mockReset(); });
 
 describe("finite private metadata contract", () => {
@@ -98,7 +126,7 @@ describe("reload and projected report boundaries", () => {
   });
   it("checks fixed real-fixture report text and stats instead of fabricating saved data", () => {
     const version = fixtureReportVersion({ market_report: "Fictional saved research for isolated WebView acceptance." });
-    expect(reportFingerprint(version).runId).toBe("analysis-2");
+    expect(reportFingerprint(version).runId).toBe(researchRunId);
     expect(() => reportFingerprint({ ...version, reportSections: { market_report: "different persisted body" } })).toThrow(DriverFault);
     expect(() => reportFingerprint({ ...version, stats: { ...version.stats, llmCalls: 1 } })).toThrow(DriverFault);
   });
@@ -111,6 +139,66 @@ describe("reload and projected report boundaries", () => {
   it("generates a fresh 128-bit realm nonce from actual supplied randomness", () => {
     const source = { getRandomValues: <T extends ArrayBufferView | null>(array: T): T => { (array as Uint8Array).fill(171); return array; } };
     expect(freshRealmNonce(source)).toBe("ab".repeat(16));
+  });
+});
+
+describe("committed research identity and native origin (production reducer, mocked IPC)", () => {
+  it("reads the original journal and binds a reducer-created research UUID while wire runId remains analysis-N", async () => {
+    const { page, version } = await committedReportFixture();
+    wire.invoke.mockImplementation(async (command, args) => {
+      expect(command).toBe("read_analysis_journal");
+      expect(JSON.parse(args.requestJson)).toEqual({ recoveryProtocolVersion: 1, journalId: witness.journalId, origin: witness.origin, binding: witness.binding, afterSeq: "0", throughSeq: "6", limit: 16 });
+      return page;
+    });
+    const api = createAcceptanceApi(bootstrap, realm, false);
+    const actual = await api.reportJournal(witness, "6");
+    const proof = savedReportFingerprint(actual, witness, version, structuredClone(version), witness.headerDigest);
+    expect(version.runId).toBe(researchRunId); expect(version.runId).not.toBe(witness.origin.runId);
+    expect(proof.researchRunId).toBe(researchRunId); expect(proof.report.runId).toBe(researchRunId); expect(proof.origin.runId).toBe("analysis-1");
+    const attestation = { ...report(), tasks: tasks().map(task => task.slot === "a" ? { ...task, taskId: taskIds[1] } : task.slot === "b" ? { ...task, taskId: witness.origin.taskId, reportVersionId: version.id, runId: witness.origin.runId } : task) };
+    expect(JSON.parse(validateReport(attestation, bootstrap, realm)).tasks[1].runId).toBe("analysis-1");
+    expect(() => validateReport({ ...attestation, tasks: attestation.tasks.map(task => task.slot === "b" ? { ...task, runId: version.runId } : task) }, bootstrap, realm)).toThrow(DriverFault);
+    expect(wire.invoke).toHaveBeenCalledTimes(1); await api.close();
+  });
+  it("rejects a wrong research UUID even when native and UI copies agree on it", async () => {
+    const { page, version } = await committedReportFixture();
+    const wrong = { ...version, runId: taskIds[3] };
+    expect(() => savedReportFingerprint(page, witness, wrong, wrong, witness.headerDigest)).toThrow(DriverFault);
+    expect(() => savedReportFingerprint(page, witness, version, wrong, witness.headerDigest)).toThrow(DriverFault);
+    expect(() => reportFingerprint({ ...version, runId: witness.origin.runId })).toThrow(DriverFault);
+    const header = { ...page.header, context: { ...page.header.context, originalRunContext: { ...page.header.context.originalRunContext, runId: taskIds[3] } } };
+    expect(() => savedReportFingerprint({ ...page, header }, witness, version, version, witness.headerDigest)).toThrow(DriverFault);
+  });
+  it("rejects a different journal header, header digest, task binding or native origin", async () => {
+    const { page, version } = await committedReportFixture();
+    const changed = [
+      { ...page.header, journalId: "0".repeat(64) },
+      { ...page.header, headerDigest: "0".repeat(64) },
+      { ...page.header, origin: { ...page.header.origin, runId: "analysis-999" } },
+      { ...page.header, origin: { ...page.header.origin, taskId: taskIds[1] }, binding: { ...page.header.binding, taskId: taskIds[1] }, reservedHead: { ...page.header.reservedHead, taskId: taskIds[1] } },
+    ];
+    for (const header of changed) expect(() => savedReportFingerprint({ ...page, header }, witness, version, version, witness.headerDigest)).toThrow();
+    expect(() => savedReportFingerprint(page, { ...witness, binding: { ...witness.binding, generation: "2" } }, version, version, witness.headerDigest)).toThrow(DriverFault);
+  });
+  it("rejects an unbound completion seed or unsealed/partial journal instead of trusting a report prefix", async () => {
+    const { page, version } = await committedReportFixture();
+    const wrong = { ...version, id: `report:${witness.journalId}:2` };
+    expect(() => savedReportFingerprint(page, witness, wrong, wrong, witness.headerDigest)).toThrow(DriverFault);
+    expect(() => savedReportFingerprint({ ...page, hasMore: true }, witness, version, version, witness.headerDigest)).toThrow(DriverFault);
+    expect(() => savedReportFingerprint({ ...page, summary: { ...page.summary, appliedSeq: "5" } }, witness, version, version, witness.headerDigest)).toThrow(DriverFault);
+    expect(() => savedReportFingerprint({ ...page, summary: { ...page.summary, cleanupState: "unknown" } }, witness, version, version, witness.headerDigest)).toThrow(DriverFault);
+    const api = createAcceptanceApi(bootstrap, realm, false);
+    await expect(api.reportJournal(witness, "17")).rejects.toThrow(DriverFault); expect(wire.invoke).not.toHaveBeenCalled(); await api.close();
+  });
+  it("keeps reload/final provenance fingerprints stable while rejecting changed native report bytes", async () => {
+    const { page, version } = await committedReportFixture();
+    const original = savedReportFingerprint(page, witness, version, structuredClone(version), witness.headerDigest);
+    const reloaded = savedReportFingerprint(structuredClone(page), page.summary, structuredClone(version), structuredClone(version), null);
+    expect(JSON.stringify(reloaded)).toBe(JSON.stringify(original));
+    expect(() => savedReportFingerprint(page, witness, version, { ...version, stats: { ...version.stats, elapsedSeconds: 2 } }, witness.headerDigest)).toThrow(DriverFault);
+    expect(() => savedReportFingerprint(page, witness, version, { ...version, createdAt: "2025-01-01T00:00:00.000Z" }, witness.headerDigest)).toThrow(DriverFault);
+    const swappedHeader = savedReportFingerprint({ ...page, header: { ...page.header, headerDigest: "0".repeat(64) } }, page.summary, version, version, null);
+    expect(JSON.stringify(swappedHeader)).not.toBe(JSON.stringify(original));
   });
 });
 
@@ -206,5 +294,84 @@ describe("actual async unlisten acknowledgement and capacity", () => {
     await expect(rejected).rejects.toThrow(DriverFault); expect(wire.listen).toHaveBeenCalledTimes(2); expect(api.listenerCount()).toBe(2);
     const ackA = deferred<void>(); const dropA = vi.fn(() => ackA.promise); const dropB = vi.fn(async () => undefined); first.resolve(dropA); second.resolve(dropB); const [unlistenA] = await Promise.all([a, b]); const pending = unlistenA();
     await expect(api.listenWorker(witness, vi.fn())).rejects.toThrow(DriverFault); expect(wire.listen).toHaveBeenCalledTimes(2); ackA.resolve(); await pending; await api.close(); expect(dropA).toHaveBeenCalledTimes(1); expect(dropB).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("visible task navigation through the actual list page (mocked router, no App proof)", () => {
+  let root: Root | null = null, main: HTMLElement | null = null, home: HTMLAnchorElement | null = null;
+  let originalRoute = "", homeClicks = 0, lookupCalls = 0;
+  async function lookup<T>(read: () => Promise<T | null> | T | null): Promise<T> {
+    lookupCalls++;
+    for (let attempt = 0; attempt < 3; attempt++) { const value = await read(); if (value !== null) return value; }
+    throw new DriverFault("deadline_exceeded");
+  }
+  async function unmount() {
+    if (root) { const owned = root; root = null; await act(async () => owned.unmount()); }
+    main?.remove(); main = null; home?.remove(); home = null;
+  }
+  async function mount(includeB = true) {
+    history.replaceState(null, "", taskDetailHref(taskIds[3])); homeClicks = 0; lookupCalls = 0;
+    navigation.router.push.mockReset().mockImplementation((href: string) => history.replaceState(null, "", href));
+    const listTasks = taskIds.map((id, index) => ({ ...recoveryTask(), id, ticker: "FICTION", status: (["stopped", "completed", "running", "queued"] as const)[index] })).filter(task => includeB || task.id !== taskIds[1]);
+    navigation.center.mockReturnValue({ settings: { systemLanguage: "en" }, sortedTasks: listTasks,
+      runningTask: null, queuedTasks: [], cleanupFailedTask: null, cleanupRetrying: false, cleanupUnconfirmed: false,
+      resultPendingTask: null, resultRetrying: false, stopping: false, retryCleanup: vi.fn(), retryResult: vi.fn(),
+      getQueuePosition: () => 1, stopRunningTask: vi.fn(), cancelQueuedTask: vi.fn(), moveQueuedTask: vi.fn() });
+    const container = document.createElement("div"); container.hidden = true;
+    main = document.createElement("main"); main.append(container); document.body.append(main);
+    const listLink = document.createElement("a"); listLink.setAttribute("href", "/"); listLink.textContent = "Tasks";
+    listLink.addEventListener("click", event => { event.preventDefault(); homeClicks++; history.replaceState(null, "", "/"); container.hidden = false; });
+    document.body.append(listLink); home = listLink;
+    root = createRoot(container); const owned = root; await act(async () => owned.render(createElement(TaskListPage)));
+  }
+  beforeEach(() => {
+    originalRoute = location.pathname + location.search + location.hash;
+    navigation.center.mockReset(); navigation.router.prefetch.mockReset();
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    vi.spyOn(HTMLElement.prototype, "getClientRects").mockImplementation(function (this: HTMLElement) {
+      return (this.isConnected && !this.closest("[hidden]") ? [{ width: 10, height: 10 }] : []) as unknown as DOMRectList;
+    });
+  });
+  afterEach(async () => { await unmount(); history.replaceState(null, "", originalRoute); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+  it("returns through the visible list link and clicks the actual UUID-bound row despite identical tickers", async () => {
+    await mount();
+    expect([...document.querySelectorAll<HTMLTableRowElement>('main tr[role="link"][data-task-id]')].map(row => row.dataset.taskId)).toEqual(taskIds);
+    await act(async () => navigateVisibleRoute(taskDetailHref(taskIds[1]), taskIds[1], lookup));
+    expect(homeClicks).toBe(1); expect(navigation.router.push).toHaveBeenCalledTimes(1); expect(navigation.router.push).toHaveBeenCalledWith(taskDetailHref(taskIds[1]));
+    expect(location.pathname + location.search).toBe(taskDetailHref(taskIds[1])); expect(lookupCalls).toBe(2);
+  });
+  it("preserves direct visible links and an already-matched route without returning to the list", async () => {
+    await mount(); const direct = document.createElement("a"); direct.setAttribute("href", taskDetailHref(taskIds[1])); let clicks = 0;
+    direct.addEventListener("click", event => { event.preventDefault(); clicks++; history.replaceState(null, "", taskDetailHref(taskIds[1])); }); document.body.append(direct);
+    try {
+      await navigateVisibleRoute(taskDetailHref(taskIds[1]), taskIds[1], lookup);
+      await navigateVisibleRoute(taskDetailHref(taskIds[1]), taskIds[1], lookup);
+      expect(clicks).toBe(1); expect(homeClicks).toBe(0); expect(navigation.router.push).not.toHaveBeenCalled(); expect(lookupCalls).toBe(2);
+    } finally { direct.remove(); }
+  });
+  it("refuses missing, hidden and wrong-ID rows instead of choosing another same-ticker task", async () => {
+    for (const shape of ["missing", "hidden", "wrong-id"] as const) {
+      await mount(shape !== "missing");
+      const row = document.querySelector<HTMLTableRowElement>(`main tr[data-task-id="${taskIds[1]}"]`);
+      if (shape === "hidden") { expect(row).not.toBeNull(); row!.hidden = true; }
+      if (shape === "wrong-id") { expect(row).not.toBeNull(); row!.dataset.taskId = taskIds[2]; }
+      await expect(navigateVisibleRoute(taskDetailHref(taskIds[1]), taskIds[1], lookup)).rejects.toThrow(DriverFault);
+      expect(homeClicks).toBe(1); expect(navigation.router.push).not.toHaveBeenCalled(); expect(location.pathname + location.search).toBe("/"); await unmount();
+    }
+  });
+  it("refuses duplicate visible UUID rows before clicking either original control", async () => {
+    await mount(); const row = document.querySelector<HTMLTableRowElement>(`main tr[data-task-id="${taskIds[1]}"]`)!;
+    row.parentElement!.append(row.cloneNode(true));
+    await expect(navigateVisibleRoute(taskDetailHref(taskIds[1]), taskIds[1], lookup)).rejects.toThrow(DriverFault);
+    expect(homeClicks).toBe(1); expect(navigation.router.push).not.toHaveBeenCalled();
+  });
+  it("rejects a task path that differs from the explicit expected UUID", async () => {
+    await mount(); await expect(navigateVisibleRoute(taskDetailHref(taskIds[1]), taskIds[2], lookup)).rejects.toThrow(DriverFault);
+    expect(homeClicks).toBe(0); expect(navigation.router.push).not.toHaveBeenCalled(); expect(lookupCalls).toBe(0);
+  });
+  it("fails without a visible list route instead of fabricating a missing task link", async () => {
+    await mount(); home!.hidden = true;
+    await expect(navigateVisibleRoute(taskDetailHref(taskIds[1]), taskIds[1], lookup)).rejects.toThrow(DriverFault);
+    expect(homeClicks).toBe(0); expect(navigation.router.push).not.toHaveBeenCalled(); expect(location.pathname + location.search).toBe(taskDetailHref(taskIds[3]));
   });
 });
