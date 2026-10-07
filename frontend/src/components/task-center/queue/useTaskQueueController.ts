@@ -26,6 +26,7 @@ type TaskQueueControllerOptions = {
   persistTask: (task: AnalysisTask) => void;
   onEvent: (taskId: string, event: AnalysisEvent, runContext?: RunContext, owner?: RunOwner) => void;
   storageReady?: boolean;
+  admissionReady?: boolean;
   blockedQueueNotice?: string;
   nativeOwnedTaskId?: string | null;
   mutateDesktopTask?: (task: AnalysisTask, updater: (task: AnalysisTask) => AnalysisTask, owner?: RunOwner) => TaskAction | undefined;
@@ -46,6 +47,7 @@ export function useTaskQueueController({
   onEvent,
   setNotice,
   storageReady = true,
+  admissionReady = storageReady,
   blockedQueueNotice,
   nativeOwnedTaskId = null,
   mutateDesktopTask,
@@ -112,7 +114,7 @@ export function useTaskQueueController({
   }, [patchTask]);
 
   const startQueuedTask = useCallback(async (taskId: string) => {
-    if (!storageReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return false;
+    if (!storageReady || !admissionReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return false;
     const task = tasksRef.current.find((item) => item.id === taskId);
     if (!task || task.status !== "queued") return false;
 
@@ -215,7 +217,7 @@ export function useTaskQueueController({
         setSchedulerVersion((version) => version + 1);
       }
     }
-  }, [failTask, onEvent, patchTask, prepareDesktopRun, retireDesktopRun, runtimeAdapterRef, setNotice, settings, storageReady]);
+  }, [admissionReady, failTask, onEvent, patchTask, prepareDesktopRun, retireDesktopRun, runtimeAdapterRef, setNotice, settings, storageReady]);
 
   useEffect(() => {
     if (!hydrated || !storageReady || queueInitializedRef.current) return;
@@ -231,14 +233,14 @@ export function useTaskQueueController({
   }, [hydrated, mutateTasks, nativeOwnedTaskId, storageReady]);
 
   useEffect(() => {
-    if (!hydrated || !storageReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
+    if (!hydrated || !storageReady || !admissionReady || activeTaskIdRef.current || dispatchingRef.current || cleanupBlockedRef.current) return;
     if (tasks.some((task) => task.status === "running")) return;
     const nextTask = sortQueuedTasks(tasks).find((task) => rejectedAdmissionsRef.current.get(task.id) !== task);
     if (nextTask) void startQueuedTask(nextTask.id);
-  }, [hydrated, schedulerVersion, startQueuedTask, storageReady, tasks]);
+  }, [admissionReady, hydrated, schedulerVersion, startQueuedTask, storageReady, tasks]);
 
   const queueTask = useCallback((taskId: string, taskOverride?: AnalysisTask) => {
-    if (!storageReady) {
+    if (!storageReady || !admissionReady && nativeOwnedTaskId === null && !activeExecutionRef.current) {
       setNotice(blockedQueueNotice ?? createTranslator(settings.systemLanguage)("taskStorageUnconfirmed"));
       return false;
     }
@@ -271,7 +273,7 @@ export function useTaskQueueController({
     if (isTauriRuntime() && mutateDesktopTask) return !!mutateDesktopTask(task, (current) => resetTaskForQueue(current, queuedAt, queueOrder));
     patchTask(taskId, (current) => resetTaskForQueue(current, queuedAt, queueOrder));
     return true;
-  }, [blockedQueueNotice, mutateDesktopTask, patchTask, setNotice, settings, storageReady]);
+  }, [admissionReady, blockedQueueNotice, mutateDesktopTask, nativeOwnedTaskId, patchTask, setNotice, settings, storageReady]);
 
   const cancelQueuedTask = useCallback((taskId: string, selectedTask?: AnalysisTask) => {
     if (activeTaskIdRef.current === taskId) {

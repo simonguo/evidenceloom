@@ -18,6 +18,8 @@ pub const CLEANUP_ERROR: &str =
 pub struct Registry {
     active: Mutex<Option<Arc<Run>>>,
     next_id: AtomicU64,
+    #[cfg(any(test, feature = "desktop-acceptance"))]
+    admission_closed: AtomicBool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -55,6 +57,10 @@ impl Registry {
     fn reserve_for(&self, task_id: String, lease: Duration) -> Result<String, String> {
         let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
         Self::expire_unstarted(&mut active);
+        #[cfg(any(test, feature = "desktop-acceptance"))]
+        if self.admission_closed.load(Ordering::SeqCst) {
+            return Err("Analysis admission is closed.".into());
+        }
         if active.is_some() {
             return Err("已有任务正在运行或等待停止。请先停止当前任务。".into());
         }
@@ -93,6 +99,10 @@ impl Registry {
     pub fn start(self: &Arc<Self>, task_id: &str, run_id: &str) -> Result<RunGuard, String> {
         let mut active = self.active.lock().unwrap_or_else(|e| e.into_inner());
         Self::expire_unstarted(&mut active);
+        #[cfg(any(test, feature = "desktop-acceptance"))]
+        if self.admission_closed.load(Ordering::SeqCst) {
+            return Err("Analysis admission is closed.".into());
+        }
         let owner = active
             .as_ref()
             .filter(|run| run.task_id == task_id && run.run_id == run_id)
@@ -114,6 +124,18 @@ impl Registry {
             registry: self.clone(),
             owner,
             worker_retired: false,
+        })
+    }
+
+    /// The closed latch and exact owner are serialized with reserve/start.
+    /// Cleanup/release remain enabled: closure is never a cleanup witness.
+    #[cfg(any(test, feature = "desktop-acceptance"))]
+    pub(crate) fn close_admission(self: &Arc<Self>) -> Option<OwnershipObservation> {
+        let active = self.active.lock().unwrap_or_else(|e| e.into_inner());
+        self.admission_closed.store(true, Ordering::SeqCst);
+        active.as_ref().map(|owner| OwnershipObservation {
+            registry: self.clone(),
+            owner: owner.clone(),
         })
     }
 

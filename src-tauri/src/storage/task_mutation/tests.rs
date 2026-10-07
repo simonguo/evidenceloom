@@ -1655,3 +1655,119 @@ fn task_mutation_shared_wire_corpus_matches_actual_sql_and_serialized_strings() 
     // detects field order, omission/null, escaping, and digest byte changes.
     assert_eq!(expected, generated);
 }
+
+#[test]
+fn task_mutation_verified_projection_guard_preserves_ordinary_normalization() {
+    let conn = db(true);
+    let mut body = task("ordinary-running");
+    body["status"] = json!("running");
+    let create_packet = packet(request(
+        &conn,
+        "verified-guard-create",
+        "create",
+        Some(&absent("ordinary-running")),
+        Some(body),
+    ));
+    assert_eq!(
+        effects_for_verified_journal_projection(&conn, &create_packet)
+            .unwrap_err()
+            .code,
+        "storage_invalid_request"
+    );
+    assert_eq!(count(&conn, "tasks"), 0);
+    assert_eq!(count(&conn, "task_store_heads"), 0);
+
+    let expected = create(&conn, "ordinary-running");
+    let mut body = task("ordinary-running");
+    body["status"] = json!("running");
+    let mut multi_task = packet(request(
+        &conn,
+        "verified-guard-multi-task",
+        "update",
+        Some(&expected),
+        Some(body.clone()),
+    ));
+    multi_task.tasks.push(task("unrelated-task"));
+    assert_eq!(
+        effects_for_verified_journal_projection(&conn, &multi_task)
+            .unwrap_err()
+            .code,
+        "storage_invalid_request"
+    );
+    assert_eq!(load_tasks_from_conn(&conn).unwrap()[0].status, "pending");
+    assert_eq!(count(&conn, "tasks"), 1);
+    assert_eq!(head(&conn, "ordinary-running"), expected);
+    let mut multi_head = packet(request(
+        &conn,
+        "verified-guard-multi-head",
+        "update",
+        Some(&expected),
+        Some(body.clone()),
+    ));
+    multi_head.expected_heads.push(absent("unrelated-task"));
+    assert_eq!(
+        effects_for_verified_journal_projection(&conn, &multi_head)
+            .unwrap_err()
+            .code,
+        "storage_invalid_request"
+    );
+    assert_eq!(load_tasks_from_conn(&conn).unwrap()[0].status, "pending");
+    assert_eq!(count(&conn, "tasks"), 1);
+    assert_eq!(head(&conn, "ordinary-running"), expected);
+
+    let ordinary_update = packet(request(
+        &conn,
+        "ordinary-running-update",
+        "update",
+        Some(&expected),
+        Some(body),
+    ));
+    execute(&conn, &ordinary_update).unwrap();
+    assert_eq!(
+        conn.query_row(
+            "SELECT status FROM tasks WHERE id='ordinary-running'",
+            [],
+            |row| { row.get::<_, String>(0) }
+        )
+        .unwrap(),
+        "stopped"
+    );
+    assert_eq!(load_tasks_from_conn(&conn).unwrap()[0].status, "stopped");
+    execute(&conn, &ordinary_update).unwrap();
+    assert_eq!(load_tasks_from_conn(&conn).unwrap()[0].status, "stopped");
+
+    let import_conn = db(true);
+    let mut body = task("ordinary-import");
+    body["status"] = json!("running");
+    let ordinary_import = packet(
+        json!({"protocolVersion":1,"requestId":"ordinary-running-import","collection":current(&import_conn).unwrap().collection,"operation":"import","expectedHeads":[absent("ordinary-import")],"tasks":[body]}),
+    );
+    assert_eq!(
+        effects_for_verified_journal_projection(&import_conn, &ordinary_import)
+            .unwrap_err()
+            .code,
+        "storage_invalid_request"
+    );
+    assert_eq!(count(&import_conn, "tasks"), 0);
+    assert_eq!(count(&import_conn, "task_store_heads"), 0);
+    execute(&import_conn, &ordinary_import).unwrap();
+    assert_eq!(
+        import_conn
+            .query_row(
+                "SELECT status FROM tasks WHERE id='ordinary-import'",
+                [],
+                |row| { row.get::<_, String>(0) }
+            )
+            .unwrap(),
+        "stopped"
+    );
+    assert_eq!(
+        load_tasks_from_conn(&import_conn).unwrap()[0].status,
+        "stopped"
+    );
+    execute(&import_conn, &ordinary_import).unwrap();
+    assert_eq!(
+        load_tasks_from_conn(&import_conn).unwrap()[0].status,
+        "stopped"
+    );
+}

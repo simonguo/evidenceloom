@@ -85,7 +85,7 @@ function ownedStore(initial: AnalysisTask[], legacyAllowed = false) {
 
 describe("desktop task mutation boundaries through the actual provider", () => {
   let root: Root, element: HTMLDivElement, center: ReturnType<typeof useTaskCenter>;
-  let store: ReturnType<typeof ownedStore>, failBootstrap: boolean, loseDeleteAck: boolean, loseDeleteBeforeCommit: boolean, loseSaveBeforeCommit: boolean, loseImportBeforeCommit: boolean, sqlOnlyClear: boolean, allowScriptedRun: boolean;
+  let store: ReturnType<typeof ownedStore>, failBootstrap: boolean, loseDeleteAck: boolean, loseDeleteBeforeCommit: boolean, loseSaveBeforeCommit: boolean, loseImportBeforeCommit: boolean, sqlOnlyClear: boolean, allowScriptedRun: boolean, pendingScriptedWorker: boolean;
   let queryGate: ReturnType<typeof deferred<ReturnType<ReturnType<typeof ownedStore>["query"]>>> | undefined;
   let listener: ((event: { payload: AnalysisEvent }) => void) | undefined;
   let saveGate: ReturnType<typeof deferred> | undefined, saveEntered: ReturnType<typeof deferred>;
@@ -98,7 +98,7 @@ describe("desktop task mutation boundaries through the actual provider", () => {
     await vi.waitFor(async () => { await act(async () => {}); expect(center.hydrated).toBe(true); });
   }
   beforeEach(() => {
-    store = ownedStore([]); recovery = undefined; failBootstrap = false; loseDeleteAck = false; loseDeleteBeforeCommit = false; loseSaveBeforeCommit = false; loseImportBeforeCommit = false; sqlOnlyClear = false; allowScriptedRun = false; listener = undefined; queryGate = undefined;
+    store = ownedStore([]); recovery = undefined; failBootstrap = false; loseDeleteAck = false; loseDeleteBeforeCommit = false; loseSaveBeforeCommit = false; loseImportBeforeCommit = false; sqlOnlyClear = false; allowScriptedRun = false; pendingScriptedWorker = false; listener = undefined; queryGate = undefined;
     saveGate = undefined; saveEntered = deferred(); actions.length = 0;
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); localStorage.clear();
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: { invoke: (name: string, args?: Record<string, unknown>) => ipc.invoke(name, args) }, configurable: true });
@@ -107,7 +107,8 @@ describe("desktop task mutation boundaries through the actual provider", () => {
       if (command === "load_analysis_recovery") return { recoveryProtocolVersion: 1, storage: store.snapshot().storage, tasks: [...store.rows.values()], journals: [], clearBlockers: [], runtime: recoveryRuntime(), coherent: true };
       if (command === "reserve_analysis" && allowScriptedRun) {
         const request = JSON.parse(args.requestJson) as AdmissionRequest, task = store.rows.get(request.expectedHead.taskId)!;
-        recovery = transportFixture({ captured: { packet: { request, requestJson: args.requestJson }, task, executionInputJson: "" } });
+        recovery = transportFixture({ captured: { packet: { request, requestJson: args.requestJson }, task, executionInputJson: "" },
+          ...(pendingScriptedWorker ? { workerPending: true, events: [{ type: "progress" as const, message: "Fictional pending original worker", messageType: "info" as const }] } : {}) });
       }
       if (recovery && typeof args?.requestJson === "string") {
         const reply = await recovery.api.invoke(command, args);
@@ -250,5 +251,56 @@ describe("desktop task mutation boundaries through the actual provider", () => {
     const before = JSON.stringify(center.tasks), noticeBefore = center.notice; expect(center.storageState).toBe("ready");
     await act(async () => { queryGate?.resolve(oldCut); await oldQuery; });
     expect(center.storageState).toBe("ready"); expect(JSON.stringify(center.tasks)).toBe(before); expect(center.notice).toBe(noticeBefore); expect(store.current().collection.epoch).toBe("2");
+  });
+
+  it("persists a queued successor through the actual provider while the original native owner blocks admission, then dispatches in order after settlement", async () => {
+    allowScriptedRun = true; pendingScriptedWorker = true; await mount();
+    await vi.waitFor(() => expect(center.storageState).toBe("ready"));
+    const draft = { ...defaultTaskDraft(), ticker: "FICT", instrumentName: "Owned queued fixture", analysisDate: "2026-08-01" };
+    let first!: Awaited<ReturnType<typeof center.createAndQueueTask>>;
+    await act(async () => { first = await center.createAndQueueTask(draft); });
+    expect(first.errors).toEqual([]); const a = first.task; if (!a) throw new Error("Expected the confirmed original task.");
+    await vi.waitFor(async () => { await act(async () => {}); expect(center.getTask(a.id)?.status).toBe("running"); expect(commands("start_analysis")).toHaveLength(1); });
+    const original = recovery; if (!original) throw new Error("Expected the actual provider's original recovery session.");
+    const originalOwner = original.current().runtime.owner; expect(originalOwner?.origin.taskId).toBe(a.id);
+    expect(original.current().runtime.runtimeGate).toBe("occupied");
+    const stopGate = deferred(); original.setStopBarrier(stopGate.promise);
+    try {
+      let second!: Awaited<ReturnType<typeof center.createAndQueueTask>>;
+      await act(async () => { second = await center.createAndQueueTask(draft); });
+      expect(second.errors).toEqual([]); const successor = second.task; if (!successor) throw new Error("Expected the confirmed successor task.");
+      await vi.waitFor(async () => { await act(async () => {}); expect(store.rows.get(successor.id)?.status).toBe("queued"); expect(center.getTask(successor.id)?.status).toBe("queued"); });
+      expect(store.rows.get(a.id)?.status).toBe("running");
+      expect(commands("save_desktop_task").filter(([, args]) => args.request?.expectedHead?.taskId === successor.id).map(([, args]) => args.request.operation)).toEqual(["create", "update"]);
+      expect(commands("reserve_analysis")).toHaveLength(1); expect(commands("start_analysis")).toHaveLength(1);
+      expect(recovery).toBe(original); expect(original.current().runtime.owner).toMatchObject({ origin: originalOwner?.origin, journalId: originalOwner?.journalId });
+      await act(async () => center.stopRunningTask());
+      await act(async () => {});
+      expect(center.getTask(successor.id)?.status).toBe("queued"); expect(commands("reserve_analysis")).toHaveLength(1); expect(commands("start_analysis")).toHaveLength(1);
+      pendingScriptedWorker = false; await act(async () => stopGate.resolve());
+      await vi.waitFor(async () => { await act(async () => {}); expect(center.getTask(a.id)?.status).toBe("stopped"); expect(center.getTask(successor.id)?.status).toBe("completed"); expect(center.runningTask).toBeNull(); }, { timeout: 2500 });
+      expect(commands("reserve_analysis").map(([, args]) => JSON.parse(args.requestJson).expectedHead.taskId)).toEqual([a.id, successor.id]);
+      expect(commands("start_analysis").map(([, args]) => JSON.parse(args.requestJson).origin.taskId)).toEqual([a.id, successor.id]);
+      const settled = original.current(); expect(settled.runtime.runtimeGate).toBe("vacant");
+      if (settled.state !== "coherent") throw new Error("Expected the original settled current.");
+      expect(settled.journal?.appliedSeq).toBe(settled.journal?.sealedThroughSeq); expect(settled.journal?.cleanupState).toBe("confirmed");
+    } finally {
+      pendingScriptedWorker = false; stopGate.resolve();
+      if (center.runningTask?.id === a.id) await act(async () => center.stopRunningTask());
+    }
+  });
+  it.each(["unavailable", "unknown"] as const)("still refuses a queued write when task storage is %s even with a valid analysis task", async (state) => {
+    const draft = { ...defaultTaskDraft(), ticker: "FICT", instrumentName: "Owned blocked queue", analysisDate: "2026-08-01" };
+    let task = createEmptyTask(draft, "owned-storage-gated-queue");
+    if (state === "unavailable") { store = ownedStore([task]); failBootstrap = true; await mount(); }
+    else {
+      await mount(); loseSaveBeforeCommit = true;
+      await act(async () => { const result = await center.createAndQueueTask(draft); expect(result.errors.length).toBeGreaterThan(0); });
+      expect(center.storageState).toBe("unknown"); task = center.tasks[0]; expect(task.origin).toBe("analysis"); expect(task.status).toBe("idle");
+    }
+    const writes = commands("save_desktop_task").length;
+    await act(async () => { expect(center.queueTask(task.id, task)).toBe(false); });
+    expect(commands("save_desktop_task")).toHaveLength(writes); expect(commands("reserve_analysis")).toHaveLength(0); expect(commands("start_analysis")).toHaveLength(0);
+    expect(task.status).toBe("idle");
   });
 });

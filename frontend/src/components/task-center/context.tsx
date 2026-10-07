@@ -454,7 +454,8 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     settings,
     runtimeAdapterRef,
     persistTask,
-    storageReady: !isTauriRuntime() || recoveryReady && (storageState === "ready" || storageState === "pending"),
+    storageReady: !isTauriRuntime() || storageState === "ready" || storageState === "pending",
+    admissionReady: !isTauriRuntime() || recoveryReady,
     blockedQueueNotice: t(storageState === "ready" || storageState === "pending" ? "analysisRecoveryBlocked" : "taskStorageUnconfirmed"),
     nativeOwnedTaskId: nativeObservation?.owner?.binding.taskId,
     mutateDesktopTask,
@@ -544,7 +545,7 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
     const session = attachedRef.current;
     if (!session && nativeObservation?.owner) { await watchNativeAnalysis(); return; }
     if (session && nativeObservation?.owner && (!sameOrigin(session.origin, nativeObservation.owner.origin) || session.captured.request.journalId !== nativeObservation.owner.journalId)) return;
-    if (!session) {
+    if (!session || !nativeObservation?.owner && session.phase === "ready") {
       try {
         if (!mutationsRef.current?.ready) await bootstrapRetryRef.current?.();
         setNotice(await refreshAnalysisRecovery() === true ? "" : t("analysisRecoveryBlocked"));
@@ -696,7 +697,10 @@ export function TaskCenterProvider({ children }: { children: ReactNode }) {
         if (!mutations.publishable(action, outcome)) throw new Error();
       } catch { setNotice(t("taskCreationUnconfirmed")); return { errors: [t("taskCreationUnconfirmed")] }; }
     } else { tasksRef.current = [task, ...tasksRef.current]; setTasks(tasksRef.current); }
-    queueTask(task.id, task);
+    if (!queueTask(task.id, task)) {
+      setNotice(t("taskStorageUnconfirmed"));
+      return { task, errors: [t("taskStorageUnconfirmed")] };
+    }
     setNotice(t("taskCreated", { ticker: task.ticker }));
     return { task, errors: [] };
   }

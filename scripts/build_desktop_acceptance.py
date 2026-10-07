@@ -20,6 +20,7 @@ import subprocess
 import sys
 
 import check_desktop_acceptance_boundary as boundary
+import desktop_frontend_evidence as frontend_evidence
 
 
 def native_source_inventory(repo):
@@ -251,10 +252,11 @@ def descriptor(
         boundary.write_json(directory / "frontend-input-inventory.json", frontend_input)
     if frontend is not None:
         boundary.write_json(directory / "frontend-inventory.json", frontend)
+    shutil.copyfile(boundary.regular(config_path), directory / "desktop-effective-config.json")
     return stamp
 
 
-def assemble_app(repo, output, target, executable, fixture, stamp_path, stamp):
+def assemble_app(repo, output, target, executable, fixture, stamp_path, stamp, frontend_proof):
     """Copy only fixed files; no bundler, installer, signer or user-path lookup."""
     output = Path(output)
     boundary.require(not output.exists())
@@ -301,6 +303,16 @@ def assemble_app(repo, output, target, executable, fixture, stamp_path, stamp):
             "target": target,
             "sourceInventorySha256": stamp["sourceInventorySha256"],
             "artifacts": records,
+            "evidence": {
+                "sourceRoot": str(repo),
+                "sourceSnapshot": str(output.parent / "source-input-bytes"),
+                "sourceInventory": str(output.parent / "native-source-input-inventory.json"),
+                "stageRoot": str(stamp_path.parent),
+                "stageSnapshot": str(output.parent / "stage-proof-bytes"),
+                "stageInventory": str(output.parent / "stage-proof-inventory.json"),
+                "frontendProof": str(frontend_proof),
+                "frozenApp": str(output / "frozen-app"),
+            },
             "limitations": [
                 "local app assembly only",
                 "not executed or notarized",
@@ -308,6 +320,8 @@ def assemble_app(repo, output, target, executable, fixture, stamp_path, stamp):
             ],
         },
     )
+    frontend_evidence.freeze_files(app, [row["path"] for row in records], output / "frozen-app")
+    frontend_evidence.same_bytes(stamp_path, resources / "desktop-build-stamp.json")
     return app
 
 
@@ -321,6 +335,11 @@ def pipeline(args):
         args.target in boundary.ACCEPTANCE_TARGETS
         and re.fullmatch(r"[0-9a-f]{40}", args.base_commit)
     )
+    # Only this acceptance builder creates its private selector/evidence inputs.
+    boundary.require(
+        frontend_evidence.SELECTOR not in os.environ
+        and frontend_evidence.METADATA not in os.environ
+    )
     # Signing inputs are rejected before starting any tool, not merely ignored.
     boundary.require(
         not any(key.startswith("APPLE_") or key.startswith("TAURI_SIGNING_") for key in os.environ)
@@ -333,10 +352,14 @@ def pipeline(args):
     source = work / "native-source"
     inputs = copy_native_source(repo, source)
     boundary.write_json(work / "native-source-input-inventory.json", inputs)
+    frontend_evidence.freeze_files(
+        source, [row["path"] for row in inputs], work / "source-input-bytes"
+    )
     try:
         return compile_owned_source(source, work, args, environment)
     finally:
         verify_native_source(repo, source, inputs)
+        frontend_evidence.verify_frozen(source, work / "source-input-bytes", inputs)
         boundary.write_json(
             work / "native-source-validation.json",
             {
@@ -393,9 +416,9 @@ def compile_owned_source(repo, work, args, environment):
     )
     copy_shared_frontend_inputs(repo, work)
     copy_frontend_dependencies(args.frontend_dependencies, work / "frontend/node_modules")
-    npm = shutil.which("npm", path=environment["PATH"])
-    boundary.require(npm is not None)
-    subprocess.run([npm, "run", "build:tauri"], cwd=work / "frontend", env=environment, check=True)
+    frontend_proof = frontend_evidence.run_frontend(
+        work / "frontend", work, "acceptance", environment
+    )
     frontend = work / "frontend/out"
     inputs = boundary.inventory(frontend, boundary.tree_names(frontend))
     boundary.require(not (frontend / "desktop-acceptance-build.json").exists())
@@ -425,7 +448,15 @@ def compile_owned_source(repo, work, args, environment):
         path = work / "app-stage" / name
         path.unlink()
         boundary.write_json(path, value)
+    frontend_proof = frontend_evidence.reseal_acceptance(frontend_proof)
+    frontend_evidence.verify_frontend_proof(frontend_proof, "acceptance", frontend)
+    shutil.copyfile(boundary.regular(frontend_proof), work / "app-stage/frontend-proof.json")
     shutil.copyfile(fixture_path, work / "app-stage" / fixture_path.name)
+    stage_records = boundary.inventory(work / "app-stage", boundary.tree_names(work / "app-stage"))
+    frontend_evidence.freeze_files(
+        work / "app-stage", [row["path"] for row in stage_records], work / "stage-proof-bytes"
+    )
+    boundary.write_json(work / "stage-proof-inventory.json", stage_records)
     boundary.validate_stamp(stamp)
     cargo_metadata(
         repo,
@@ -437,6 +468,10 @@ def compile_owned_source(repo, work, args, environment):
     )
     executable = work / f"target/{args.target}/release/evidenceloom-desktop{suffix}"
     boundary.require(boundary.contains_bytes(executable, boundary.canonical(stamp)))
+    frontend_evidence.verify_frozen(
+        work / "app-stage", work / "stage-proof-bytes", stage_records, exact_tree=True
+    )
+    frontend_evidence.verify_frontend_proof(frontend_proof, "acceptance", frontend)
     return assemble_app(
         repo,
         work / "output",
@@ -445,6 +480,7 @@ def compile_owned_source(repo, work, args, environment):
         fixture_path,
         work / "app-stage/desktop-build-stamp.json",
         stamp,
+        frontend_proof,
     )
 
 
@@ -478,4 +514,4 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(frontend_evidence.supervised_entrypoint(main))

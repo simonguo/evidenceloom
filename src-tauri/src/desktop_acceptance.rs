@@ -13,7 +13,12 @@ use std::{
 use tauri::Runtime;
 
 pub(crate) mod control;
+pub(crate) mod driver;
+pub(crate) mod lifecycle;
+pub(crate) mod tasks;
 const STAMP: &str = include_str!(concat!(env!("OUT_DIR"), "/desktop-build-stamp.json"));
+const EFFECTIVE_CONFIG: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/desktop-effective-config.json"));
 const COMPILED_TARGET: &str = env!("EVIDENCELOOM_DESKTOP_TARGET");
 const MANIFEST_LIMIT: usize = 64 * 1024;
 const STAMP_LIMIT: usize = 1024 * 1024;
@@ -36,6 +41,8 @@ impl AcceptanceError {
             "acceptance_environment_invalid" => "Acceptance environment is unavailable.",
             "acceptance_runner_invalid" => "Acceptance fixture runner is invalid.",
             "acceptance_control_invalid" => "Acceptance control request is invalid.",
+            "acceptance_finish_pending" => "Acceptance finish request is pending.",
+            "acceptance_finish_failed" => "Acceptance finish request could not be recorded.",
             _ => "Desktop build proof is invalid.",
         };
         Self { code, message }
@@ -128,12 +135,16 @@ pub(crate) struct PreparedAcceptance {
     root: PathBuf,
     runner: PathBuf,
     session_id: String,
+    compiled_stamp_sha256: String,
     stamp: BuildStamp,
     controls: Arc<control::ControlState>,
 }
 impl PreparedAcceptance {
     pub(crate) fn root(&self) -> &Path {
         &self.root
+    }
+    pub(crate) fn lifecycle_identity(&self) -> (String, String) {
+        (self.session_id.clone(), self.stamp.build_id.clone())
     }
     pub(crate) fn runner(&self) -> &Path {
         &self.runner
@@ -168,6 +179,14 @@ impl PreparedAcceptance {
                 .ok_or_else(|| error("acceptance_runner_invalid"))?,
         )
     }
+    fn bootstrap_script(&self) -> Result<String, AcceptanceError> {
+        driver::initialization_script(
+            &self.session_id,
+            &self.stamp.build_id,
+            &self.compiled_stamp_sha256,
+            &self.stamp.target,
+        )
+    }
     pub(crate) fn create_window<R: Runtime>(
         &self,
         app: &tauri::App<R>,
@@ -179,7 +198,8 @@ impl PreparedAcceptance {
             .windows
             .first()
             .ok_or_else(|| error("acceptance_config_invalid"))?;
-        let window = tauri::WebviewWindowBuilder::from_config(app, config)?;
+        let window = tauri::WebviewWindowBuilder::from_config(app, config)?
+            .initialization_script(self.bootstrap_script()?);
         #[cfg(target_os = "macos")]
         let window = window.incognito(true);
         #[cfg(not(target_os = "macos"))]
@@ -469,22 +489,46 @@ fn prepare_paths(
         root,
         runner,
         session_id: manifest.session_id,
+        compiled_stamp_sha256: stamp_hash.into(),
         stamp,
         controls,
     })
+}
+fn expected_runtime_config() -> tauri::Config {
+    // Generated from the same full typed configuration as EFFECTIVE_CONFIG,
+    // using the locked SDK's ToTokens implementation rather than field copies.
+    include!(concat!(env!("OUT_DIR"), "/desktop-runtime-config.rs"))
+}
+fn verify_config_identity(
+    actual: &tauri::Config,
+    expected_runtime: &tauri::Config,
+    full_typed_raw: &str,
+    full_typed_sha256: &str,
+) -> Result<(), AcceptanceError> {
+    ensure(
+        full_typed_raw.len() <= STAMP_LIMIT
+            && sha256(full_typed_raw.as_bytes()) == full_typed_sha256,
+        "acceptance_config_invalid",
+    )?;
+    let actual = serde_json::to_value(actual).map_err(|_| error("acceptance_config_invalid"))?;
+    let expected =
+        serde_json::to_value(expected_runtime).map_err(|_| error("acceptance_config_invalid"))?;
+    let actual = crate::research_memory::canonical_json(&actual)
+        .map_err(|_| error("acceptance_config_invalid"))?;
+    let expected = crate::research_memory::canonical_json(&expected)
+        .map_err(|_| error("acceptance_config_invalid"))?;
+    ensure(actual == expected, "acceptance_config_invalid")
 }
 pub(crate) fn prepare<R: Runtime>(
     context: &mut tauri::Context<R>,
 ) -> Result<PreparedAcceptance, AcceptanceError> {
     let stamp = validate_stamp(STAMP, COMPILED_TARGET)?;
     validate_config(context.config())?;
-    let actual_config =
-        serde_json::to_value(context.config()).map_err(|_| error("acceptance_config_invalid"))?;
-    let actual_config = crate::research_memory::canonical_json(&actual_config)
-        .map_err(|_| error("acceptance_config_invalid"))?;
-    ensure(
-        sha256(format!("{actual_config}\n").as_bytes()) == stamp.effective_config_sha256,
-        "acceptance_config_invalid",
+    verify_config_identity(
+        context.config(),
+        &expected_runtime_config(),
+        EFFECTIVE_CONFIG,
+        &stamp.effective_config_sha256,
     )?;
     let asset = context
         .assets()
@@ -499,7 +543,11 @@ pub(crate) fn prepare<R: Runtime>(
         asset == serde_json::json!({"schemaVersion":1,"buildId":stamp.build_id}),
         "acceptance_build_mismatch",
     )?;
-    for command in ["checkpoint", "release_worker"] {
+    let remote = tauri::ipc::Origin::Remote {
+        url: tauri::Url::parse("https://acceptance-invalid.example")
+            .map_err(|_| error("acceptance_config_invalid"))?,
+    };
+    for command in driver::PRIVATE_COMMANDS {
         let key = format!("plugin:desktop-acceptance|{command}");
         let authority = context.runtime_authority_mut();
         ensure(
@@ -508,6 +556,9 @@ pub(crate) fn prepare<R: Runtime>(
                 .is_some()
                 && authority
                     .resolve_access(&key, "other", "other", &tauri::ipc::Origin::Local)
+                    .is_none()
+                && authority
+                    .resolve_access(&key, "main", "main", &remote)
                     .is_none(),
             "acceptance_config_invalid",
         )?;

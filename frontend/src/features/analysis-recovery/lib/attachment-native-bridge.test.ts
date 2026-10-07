@@ -11,7 +11,7 @@ import type { AnalysisTask } from "@/lib/types";
 import type { DesktopSnapshot } from "@/lib/runtime";
 import type { SnapshotStorage } from "@/features/desktop-task-store/types";
 import { nativeCommandBridge } from "../test-support/native-command-bridge";
-import { finished, gateReady, readCurrent, readRuntime, sameOrigin } from "./protocol";
+import { finished, gateReady, readAttachmentReply, readRuntime, sameOrigin } from "./protocol";
 import { deferred } from "../test-support/transport-fixture";
 import type { NativeOwner } from "../types";
 import { captureAdmission, loadRuntimeObservation, SameSessionConsumer, type ConsumerBridge } from "./consumer";
@@ -158,11 +158,17 @@ it.skipIf(!executable).each(["same-realm-stop", "fresh-realm-stop", "completion-
     expect(commands.slice(afterDisposal, commands.indexOf(reservations[1])).filter((r) => ["reserve_analysis", "start_analysis"].includes(r.command) || r.command === "save_desktop_task" && r.args.request?.expectedHead?.taskId === original.origin.taskId)).toHaveLength(0);
     expect(commands.filter((r) => r.command === "query_analysis_attachment").every((r) => r.args.requestJson === attachments[0].args.requestJson)).toBe(true);
     const beforeB = commands.slice(afterDisposal, commands.indexOf(reservations[1]));
-    expect(beforeB.some((request) => {
-      const reply = bridge.replies.find((r) => r.id === request.id)?.ok as { current?: unknown } | undefined;
-      if (!reply?.current) return false; const current = readCurrent(reply.current);
-      return current.state === "coherent" && !!current.journal && sameOrigin(current.journal.origin, original.origin) && finished(current.journal) && gateReady(current.runtime);
-    })).toBe(true);
+    // Task mutation replies carry StorageAuthority, not RecoveryCurrent.
+    // Parse every successful attachment response before choosing the retirement witness.
+    const attachmentObservations = beforeB
+      .filter((request) => ["attach_analysis_recovery", "query_analysis_attachment"].includes(request.command))
+      .map((request) => {
+        const reply = bridge.replies.find((r) => r.id === request.id);
+        return reply && Object.hasOwn(reply, "ok")
+          ? readAttachmentReply(reply.ok, JSON.parse(request.args.requestJson!), request.command === "query_analysis_attachment").current
+          : null;
+      });
+    expect(attachmentObservations.some((current) => current?.state === "coherent" && !!current.journal && sameOrigin(current.journal.origin, original.origin) && finished(current.journal) && gateReady(current.runtime))).toBe(true);
     const first = center!.tasks.find((task) => task.id === original.origin.taskId)!;
     expect(first.reportVersions).toHaveLength(scenario === "completion-listener-gap" ? 1 : 0);
     expect(center!.tasks.find((task) => task.id === nextTaskId)!.reportVersions).toHaveLength(1);

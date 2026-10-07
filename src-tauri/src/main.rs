@@ -43,6 +43,8 @@ use tauri_plugin_dialog::DialogExt;
 struct AppState {
     runtime: Arc<RuntimeState>,
     recovery: Arc<analysis_recovery::runtime::Coordinator>,
+    #[cfg(feature = "desktop-acceptance")]
+    acceptance_lifecycle: std::sync::OnceLock<Arc<desktop_acceptance::lifecycle::NativeLifecycle>>,
     auxiliary: Arc<json_command::Supervisor>,
 }
 impl Default for AppState {
@@ -53,6 +55,8 @@ impl Default for AppState {
                 runtime.clone(),
             )),
             runtime,
+            #[cfg(feature = "desktop-acceptance")]
+            acceptance_lifecycle: std::sync::OnceLock::new(),
             auxiliary: Arc::new(json_command::Supervisor::default()),
         }
     }
@@ -130,26 +134,101 @@ async fn save_desktop_settings(
     .await
 }
 
+#[cfg(feature = "desktop-acceptance")]
+#[tauri::command]
+async fn set_provider_secret(
+    app: AppHandle,
+    provider: String,
+    value: String,
+) -> Result<(), String> {
+    native_spawn_blocking(move || {
+        ApplicationEnvironment::selected(&app).set_provider_secret(&provider, &value)
+    })
+    .await
+    .map_err(|_| "Native settings operation admission is closed or unavailable.".to_string())?
+}
+#[cfg(not(feature = "desktop-acceptance"))]
 #[tauri::command]
 fn set_provider_secret(app: AppHandle, provider: String, value: String) -> Result<(), String> {
     ApplicationEnvironment::selected(&app).set_provider_secret(&provider, &value)
 }
 
+#[cfg(feature = "desktop-acceptance")]
+#[tauri::command]
+async fn delete_provider_secret(app: AppHandle, provider: String) -> Result<(), String> {
+    native_spawn_blocking(move || {
+        ApplicationEnvironment::selected(&app).delete_provider_secret(&provider)
+    })
+    .await
+    .map_err(|_| "Native settings operation admission is closed or unavailable.".to_string())?
+}
+#[cfg(not(feature = "desktop-acceptance"))]
 #[tauri::command]
 fn delete_provider_secret(app: AppHandle, provider: String) -> Result<(), String> {
     ApplicationEnvironment::selected(&app).delete_provider_secret(&provider)
 }
 
+#[cfg(feature = "desktop-acceptance")]
+#[tauri::command]
+async fn set_alpha_vantage_secret(
+    app: AppHandle,
+    provider: String,
+    value: String,
+) -> Result<(), String> {
+    native_spawn_blocking(move || {
+        let _ = provider;
+        ApplicationEnvironment::selected(&app).set_alpha_secret(&value)
+    })
+    .await
+    .map_err(|_| "Native settings operation admission is closed or unavailable.".to_string())?
+}
+#[cfg(not(feature = "desktop-acceptance"))]
 #[tauri::command]
 fn set_alpha_vantage_secret(app: AppHandle, provider: String, value: String) -> Result<(), String> {
     let _ = provider;
     ApplicationEnvironment::selected(&app).set_alpha_secret(&value)
 }
 
+#[cfg(feature = "desktop-acceptance")]
+#[tauri::command]
+async fn delete_alpha_vantage_secret(app: AppHandle, provider: String) -> Result<(), String> {
+    native_spawn_blocking(move || {
+        let _ = provider;
+        ApplicationEnvironment::selected(&app).delete_alpha_secret()
+    })
+    .await
+    .map_err(|_| "Native settings operation admission is closed or unavailable.".to_string())?
+}
+#[cfg(not(feature = "desktop-acceptance"))]
 #[tauri::command]
 fn delete_alpha_vantage_secret(app: AppHandle, provider: String) -> Result<(), String> {
     let _ = provider;
     ApplicationEnvironment::selected(&app).delete_alpha_secret()
+}
+
+#[cfg(feature = "desktop-acceptance")]
+fn native_spawn_blocking<T: Send + 'static>(
+    work: impl FnOnce() -> T + Send + 'static,
+) -> desktop_acceptance::tasks::NativeTask<T> {
+    desktop_acceptance::tasks::spawn_blocking(work)
+}
+#[cfg(not(feature = "desktop-acceptance"))]
+fn native_spawn_blocking<T: Send + 'static>(
+    work: impl FnOnce() -> T + Send + 'static,
+) -> tauri::async_runtime::JoinHandle<T> {
+    tauri::async_runtime::spawn_blocking(work)
+}
+#[cfg(feature = "desktop-acceptance")]
+fn native_spawn<T: Send + 'static>(
+    work: impl std::future::Future<Output = T> + Send + 'static,
+) -> desktop_acceptance::tasks::NativeTask<T> {
+    desktop_acceptance::tasks::spawn(work)
+}
+#[cfg(not(feature = "desktop-acceptance"))]
+fn native_spawn<T: Send + 'static>(
+    work: impl std::future::Future<Output = T> + Send + 'static,
+) -> tauri::async_runtime::JoinHandle<T> {
+    tauri::async_runtime::spawn(work)
 }
 
 async fn storage_blocking<T, F>(work: F) -> Result<T, storage::StorageError>
@@ -157,14 +236,12 @@ where
     T: Send + 'static,
     F: FnOnce() -> Result<T, storage::StorageError> + Send + 'static,
 {
-    tauri::async_runtime::spawn_blocking(work)
-        .await
-        .map_err(|_| {
-            storage::StorageError::new(
-                "storage_unknown_outcome",
-                "Native task-store operation did not return a confirmed outcome.",
-            )
-        })?
+    native_spawn_blocking(work).await.map_err(|_| {
+        storage::StorageError::new(
+            "storage_unknown_outcome",
+            "Native task-store operation did not return a confirmed outcome.",
+        )
+    })?
 }
 
 #[tauri::command]
@@ -284,7 +361,7 @@ async fn save_text_export(
     content: String,
 ) -> Result<TextExportResult, String> {
     ApplicationEnvironment::selected(&app).permit_native_dialog()?;
-    tauri::async_runtime::spawn_blocking(move || {
+    native_spawn_blocking(move || {
         let (extension, filter_name) = match format.as_str() {
             "html" => ("html", "HTML"),
             "md" => ("md", "Markdown"),
@@ -404,7 +481,7 @@ async fn load_ohlcv_chart_data(
     curr_date: String,
     payload_json: String,
 ) -> Result<Vec<OhlcvBar>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    native_spawn_blocking(move || {
         load_ohlcv_chart_data_process(app, symbol, curr_date, payload_json)
     })
     .await
@@ -558,11 +635,9 @@ async fn resolve_instrument(
     query: String,
     payload_json: String,
 ) -> Result<Value, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        resolve_instrument_process(app, query, payload_json)
-    })
-    .await
-    .map_err(|error| error.to_string())?
+    native_spawn_blocking(move || resolve_instrument_process(app, query, payload_json))
+        .await
+        .map_err(|error| error.to_string())?
 }
 
 fn resolve_instrument_process(
@@ -656,7 +731,7 @@ fn resolve_instrument_process(
 
 #[tauri::command]
 async fn test_llm_connection(app: AppHandle, payload_json: String) -> Result<Value, String> {
-    tauri::async_runtime::spawn_blocking(move || test_llm_connection_process(app, payload_json))
+    native_spawn_blocking(move || test_llm_connection_process(app, payload_json))
         .await
         .map_err(|error| error.to_string())?
 }
@@ -858,7 +933,7 @@ use analysis_recovery::{
 async fn recovery_blocking<T: Send + recovery_wire::ReplyBoundary + 'static>(
     work: impl FnOnce() -> Result<T, recovery_wire::RecoveryError> + Send + 'static,
 ) -> Result<T, recovery_wire::RecoveryError> {
-    tauri::async_runtime::spawn_blocking(move || recovery_wire::fit_reply(work()?))
+    native_spawn_blocking(move || recovery_wire::fit_reply(work()?))
         .await
         .map_err(|_| recovery_wire::RecoveryError::unavailable())?
 }
@@ -967,18 +1042,47 @@ async fn start_analysis(
         recovery.start(packet, input, wake, move |execution, publisher, input| {
             let observation = execution.ownership();
             let supervising = publisher.clone();
-            let worker = tauri::async_runtime::spawn_blocking(move || {
-                run_recovery_process(app, execution, publisher, input)
-            });
-            tauri::async_runtime::spawn(async move {
-                if worker.await.is_err() {
-                    let _ = recovery_blocking(move || {
+            #[cfg(feature = "desktop-acceptance")]
+            {
+                // This handle is admitted before run_recovery_process can prepare
+                // SQL or spawn the original child. Registry vacancy cannot retire
+                // it: Publisher.finish/automatic_cleanup must actually return.
+                let worker = native_spawn_blocking(move || {
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        run_recovery_process(app, execution, publisher, input)
+                    }));
+                    if result.is_err() {
                         recovery_runtime::joined_worker_failed(supervising, observation);
-                        Ok(())
-                    })
-                    .await;
+                    }
+                });
+                if !worker.admitted() {
+                    // Coordinator.start owns the accepted parent and performs its
+                    // original failure fallback before that parent can retire.
+                    return Err(recovery_wire::RecoveryError::fixed(
+                        "analysis_worker_failed",
+                    ));
                 }
-            });
+                // If close races this awaiter admission, dropping the awaiter
+                // leaves the actual child handle retained in NativeTasks.
+                std::mem::drop(native_spawn(async move {
+                    let _ = worker.await;
+                }));
+            }
+            #[cfg(not(feature = "desktop-acceptance"))]
+            {
+                let worker = native_spawn_blocking(move || {
+                    run_recovery_process(app, execution, publisher, input)
+                });
+                native_spawn(async move {
+                    if worker.await.is_err() {
+                        let _ = recovery_blocking(move || {
+                            recovery_runtime::joined_worker_failed(supervising, observation);
+                            Ok(())
+                        })
+                        .await;
+                    }
+                });
+            }
             Ok(())
         })
     })
@@ -1080,7 +1184,7 @@ async fn reserve_analysis_owner(
     runtime: Arc<RuntimeState>,
     task_id: String,
 ) -> Result<String, AnalysisCommandError> {
-    tauri::async_runtime::spawn_blocking(move || runtime.reserve(task_id))
+    native_spawn_blocking(move || runtime.reserve(task_id))
         .await
         .map_err(|_| AnalysisCommandError::from("Analysis reservation failed.".to_string()))?
         .map_err(Into::into)
@@ -1092,11 +1196,15 @@ async fn check_runtime(
     python_path_override: Option<String>,
     project_root: Option<String>,
 ) -> Result<RuntimeCheck, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        check_runtime_process(app, python_path_override, project_root)
+    native_spawn_blocking(move || {
+        Ok::<RuntimeCheck, String>(check_runtime_process(
+            app,
+            python_path_override,
+            project_root,
+        ))
     })
     .await
-    .map_err(|_| "Runtime diagnostics could not be completed.".to_string())
+    .map_err(|_| "Runtime diagnostics could not be completed.".to_string())?
 }
 
 #[tauri::command]
@@ -1107,7 +1215,7 @@ async fn get_research_memory_inventory(
     project_root: Option<String>,
 ) -> Result<Value, String> {
     research_memory::validate_requested_ids(&decision_ids)?;
-    tauri::async_runtime::spawn_blocking(move || {
+    native_spawn_blocking(move || {
         let dependencies = ApplicationEnvironment::selected(&app);
         let external = allow_external_runner_paths(&dependencies);
         if !external
@@ -1151,7 +1259,19 @@ async fn get_research_memory_inventory(
             command
         };
         command.env("PYTHONPATH", build_pythonpath(&dependencies, &repo_root));
-        research_memory_inventory::read_in_environment(command, &decision_ids, &dependencies)
+        #[cfg(feature = "desktop-acceptance")]
+        {
+            research_memory_inventory::read_owned(
+                command,
+                &decision_ids,
+                &dependencies,
+                &app.state::<AppState>().auxiliary,
+            )
+        }
+        #[cfg(not(feature = "desktop-acceptance"))]
+        {
+            research_memory_inventory::read_in_environment(command, &decision_ids, &dependencies)
+        }
     })
     .await
     .map_err(|_| "Research memory inventory could not be read.".to_string())?
@@ -1185,12 +1305,20 @@ fn check_runtime_process(
     let (python_exists, runner_exists, python_version, can_import_trading_agents, import_error) =
         if runtime_probe::uses_sidecar(&mode, sidecar_real) {
             let result = if sidecar_real {
-                runtime_probe::probe_sidecar_in_environment(
+                #[cfg(feature = "desktop-acceptance")]
+                let probe = runtime_probe::probe_owned(
                     &dependencies,
                     sidecar.as_deref().expect("real sidecar has a path"),
                     &runtime_work_dir(&dependencies, Some(&app), &repo_root),
-                )
-                .map_err(|error| error.message().to_string())
+                    &app.state::<AppState>().auxiliary,
+                );
+                #[cfg(not(feature = "desktop-acceptance"))]
+                let probe = runtime_probe::probe_sidecar_in_environment(
+                    &dependencies,
+                    sidecar.as_deref().expect("real sidecar has a path"),
+                    &runtime_work_dir(&dependencies, Some(&app), &repo_root),
+                );
+                probe.map_err(|error| error.message().to_string())
             } else {
                 Err(
                     "Sidecar binary not found or is a placeholder. Run scripts/build_tauri_sidecar.sh first."
@@ -1232,11 +1360,19 @@ fn check_runtime_process(
             }
 
             let python_version = if python_exists {
-                command_output(&dependencies, &python, &["--version"], &repo_root, false)
-                    .unwrap_or_else(|error| {
-                        errors.push(format!("Failed to read Python version: {error}"));
-                        String::new()
-                    })
+                command_output(
+                    &dependencies,
+                    &python,
+                    &["--version"],
+                    &repo_root,
+                    false,
+                    #[cfg(feature = "desktop-acceptance")]
+                    &app.state::<AppState>().auxiliary,
+                )
+                .unwrap_or_else(|error| {
+                    errors.push(format!("Failed to read Python version: {error}"));
+                    String::new()
+                })
             } else {
                 String::new()
             };
@@ -1248,6 +1384,8 @@ fn check_runtime_process(
                     &["-c", "import tradingagents; print('ok')"],
                     &repo_root,
                     true,
+                    #[cfg(feature = "desktop-acceptance")]
+                    &app.state::<AppState>().auxiliary,
                 )
             } else {
                 Err("Python executable is missing".to_string())
@@ -1721,6 +1859,7 @@ fn command_output(
     args: &[&str],
     repo_root: &Path,
     with_pythonpath: bool,
+    #[cfg(feature = "desktop-acceptance")] supervisor: &json_command::Supervisor,
 ) -> Result<String, String> {
     let mut command = Command::new(command_path);
     command.args(args).current_dir(repo_root);
@@ -1728,6 +1867,17 @@ fn command_output(
         command.env("PYTHONPATH", build_pythonpath(dependencies, repo_root));
     }
     dependencies.configure_command(&mut command)?;
+    #[cfg(feature = "desktop-acceptance")]
+    let output = supervisor
+        .execute_native_read(
+            json_command::CommandKind::PythonDiagnostic,
+            command,
+            None,
+            std::time::Duration::from_secs(90),
+            64 * 1024,
+        )
+        .map_err(|_| "Runtime diagnostic cleanup could not be completed.".to_string())?;
+    #[cfg(not(feature = "desktop-acceptance"))]
     let output = command.output().map_err(|error| error.to_string())?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
@@ -1932,8 +2082,14 @@ fn path_delimiter() -> &'static str {
     }
 }
 
+// Share one SDK macro definition so its macOS plist is embedded once per crate.
+// Each call still creates a fresh real Context with the locked SDK configuration.
+fn generated_desktop_context() -> tauri::Context<tauri::Wry> {
+    tauri::generate_context!()
+}
+
 fn main() {
-    let mut context = tauri::generate_context!();
+    let mut context = generated_desktop_context();
     #[cfg(not(feature = "desktop-acceptance"))]
     validate_default_build_stamp(include_str!(concat!(
         env!("OUT_DIR"),
@@ -1954,19 +2110,48 @@ fn main() {
     let builder = builder
         .manage(prepared.controls())
         .plugin(desktop_acceptance::plugin());
-    builder
+    let builder = builder
         .manage(environment)
         .setup(move |app| {
             #[cfg(feature = "desktop-acceptance")]
             prepared.recheck()?;
+            #[cfg(feature = "desktop-acceptance")]
+            {
+                let state = app.state::<AppState>();
+                let (session_id, build_id) = prepared.lifecycle_identity();
+                let tasks = Arc::new(desktop_acceptance::tasks::NativeTasks::default());
+                desktop_acceptance::tasks::install(tasks.clone()).map_err(|_| {
+                    desktop_acceptance::AcceptanceError::fixed("acceptance_finish_failed")
+                })?;
+                let lifecycle = desktop_acceptance::lifecycle::NativeLifecycle::new(
+                    desktop_acceptance::lifecycle::LifecycleIdentity {
+                        root: prepared.root().join("control"),
+                        session_id,
+                        build_id,
+                    },
+                    state.recovery.clone(),
+                    state.auxiliary.clone(),
+                    prepared.controls(),
+                    recovery_wake(app.handle()),
+                    tasks,
+                );
+                state
+                    .acceptance_lifecycle
+                    .set(lifecycle.clone())
+                    .map_err(|_| {
+                        desktop_acceptance::AcceptanceError::fixed("acceptance_finish_failed")
+                    })?;
+                let handle = app.handle().clone();
+                lifecycle.start(Arc::new(move |code| handle.exit(code)))?;
+            }
             let coordinator = app.state::<AppState>().recovery.clone();
             let backend = Arc::new(storage::AppJournalBackend::new(app.handle().clone()));
             let initializing = coordinator.clone();
-            let work = tauri::async_runtime::spawn_blocking(move || {
+            let work = native_spawn_blocking(move || {
                 let epoch = recovery_runtime::entropy_epoch()?;
                 initializing.initialize(backend, epoch)
             });
-            tauri::async_runtime::spawn(async move {
+            native_spawn(async move {
                 match work.await {
                     Ok(Ok(())) => {}
                     Ok(Err(error)) => coordinator.initialization_failed(&error.code),
@@ -2012,9 +2197,60 @@ fn main() {
             import_legacy_desktop_data,
             import_legacy_desktop_tasks,
             query_desktop_task_mutation
-        ])
+        ]);
+    #[cfg(not(feature = "desktop-acceptance"))]
+    builder
         .run(context)
         .expect("error while running Evidence Loom desktop app");
+    #[cfg(feature = "desktop-acceptance")]
+    {
+        let app = builder
+            .build(context)
+            .expect("error while building acceptance app");
+        // setup runs at RuntimeRunEvent::Ready, not during Builder::build. Keep
+        // the original AppHandle and read its actual initialized State after return.
+        let original_app = app.handle().clone();
+        let returned_code = app.run_return(|app, event| {
+            use desktop_acceptance::lifecycle::Cause;
+            let state = app.state::<AppState>();
+            match event {
+                tauri::RunEvent::WindowEvent {
+                    label,
+                    event: tauri::WindowEvent::CloseRequested { api, .. },
+                    ..
+                } if label == "main" => {
+                    // Do not destroy the renderer/event loop ahead of known cleanup.
+                    api.prevent_close();
+                    if let Some(lifecycle) = state.acceptance_lifecycle.get() {
+                        lifecycle.request(Cause::WindowClose);
+                    }
+                }
+                tauri::RunEvent::ExitRequested { api, .. } => {
+                    if let Some(lifecycle) = state.acceptance_lifecycle.get() {
+                        if !lifecycle.exit_authorized() {
+                            api.prevent_exit();
+                            lifecycle.request(Cause::ExitRequested);
+                        }
+                    } else {
+                        api.prevent_exit();
+                    }
+                }
+                _ => {}
+            }
+        });
+        // An abnormal event-loop return must never fall through to Rust main's
+        // implicit exit(0). This failure path is not a graceful cleanup certificate.
+        let authorized_code = original_app
+            .state::<AppState>()
+            .acceptance_lifecycle
+            .get()
+            .and_then(|lifecycle| lifecycle.authorized_exit_code());
+        std::process::exit(if authorized_code == Some(returned_code) {
+            returned_code
+        } else {
+            1
+        });
+    }
 }
 
 #[cfg(test)]
@@ -2023,6 +2259,8 @@ mod tests {
 
     #[test]
     fn task_mutation_storage_future_yields_while_native_coordinator_is_locked() {
+        #[cfg(feature = "desktop-acceptance")]
+        desktop_acceptance::tasks::install_for_command_unit_tests();
         use std::{future::Future, sync::mpsc, task::Poll};
         let coordinator = storage::task_mutation::coordinator();
         let (witness, observed) = mpsc::channel();
@@ -2051,6 +2289,8 @@ mod tests {
 
     #[test]
     fn analysis_execution_reservation_yields_while_clear_callback_holds_admission() {
+        #[cfg(feature = "desktop-acceptance")]
+        desktop_acceptance::tasks::install_for_command_unit_tests();
         use std::{future::Future, sync::mpsc, task::Poll};
         let runtime = Arc::new(RuntimeState::default());
         let clearing = runtime.clone();

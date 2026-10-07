@@ -102,6 +102,7 @@ export default function Page() {
                   return (
                     <tr
                       key={task.id}
+                      data-task-id={task.id}
                       role="link"
                       tabIndex={0}
                       className="group cursor-pointer transition hover:bg-zinc-950/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-700"

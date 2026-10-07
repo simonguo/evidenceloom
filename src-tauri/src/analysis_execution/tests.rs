@@ -66,9 +66,13 @@ impl Fixture {
             .stdout(Stdio::piped())
             .stderr(Stdio::null());
         let process = OwnedProcess::spawn_owned(command, Instant::now() + CLEANUP_TIMEOUT)
-            .unwrap_or_else(|failure| panic!("fixture spawn failed: {}", failure.error));
+            .unwrap_or_else(|failure| panic!("fixture spawn failed: {}", failure._error));
         until(|| {
-            self.directory.join("ready").exists() && self.directory.join("heartbeat").exists()
+            self.directory.join("ready").exists()
+                && fs::read_to_string(self.directory.join("heartbeat"))
+                    .ok()
+                    .and_then(|s| s.lines().rev().find_map(|line| line.parse::<u64>().ok()))
+                    .is_some()
         });
         process
     }
@@ -875,4 +879,33 @@ fn repeat_finish_never_acknowledges_unfinished_cleanup() {
     assert!(retained);
     third.unwrap();
     assert!(registry.active.lock().unwrap().is_none());
+}
+
+// UNEXECUTED lifecycle draft regressions.
+#[test]
+fn closed_admission_blocks_unclaimed_start_and_all_later_reservations() {
+    let registry = Arc::new(Registry::default());
+    let run = registry.reserve("fiction".into()).unwrap();
+    let captured = registry.close_admission().unwrap();
+    assert!(registry.start("fiction", &run).is_err());
+    assert!(registry.reserve("successor".into()).is_err());
+    assert!(captured.retained());
+    registry
+        .cancel("fiction", &run)
+        .unwrap()
+        .wait(Instant::now() + CLEANUP_TIMEOUT)
+        .unwrap();
+    assert!(!captured.retained());
+    assert!(registry.reserve("after-cleanup".into()).is_err());
+}
+#[test]
+fn closure_retains_original_started_handle_witness_until_guard_retirement() {
+    let registry = Arc::new(Registry::default());
+    let run = registry.reserve("fiction".into()).unwrap();
+    let mut guard = registry.start("fiction", &run).unwrap();
+    let witness = registry.close_admission().unwrap();
+    assert!(witness.retained());
+    guard.finish(Instant::now() + CLEANUP_TIMEOUT).unwrap();
+    assert!(!witness.retained());
+    assert!(registry.reserve("different-purpose".into()).is_err());
 }

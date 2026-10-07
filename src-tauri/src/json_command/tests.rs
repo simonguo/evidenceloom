@@ -275,13 +275,89 @@ fn record_running_join(directory: &Path, panicked: bool, cached: bool) -> io::Re
     )
 }
 
+struct DiagnosticCapture {
+    trace: Arc<WorkerTrace>,
+    attached: Receiver<OwnershipObservation>,
+    observation: Option<OwnershipObservation>,
+    attached_state: &'static str,
+    observed_exit: Receiver<ExitStatus>,
+    exit: Option<ExitStatus>,
+    exit_state: &'static str,
+}
+impl DiagnosticCapture {
+    fn snapshot(&mut self) -> Value {
+        if self.observation.is_none() {
+            match self.attached.try_recv() {
+                Ok(exact) => {
+                    self.observation = Some(exact);
+                    self.attached_state = "received";
+                }
+                Err(TryRecvError::Empty) => self.attached_state = "empty",
+                Err(TryRecvError::Disconnected) => self.attached_state = "disconnected",
+            }
+        }
+        if self.exit.is_none() {
+            match self.observed_exit.try_recv() {
+                Ok(status) => {
+                    self.exit = Some(status);
+                    self.exit_state = "received";
+                }
+                Err(TryRecvError::Empty) => self.exit_state = "empty",
+                Err(TryRecvError::Disconnected) => self.exit_state = "disconnected",
+            }
+        }
+        json!({
+            "trace":self.trace.snapshot(),
+            "attachedWitnessState":self.attached_state,
+            "exactAttachedOwnerRetained":self.observation.as_ref().map(OwnershipObservation::retained),
+            "observedExitWitnessState":self.exit_state,
+            "originalChildExit":self.exit.as_ref().map(|status| json!({
+                "status":format!("{status:?}"),"code":status.code(),"success":status.success()
+            })),
+            "cleanupCertified":false
+        })
+    }
+}
+
 struct Running {
     result: Receiver<Result<Output, CommandFailure>>,
     cached_result: Option<Result<Output, CommandFailure>>,
     handle: Option<JoinHandle<()>>,
     directory: PathBuf,
+    diagnostic: Option<DiagnosticCapture>,
 }
 impl Running {
+    fn record_diagnostic(&mut self, cut: &str, joined: bool, panicked: bool) {
+        if let Some(diagnostic) = &mut self.diagnostic {
+            let value = json!({
+                "fixtureDirectory":self.directory,
+                "cut":cut,
+                "diagnostic":diagnostic.snapshot(),
+                "readyObserved":self.directory.join("ready").exists(),
+                "inputObserved":self.directory.join("input").exists(),
+                "originalResultCached":self.cached_result.as_ref().map(running_result_summary),
+                "callerHandleFinished":self.handle.as_ref().map(JoinHandle::is_finished),
+                "actualOriginalCallerJoinObserved":joined,
+                "callerPanicked":panicked,
+                "cleanupCertified":false
+            });
+            let bytes = value.to_string();
+            if bytes.len() > 8192 {
+                eprintln!("owned worker diagnostic byte limit exceeded");
+                return;
+            }
+            if let Err(error) = fs::write(
+                self.directory.join(format!("worker-diagnostic-{cut}.json")),
+                bytes,
+            ) {
+                eprintln!(
+                    "owned worker diagnostic evidence write failed: {:?}",
+                    error.kind()
+                );
+            }
+        }
+    }
+
     fn peek_result(&mut self) -> Result<Option<&Result<Output, CommandFailure>>, TryRecvError> {
         if self.cached_result.is_none() {
             match self.result.try_recv() {
@@ -301,6 +377,7 @@ impl Running {
             .unwrap_or_else(|| self.result.recv_timeout(Duration::from_secs(12)).unwrap());
         let joined = self.handle.take().unwrap().join();
         record_running_join(&self.directory, joined.is_err(), cached).unwrap();
+        self.record_diagnostic("caller-join", true, joined.is_err());
         joined.unwrap();
         result
     }
@@ -319,6 +396,7 @@ impl Drop for Running {
                     error.kind()
                 );
             }
+            self.record_diagnostic("caller-join", true, joined.is_err());
         }
     }
 }
@@ -355,6 +433,7 @@ fn launch_command(
         cached_result: None,
         handle: Some(handle),
         directory,
+        diagnostic: None,
     }
 }
 
@@ -367,6 +446,7 @@ fn launch_with_setup(
     setup: WorkerSetup,
 ) -> Running {
     let supervisor = supervisor.clone();
+    let trace = setup.trace.clone();
     let command = fixture.command(mode);
     let directory = fixture.directory.clone();
     let result_directory = directory.clone();
@@ -379,6 +459,7 @@ fn launch_with_setup(
             policy,
             setup,
         );
+        diagnostic_mark(&trace, "caller_result_returned");
         record_running_result(&result_directory, &outcome);
         let _ = send.send(outcome);
     });
@@ -387,6 +468,7 @@ fn launch_with_setup(
         cached_result: None,
         handle: Some(handle),
         directory,
+        diagnostic: None,
     }
 }
 
@@ -845,12 +927,47 @@ fn healthy_same_purpose_chart_requests_overlap_without_superseding() {
 fn full_pool_rejects_a_ninth_request_without_cancelling_the_eight() {
     let supervisor = Arc::new(Supervisor::default());
     let fixtures: Vec<_> = (0..MAX_OWNERS).map(|_| Fixture::new()).collect();
+    let diagnostic_epoch = Instant::now();
     let mut running: Vec<_> = fixtures
         .iter()
-        .map(|fixture| launch(&supervisor, fixture, "gate", Some(json!({})), policy()))
+        .map(|fixture| {
+            let trace = Arc::new(WorkerTrace::new(diagnostic_epoch));
+            trace.mark("test_launch");
+            let (attached, observation) = mpsc::channel();
+            let (exited, status) = mpsc::channel();
+            let mut running = launch_with_setup(
+                &supervisor,
+                fixture,
+                "gate",
+                Some(json!({})),
+                policy(),
+                WorkerSetup {
+                    attached: Some(attached),
+                    observed_exit: Some(exited),
+                    trace: Some(trace.clone()),
+                    ..WorkerSetup::default()
+                },
+            );
+            running.diagnostic = Some(DiagnosticCapture {
+                trace,
+                attached: observation,
+                observation: None,
+                attached_state: "not-polled",
+                observed_exit: status,
+                exit: None,
+                exit_state: "not-polled",
+            });
+            running
+        })
         .collect();
-    for (fixture, operation) in fixtures.iter().zip(&mut running) {
-        fixture.await_ready_with_running(operation).unwrap();
+    for (index, fixture) in fixtures.iter().enumerate() {
+        let ready = fixture.await_ready_with_running(&mut running[index]);
+        if ready.is_err() {
+            for operation in &mut running {
+                operation.record_diagnostic("ready-failure-cut", false, false);
+            }
+        }
+        ready.unwrap();
     }
     let ninth = Fixture::new();
     let started = Instant::now();
@@ -1271,4 +1388,17 @@ fn cancellation_before_spawn_does_not_forget_the_admitted_owner() {
     assert_eq!(error.cause, Cause::Cancelled);
     assert!(!error.cleanup_pending);
     assert_eq!(owner_count(&supervisor), 0);
+}
+
+// UNEXECUTED: no new command purpose or replacement Registry is introduced.
+#[test]
+fn closed_auxiliary_pool_rejects_new_admission_after_empty_cleanup() {
+    let supervisor = Supervisor::default();
+    supervisor.close_admission();
+    assert!(supervisor.admit(CommandKind::Instrument).is_err());
+    supervisor
+        .cleanup_all(Instant::now() + CLEANUP_TIMEOUT)
+        .unwrap();
+    assert!(supervisor.admit(CommandKind::Chart).is_err());
+    assert!(supervisor.admit(CommandKind::ConnectionTest).is_err());
 }

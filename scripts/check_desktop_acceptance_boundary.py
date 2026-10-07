@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import stat
 import subprocess
+import shutil
 import sys
 
 if __package__:
@@ -374,6 +375,7 @@ def build_shipping_sidecar(repo, target, python, proof_path, base_commit):
     A hash-only relabel command is deliberately unavailable. This function is
     not invoked by unit validation; subprocess boundaries are mocked there.
     """
+    require("EVIDENCELOOM_DESKTOP_FRONTEND_ENTRY" not in os.environ)
     repo = Path(repo).resolve(strict=True)
     require(target in SIDECAR_TARGETS and re.fullmatch(r"[0-9a-f]{40}", base_commit))
     before = source_binding(repo)
@@ -446,9 +448,21 @@ def verify_sidecar(repo, target, binary, proof):
 
 
 def prepare_shipping(
-    repo, directory, target, base_commit, sidecar, sidecar_input, overlay, typed_config
+    repo,
+    directory,
+    target,
+    base_commit,
+    sidecar,
+    sidecar_input,
+    overlay,
+    typed_config,
+    frontend_proof,
 ):
     repo, directory = Path(repo).resolve(strict=True), Path(directory)
+    import desktop_frontend_evidence as frontend_evidence
+
+    frontend_evidence.reject_shipping_selector(os.environ)
+    frontend_evidence.verify_frontend_proof(frontend_proof, "normal", repo / "frontend/out")
     verify_sidecar(repo, target, sidecar, load_json(sidecar_input))
     require(load_json(sidecar_input)["baseCommit"] == base_commit)
     require(not directory.exists())
@@ -492,6 +506,19 @@ def prepare_shipping(
     ]:
         write_json(directory / name, value)
     write_json(directory / "sidecar-input.json", load_json(sidecar_input))
+    shutil.copyfile(regular(frontend_proof), directory / "frontend-proof.json")
+    write_json(
+        directory / "frontend-proof-origin.json",
+        {"path": str(Path(frontend_proof).resolve(strict=True))},
+    )
+    frontend_evidence.freeze_files(
+        repo, [row["path"] for row in source], directory / "source-input-bytes"
+    )
+    write_json(directory / "source-proof-origin.json", {"path": str(repo)})
+    proof_names = [path.name for path in directory.iterdir() if path.is_file()]
+    proof_records = inventory(directory, sorted(proof_names))
+    frontend_evidence.freeze_files(directory, sorted(proof_names), directory / "stage-proof-bytes")
+    write_json(directory / "stage-proof-inventory.json", proof_records)
     return stamp
 
 
@@ -532,7 +559,27 @@ def seal_build(directory, executable, bundle=None):
     actual inventory remains sealed in artifacts.
     """
     directory = Path(directory)
+    import desktop_frontend_evidence as frontend_evidence
+
+    frontend_evidence.reject_shipping_selector(os.environ)
     stamp = validate_stamp(load_json(directory / "desktop-build-stamp.json"), shipping=True)
+    if bundle:
+        require("apple-darwin" in stamp["target"])
+        require(
+            Path(executable).resolve()
+            == (Path(bundle) / "Contents/MacOS/evidenceloom-desktop").resolve()
+        )
+    proof_records = load_json(directory / "stage-proof-inventory.json")
+    frontend_evidence.verify_frozen(directory, directory / "stage-proof-bytes", proof_records)
+    source_root = load_json(directory / "source-proof-origin.json")["path"]
+    frontend_evidence.verify_frozen(
+        source_root,
+        directory / "source-input-bytes",
+        load_json(directory / "source-inventory.json"),
+    )
+    original_frontend_proof = load_json(directory / "frontend-proof-origin.json")["path"]
+    frontend_evidence.same_bytes(original_frontend_proof, directory / "frontend-proof.json")
+    frontend_evidence.verify_frontend_proof(original_frontend_proof, "normal")
     # The native entry point retains and uses these exact compiled bytes.
     require(contains_bytes(executable, canonical(stamp)))
     require(not any(contains_bytes(executable, term.encode()) for term in FORBIDDEN))
@@ -745,6 +792,7 @@ def remote_set(proof_path, listing_path):
 
 
 def main():
+    require("EVIDENCELOOM_DESKTOP_FRONTEND_ENTRY" not in os.environ)
     parser = argparse.ArgumentParser(description=__doc__)
     subs = parser.add_subparsers(dest="command", required=True)
     for command in ("build-shipping-sidecar", "sidecar-check", "prepare-shipping"):
@@ -757,6 +805,7 @@ def main():
             p.add_argument("--directory", required=True)
             p.add_argument("--overlay")
             p.add_argument("--typed-config", required=True)
+            p.add_argument("--frontend-proof", required=True)
         elif command == "build-shipping-sidecar":
             p.add_argument("--python", required=True)
     p = subs.add_parser("seal-build")
@@ -799,6 +848,7 @@ def main():
                 args.proof,
                 overlay,
                 args.typed_config,
+                args.frontend_proof,
             )
         elif args.command == "seal-build":
             seal_build(args.directory, args.executable, args.bundle)

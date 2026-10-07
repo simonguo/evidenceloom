@@ -2,5 +2,5 @@
   "identifier": "desktop-acceptance",
   "description": "Bounded local acceptance control for the main window only.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-start-dragging", "desktop-acceptance:allow-checkpoint", "desktop-acceptance:allow-release-worker"]
+  "permissions": ["core:default", "core:window:allow-start-dragging", "desktop-acceptance:allow-checkpoint", "desktop-acceptance:allow-release-worker", "desktop-acceptance:allow-driver-report", "desktop-acceptance:allow-finish-session"]
 }
