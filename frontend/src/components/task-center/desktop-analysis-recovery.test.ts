@@ -7,10 +7,10 @@ import { TaskQueuePanel } from "./queue/TaskQueuePanel";
 import { AppShell } from "./AppShell";
 import { defaultGlobalSettings } from "@/lib/analysis";
 import * as runtimeAdapter from "@/lib/runtime";
-import { task, runtime, envelope } from "@/features/analysis-recovery/test-support/fixtures";
+import { task, runtime, envelope, header, summary } from "@/features/analysis-recovery/test-support/fixtures";
 import { deferred, transportFixture } from "@/features/analysis-recovery/test-support/transport-fixture";
 import { recoveryMessages } from "@/features/analysis-recovery/lib/protocol";
-import type { AdmissionRequest, RecoveryCurrent } from "@/features/analysis-recovery/types";
+import type { AdmissionRequest, RecoveryCurrent, RecoverySnapshot } from "@/features/analysis-recovery/types";
 import type { AnalysisTask } from "@/lib/types";
 import type { TaskHead, TaskMutationRequest } from "@/features/desktop-task-store/types";
 
@@ -24,6 +24,8 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
   let rows: Map<string, AnalysisTask>, heads: Map<string, TaskHead>, active: ReturnType<typeof transportFixture> | undefined;
   let configure: ((fixture: ReturnType<typeof transportFixture>, id: string) => void) | undefined, rejectId: string | undefined, cleanupFailureId: string | undefined, loadFailure: boolean;
   let refreshFailure: boolean, recoveryLoads: number;
+  let recoveryOverride: RecoverySnapshot | undefined, recoveryRead: Promise<void> | undefined;
+  let desktopRead: Promise<void> | undefined;
   let collection: { collectionId: string; epoch: string };
   const calls = (command: string) => ipc.invoke.mock.calls.filter(([name]) => name === command);
   function authority() { return { collection, heads: [...heads.values()] }; }
@@ -46,11 +48,11 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
     vi.stubGlobal("crypto", webcrypto); vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true); localStorage.clear();
     const initial = ["owned-A", "owned-B"].map((id, index) => ({ ...task(), id, status: "queued" as const, queueOrder: index + 1, queuedAt: "2026-01-01T00:00:00.000Z" }));
     collection = { collectionId: "a".repeat(64), epoch: "0" }; rows = new Map(initial.map((row) => [row.id, row])); heads = new Map(initial.map((row) => [row.id, { taskId: row.id, generation: "1", revision: "1", state: "live" }])); active = undefined; configure = undefined; rejectId = undefined; cleanupFailureId = undefined; loadFailure = false;
-    refreshFailure = false; recoveryLoads = 0;
+    refreshFailure = false; recoveryLoads = 0; recoveryOverride = undefined; recoveryRead = undefined; desktopRead = undefined;
     Object.defineProperty(window, "__TAURI_INTERNALS__", { value: { invoke: (command: string, args: Record<string, unknown>) => ipc.invoke(command, args) }, configurable: true });
     ipc.listen.mockReset().mockResolvedValue(vi.fn()); ipc.invoke.mockReset().mockImplementation(async (command, args) => {
-      if (command === "load_desktop_data") return { settings: { ...defaultGlobalSettings(), systemLanguage: "en" }, tasks: [...rows.values()], storage: { ...authority(), legacyTaskImportAllowed: false } };
-      if (command === "load_analysis_recovery") { recoveryLoads += 1; if (loadFailure || refreshFailure && recoveryLoads > 1) throw new Error("Owned native runtime unavailable"); return { recoveryProtocolVersion: 1, storage: { ...authority(), legacyTaskImportAllowed: false }, tasks: [...rows.values()], journals: [], clearBlockers: [], runtime: runtime(), coherent: true }; }
+      if (command === "load_desktop_data") { const saved = { settings: { ...defaultGlobalSettings(), systemLanguage: "en" }, tasks: [...rows.values()], storage: { ...authority(), legacyTaskImportAllowed: false } }; await desktopRead; return saved; }
+      if (command === "load_analysis_recovery") { recoveryLoads += 1; await recoveryRead; if (loadFailure || refreshFailure && recoveryLoads > 1) throw new Error("Owned native runtime unavailable"); return recoveryOverride ?? { recoveryProtocolVersion: 1, storage: { ...authority(), legacyTaskImportAllowed: false }, tasks: [...rows.values()], journals: [], clearBlockers: [], runtime: runtime(), coherent: true }; }
       if (command === "save_desktop_task") return sql(args.request);
       if (command === "query_desktop_task_mutation") return { scope: "sql", receipt: null, rejection: null, current: authority() };
       if (command === "reserve_analysis") {
@@ -92,6 +94,97 @@ describe("desktop analysis recovery through the actual Provider and queue", () =
     await act(async () => expect(center.queueTask(failed.id, center.getTask(failed.id))).toBe(true));
     await settled(() => expect(center.getTask(failed.id)?.status).toBe("completed"));
     expect(calls("start_analysis")).toHaveLength(1); expect(center.getTask(failed.id)?.error).toBe("");
+  });
+  it("shows pending and an interrupted-run result after a real refresh without releasing the queue or changing saved reports", async () => {
+    const saved = { ...task(), id: "owned-A", status: "completed" as const, reportSections: { ...task().reportSections, market_report: "Owned retained fictional report" } };
+    rows = new Map([[saved.id, saved]]); heads.delete("owned-B");
+    const interrupted = { ...summary(header(), "118", "104"), historyState: "interrupted" as const, cleanupState: "failed" as const };
+    recoveryOverride = { recoveryProtocolVersion: 1, storage: { ...authority(), legacyTaskImportAllowed: false }, tasks: [saved], journals: [interrupted], clearBlockers: [], runtime: { ...runtime(), runtimeEpoch: "9".repeat(64), journalGate: "blocked", blockers: [{ code: "analysis_interrupted", origin: interrupted.origin, journalId: interrupted.journalId }] }, coherent: true };
+    await mount(); expect(center.nativeAnalysis?.taskId).toBeNull();
+    const barrier = deferred<void>(); recoveryRead = barrier.promise;
+    const before = recoveryLoads, originalReport = center.getTask(saved.id)?.reportSections.market_report;
+    const refresh = [...element.querySelectorAll("button")].find((button) => button.textContent === "Refresh analysis state")!;
+    let pending!: Promise<void>;
+    await act(async () => { refresh.click(); pending = center.retryNativeResult(); });
+    expect(recoveryLoads).toBe(before + 1);
+    const checking = [...element.querySelectorAll("button")].find((button) => button.textContent === "Checking analysis state…")!;
+    expect(checking.disabled).toBe(true); expect(checking.getAttribute("aria-busy")).toBe("true");
+    expect(element.querySelector('[role="status"]')?.textContent).toBe("Checking analysis state…");
+    await act(async () => { barrier.resolve(); await pending; });
+    expect(element.querySelector('[role="status"]')?.textContent).toContain("previous run was interrupted");
+    expect(center.notice).toContain("Saved reports are retained"); expect(center.nativeAnalysis?.refreshing).toBe(false);
+    expect(center.nativeAnalysis?.refreshOutcome).toBe("interrupted");
+    expect(center.getTask(saved.id)?.reportSections.market_report).toBe(originalReport);
+    expect(interrupted).toMatchObject({ latestSeq: "118", appliedSeq: "104", sealedThroughSeq: null, cleanupState: "failed" });
+    expect(calls("reserve_analysis")).toHaveLength(0); expect(calls("start_analysis")).toHaveLength(0);
+    expect(calls("stop_analysis")).toHaveLength(0); expect(calls("commit_analysis_projection")).toHaveLength(0);
+  });
+  it("distinguishes an unavailable refresh from a successful retry and clears the recovery controls only after confirmation", async () => {
+    const failed = { ...task(), id: "owned-A", status: "error" as const };
+    rows = new Map([[failed.id, failed]]); heads.delete("owned-B"); refreshFailure = true;
+    await mount();
+    const before = recoveryLoads;
+    await act(async () => [...element.querySelectorAll("button")].find((button) => button.textContent === "Refresh analysis state")!.click());
+    expect(recoveryLoads).toBe(before + 1);
+    expect(element.querySelector('[role="status"]')?.textContent).toContain("Refresh failed");
+    expect(center.nativeAnalysis?.refreshOutcome).toBe("unavailable");
+    refreshFailure = false;
+    await act(async () => [...element.querySelectorAll("button")].find((button) => button.textContent === "Refresh analysis state")!.click());
+    await settled(() => expect(center.nativeAnalysis).toBeNull());
+    expect(center.notice).toBe(""); expect(element.querySelector('[role="status"]')).toBeNull();
+    expect(calls("reserve_analysis")).toHaveLength(0); expect(calls("start_analysis")).toHaveLength(0);
+  });
+  it("dismisses a pending refresh without releasing its gate, and reopens the latest result from the header", async () => {
+    const saved = { ...task(), id: "owned-A", status: "completed" as const };
+    rows = new Map([[saved.id, saved]]); heads.delete("owned-B");
+    const interrupted = { ...summary(header(), "118", "104"), historyState: "interrupted" as const, cleanupState: "failed" as const };
+    recoveryOverride = { recoveryProtocolVersion: 1, storage: { ...authority(), legacyTaskImportAllowed: false }, tasks: [saved], journals: [interrupted], clearBlockers: [], runtime: { ...runtime(), runtimeEpoch: "9".repeat(64), journalGate: "blocked", blockers: [{ code: "analysis_interrupted", origin: interrupted.origin, journalId: interrupted.journalId }] }, coherent: true };
+    await mount();
+    const barrier = deferred<void>(); recoveryRead = barrier.promise;
+    let pending!: Promise<void>;
+    await act(async () => { pending = center.retryNativeResult(); });
+    const loads = recoveryLoads;
+    const reopen = element.querySelector<HTMLButtonElement>('button[aria-label="View analysis status and recovery actions"]')!;
+    expect(reopen.getAttribute("aria-expanded")).toBe("true");
+    await act(async () => element.querySelector<HTMLButtonElement>('button[aria-label="Dismiss analysis status"]')!.click());
+    expect(element.querySelector("aside[role=alert]")).toBeNull();
+    expect(document.activeElement).toBe(reopen);
+    expect(reopen.getAttribute("aria-expanded")).toBe("false");
+    expect(center.nativeAnalysis?.refreshing).toBe(true);
+    await act(async () => { expect(center.retryNativeResult()).toBe(pending); });
+    expect(recoveryLoads).toBe(loads);
+    await act(async () => { barrier.resolve(); await pending; });
+    expect(center.nativeAnalysis?.refreshOutcome).toBe("interrupted");
+    expect(element.querySelector("aside[role=alert]")).toBeNull();
+    await act(async () => root.render(createElement(TaskCenterProvider, null, createElement(AppShell, null, createElement(Panel)))));
+    expect(element.querySelector("aside[role=alert]")).toBeNull();
+    await act(async () => expect(center.queueTask(saved.id, center.getTask(saved.id))).toBe(false));
+    expect(calls("reserve_analysis")).toHaveLength(0); expect(calls("start_analysis")).toHaveLength(0);
+    const ipcCount = ipc.invoke.mock.calls.length;
+    await act(async () => reopen.click());
+    expect(ipc.invoke.mock.calls).toHaveLength(ipcCount);
+    expect(element.querySelector("aside[role=alert]")?.textContent).toContain("previous run was interrupted");
+    expect(reopen.getAttribute("aria-expanded")).toBe("true");
+    expect(center.getTask(saved.id)?.reportSections).toEqual(saved.reportSections);
+  });
+  it("does not refresh a replacement Provider after a held bootstrap retry from the old lifetime resolves", async () => {
+    const failed = { ...task(), id: "owned-A", status: "error" as const };
+    rows = new Map([[failed.id, failed]]); heads.delete("owned-B"); loadFailure = true;
+    await mount(); expect(center.storageState).toBe("unavailable");
+    const barrier = deferred<void>(); desktopRead = barrier.promise;
+    let pending!: Promise<void>;
+    await act(async () => { pending = center.retryNativeResult(); });
+    expect(center.nativeAnalysis?.refreshing).toBe(true);
+    desktopRead = undefined; loadFailure = false;
+    await act(async () => root.render(createElement(TaskCenterProvider, { key: "replacement", children: createElement(AppShell, null, createElement(Panel)) })));
+    await settled(() => { expect(center.hydrated).toBe(true); expect(center.storageState).toBe("ready"); expect(center.nativeAnalysis).toBeNull(); });
+    const loads = recoveryLoads;
+    await act(async () => { barrier.resolve(); await pending; });
+    // The old bootstrap may finish its own read, but the old button must not issue
+    // an additional global refresh or publish feedback into the replacement.
+    expect(recoveryLoads).toBe(loads + 1);
+    expect(center.nativeAnalysis).toBeNull(); expect(center.notice).toBe("");
+    expect(calls("reserve_analysis")).toHaveLength(0); expect(calls("start_analysis")).toHaveLength(0);
   });
   it("the real stop button retains the owner until ACK and shares abort/control without false cleanup failure", async () => {
     const registration = deferred<() => void>(), listenerEntered = deferred<void>(), stopped = deferred<void>();

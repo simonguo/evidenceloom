@@ -97,6 +97,21 @@ describe("global native controls through the actual Provider", () => {
     expect(JSON.parse(calls("attach_analysis_recovery")[0].args.requestJson).origin).toEqual(current.header.origin);
     expect(calls("commit_analysis_projection")).toHaveLength(0); // No canonical B parent was bootstrapped.
   });
+  it("keeps the same owner dismissed across refreshes but shows a replacement run of the same task", async () => {
+    await mount(); const previous = fixture, staleDismiss = center.dismissNativeAnalysis;
+    await act(async () => center.dismissNativeAnalysis());
+    expect(center.nativeAnalysisPanelOpen).toBe(false); expect(center.nativeAnalysis).not.toBeNull();
+    await act(async () => center.retryTaskStorage());
+    expect(center.nativeAnalysisPanelOpen).toBe(false);
+    fixture = await attachmentFixture({ taskId: previous.header.origin.taskId, runId: "analysis-1", journalId: "7".repeat(64) });
+    expect(fixture.header.origin.taskId).toBe(previous.header.origin.taskId);
+    expect(fixture.header.journalId).not.toBe(previous.header.journalId);
+    await act(async () => center.retryTaskStorage());
+    expect(center.nativeAnalysisPanelOpen).toBe(true);
+    await act(async () => staleDismiss());
+    expect(center.nativeAnalysisPanelOpen).toBe(true);
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis", "stop_analysis"].includes(call.command))).toBe(false);
+  });
   it("refreshes the whole recovery snapshot after a retained attachment is ready and a global refresh fails", async () => {
     await mount();
     await act(async () => center.watchNativeAnalysis());
@@ -109,7 +124,8 @@ describe("global native controls through the actual Provider", () => {
     await act(async () => center.retryNativeResult());
     expect(recoveryLoads).toBe(loadsAfterFailure + 1);
     expect(center.nativeAnalysis).not.toBeNull();
-    expect(center.notice).toContain("Refresh its state");
+    expect(center.notice).toContain("Refresh failed");
+    expect(center.nativeAnalysis?.refreshOutcome).toBe("unavailable");
     expect(calls("query_analysis_attachment")).toHaveLength(oldAttachmentQueries);
     sqlUnavailable = false;
     await act(async () => center.retryNativeResult());
@@ -134,5 +150,25 @@ describe("global native controls through the actual Provider", () => {
     expect(calls("stop_analysis")).toHaveLength(1); expect(calls("commit_analysis_projection")).toHaveLength(0);
     expect(center.nativeAnalysis).not.toBeNull();
     expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis"].includes(call.command))).toBe(false);
+  });
+  it("refreshes globally with no owner while retaining an unconfirmed attachment instead of querying its old packet", async () => {
+    fixture.setHook((command) => {
+      if (command === "commit_analysis_projection") throw new Error("Owned lost final projection acknowledgement");
+      if (command === "query_analysis_projection") throw new Error("Owned unavailable projection query");
+    });
+    await mount();
+    await act(async () => center.watchNativeAnalysis());
+    expect(center.nativeAnalysis?.phase).toBe("result_pending");
+    await act(async () => center.retryTaskStorage());
+    expect(center.nativeAnalysis?.taskId).toBeNull();
+    const oldQueries = calls("query_analysis_attachment").length, loads = recoveryLoads;
+    await act(async () => center.retryNativeResult());
+    expect(recoveryLoads).toBe(loads + 1);
+    expect(calls("query_analysis_attachment")).toHaveLength(oldQueries);
+    expect(center.nativeAnalysis?.phase).toBe("result_pending");
+    expect(center.nativeAnalysis?.attached).toBe(true);
+    expect(center.nativeAnalysis?.refreshOutcome).toBe("blocked");
+    expect(center.notice).toContain("Refresh completed");
+    expect(fixture.calls.some((call) => ["reserve_analysis", "start_analysis", "stop_analysis"].includes(call.command))).toBe(false);
   });
 });
